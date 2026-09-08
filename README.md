@@ -172,11 +172,9 @@ Sau khi chạy migration, tự tạo tài khoản Admin đầu tiên qua endpoin
 
 ## Thành viên nhóm
 
-| Thành viên | 
-|---|---|
-| Nguyễn Văn Nhuận |  |
-| Võ Ngọc Nguyên |  |
-| Vũ Hoàng | |
-| Trần Đình Minh Thoại | |
-| Dương Thạch Phú | |
+- Nguyễn Văn Nhuận
+- Võ Ngọc Nguyên
+- Vũ Hoàng
+- Trần Đình Minh Thoại
+- Dương Thạch Phú
 
