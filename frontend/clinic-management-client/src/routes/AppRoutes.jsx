@@ -10,6 +10,7 @@ import {
 import PatientLayout from "../layouts/PatientLayout";
 import AdminLayout from "../layouts/AdminLayout";
 import ProtectedRoute from "./ProtectedRoute";
+import HomePage from "../pages/patient/HomePage";
 
 function AppRoutes() {
     return (
@@ -18,11 +19,7 @@ function AppRoutes() {
                 <Route element={<PatientLayout />}>
                     <Route
                         path="/"
-                        element={
-                            <div>
-                                Clinic Management
-                            </div>
-                        }
+                        element={<HomePage />}
                     />
 
                     <Route
@@ -111,4 +108,4 @@ function AppRoutes() {
     );
 }
 
-export default AppRoutes;
+export default AppRoutes;
