@@ -10,13 +10,20 @@ import {
 import PatientLayout from "../layouts/PatientLayout";
 import AdminLayout from "../layouts/AdminLayout";
 import ProtectedRoute from "./ProtectedRoute";
+
 import HomePage from "../pages/patient/HomePage";
+import BackendTestPage from "../pages/BackendTestPage";
 
 function AppRoutes() {
     return (
         <BrowserRouter>
             <Routes>
+
+                {/* =========================
+                    Patient / Public Routes
+                ========================= */}
                 <Route element={<PatientLayout />}>
+
                     <Route
                         path="/"
                         element={<HomePage />}
@@ -39,8 +46,18 @@ function AppRoutes() {
                             </div>
                         }
                     />
+
+                    {/* Test Backend */}
+                    <Route
+                        path="/test-backend"
+                        element={<BackendTestPage />}
+                    />
+
                 </Route>
 
+                {/* =========================
+                    Internal Routes
+                ========================= */}
                 <Route
                     element={
                         <ProtectedRoute
@@ -82,9 +99,13 @@ function AppRoutes() {
                                 </div>
                             }
                         />
+
                     </Route>
                 </Route>
 
+                {/* =========================
+                    Unauthorized
+                ========================= */}
                 <Route
                     path="/unauthorized"
                     element={
@@ -94,6 +115,9 @@ function AppRoutes() {
                     }
                 />
 
+                {/* =========================
+                    404
+                ========================= */}
                 <Route
                     path="*"
                     element={
@@ -103,9 +127,10 @@ function AppRoutes() {
                         />
                     }
                 />
+
             </Routes>
         </BrowserRouter>
     );
 }
 
-export default AppRoutes;
+export default AppRoutes;

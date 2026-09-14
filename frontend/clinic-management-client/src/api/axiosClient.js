@@ -1,14 +1,14 @@
-// src/api/axiosClient.js
-
 import axios from "axios";
 
 const axiosClient = axios.create({
     baseURL:
         import.meta.env.VITE_API_BASE_URL ||
-        "https://localhost:5212/api",
+        "https://localhost:7010/api",
+
     headers: {
         "Content-Type": "application/json",
     },
+
     timeout: 15000,
 });
 
@@ -27,6 +27,7 @@ axiosClient.interceptors.request.use(
 
 axiosClient.interceptors.response.use(
     (response) => response,
+
     async (error) => {
         const status = error.response?.status;
 
