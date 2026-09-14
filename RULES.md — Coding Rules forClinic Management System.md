@@ -3,7 +3,8 @@
 > Project: Clinic Management System  
 > Backend: ASP.NET Core 8 Web API + Entity Framework Core + SQL Server  
 > Frontend: React + JavaScript (JSX) + Vite + MUI  
-> Authentication: ASP.NET Core Identity / JWT Bearer  
+> Authentication: Custom Users/Roles + JWT Bearer  
+> Password Hashing: BCrypt  
 > Realtime: SignalR  
 > API documentation: Swagger / OpenAPI
 
@@ -67,8 +68,18 @@ ClinicManagement/
 ## 2.2. Backend
 
 ```text
-ClinicManagement.API/
+ClinicManagement/
 │
+├── Commons/
+│   ├── ApiResponse.cs
+│   ├── RoleConstants.cs
+│   └── ClaimConstants.cs
+├── Configurations/
+│   ├── JwtSettings.cs
+│   ├── JwtConfiguration.cs
+│   ├── SwaggerConfiguration.cs
+│   ├── CorsConfiguration.cs
+│   └── DependencyInjection.cs
 ├── Controllers/
 ├── Services/
 │   ├── Interfaces/
@@ -78,13 +89,13 @@ ClinicManagement.API/
 │   └── Implementations/
 ├── Data/
 │   ├── Entities/
+│   ├── Configurations/
 │   └── Migrations/
 ├── DTOs/
 │   ├── Requests/
 │   └── Responses/
 ├── Validators/
 ├── Exceptions/
-├── Middlewares/
 ├── Helpers/
 ├── Hubs/
 ├── Mappings/
@@ -504,9 +515,9 @@ Ví dụ AppointmentService:
 - Trigger notification
 ```
 
-Service không được chứa HTTP-specific logic.
+Business Service không được chứa HTTP-specific logic.
 
-Không sử dụng:
+Không sử dụng trực tiếp:
 
 ```csharp
 HttpContext
@@ -515,7 +526,17 @@ BadRequest()
 NotFound()
 ```
 
-trong Service.
+trong Business Service.
+
+Ngoại lệ: infrastructure service như `CurrentUserService` được phép sử dụng `IHttpContextAccessor` để đọc authenticated user claims.
+
+Business Service cần thông tin user hiện tại phải inject:
+
+```csharp
+ICurrentUserService
+```
+
+thay vì truy cập `HttpContext` trực tiếp.
 
 ## Service naming
 
@@ -706,89 +727,145 @@ Business Rule
 
 Không sử dụng `try/catch` lặp lại ở mọi Controller.
 
-Dùng exception middleware tập trung.
-
-Ví dụ:
+Project sử dụng centralized exception handling:
 
 ```text
 Exceptions/
-├── NotFoundException.cs
-├── BusinessRuleException.cs
-└── ExceptionMiddleware.cs
+├── ErrorCode.cs
+├── AppException.cs
+└── GlobalExceptionHandler.cs
 ```
 
-Các lỗi nghiệp vụ:
+Lỗi nghiệp vụ phải dùng `AppException` với `ErrorCode` tương ứng.
+
+Ví dụ:
 
 ```csharp
-throw new BusinessRuleException(
-    "Doctor already has an appointment at this time.");
+throw new AppException(
+    ErrorCode.APPOINTMENT_CONFLICT
+);
 ```
 
-Middleware chuyển exception thành response thống nhất.
+Không dùng các exception chung như sau cho lỗi nghiệp vụ đã có `ErrorCode`:
 
-Frontend phải có một format error thống nhất để xử lý.
+```csharp
+throw new Exception("...");
+throw new KeyNotFoundException("...");
+```
+
+`GlobalExceptionHandler` chịu trách nhiệm chuyển exception thành HTTP response thống nhất.
+
+Không tạo thêm một hệ exception riêng như `NotFoundException`, `BusinessRuleException` nếu chưa được team thống nhất.
+
+Frontend phải xử lý error theo format `ApiResponse` thống nhất.
 
 ---
 
 # 13. API RESPONSE RULES
 
-Response phải thống nhất.
+Response phải thống nhất thông qua:
 
-Ví dụ success:
+```csharp
+ApiResponse<T>
+```
+
+Success:
 
 ```json
 {
-  "success": true,
-  "message": "Appointment created successfully.",
-  "data": {}
+  "code": 1000,
+  "message": "Success",
+  "result": {}
 }
 ```
 
-Ví dụ error:
+Error:
 
 ```json
 {
-  "success": false,
-  "message": "Doctor is not available.",
-  "errors": []
+  "code": 5002,
+  "message": "The doctor already has an appointment at this time",
+  "result": null
 }
 ```
+
+Quy ước mã lỗi hiện tại:
+
+```text
+1000 = Success
+1xxx = Common / Authentication
+2xxx = User / Auth
+3xxx = Doctor
+4xxx = Patient
+5xxx = Appointment
+...
+9999 = Uncategorized exception
+```
+
+Mỗi `ErrorCode` phải có mã duy nhất.
 
 Không để mỗi Controller trả một format khác nhau.
+
+Frontend đọc dữ liệu nghiệp vụ từ:
+
+```js
+response.data.result
+```
 
 ---
 
 # 14. PAGINATION RULES
 
-API list lớn phải hỗ trợ:
+API list lớn phải hỗ trợ pagination.
+
+Pagination dùng chung:
 
 ```text
-page
+pageNumber
 pageSize
-search
-sortBy
-sortOrder
 ```
 
 Ví dụ:
 
 ```text
-GET /api/appointments?page=1&pageSize=10
+GET /api/appointments?pageNumber=1&pageSize=10
 ```
 
-Không trả toàn bộ 10.000 records về frontend.
+`PaginationRequest` chịu trách nhiệm chuẩn hóa `PageNumber` và `PageSize`; `PageSize` không được vượt quá giới hạn chung của hệ thống.
 
-Response nên chứa:
+Các filter riêng như:
+
+```text
+search
+sortBy
+sortOrder
+status
+doctorId
+```
+
+phải đặt trong request/filter DTO của từng domain, không nhét toàn bộ vào `PaginationRequest`.
+
+Không trả toàn bộ hàng nghìn records về frontend.
+
+Response phân trang phải được bọc trong `ApiResponse<PagedResponse<T>>` và có dạng:
 
 ```json
 {
-  "items": [],
-  "page": 1,
-  "pageSize": 10,
-  "totalItems": 100,
-  "totalPages": 10
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "items": [],
+    "pageNumber": 1,
+    "pageSize": 10,
+    "totalItems": 100,
+    "totalPages": 10,
+    "hasPreviousPage": false,
+    "hasNextPage": true
+  }
 }
 ```
+
+Query dùng `Skip()` / `Take()` phải có thứ tự ổn định bằng `OrderBy()` phù hợp.
 
 ---
 
@@ -848,7 +925,9 @@ Không để workflow quan trọng cập nhật một nửa rồi fail một n�
 
 # 17. JWT / AUTHENTICATION RULES
 
-JWT phải được xử lý tập trung.
+Project sử dụng Custom `Users` / `Roles` + JWT Bearer, không sử dụng ASP.NET Core Identity để quản lý bảng user/role.
+
+JWT phải được xử lý tập trung qua các service/configuration dùng chung.
 
 API yêu cầu authentication phải sử dụng:
 
@@ -856,19 +935,25 @@ API yêu cầu authentication phải sử dụng:
 [Authorize]
 ```
 
-Role-specific API:
-
-```csharp
-[Authorize(Roles = "Doctor")]
-```
-
-Không tự viết kiểm tra role thủ công ở mọi method nếu ASP.NET Authorization đã đáp ứng.
+Role-specific API phải dùng `RoleConstants`, không hard-code role string trực tiếp.
 
 Ví dụ:
 
 ```csharp
-[Authorize(Roles = "Receptionist,Admin")]
+[Authorize(Roles = RoleConstants.Doctor)]
 ```
+
+Nhiều role:
+
+```csharp
+[Authorize(
+    Roles = RoleConstants.Admin
+        + ","
+        + RoleConstants.Receptionist
+)]
+```
+
+Không tự viết kiểm tra role thủ công ở mọi method nếu ASP.NET Authorization đã đáp ứng.
 
 Role dùng thống nhất:
 
@@ -887,6 +972,22 @@ admin
 doctor
 DOCTOR
 ```
+
+Password phải được hash thông qua:
+
+```csharp
+IPasswordHasherService
+```
+
+Implementation hiện tại sử dụng BCrypt.
+
+Business service không gọi `BCrypt.Net.BCrypt` trực tiếp; mọi hash/verify password phải đi qua `IPasswordHasherService`.
+
+Access Token được tạo qua `IJwtTokenGenerator`.
+
+Refresh Token phải được sinh bằng cryptographically secure random generator, không dùng JWT thứ hai làm refresh token.
+
+Không log hoặc trả JWT secret, password hay refresh token vào log.
 
 ---
 
@@ -1370,20 +1471,39 @@ Password
 JWT secret
 API key
 Connection string chứa credential thật
+Refresh token
+Private certificate / private key
 ```
 
-Environment-specific configuration phải dùng:
+Không hard-code secret thật trong:
 
 ```text
-appsettings.Development.json
-Environment Variables
-User Secrets
-.env
+appsettings.json
+docker-compose.yml
+frontend source code
 ```
 
-`.env` và secret files phải nằm trong `.gitignore`.
+Local backend secrets ưu tiên dùng:
 
-Frontend không được chứa secret thực sự.
+```text
+.NET User Secrets
+Environment Variables
+```
+
+Ví dụ:
+
+```text
+ConnectionStrings:DefaultConnection
+Jwt:Key
+```
+
+Docker credential local có thể lấy từ `.env`; file `.env` phải nằm trong `.gitignore`.
+
+Các file template không chứa secret thật như `.env.example` được phép commit để team biết các biến cần cấu hình.
+
+Frontend không được chứa secret thực sự. Biến `VITE_*` được bundle xuống browser nên chỉ dùng cho public configuration như API base URL.
+
+Nếu secret đã từng được commit lên Git, chỉ thêm vào `.gitignore` là chưa đủ; phải rotate secret và xử lý lịch sử Git khi cần.
 
 ---
 

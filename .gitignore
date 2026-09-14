@@ -94,6 +94,7 @@ GeneratedFiles/
 # Local development settings
 
 appsettings.Local.json
+appsettings.*.Local.json
 
 # User secrets
 
@@ -123,9 +124,12 @@ secrets.json
 
 # ==========================================
 
-# HTTPS development certificate
+# HTTPS development certificates / private keys
 
 *.pfx
+*.p12
+*.key
+*.pem
 
 # ASP.NET Core local files
 
@@ -165,17 +169,15 @@ pnpm-debug.log*
 
 *.tgz
 
-# Environment variables
+# Environment variables / local secrets
 
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
 
 # Keep template environment files
 
 !.env.example
+!.env.*.example
 
 # ==========================================
 
@@ -235,9 +237,8 @@ App_Data/
 
 docker-compose.override.yml
 
-# Docker environment
-
-.dockerignore
+# Keep .dockerignore in Git because it is shared project configuration.
+# Local Docker secrets should be stored in .env (ignored above).
 
 # ==========================================
 
@@ -245,10 +246,12 @@ docker-compose.override.yml
 
 # ==========================================
 
-# Local exports
+# Runtime/generated exports
 
-*.csv
-*.xlsx
+exports/
+
+# Do not ignore all *.xlsx / *.csv globally because Docs may contain
+# project reports, Gantt files, seed/import templates, or other shared files.
 
 # Temporary folders
 
@@ -275,9 +278,9 @@ logs/
 
 # VS Code
 
-.vscode/
+.vscode/*
 
-# Except shared workspace settings when needed
+# Shared workspace settings may be committed
 
 !.vscode/extensions.json
 !.vscode/settings.json

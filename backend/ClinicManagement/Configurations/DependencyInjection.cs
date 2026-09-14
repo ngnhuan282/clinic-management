@@ -30,6 +30,11 @@ public static class DependencyInjection
             CurrentUserService
         >();
 
+        services.AddScoped<
+            IRefreshTokenGenerator,
+            RefreshTokenGenerator
+        >();
+
         // =========================
         // Repositories
         // =========================

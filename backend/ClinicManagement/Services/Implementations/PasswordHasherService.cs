@@ -1,22 +1,17 @@
 using ClinicManagement.Services.Interfaces;
-using Microsoft.AspNetCore.Identity;
 
 namespace ClinicManagement.Services.Implementations;
 
-public class PasswordHasherService : IPasswordHasherService
+public class PasswordHasherService
+    : IPasswordHasherService
 {
-    private readonly PasswordHasher<object> _passwordHasher;
-
-    public PasswordHasherService()
-    {
-        _passwordHasher = new PasswordHasher<object>();
-    }
+    private const int WorkFactor = 12;
 
     public string HashPassword(string password)
     {
-        return _passwordHasher.HashPassword(
-            null!,
-            password
+        return BCrypt.Net.BCrypt.HashPassword(
+            password,
+            workFactor: WorkFactor
         );
     }
 
@@ -24,13 +19,15 @@ public class PasswordHasherService : IPasswordHasherService
         string hashedPassword,
         string providedPassword)
     {
-        var result = _passwordHasher.VerifyHashedPassword(
-            null!,
-            hashedPassword,
-            providedPassword
-        );
+        if (string.IsNullOrWhiteSpace(hashedPassword)
+            || string.IsNullOrWhiteSpace(providedPassword))
+        {
+            return false;
+        }
 
-        return result == PasswordVerificationResult.Success
-            || result == PasswordVerificationResult.SuccessRehashNeeded;
+        return BCrypt.Net.BCrypt.Verify(
+            providedPassword,
+            hashedPassword
+        );
     }
 }
