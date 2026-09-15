@@ -13,6 +13,7 @@ import ProtectedRoute from "./ProtectedRoute";
 
 import HomePage from "../pages/patient/HomePage";
 import BackendTestPage from "../pages/BackendTestPage";
+import CatalogManagementPage from "../pages/internal/CatalogManagementPage";
 
 function AppRoutes() {
     return (
@@ -99,6 +100,11 @@ function AppRoutes() {
                                 </div>
                             }
                         />
+                        <Route element={<ProtectedRoute allowedRoles={["Admin"]} />}>
+                            <Route path="departments" element={<CatalogManagementPage resource="departments" />} />
+                            <Route path="specializations" element={<CatalogManagementPage resource="specializations" />} />
+                            <Route path="rooms" element={<CatalogManagementPage resource="rooms" />} />
+                        </Route>
 
                     </Route>
                 </Route>

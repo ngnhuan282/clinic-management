@@ -47,6 +47,9 @@ public static class DependencyInjection
             IRoleRepository,
             RoleRepository
         >();
+        services.AddScoped<IDepartmentRepository, DepartmentRepository>();
+        services.AddScoped<ISpecializationRepository, SpecializationRepository>();
+        services.AddScoped<IRoomRepository, RoomRepository>();
 
         // =========================
         // Business Services
@@ -55,6 +58,9 @@ public static class DependencyInjection
             IAuthService,
             AuthService
         >();
+        services.AddScoped<IDepartmentService, DepartmentService>();
+        services.AddScoped<ISpecializationService, SpecializationService>();
+        services.AddScoped<IRoomService, RoomService>();
 
         return services;
     }

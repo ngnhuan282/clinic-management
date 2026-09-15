@@ -4,6 +4,7 @@ using ClinicManagement.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ClinicManagement.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260915085327_AddCatalogManagement")]
+    partial class AddCatalogManagement
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -202,44 +205,6 @@ namespace ClinicManagement.Migrations
                         .IsUnique();
 
                     b.ToTable("Rooms");
-
-                    b.HasData(
-                        new
-                        {
-                            RoomId = 1,
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            DepartmentId = 1,
-                            IsActive = true,
-                            Location = "Tầng 1",
-                            Name = "Phòng khám Nội 1",
-                            RoomNumber = "P101",
-                            RoomType = "Khám bệnh",
-                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
-                        },
-                        new
-                        {
-                            RoomId = 2,
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            DepartmentId = 2,
-                            IsActive = true,
-                            Location = "Tầng 2",
-                            Name = "Phòng khám Nhi 1",
-                            RoomNumber = "P201",
-                            RoomType = "Khám bệnh",
-                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
-                        },
-                        new
-                        {
-                            RoomId = 3,
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            DepartmentId = 3,
-                            IsActive = true,
-                            Location = "Tầng 3",
-                            Name = "Phòng khám Răng hàm mặt 1",
-                            RoomNumber = "P301",
-                            RoomType = "Khám bệnh",
-                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
-                        });
                 });
 
             modelBuilder.Entity("ClinicManagement.Data.Entities.Specialization", b =>
@@ -293,38 +258,6 @@ namespace ClinicManagement.Migrations
                         .IsUnique();
 
                     b.ToTable("Specializations");
-
-                    b.HasData(
-                        new
-                        {
-                            SpecializationId = 1,
-                            Code = "NỘI-TQ",
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            DepartmentId = 1,
-                            IsActive = true,
-                            Name = "Nội tổng quát",
-                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
-                        },
-                        new
-                        {
-                            SpecializationId = 2,
-                            Code = "NHI-KHOA",
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            DepartmentId = 2,
-                            IsActive = true,
-                            Name = "Nhi khoa",
-                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
-                        },
-                        new
-                        {
-                            SpecializationId = 3,
-                            Code = "RHM-NQ",
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            DepartmentId = 3,
-                            IsActive = true,
-                            Name = "Nha khoa tổng quát",
-                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
-                        });
                 });
 
             modelBuilder.Entity("ClinicManagement.Data.Entities.User", b =>
