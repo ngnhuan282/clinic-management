@@ -14,15 +14,18 @@ namespace ClinicManagement.Controllers;
 public class TestController : ControllerBase
 {
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
+    private readonly IRefreshTokenGenerator _refreshTokenGenerator;
     private readonly ICurrentUserService _currentUserService;
     private readonly ApplicationDbContext _context;
 
     public TestController(
         IJwtTokenGenerator jwtTokenGenerator,
+        IRefreshTokenGenerator refreshTokenGenerator,
         ICurrentUserService currentUserService,
         ApplicationDbContext context)
     {
         _jwtTokenGenerator = jwtTokenGenerator;
+        _refreshTokenGenerator = refreshTokenGenerator;
         _currentUserService = currentUserService;
         _context = context;
     }

@@ -8,9 +8,16 @@ public static class CorsConfiguration
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var frontendUrl =
+        var frontendUrls =
             configuration["Cors:FrontendUrl"]
             ?? "http://localhost:5173";
+
+        var origins = frontendUrls
+            .Split(
+                ',',
+                StringSplitOptions.RemoveEmptyEntries
+                | StringSplitOptions.TrimEntries
+            );
 
         services.AddCors(options =>
         {
@@ -19,7 +26,7 @@ public static class CorsConfiguration
                 policy =>
                 {
                     policy
-                        .WithOrigins(frontendUrl)
+                        .WithOrigins(origins)
                         .AllowAnyHeader()
                         .AllowAnyMethod();
                 }
