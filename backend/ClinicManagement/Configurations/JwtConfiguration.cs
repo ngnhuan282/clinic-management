@@ -41,6 +41,7 @@ public static class JwtConfiguration
             })
             .AddJwtBearer(options =>
             {
+                options.MapInboundClaims = false;
                 options.TokenValidationParameters =
                     new TokenValidationParameters
                     {

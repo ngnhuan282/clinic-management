@@ -97,6 +97,18 @@ public sealed class ErrorCode
             "Email already exists",
             HttpStatusCode.Conflict
         );
+
+    public static readonly ErrorCode CATALOG_NOT_FOUND =
+        new(2100, "Catalog item not found", HttpStatusCode.NotFound);
+
+    public static readonly ErrorCode CATALOG_DUPLICATE =
+        new(2101, "Catalog code or number already exists", HttpStatusCode.Conflict);
+
+    public static readonly ErrorCode DEPARTMENT_NOT_FOUND =
+        new(2102, "Department not found", HttpStatusCode.NotFound);
+
+    public static readonly ErrorCode INVALID_DEPARTMENT =
+        new(2103, "Department is invalid or inactive", HttpStatusCode.BadRequest);
     // =========================
     // Doctor
     // =========================
