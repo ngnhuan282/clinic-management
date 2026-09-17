@@ -137,7 +137,6 @@ function BookingPage() {
         hasDate: Boolean(booking.selectedDate),
         hasSlot: Boolean(booking.selectedSlot),
         hasPatientInfo,
-        hasSuccess: Boolean(booking.successAppointment),
     });
 
     const completedSteps = getCompletedSteps({
@@ -146,7 +145,6 @@ function BookingPage() {
         hasDate: Boolean(booking.selectedDate),
         hasSlot: Boolean(booking.selectedSlot),
         hasPatientInfo,
-        hasSuccess: Boolean(booking.successAppointment),
     });
 
     const handleFilesSelected = (files) => {
@@ -184,6 +182,11 @@ function BookingPage() {
 
     useEffect(() => {
         if (booking.successAppointment) {
+            setBirthDate("");
+            setGender("Nam");
+            setInsuranceNumber("");
+            setUploadedFiles([]);
+            setUploadError("");
             setSuccessDialogOpen(true);
         }
     }, [booking.successAppointment]);
@@ -621,12 +624,7 @@ function getCurrentStep({
     hasDate,
     hasSlot,
     hasPatientInfo,
-    hasSuccess,
 }) {
-    if (hasSuccess) {
-        return 6;
-    }
-
     if (!hasDepartment) {
         return 1;
     }
@@ -656,7 +654,6 @@ function getCompletedSteps({
     hasDate,
     hasSlot,
     hasPatientInfo,
-    hasSuccess,
 }) {
     return new Set(
         [
@@ -665,7 +662,6 @@ function getCompletedSteps({
             hasDate ? 3 : null,
             hasSlot ? 4 : null,
             hasPatientInfo ? 5 : null,
-            hasSuccess ? 6 : null,
         ].filter(Boolean)
     );
 }

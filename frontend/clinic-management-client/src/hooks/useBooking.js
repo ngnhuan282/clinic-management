@@ -8,17 +8,13 @@ import {
 } from "../api/bookingApi";
 import getApiErrorMessage from "../utils/errorHandler";
 
-function getToday() {
-    return new Date().toISOString().slice(0, 10);
-}
-
 export function useBooking() {
     const [departments, setDepartments] = useState([]);
     const [doctors, setDoctors] = useState([]);
     const [slots, setSlots] = useState([]);
     const [selectedDepartmentId, setSelectedDepartmentId] = useState("");
     const [selectedDoctorId, setSelectedDoctorId] = useState("");
-    const [selectedDate, setSelectedDate] = useState(getToday());
+    const [selectedDate, setSelectedDate] = useState("");
     const [selectedSlot, setSelectedSlot] = useState(null);
     const [patientName, setPatientName] = useState("");
     const [patientPhone, setPatientPhone] = useState("");
@@ -31,6 +27,18 @@ export function useBooking() {
     });
     const [error, setError] = useState("");
     const [successAppointment, setSuccessAppointment] = useState(null);
+
+    const resetForm = useCallback(() => {
+        setDoctors([]);
+        setSlots([]);
+        setSelectedDepartmentId("");
+        setSelectedDoctorId("");
+        setSelectedDate("");
+        setSelectedSlot(null);
+        setPatientName("");
+        setPatientPhone("");
+        setReason("");
+    }, []);
 
     const selectedDepartment = useMemo(
         () =>
@@ -200,7 +208,7 @@ export function useBooking() {
             });
 
             setSuccessAppointment(result);
-            await refreshSlots();
+            resetForm();
         } catch (apiError) {
             setError(getApiErrorMessage(apiError));
             await refreshSlots();
@@ -215,6 +223,7 @@ export function useBooking() {
         patientPhone,
         reason,
         refreshSlots,
+        resetForm,
         selectedDate,
         selectedDoctorId,
         selectedSlot,
@@ -243,6 +252,7 @@ export function useBooking() {
         setPatientName,
         setPatientPhone,
         setReason,
+        resetForm,
         submitBooking,
     };
 }
