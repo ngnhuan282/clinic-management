@@ -67,6 +67,8 @@ function AppRoutes() {
                         <ProtectedRoute
                             allowedRoles={[
                                 "Admin",
+                                "Doctor",
+                                "Receptionist",
                             ]}
                         />
                     }
