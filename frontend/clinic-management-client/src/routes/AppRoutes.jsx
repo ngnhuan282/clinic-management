@@ -13,6 +13,10 @@ import ProtectedRoute from "./ProtectedRoute";
 
 import HomePage from "../pages/patient/HomePage";
 import BackendTestPage from "../pages/BackendTestPage";
+import InventoryPage from "../pages/internal/admin/InventoryPage";
+import MedicineCategoriesPage from "../pages/internal/admin/MedicineCategoriesPage";
+import MedicinesPage from "../pages/internal/admin/MedicinesPage";
+import SuppliersPage from "../pages/internal/admin/SuppliersPage";
 
 function AppRoutes() {
     return (
@@ -63,8 +67,6 @@ function AppRoutes() {
                         <ProtectedRoute
                             allowedRoles={[
                                 "Admin",
-                                "Doctor",
-                                "Receptionist",
                             ]}
                         />
                     }
@@ -100,6 +102,25 @@ function AppRoutes() {
                             }
                         />
 
+                        <Route
+                            path="medicines"
+                            element={<MedicinesPage />}
+                        />
+
+                        <Route
+                            path="medicines/categories"
+                            element={<MedicineCategoriesPage />}
+                        />
+
+                        <Route
+                            path="medicines/suppliers"
+                            element={<SuppliersPage />}
+                        />
+
+                        <Route
+                            path="medicines/inventory"
+                            element={<InventoryPage />}
+                        />
                     </Route>
                 </Route>
 
