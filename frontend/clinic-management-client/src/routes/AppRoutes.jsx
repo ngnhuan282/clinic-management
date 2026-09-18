@@ -1,5 +1,3 @@
-// src/routes/AppRoutes.jsx
-
 import {
     BrowserRouter,
     Navigate,
@@ -14,6 +12,7 @@ import ProtectedRoute from "./ProtectedRoute";
 import HomePage from "../pages/patient/HomePage";
 import BackendTestPage from "../pages/BackendTestPage";
 import CatalogManagementPage from "../pages/internal/CatalogManagementPage";
+import LabTestTypesPage from "../pages/internal/LabTestTypesPage";
 
 function AppRoutes() {
     return (
@@ -57,7 +56,17 @@ function AppRoutes() {
                 </Route>
 
                 {/* =========================
-                    Internal Routes
+                    DEV TEST ROUTE (Không cần login)
+                ========================= */}
+                <Route path="/internal" element={<AdminLayout />}>
+                    <Route
+                        path="lab-test-types"
+                        element={<LabTestTypesPage />}
+                    />
+                </Route>
+
+                {/* =========================
+                    Internal Routes (Protected)
                 ========================= */}
                 <Route
                     element={

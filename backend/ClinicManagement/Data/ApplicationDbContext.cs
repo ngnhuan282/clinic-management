@@ -165,4 +165,8 @@ public class ApplicationDbContext : DbContext
                 new Room { RoomId = 3, RoomNumber = "P301", Name = "Phòng khám Răng hàm mặt 1", RoomType = "Khám bệnh", DepartmentId = 3, Location = "Tầng 3", IsActive = true, CreatedAt = new DateTime(2026, 1, 1), UpdatedAt = new DateTime(2026, 1, 1) });
         });
     }
+
+
+//  labtest
+public DbSet<LabTestType> LabTestTypes { get; set; }
 }
