@@ -48,12 +48,52 @@ public static class DependencyInjection
             RoleRepository
         >();
 
+        services.AddScoped<
+            IMedicineRepository,
+            MedicineRepository
+        >();
+
+        services.AddScoped<
+            IMedicineCategoryRepository,
+            MedicineCategoryRepository
+        >();
+
+        services.AddScoped<
+            ISupplierRepository,
+            SupplierRepository
+        >();
+
+        services.AddScoped<
+            IInventoryRepository,
+            InventoryRepository
+        >();
+
         // =========================
         // Business Services
         // =========================
         services.AddScoped<
             IAuthService,
             AuthService
+        >();
+
+        services.AddScoped<
+            IMedicineService,
+            MedicineService
+        >();
+
+        services.AddScoped<
+            IMedicineCategoryService,
+            MedicineCategoryService
+        >();
+
+        services.AddScoped<
+            ISupplierService,
+            SupplierService
+        >();
+
+        services.AddScoped<
+            IInventoryService,
+            InventoryService
         >();
 
         return services;

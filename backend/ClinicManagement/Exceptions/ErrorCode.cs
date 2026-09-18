@@ -143,4 +143,85 @@ public sealed class ErrorCode
             "Invalid appointment status",
             HttpStatusCode.BadRequest
         );
+
+    // =========================
+    // Medicine / Inventory
+    // =========================
+
+    public static readonly ErrorCode MEDICINE_NOT_FOUND =
+        new(
+            6001,
+            "Medicine not found",
+            HttpStatusCode.NotFound
+        );
+
+    public static readonly ErrorCode MEDICINE_CATEGORY_NOT_FOUND =
+        new(
+            6002,
+            "Medicine category not found",
+            HttpStatusCode.NotFound
+        );
+
+    public static readonly ErrorCode SUPPLIER_NOT_FOUND =
+        new(
+            6003,
+            "Supplier not found",
+            HttpStatusCode.NotFound
+        );
+
+    public static readonly ErrorCode MEDICINE_NAME_EXISTED =
+        new(
+            6004,
+            "Medicine name already exists",
+            HttpStatusCode.Conflict
+        );
+
+    public static readonly ErrorCode MEDICINE_HAS_INVENTORY =
+        new(
+            6005,
+            "Medicine already has inventory records",
+            HttpStatusCode.Conflict
+        );
+
+    public static readonly ErrorCode MEDICINE_CATEGORY_NAME_EXISTED =
+        new(
+            6006,
+            "Medicine category name already exists",
+            HttpStatusCode.Conflict
+        );
+
+    public static readonly ErrorCode MEDICINE_CATEGORY_HAS_MEDICINES =
+        new(
+            6007,
+            "Medicine category already has medicines",
+            HttpStatusCode.Conflict
+        );
+
+    public static readonly ErrorCode SUPPLIER_NAME_EXISTED =
+        new(
+            6008,
+            "Supplier name already exists",
+            HttpStatusCode.Conflict
+        );
+
+    public static readonly ErrorCode SUPPLIER_HAS_MEDICINES =
+        new(
+            6009,
+            "Supplier already has medicines",
+            HttpStatusCode.Conflict
+        );
+
+    public static readonly ErrorCode INVENTORY_NOT_FOUND =
+        new(
+            6010,
+            "Inventory batch not found",
+            HttpStatusCode.NotFound
+        );
+
+    public static readonly ErrorCode INVENTORY_LOT_EXISTED =
+        new(
+            6011,
+            "Inventory batch already exists for this medicine and expiry date",
+            HttpStatusCode.Conflict
+        );
 }
