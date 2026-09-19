@@ -10,6 +10,7 @@ import AdminLayout from "../layouts/AdminLayout";
 import ProtectedRoute from "./ProtectedRoute";
 
 import HomePage from "../pages/patient/HomePage";
+import BookingPage from "../pages/patient/BookingPage";
 import BackendTestPage from "../pages/BackendTestPage";
 import CatalogManagementPage from "../pages/internal/CatalogManagementPage";
 import LabTestTypesPage from "../pages/internal/LabTestTypesPage";
@@ -45,6 +46,11 @@ function AppRoutes() {
                                 Register Page
                             </div>
                         }
+                    />
+
+                    <Route
+                        path="/booking"
+                        element={<BookingPage />}
                     />
 
                     {/* Test Backend */}
