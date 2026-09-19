@@ -187,10 +187,7 @@ public class BookingService : IBookingService
         {
             _logger.LogWarning(
                 exception,
-                "Appointment slot conflict. DoctorId: {DoctorId}, Date: {Date}, StartTime: {StartTime}",
-                request.DoctorId,
-                date,
-                startTime
+                "Appointment slot conflict."
             );
 
             throw new AppException(
