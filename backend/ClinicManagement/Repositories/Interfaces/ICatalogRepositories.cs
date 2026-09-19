@@ -6,6 +6,7 @@ namespace ClinicManagement.Repositories.Interfaces;
 public interface IDepartmentRepository
 {
     Task<(IReadOnlyList<Department> Items, int TotalItems)> GetPageAsync(CatalogQuery query);
+    Task<List<Department>> GetActiveAsync();
     Task<Department?> GetByIdAsync(int id);
     Task<bool> ExistsDuplicateAsync(string code, string name, int? excludingId = null);
     Task AddAsync(Department entity);

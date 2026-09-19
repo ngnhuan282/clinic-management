@@ -14,9 +14,27 @@ public class ApplicationDbContext : DbContext
     public DbSet<Role> Roles => Set<Role>();
 
     public DbSet<User> Users => Set<User>();
+
     public DbSet<Department> Departments => Set<Department>();
+
     public DbSet<Specialization> Specializations => Set<Specialization>();
+
     public DbSet<Room> Rooms => Set<Room>();
+
+    public DbSet<Doctor> Doctors => Set<Doctor>();
+
+    public DbSet<Appointment> Appointments => Set<Appointment>();
+
+    public DbSet<MedicineCategory> MedicineCategories =>
+        Set<MedicineCategory>();
+
+    public DbSet<Supplier> Suppliers => Set<Supplier>();
+
+    public DbSet<Medicine> Medicines => Set<Medicine>();
+
+    public DbSet<Inventory> Inventory => Set<Inventory>();
+
+    public DbSet<LabTestType> LabTestTypes { get; set; }
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
@@ -164,9 +182,108 @@ public class ApplicationDbContext : DbContext
                 new Room { RoomId = 2, RoomNumber = "P201", Name = "Phòng khám Nhi 1", RoomType = "Khám bệnh", DepartmentId = 2, Location = "Tầng 2", IsActive = true, CreatedAt = new DateTime(2026, 1, 1), UpdatedAt = new DateTime(2026, 1, 1) },
                 new Room { RoomId = 3, RoomNumber = "P301", Name = "Phòng khám Răng hàm mặt 1", RoomType = "Khám bệnh", DepartmentId = 3, Location = "Tầng 3", IsActive = true, CreatedAt = new DateTime(2026, 1, 1), UpdatedAt = new DateTime(2026, 1, 1) });
         });
+
+        // =========================
+        // Medicine Category
+        // =========================
+        modelBuilder.Entity<MedicineCategory>(entity =>
+        {
+            entity.HasKey(x => x.CategoryId);
+
+            entity.Property(x => x.CategoryName)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.HasIndex(x => x.CategoryName)
+                .IsUnique();
+        });
+
+        // =========================
+        // Supplier
+        // =========================
+        modelBuilder.Entity<Supplier>(entity =>
+        {
+            entity.HasKey(x => x.SupplierId);
+
+            entity.Property(x => x.SupplierName)
+                .HasMaxLength(150)
+                .IsRequired();
+
+            entity.Property(x => x.ContactInfo)
+                .HasMaxLength(100);
+
+            entity.Property(x => x.Address)
+                .HasMaxLength(255);
+        });
+
+        // =========================
+        // Medicine
+        // =========================
+        modelBuilder.Entity<Medicine>(entity =>
+        {
+            entity.HasKey(x => x.MedicineId);
+
+            entity.Property(x => x.MedicineName)
+                .HasMaxLength(150)
+                .IsRequired();
+
+            entity.HasIndex(x => x.MedicineName)
+                .IsUnique();
+
+            entity.Property(x => x.Unit)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(x => x.UnitPrice)
+                .HasPrecision(18, 2);
+
+            entity.Property(x => x.Description)
+                .HasMaxLength(255);
+
+            entity.HasOne(x => x.Category)
+                .WithMany(x => x.Medicines)
+                .HasForeignKey(x => x.CategoryId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(x => x.Supplier)
+                .WithMany(x => x.Medicines)
+                .HasForeignKey(x => x.SupplierId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // =========================
+        // Inventory
+        // =========================
+        modelBuilder.Entity<Inventory>(entity =>
+        {
+            entity.HasKey(x => x.InventoryId);
+
+            entity.Property(x => x.BatchNumber)
+                .HasMaxLength(50)
+                .IsRequired();
+
+            entity.Property(x => x.ExpiryDate)
+                .HasColumnType("date");
+
+            entity.HasIndex(x => new
+            {
+                x.MedicineId,
+                x.BatchNumber,
+                x.ExpiryDate
+            })
+            .IsUnique();
+
+            entity.ToTable(x =>
+                x.HasCheckConstraint(
+                    "CK_Inventory_QuantityInStock",
+                    "[QuantityInStock] >= 0"
+                )
+            );
+
+            entity.HasOne(x => x.Medicine)
+                .WithMany(x => x.Inventories)
+                .HasForeignKey(x => x.MedicineId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
     }
-
-
-//  labtest
-public DbSet<LabTestType> LabTestTypes { get; set; }
 }

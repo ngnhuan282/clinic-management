@@ -52,8 +52,12 @@ public class BookingService : IBookingService
             .Select(x => new DepartmentResponse
             {
                 DepartmentId = x.DepartmentId,
-                DepartmentName = x.DepartmentName,
-                Description = x.Description
+                Code = x.Code,
+                Name = x.Name,
+                Description = x.Description,
+                IsActive = x.IsActive,
+                CreatedAt = x.CreatedAt,
+                UpdatedAt = x.UpdatedAt
             })
             .ToList();
     }
@@ -183,10 +187,7 @@ public class BookingService : IBookingService
         {
             _logger.LogWarning(
                 exception,
-                "Appointment slot conflict. DoctorId: {DoctorId}, Date: {Date}, StartTime: {StartTime}",
-                request.DoctorId,
-                date,
-                startTime
+                "Appointment slot conflict."
             );
 
             throw new AppException(
@@ -259,7 +260,7 @@ public class BookingService : IBookingService
             Title = doctor.Title,
             ExperienceYears = doctor.ExperienceYears,
             DepartmentId = doctor.DepartmentId,
-            DepartmentName = doctor.Department.DepartmentName,
+            DepartmentName = doctor.Department.Name,
             Biography = doctor.Biography
         };
     }
@@ -273,7 +274,7 @@ public class BookingService : IBookingService
             DoctorId = appointment.DoctorId,
             DoctorName = appointment.Doctor.FullName,
             DepartmentName =
-                appointment.Doctor.Department.DepartmentName,
+                appointment.Doctor.Department.Name,
             PatientName = appointment.PatientName,
             PatientPhone = appointment.PatientPhone,
             AppointmentDate = appointment.AppointmentDate,

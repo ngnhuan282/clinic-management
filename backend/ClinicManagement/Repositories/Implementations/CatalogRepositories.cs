@@ -24,6 +24,11 @@ public class DepartmentRepository(ApplicationDbContext context) : IDepartmentRep
         return (await items.OrderBy(x => x.Name).Skip((page - 1) * size).Take(size).ToListAsync(), total);
     }
     public Task<Department?> GetByIdAsync(int id) => context.Departments.FirstOrDefaultAsync(x => x.DepartmentId == id);
+    public Task<List<Department>> GetActiveAsync() => context.Departments
+        .AsNoTracking()
+        .Where(x => x.IsActive)
+        .OrderBy(x => x.Name)
+        .ToListAsync();
     public Task<bool> ExistsDuplicateAsync(string code, string name, int? excludingId = null) => context.Departments.AnyAsync(x => (excludingId == null || x.DepartmentId != excludingId) && (x.Code == code || x.Name == name));
     public Task AddAsync(Department entity) { context.Departments.Add(entity); return Task.CompletedTask; }
     public Task SaveChangesAsync() => context.SaveChangesAsync();

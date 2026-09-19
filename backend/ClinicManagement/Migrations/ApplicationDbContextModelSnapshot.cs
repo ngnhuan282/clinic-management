@@ -22,38 +22,102 @@ namespace ClinicManagement.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("ClinicManagement.Data.Entities.LabTestType", b =>
+            modelBuilder.Entity("ClinicManagement.Data.Entities.Inventory", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<int>("InventoryId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("InventoryId"));
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                    b.Property<string>("BatchNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateOnly>("ExpiryDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("MedicineId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("QuantityInStock")
+                        .HasColumnType("int");
+
+                    b.HasKey("InventoryId");
+
+                    b.HasIndex("MedicineId", "BatchNumber", "ExpiryDate")
+                        .IsUnique();
+
+                    b.ToTable("Inventory", t =>
+                        {
+                            t.HasCheckConstraint("CK_Inventory_QuantityInStock", "[QuantityInStock] >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("ClinicManagement.Data.Entities.Medicine", b =>
+                {
+                    b.Property<int>("MedicineId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("MedicineId"));
+
+                    b.Property<int>("CategoryId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
 
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Name")
+                    b.Property<string>("MedicineName")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
 
-                    b.Property<decimal>("Price")
-                        .HasColumnType("decimal(18, 2)");
+                    b.Property<int?>("SupplierId")
+                        .HasColumnType("int");
 
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
-                    b.HasKey("Id");
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
-                    b.ToTable("LabTestTypes");
+                    b.HasKey("MedicineId");
+
+                    b.HasIndex("CategoryId");
+
+                    b.HasIndex("MedicineName")
+                        .IsUnique();
+
+                    b.HasIndex("SupplierId");
+
+                    b.ToTable("Medicines");
+                });
+
+            modelBuilder.Entity("ClinicManagement.Data.Entities.MedicineCategory", b =>
+                {
+                    b.Property<int>("CategoryId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CategoryId"));
+
+                    b.Property<string>("CategoryName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("CategoryId");
+
+                    b.HasIndex("CategoryName")
+                        .IsUnique();
+
+                    b.ToTable("MedicineCategories");
                 });
 
             modelBuilder.Entity("ClinicManagement.Data.Entities.Role", b =>
@@ -107,181 +171,30 @@ namespace ClinicManagement.Migrations
                         });
                 });
 
-            modelBuilder.Entity("ClinicManagement.Data.Entities.Room", b =>
+            modelBuilder.Entity("ClinicManagement.Data.Entities.Supplier", b =>
                 {
-                    b.Property<int>("RoomId")
+                    b.Property<int>("SupplierId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RoomId"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("SupplierId"));
 
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
+                    b.Property<string>("Address")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
 
-                    b.Property<int>("DepartmentId")
-                        .HasColumnType("int");
+                    b.Property<string>("ContactInfo")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
-                    b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true);
-
-                    b.Property<string>("Location")
-                        .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
-
-                    b.Property<string>("Name")
+                    b.Property<string>("SupplierName")
                         .IsRequired()
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
-                    b.Property<string>("RoomNumber")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
+                    b.HasKey("SupplierId");
 
-                    b.Property<string>("RoomType")
-                        .HasMaxLength(80)
-                        .HasColumnType("nvarchar(80)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
-
-                    b.HasKey("RoomId");
-
-                    b.HasIndex("DepartmentId");
-
-                    b.HasIndex("RoomNumber")
-                        .IsUnique();
-
-                    b.ToTable("Rooms");
-
-                    b.HasData(
-                        new
-                        {
-                            RoomId = 1,
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            DepartmentId = 1,
-                            IsActive = true,
-                            Location = "Tầng 1",
-                            Name = "Phòng khám Nội 1",
-                            RoomNumber = "P101",
-                            RoomType = "Khám bệnh",
-                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
-                        },
-                        new
-                        {
-                            RoomId = 2,
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            DepartmentId = 2,
-                            IsActive = true,
-                            Location = "Tầng 2",
-                            Name = "Phòng khám Nhi 1",
-                            RoomNumber = "P201",
-                            RoomType = "Khám bệnh",
-                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
-                        },
-                        new
-                        {
-                            RoomId = 3,
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            DepartmentId = 3,
-                            IsActive = true,
-                            Location = "Tầng 3",
-                            Name = "Phòng khám Răng hàm mặt 1",
-                            RoomNumber = "P301",
-                            RoomType = "Khám bệnh",
-                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
-                        });
-                });
-
-            modelBuilder.Entity("ClinicManagement.Data.Entities.Specialization", b =>
-                {
-                    b.Property<int>("SpecializationId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("SpecializationId"));
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
-
-                    b.Property<int>("DepartmentId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true);
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
-
-                    b.HasKey("SpecializationId");
-
-                    b.HasIndex("Code")
-                        .IsUnique();
-
-                    b.HasIndex("DepartmentId");
-
-                    b.HasIndex("Name")
-                        .IsUnique();
-
-                    b.ToTable("Specializations");
-
-                    b.HasData(
-                        new
-                        {
-                            SpecializationId = 1,
-                            Code = "NỘI-TQ",
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            DepartmentId = 1,
-                            IsActive = true,
-                            Name = "Nội tổng quát",
-                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
-                        },
-                        new
-                        {
-                            SpecializationId = 2,
-                            Code = "NHI-KHOA",
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            DepartmentId = 2,
-                            IsActive = true,
-                            Name = "Nhi khoa",
-                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
-                        },
-                        new
-                        {
-                            SpecializationId = 3,
-                            Code = "RHM-NQ",
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            DepartmentId = 3,
-                            IsActive = true,
-                            Name = "Nha khoa tổng quát",
-                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
-                        });
+                    b.ToTable("Suppliers");
                 });
 
             modelBuilder.Entity("ClinicManagement.Data.Entities.User", b =>
@@ -342,26 +255,33 @@ namespace ClinicManagement.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("ClinicManagement.Data.Entities.Room", b =>
+            modelBuilder.Entity("ClinicManagement.Data.Entities.Inventory", b =>
                 {
-                    b.HasOne("ClinicManagement.Data.Entities.Department", "Department")
-                        .WithMany("Rooms")
-                        .HasForeignKey("DepartmentId")
+                    b.HasOne("ClinicManagement.Data.Entities.Medicine", "Medicine")
+                        .WithMany("Inventories")
+                        .HasForeignKey("MedicineId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Department");
+                    b.Navigation("Medicine");
                 });
 
-            modelBuilder.Entity("ClinicManagement.Data.Entities.Specialization", b =>
+            modelBuilder.Entity("ClinicManagement.Data.Entities.Medicine", b =>
                 {
-                    b.HasOne("ClinicManagement.Data.Entities.Department", "Department")
-                        .WithMany("Specializations")
-                        .HasForeignKey("DepartmentId")
+                    b.HasOne("ClinicManagement.Data.Entities.MedicineCategory", "Category")
+                        .WithMany("Medicines")
+                        .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Department");
+                    b.HasOne("ClinicManagement.Data.Entities.Supplier", "Supplier")
+                        .WithMany("Medicines")
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Category");
+
+                    b.Navigation("Supplier");
                 });
 
             modelBuilder.Entity("ClinicManagement.Data.Entities.User", b =>
@@ -375,16 +295,24 @@ namespace ClinicManagement.Migrations
                     b.Navigation("Role");
                 });
 
-            modelBuilder.Entity("ClinicManagement.Data.Entities.Department", b =>
+            modelBuilder.Entity("ClinicManagement.Data.Entities.Medicine", b =>
                 {
-                    b.Navigation("Rooms");
+                    b.Navigation("Inventories");
+                });
 
-                    b.Navigation("Specializations");
+            modelBuilder.Entity("ClinicManagement.Data.Entities.MedicineCategory", b =>
+                {
+                    b.Navigation("Medicines");
                 });
 
             modelBuilder.Entity("ClinicManagement.Data.Entities.Role", b =>
                 {
                     b.Navigation("Users");
+                });
+
+            modelBuilder.Entity("ClinicManagement.Data.Entities.Supplier", b =>
+                {
+                    b.Navigation("Medicines");
                 });
 #pragma warning restore 612, 618
         }

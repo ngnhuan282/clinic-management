@@ -57,11 +57,6 @@ public static class DependencyInjection
         services.AddScoped<IRoomRepository, RoomRepository>();
 
         services.AddScoped<
-            IDepartmentRepository,
-            DepartmentRepository
-        >();
-
-        services.AddScoped<
             IDoctorRepository,
             DoctorRepository
         >();
@@ -69,6 +64,26 @@ public static class DependencyInjection
         services.AddScoped<
             IAppointmentRepository,
             AppointmentRepository
+        >();
+
+        services.AddScoped<
+            IMedicineRepository,
+            MedicineRepository
+        >();
+
+        services.AddScoped<
+            IMedicineCategoryRepository,
+            MedicineCategoryRepository
+        >();
+
+        services.AddScoped<
+            ISupplierRepository,
+            SupplierRepository
+        >();
+
+        services.AddScoped<
+            IInventoryRepository,
+            InventoryRepository
         >();
 
         // =========================
@@ -81,6 +96,26 @@ public static class DependencyInjection
         services.AddScoped<IDepartmentService, DepartmentService>();
         services.AddScoped<ISpecializationService, SpecializationService>();
         services.AddScoped<IRoomService, RoomService>();
+
+        services.AddScoped<
+            IMedicineService,
+            MedicineService
+        >();
+
+        services.AddScoped<
+            IMedicineCategoryService,
+            MedicineCategoryService
+        >();
+
+        services.AddScoped<
+            ISupplierService,
+            SupplierService
+        >();
+
+        services.AddScoped<
+            IInventoryService,
+            InventoryService
+        >();
 
         return services;
     }

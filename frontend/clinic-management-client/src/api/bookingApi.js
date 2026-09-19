@@ -1,7 +1,9 @@
 import axiosClient from "./axiosClient";
 
 export async function getDepartments() {
-    const response = await axiosClient.get("/departments");
+    const response = await axiosClient.get(
+        "/appointments/departments"
+    );
 
     return response.data.result;
 }

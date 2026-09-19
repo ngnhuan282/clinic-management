@@ -18,6 +18,19 @@ public class AppointmentsController : ControllerBase
         _bookingService = bookingService;
     }
 
+    [HttpGet("departments")]
+    public async Task<IActionResult> GetDepartments()
+    {
+        var result =
+            await _bookingService.GetDepartmentsAsync();
+
+        return Ok(
+            ApiResponse<List<DepartmentResponse>>.Success(
+                result
+            )
+        );
+    }
+
     [HttpGet("available-slots")]
     public async Task<IActionResult> GetAvailableSlots(
         [FromQuery] int doctorId,
