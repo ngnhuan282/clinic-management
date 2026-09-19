@@ -3,11 +3,7 @@ import axios from "axios";
 const axiosClient = axios.create({
     baseURL:
         import.meta.env.VITE_API_BASE_URL ||
-<<<<<<< HEAD
         "http://localhost:5212/api",
-=======
-        "https://localhost:5212/api",
->>>>>>> origin/main
 
     headers: {
         "Content-Type": "application/json",
