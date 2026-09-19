@@ -25,11 +25,12 @@ import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
 
 const NAV_LINKS = [
-    { label: "Trang chủ", href: "/", isActive: true },
+    { label: "Trang chủ", href: "/" },
     { label: "Chuyên khoa", href: "/specialties" },
     { label: "Đội ngũ bác sĩ", href: "/doctors" },
     { label: "Dịch vụ y tế", href: "/services" },
     { label: "Bảng giá viện phí", href: "/pricing" },
+    { label: "Cẩm nang sức khỏe", href: "/health-guide" },
 ];
 
 const COLORS = {
@@ -54,7 +55,7 @@ const NAVBAR_STYLES = {
     toolbar: {
         gap: 1.5,
         py: 0,
-        minHeight: { xs: "64px", md: "70px" },
+        minHeight: { xs: "64px", md: "78px" },
         alignItems: "stretch",
     },
     logoLink: {
@@ -69,7 +70,7 @@ const NAVBAR_STYLES = {
         width: 42,
         height: 42,
         backgroundColor: COLORS.primary,
-        borderRadius: "10px",
+        borderRadius: "8px",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -84,17 +85,19 @@ const NAVBAR_STYLES = {
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "center",
-        gap: { lg: 1, xl: 3 },
+        gap: { lg: 0.5, xl: 1.5 },
     },
     navLinkBase: {
         fontSize: "14px",
         fontWeight: 500,
         color: COLORS.textHeading,
-        px: 1.5,
+        px: 1.25,
         py: 1,
         borderRadius: "0px",
         lineHeight: 1.3,
-        whiteSpace: "nowrap", // DO NOT wrap text
+        whiteSpace: "normal",
+        maxWidth: 92,
+        textAlign: "center",
         "&:hover": {
             backgroundColor: COLORS.primaryLight,
             color: COLORS.primary,
@@ -118,7 +121,7 @@ const NAVBAR_STYLES = {
         py: 1,
     },
     patientPortalBtn: {
-        fontWeight: 500,
+        fontWeight: 700,
         fontSize: "14px",
         color: COLORS.primary,
         border: `1.5px solid ${COLORS.primary}`,
@@ -144,6 +147,20 @@ const NAVBAR_STYLES = {
             boxShadow: "none",
         },
     },
+    hotlinePill: {
+        display: { xs: "none", xl: "flex" },
+        alignItems: "center",
+        gap: 1,
+        px: 1.75,
+        py: 1,
+        borderRadius: "999px",
+        backgroundColor: "#f3f7fb",
+        border: `1px solid ${COLORS.borderSubtle}`,
+        color: COLORS.textHeading,
+        fontWeight: 800,
+        fontSize: "14px",
+        lineHeight: 1.1,
+    },
 };
 
 function Navbar() {
@@ -166,24 +183,23 @@ function Navbar() {
                             <Box sx={{ lineHeight: 1.1 }}>
                                 <Typography
                                     sx={{
-                                        fontSize: "17px",
+                                        fontSize: "16px",
                                         fontWeight: 800,
                                         color: COLORS.primary,
                                         lineHeight: 1.2,
                                     }}
                                 >
-                                    MedClinic
+                                    Clinic Management
                                 </Typography>
                                 <Typography
                                     sx={{
-                                        fontSize: "10px",
-                                        fontWeight: 500,
-                                        color: COLORS.textMuted,
-                                        letterSpacing: "0.6px",
-                                        textTransform: "uppercase",
+                                        fontSize: "16px",
+                                        fontWeight: 800,
+                                        color: COLORS.primary,
+                                        lineHeight: 1.2,
                                     }}
                                 >
-                                    Đa Khoa Quốc Tế
+                                    System
                                 </Typography>
                             </Box>
                         </Box>
@@ -197,7 +213,6 @@ function Navbar() {
                                     href={link.href}
                                     sx={{
                                         ...NAVBAR_STYLES.navLinkBase,
-                                        ...(link.isActive ? NAVBAR_STYLES.navLinkActive : {}),
                                     }}
                                 >
                                     {link.label}
@@ -207,6 +222,13 @@ function Navbar() {
 
                         {/* CTA buttons — Desktop */}
                         <Stack sx={NAVBAR_STYLES.ctaStack}>
+                            <Box sx={NAVBAR_STYLES.hotlinePill}>
+                                <LocalPhoneIcon sx={{ color: COLORS.primary, fontSize: 18 }} />
+                                <Box>
+                                    <Box>1900</Box>
+                                    <Box>6868</Box>
+                                </Box>
+                            </Box>
                             <Button
                                 variant="outlined"
                                 component="a"

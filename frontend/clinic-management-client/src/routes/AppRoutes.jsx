@@ -1,5 +1,3 @@
-// src/routes/AppRoutes.jsx
-
 import {
     BrowserRouter,
     Navigate,
@@ -12,11 +10,14 @@ import AdminLayout from "../layouts/AdminLayout";
 import ProtectedRoute from "./ProtectedRoute";
 
 import HomePage from "../pages/patient/HomePage";
+import BookingPage from "../pages/patient/BookingPage";
 import BackendTestPage from "../pages/BackendTestPage";
 import InventoryPage from "../pages/internal/admin/InventoryPage";
 import MedicineCategoriesPage from "../pages/internal/admin/MedicineCategoriesPage";
 import MedicinesPage from "../pages/internal/admin/MedicinesPage";
 import SuppliersPage from "../pages/internal/admin/SuppliersPage";
+import CatalogManagementPage from "../pages/internal/CatalogManagementPage";
+import LabTestTypesPage from "../pages/internal/LabTestTypesPage";
 
 function AppRoutes() {
     return (
@@ -51,6 +52,11 @@ function AppRoutes() {
                         }
                     />
 
+                    <Route
+                        path="/booking"
+                        element={<BookingPage />}
+                    />
+
                     {/* Test Backend */}
                     <Route
                         path="/test-backend"
@@ -60,7 +66,17 @@ function AppRoutes() {
                 </Route>
 
                 {/* =========================
-                    Internal Routes
+                    DEV TEST ROUTE (Không cần login)
+                ========================= */}
+                <Route path="/internal" element={<AdminLayout />}>
+                    <Route
+                        path="lab-test-types"
+                        element={<LabTestTypesPage />}
+                    />
+                </Route>
+
+                {/* =========================
+                    Internal Routes (Protected)
                 ========================= */}
                 <Route
                     element={
@@ -103,6 +119,11 @@ function AppRoutes() {
                                 </div>
                             }
                         />
+                        <Route element={<ProtectedRoute allowedRoles={["Admin"]} />}>
+                            <Route path="departments" element={<CatalogManagementPage resource="departments" />} />
+                            <Route path="specializations" element={<CatalogManagementPage resource="specializations" />} />
+                            <Route path="rooms" element={<CatalogManagementPage resource="rooms" />} />
+                        </Route>
 
                         <Route
                             path="medicines"

@@ -136,7 +136,6 @@ function Footer() {
         <Box component="footer" sx={FOOTER_STYLES.footer}>
             <Container maxWidth="lg">
                 <Grid container spacing={4}>
-                    {/* Column 1 — Brand */}
                     <Grid size={{ xs: 12, md: 3 }}>
                         <Box sx={FOOTER_STYLES.logoRow}>
                             <Box sx={FOOTER_STYLES.logoIconBox}>
@@ -194,7 +193,6 @@ function Footer() {
                         </Box>
                     </Grid>
 
-                    {/* Column 2 — Services */}
                     <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                         <Typography sx={FOOTER_STYLES.colTitle}>
                             Dịch Vụ & Quy Định
@@ -206,7 +204,6 @@ function Footer() {
                         ))}
                     </Grid>
 
-                    {/* Column 3 — Quick links */}
                     <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                         <Typography sx={FOOTER_STYLES.colTitle}>
                             Liên kết nhanh
@@ -218,7 +215,6 @@ function Footer() {
                         ))}
                     </Grid>
 
-                    {/* Column 4 — Locations */}
                     <Grid size={{ xs: 12, md: 3 }}>
                         <Typography sx={FOOTER_STYLES.colTitle}>
                             Cơ Sở Hoạt Động
@@ -274,7 +270,6 @@ function Footer() {
                     </Grid>
                 </Grid>
 
-                {/* Bottom bar */}
                 <Box sx={FOOTER_STYLES.bottomBar}>
                     <Typography sx={FOOTER_STYLES.copyrightText}>
                         © 2024 Phòng Khám Đa Khoa Hiện Đại. Giấy phép hoạt động số:

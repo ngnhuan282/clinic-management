@@ -91,18 +91,18 @@ public class TestController : ControllerBase
     }
 
     [HttpGet("refresh-token")]
-    public IActionResult TestRefreshToken()
-    {
-        var refreshToken =
-            _refreshTokenGenerator
-                .GenerateRefreshToken();
+    // public IActionResult TestRefreshToken()
+    // {
+    //     var refreshToken =
+    //         _refreshTokenGenerator
+    //             .GenerateRefreshToken();
 
-        return Ok(
-            ApiResponse<string>.Success(
-                refreshToken
-            )
-        );
-    }
+    //     return Ok(
+    //         ApiResponse<string>.Success(
+    //             refreshToken
+    //         )
+    //     );
+    // }
 
     // =========================
     // Test Role

@@ -31,6 +31,11 @@ public static class DependencyInjection
         >();
 
         services.AddScoped<
+            IBookingService,
+            BookingService
+        >();
+
+        services.AddScoped<
             IRefreshTokenGenerator,
             RefreshTokenGenerator
         >();
@@ -46,6 +51,19 @@ public static class DependencyInjection
         services.AddScoped<
             IRoleRepository,
             RoleRepository
+        >();
+        services.AddScoped<IDepartmentRepository, DepartmentRepository>();
+        services.AddScoped<ISpecializationRepository, SpecializationRepository>();
+        services.AddScoped<IRoomRepository, RoomRepository>();
+
+        services.AddScoped<
+            IDoctorRepository,
+            DoctorRepository
+        >();
+
+        services.AddScoped<
+            IAppointmentRepository,
+            AppointmentRepository
         >();
 
         services.AddScoped<
@@ -75,6 +93,9 @@ public static class DependencyInjection
             IAuthService,
             AuthService
         >();
+        services.AddScoped<IDepartmentService, DepartmentService>();
+        services.AddScoped<ISpecializationService, SpecializationService>();
+        services.AddScoped<IRoomService, RoomService>();
 
         services.AddScoped<
             IMedicineService,
