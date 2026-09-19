@@ -1,19 +1,15 @@
 namespace ClinicManagement.DTOs.Responses;
 
-public class DepartmentResponse
+public class RoomResponse
 {
-    public int DepartmentId { get; set; }
-<<<<<<< HEAD
-
-    public string DepartmentName { get; set; } = string.Empty;
-
-    public string? Description { get; set; }
-=======
-    public string Code { get; set; } = string.Empty;
+    public int RoomId { get; set; }
+    public string RoomNumber { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
-    public string? Description { get; set; }
+    public string? RoomType { get; set; }
+    public int DepartmentId { get; set; }
+    public string DepartmentName { get; set; } = string.Empty;
+    public string? Location { get; set; }
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
->>>>>>> origin/main
 }

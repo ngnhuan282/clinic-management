@@ -2,7 +2,11 @@
 using ClinicManagement.Data;
 using ClinicManagement.Exceptions;
 using Microsoft.EntityFrameworkCore;
-
+using ClinicManagement.Repositories.Interfaces;
+using ClinicManagement.Repositories.Implementations;
+using ClinicManagement.Services;
+using ClinicManagement.Services.Interfaces;
+using ClinicManagement.Services.Implementations;
 namespace ClinicManagement
 {
     public class Program
@@ -75,6 +79,11 @@ namespace ClinicManagement
             // =========================
             // Build Application
             // =========================
+
+            //  Program Registration labtest 
+
+            builder.Services.AddScoped<ILabTestTypeRepository, LabTestTypeRepository>();
+builder.Services.AddScoped<ILabTestTypeService, LabTestTypeService>();
             var app = builder.Build();
 
             // =========================

@@ -4,6 +4,7 @@ using ClinicManagement.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ClinicManagement.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260915085655_SeedSpecializationsAndRooms")]
+    partial class SeedSpecializationsAndRooms
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,66 +24,6 @@ namespace ClinicManagement.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
-
-<<<<<<< HEAD
-            modelBuilder.Entity("ClinicManagement.Data.Entities.Appointment", b =>
-                {
-                    b.Property<int>("AppointmentId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AppointmentId"));
-
-                    b.Property<DateTime>("AppointmentDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
-
-                    b.Property<int>("DoctorId")
-                        .HasColumnType("int");
-
-                    b.Property<TimeSpan>("EndTime")
-                        .HasColumnType("time");
-
-                    b.Property<int?>("PatientId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("PatientName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("PatientPhone")
-                        .IsRequired()
-                        .HasMaxLength(15)
-                        .HasColumnType("nvarchar(15)");
-
-                    b.Property<string>("Reason")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<TimeSpan>("StartTime")
-                        .HasColumnType("time");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.HasKey("AppointmentId");
-
-                    b.HasIndex("PatientId");
-
-                    b.HasIndex("DoctorId", "AppointmentDate", "StartTime")
-                        .IsUnique()
-                        .HasFilter("[Status] <> 'Cancelled'");
-
-                    b.ToTable("Appointments");
-                });
 
             modelBuilder.Entity("ClinicManagement.Data.Entities.Department", b =>
                 {
@@ -90,23 +33,41 @@ namespace ClinicManagement.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("DepartmentId"));
 
-                    b.Property<string>("DepartmentName")
+                    b.Property<string>("Code")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETDATE()");
 
                     b.Property<string>("Description")
-                        .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
                         .HasDefaultValue(true);
 
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETDATE()");
+
                     b.HasKey("DepartmentId");
 
-                    b.HasIndex("DepartmentName")
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("Name")
                         .IsUnique();
 
                     b.ToTable("Departments");
@@ -115,130 +76,30 @@ namespace ClinicManagement.Migrations
                         new
                         {
                             DepartmentId = 1,
-                            DepartmentName = "Khoa Tim Mạch",
-                            Description = "Khám và tư vấn bệnh lý tim mạch",
-                            IsActive = true
+                            Code = "NOI",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "Noi tong quat",
+                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
                         },
                         new
                         {
                             DepartmentId = 2,
-                            DepartmentName = "Khoa Nội Tổng Quát",
-                            Description = "Khám tổng quát và bệnh lý nội khoa",
-                            IsActive = true
+                            Code = "NHI",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "Nhi",
+                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
                         },
                         new
                         {
                             DepartmentId = 3,
-                            DepartmentName = "Khoa Da Liễu",
-                            Description = "Khám da, dị ứng và chăm sóc da",
-                            IsActive = true
+                            Code = "RHM",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "Rang ham mat",
+                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
                         });
-                });
-
-            modelBuilder.Entity("ClinicManagement.Data.Entities.Doctor", b =>
-                {
-                    b.Property<int>("DoctorId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("DoctorId"));
-
-                    b.Property<string>("Biography")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<int>("DepartmentId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ExperienceYears")
-                        .HasColumnType("int");
-
-                    b.Property<string>("FullName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true);
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.HasKey("DoctorId");
-
-                    b.HasIndex("DepartmentId");
-
-                    b.ToTable("Doctors");
-
-                    b.HasData(
-                        new
-                        {
-                            DoctorId = 1,
-                            Biography = "Chuyen sau sieu am tim va tang huyet ap",
-                            DepartmentId = 1,
-                            ExperienceYears = 12,
-                            FullName = "Nguyen Minh An",
-                            IsActive = true,
-                            Title = "BS.CKII"
-                        },
-                        new
-                        {
-                            DoctorId = 2,
-                            Biography = "Tu van suc khoe tong quat va benh man tinh",
-                            DepartmentId = 2,
-                            ExperienceYears = 9,
-                            FullName = "Tran Thu Ha",
-                            IsActive = true,
-                            Title = "ThS.BS"
-                        },
-                        new
-                        {
-                            DoctorId = 3,
-                            Biography = "Dieu tri viem da co dia, mun va di ung da",
-                            DepartmentId = 3,
-                            ExperienceYears = 7,
-                            FullName = "Le Quang Huy",
-                            IsActive = true,
-                            Title = "BS.CKI"
-                        });
-=======
-            modelBuilder.Entity("ClinicManagement.Data.Entities.LabTestType", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<decimal>("Price")
-                        .HasColumnType("decimal(18, 2)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("LabTestTypes");
->>>>>>> origin/main
                 });
 
             modelBuilder.Entity("ClinicManagement.Data.Entities.Role", b =>
@@ -527,30 +388,6 @@ namespace ClinicManagement.Migrations
                     b.ToTable("Users");
                 });
 
-<<<<<<< HEAD
-            modelBuilder.Entity("ClinicManagement.Data.Entities.Appointment", b =>
-                {
-                    b.HasOne("ClinicManagement.Data.Entities.Doctor", "Doctor")
-                        .WithMany("Appointments")
-                        .HasForeignKey("DoctorId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("ClinicManagement.Data.Entities.User", "Patient")
-                        .WithMany()
-                        .HasForeignKey("PatientId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Doctor");
-
-                    b.Navigation("Patient");
-                });
-
-            modelBuilder.Entity("ClinicManagement.Data.Entities.Doctor", b =>
-                {
-                    b.HasOne("ClinicManagement.Data.Entities.Department", "Department")
-                        .WithMany("Doctors")
-=======
             modelBuilder.Entity("ClinicManagement.Data.Entities.Room", b =>
                 {
                     b.HasOne("ClinicManagement.Data.Entities.Department", "Department")
@@ -566,7 +403,6 @@ namespace ClinicManagement.Migrations
                 {
                     b.HasOne("ClinicManagement.Data.Entities.Department", "Department")
                         .WithMany("Specializations")
->>>>>>> origin/main
                         .HasForeignKey("DepartmentId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -587,18 +423,9 @@ namespace ClinicManagement.Migrations
 
             modelBuilder.Entity("ClinicManagement.Data.Entities.Department", b =>
                 {
-<<<<<<< HEAD
-                    b.Navigation("Doctors");
-                });
-
-            modelBuilder.Entity("ClinicManagement.Data.Entities.Doctor", b =>
-                {
-                    b.Navigation("Appointments");
-=======
                     b.Navigation("Rooms");
 
                     b.Navigation("Specializations");
->>>>>>> origin/main
                 });
 
             modelBuilder.Entity("ClinicManagement.Data.Entities.Role", b =>
