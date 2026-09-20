@@ -3,6 +3,7 @@
 import { useDispatch, useSelector } from "react-redux";
 import { logout as logoutAction } from "../store/authSlice";
 import axiosClient from "../api/axiosClient";
+import { readSession } from "../utils/authStorage";
 
 function useAuth() {
     const dispatch = useDispatch();
@@ -14,7 +15,7 @@ function useAuth() {
     } = useSelector((state) => state.auth);
 
     const logout = async () => {
-        const refreshToken = localStorage.getItem("refreshToken");
+        const refreshToken = readSession()?.refreshToken;
         try {
             if (refreshToken) await axiosClient.post("/auth/logout", { refreshToken });
         } finally { dispatch(logoutAction()); }

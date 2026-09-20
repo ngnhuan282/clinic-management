@@ -54,6 +54,7 @@ try
     start.Environment["ASPNETCORE_ENVIRONMENT"] = "Development";
     start.Environment["ConnectionStrings__DefaultConnection"] = connection;
     start.Environment["Jwt__Key"] = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+    if (args.Contains("--ui")) start.Environment["Cors__FrontendUrl"] = "http://127.0.0.1:5190";
     server = Process.Start(start)!;
     server.OutputDataReceived += (_, e) => { if (e.Data != null) serverLog.Enqueue(e.Data); };
     server.ErrorDataReceived += (_, e) => { if (e.Data != null) serverLog.Enqueue(e.Data); };
@@ -66,6 +67,18 @@ try
         await Task.Delay(200);
     }
     await Send(HttpMethod.Get, "swagger/v1/swagger.json");
+    if (args.Contains("--ui"))
+    {
+        // Consumed by the browser harness; test credentials never enter the repository.
+        Console.WriteLine("AUTH_UI_SESSION:" + System.Text.Json.JsonSerializer.Serialize(new { baseUrl = client.BaseAddress, password }));
+        var result = JsonNode.Parse(await Console.In.ReadLineAsync() ?? "{}")!;
+        if (result["username"] is { } username)
+        {
+            var registered = await db.Users.SingleAsync(x => x.Username == username.GetValue<string>());
+            Check(registered.FullName == "Nguyễn Văn Kiểm Thử" && registered.Phone == "0912345678" && registered.Email == result["email"]!.GetValue<string>(), "Browser registration persists full name, phone and email in SQL Server");
+        }
+        return;
+    }
     using (var preflight = new HttpRequestMessage(HttpMethod.Options, "api/auth/login"))
     {
         preflight.Headers.Add("Origin", "http://localhost:5173");

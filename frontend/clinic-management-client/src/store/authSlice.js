@@ -1,14 +1,14 @@
 // src/store/authSlice.js
 
 import { createSlice } from "@reduxjs/toolkit";
+import { readSession, saveSession, clearSession } from "../utils/authStorage";
 
-const savedToken = localStorage.getItem("accessToken");
-const savedUser = localStorage.getItem("user");
+const session = readSession();
 
 const initialState = {
-    accessToken: savedToken || null,
-    user: savedUser ? JSON.parse(savedUser) : null,
-    isAuthenticated: !!savedToken,
+    accessToken: session?.accessToken || null,
+    user: session?.user || null,
+    isAuthenticated: Boolean(session),
 };
 
 const authSlice = createSlice({
@@ -16,22 +16,13 @@ const authSlice = createSlice({
     initialState,
     reducers: {
         setCredentials: (state, action) => {
-            const { accessToken, refreshToken, user } = action.payload;
-            if (refreshToken) localStorage.setItem("refreshToken", refreshToken);
+            const { accessToken, user } = action.payload;
+            saveSession(action.payload);
 
             state.accessToken = accessToken;
             state.user = user;
             state.isAuthenticated = true;
 
-            localStorage.setItem(
-                "accessToken",
-                accessToken
-            );
-
-            localStorage.setItem(
-                "user",
-                JSON.stringify(user)
-            );
         },
 
         logout: (state) => {
@@ -39,9 +30,7 @@ const authSlice = createSlice({
             state.user = null;
             state.isAuthenticated = false;
 
-            localStorage.removeItem("accessToken");
-            localStorage.removeItem("refreshToken");
-            localStorage.removeItem("user");
+            clearSession();
         },
     },
 });

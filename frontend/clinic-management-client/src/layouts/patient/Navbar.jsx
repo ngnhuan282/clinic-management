@@ -13,6 +13,8 @@ import {
     ListItem,
     ListItemButton,
     ListItemText,
+    Menu,
+    MenuItem,
     Stack,
     Toolbar,
     Typography,
@@ -23,6 +25,8 @@ import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
+import { useNavigate } from "react-router-dom";
+import useAuth from "../../hooks/useAuth";
 
 const NAV_LINKS = [
     { label: "Trang chủ", href: "/" },
@@ -56,7 +60,7 @@ const NAVBAR_STYLES = {
         gap: 1.5,
         py: 0,
         minHeight: { xs: "64px", md: "78px" },
-        alignItems: "stretch",
+        alignItems: "center",
     },
     logoLink: {
         display: "flex",
@@ -77,26 +81,26 @@ const NAVBAR_STYLES = {
         color: "#fff",
         flexShrink: 0,
     },
-    // Nav links row stays horizontal, nicely spaced out
     navLinksStack: {
         flexGrow: 1,
-        flexShrink: 1,
-        display: { xs: "none", lg: "flex" },
+        display: "none",
+        "@media (min-width: 1360px)": { display: "flex" },
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "center",
-        gap: { lg: 0.5, xl: 1.5 },
+        gap: 0.25,
     },
     navLinkBase: {
         fontSize: "14px",
         fontWeight: 500,
         color: COLORS.textHeading,
-        px: 1.25,
+        px: 1,
         py: 1,
         borderRadius: "0px",
         lineHeight: 1.3,
-        whiteSpace: "normal",
-        maxWidth: 92,
+        whiteSpace: "nowrap",
+        minWidth: 0,
+        flexShrink: 0,
         textAlign: "center",
         "&:hover": {
             backgroundColor: COLORS.primaryLight,
@@ -116,11 +120,13 @@ const NAVBAR_STYLES = {
         display: { xs: "none", md: "flex" },
         flexDirection: "row",
         flexShrink: 0,
+        ml: "auto",
         gap: 1,
         alignItems: "center",
         py: 1,
     },
     patientPortalBtn: {
+        whiteSpace: "nowrap",
         fontWeight: 700,
         fontSize: "14px",
         color: COLORS.primary,
@@ -134,6 +140,7 @@ const NAVBAR_STYLES = {
         },
     },
     bookingBtn: {
+        whiteSpace: "nowrap",
         fontWeight: 600,
         fontSize: "14px",
         backgroundColor: COLORS.primary,
@@ -148,7 +155,9 @@ const NAVBAR_STYLES = {
         },
     },
     hotlinePill: {
-        display: { xs: "none", xl: "flex" },
+        display: "none",
+        "@media (min-width: 1600px)": { display: "flex" },
+        whiteSpace: "nowrap",
         alignItems: "center",
         gap: 1,
         px: 1.75,
@@ -165,6 +174,23 @@ const NAVBAR_STYLES = {
 
 function Navbar() {
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [accountAnchor, setAccountAnchor] = useState(null);
+    const { isAuthenticated, user, role, logout } = useAuth();
+    const navigate = useNavigate();
+    const accountProps = isAuthenticated ? {
+        component: "button",
+        onClick: event => setAccountAnchor(event.currentTarget),
+        "aria-haspopup": "menu",
+        "aria-expanded": Boolean(accountAnchor),
+    } : { component: "a", href: "/login" };
+
+    async function handleLogout() {
+        setAccountAnchor(null);
+        setMobileOpen(false);
+        try { await logout(); }
+        catch { /* Local credentials are cleared even if the server is unavailable. */ }
+        navigate("/login", { replace: true });
+    }
 
     const handleDrawerToggle = () => {
         setMobileOpen((prev) => !prev);
@@ -173,7 +199,7 @@ function Navbar() {
     return (
         <>
             <AppBar sx={NAVBAR_STYLES.appBar} elevation={0}>
-                <Container maxWidth="lg">
+                <Container maxWidth="xl">
                     <Toolbar disableGutters sx={NAVBAR_STYLES.toolbar}>
                         {/* Logo */}
                         <Box component="a" href="/" sx={NAVBAR_STYLES.logoLink}>
@@ -182,6 +208,7 @@ function Navbar() {
                             </Box>
                             <Box sx={{ lineHeight: 1.1 }}>
                                 <Typography
+                                    noWrap
                                     sx={{
                                         fontSize: "16px",
                                         fontWeight: 800,
@@ -192,6 +219,7 @@ function Navbar() {
                                     Clinic Management
                                 </Typography>
                                 <Typography
+                                    noWrap
                                     sx={{
                                         fontSize: "16px",
                                         fontWeight: 800,
@@ -224,19 +252,15 @@ function Navbar() {
                         <Stack sx={NAVBAR_STYLES.ctaStack}>
                             <Box sx={NAVBAR_STYLES.hotlinePill}>
                                 <LocalPhoneIcon sx={{ color: COLORS.primary, fontSize: 18 }} />
-                                <Box>
-                                    <Box>1900</Box>
-                                    <Box>6868</Box>
-                                </Box>
+                                <Box>1900 6868</Box>
                             </Box>
                             <Button
                                 variant="outlined"
-                                component="a"
-                                href="/patient-portal"
+                                {...accountProps}
                                 startIcon={<AccountCircleIcon sx={{ fontSize: "18px" }} />}
                                 sx={NAVBAR_STYLES.patientPortalBtn}
                             >
-                                Cổng Bệnh Nhân
+                                {isAuthenticated ? "Tài khoản" : "Cổng Bệnh Nhân"}
                             </Button>
                             <Button
                                 variant="contained"
@@ -252,7 +276,11 @@ function Navbar() {
                         {/* Mobile toggle */}
                         <IconButton
                             onClick={handleDrawerToggle}
-                            sx={{ display: { md: "none" }, ml: "auto" }}
+                            sx={{
+                                display: "inline-flex",
+                                ml: { xs: "auto", md: 0 },
+                                "@media (min-width: 1360px)": { display: "none" },
+                            }}
                             aria-label="Mở menu điều hướng"
                         >
                             <MenuIcon />
@@ -319,15 +347,14 @@ function Navbar() {
                     <Button
                         fullWidth
                         variant="outlined"
-                        component="a"
-                        href="/patient-portal"
+                        {...accountProps}
                         startIcon={<AccountCircleIcon />}
                         sx={{
                             ...NAVBAR_STYLES.patientPortalBtn,
                             justifyContent: "flex-start",
                         }}
                     >
-                        Cổng Bệnh Nhân
+                        {isAuthenticated ? "Tài khoản" : "Cổng Bệnh Nhân"}
                     </Button>
                     <Button
                         fullWidth
@@ -364,6 +391,14 @@ function Navbar() {
                     </Box>
                 </Box>
             </Drawer>
+            <Menu anchorEl={accountAnchor} open={Boolean(accountAnchor)} onClose={() => setAccountAnchor(null)}>
+                <Box sx={{ px: 2, py: 1, maxWidth: 280 }}><Typography fontWeight={600}>{user?.fullName}</Typography></Box>
+                <Divider />
+                <MenuItem onClick={() => { setAccountAnchor(null); setMobileOpen(false); navigate(role === "Patient" ? "/booking" : "/internal/dashboard"); }}>
+                    {role === "Patient" ? "Đặt lịch khám" : "Trang quản lý"}
+                </MenuItem>
+                <MenuItem onClick={handleLogout}>Đăng xuất</MenuItem>
+            </Menu>
         </>
     );
 }

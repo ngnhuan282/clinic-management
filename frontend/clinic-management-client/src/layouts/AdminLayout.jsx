@@ -1,5 +1,6 @@
 // src/layouts/AdminLayout.jsx
 
+import { useState } from "react";
 import {
     Avatar,
     Badge,
@@ -8,6 +9,8 @@ import {
     Divider,
     IconButton,
     InputBase,
+    Menu,
+    MenuItem,
     Stack,
     Typography,
 } from "@mui/material";
@@ -32,6 +35,7 @@ import {
     Link as RouterLink,
     Outlet,
     useLocation,
+    useNavigate,
 } from "react-router-dom";
 
 const SIDEBAR_WIDTH = 260;
@@ -99,7 +103,25 @@ const menuItems = [
 
 function AdminLayout() {
     const { pathname } = useLocation();
-    const { role, logout } = useAuth();
+    const { role, user, logout } = useAuth();
+    const navigate = useNavigate();
+    const [accountAnchor, setAccountAnchor] = useState(null);
+    const [loggingOut, setLoggingOut] = useState(false);
+    const displayName = user?.fullName || user?.username || "Tài khoản";
+    const roleLabel = { Admin: "Quản trị viên", Doctor: "Bác sĩ", Receptionist: "Lễ tân" }[role] || role;
+
+    async function handleLogout() {
+        if (loggingOut) return;
+        setLoggingOut(true);
+        setAccountAnchor(null);
+        try {
+            await logout();
+        } catch {
+            // useAuth clears local credentials even when the API is unavailable.
+        } finally {
+            navigate("/internal/login", { replace: true });
+        }
+    }
 
     const isMenuActive = (item) => {
         if (item.activePrefix) {
@@ -138,6 +160,7 @@ function AdminLayout() {
                     sx={{
                         px: 2,
                         height: TOPBAR_HEIGHT,
+                        flexShrink: 0,
                         pt: 1,
                         borderBottom: "1px solid #E5E9F0",
                         boxSizing: "border-box",
@@ -181,7 +204,7 @@ function AdminLayout() {
                     </Box>
                 </Stack>
 
-                <Box sx={{ p: 1.5 }}>
+                <Box sx={{ p: 1.5, flexShrink: 0 }}>
                     <Button
                         component={RouterLink}
                         to="/internal/appointments"
@@ -200,7 +223,7 @@ function AdminLayout() {
                 <Stack
                     component="nav"
                     spacing={0.5}
-                    sx={{ px: 1.5, flex: 1 }}
+                    sx={{ px: 1.5, flex: 1, minHeight: 0, overflowY: "auto" }}
                 >
                         {menuItems.filter(item => !item.roles || item.roles.includes(role)).map((item) => {
                         const Icon = item.icon;
@@ -275,7 +298,7 @@ function AdminLayout() {
                     })}
                 </Stack>
 
-                <Box sx={{ p: 1.5 }}>
+                <Box sx={{ p: 1.5, flexShrink: 0 }}>
                     <Divider sx={{ mb: 1.5 }} />
 
                     <Button
@@ -293,14 +316,15 @@ function AdminLayout() {
                     <Button
                         fullWidth
                         startIcon={<LogoutOutlinedIcon />}
-                        onClick={() => logout().catch(() => {})}
+                        onClick={handleLogout}
+                        disabled={loggingOut}
                         sx={{
                             justifyContent: "flex-start",
                             color: "#DC2626",
                             fontWeight: 700,
                         }}
                     >
-                        Đăng xuất
+                        {loggingOut ? "Đang đăng xuất…" : "Đăng xuất"}
                     </Button>
                 </Box>
             </Box>
@@ -335,7 +359,7 @@ function AdminLayout() {
                         alignItems="center"
                         justifyContent="flex-start"
                         gap={2}
-                        sx={{ width: "100%" }}
+                        sx={{ width: "100%", alignItems: "center", gap: 2 }}
                     >
                         <Stack
                             direction="row"
@@ -348,7 +372,7 @@ function AdminLayout() {
                         >
                             <Box
                                 sx={{
-                                    display: { xs: "none", md: "flex" },
+                                    display: { xs: "none", lg: "flex" },
                                     alignItems: "center",
                                     width: 260,
                                     height: 44,
@@ -377,7 +401,7 @@ function AdminLayout() {
                                 variant="outlined"
                                 startIcon={<BusinessOutlinedIcon />}
                                 sx={{
-                                    display: { xs: "none", sm: "flex" },
+                                    display: { xs: "none", xl: "flex" },
                                     height: 44,
                                     flexShrink: 0,
                                     color: "#374151",
@@ -396,6 +420,7 @@ function AdminLayout() {
                             sx={{
                                 ml: "auto",
                                 flexShrink: 0,
+                                alignItems: "center",
                             }}
                         >
                             <Button
@@ -404,7 +429,7 @@ function AdminLayout() {
                                 variant="contained"
                                 startIcon={<AddCircleOutlineOutlinedIcon />}
                                 sx={{
-                                    display: { xs: "none", md: "flex" },
+                                    display: { xs: "none", lg: "flex" },
                                     minHeight: 42,
                                     fontWeight: 800,
                                 }}
@@ -421,11 +446,15 @@ function AdminLayout() {
                                 </Badge>
                             </IconButton>
 
-                            <Stack
-                                direction="row"
-                                alignItems="center"
-                                spacing={1}
-                                sx={{ minWidth: 0 }}
+                            <Button
+                                id="admin-account-button"
+                                aria-label="Tài khoản quản trị"
+                                aria-haspopup="menu"
+                                aria-controls={accountAnchor ? "admin-account-menu" : undefined}
+                                aria-expanded={Boolean(accountAnchor)}
+                                disabled={loggingOut}
+                                onClick={event => setAccountAnchor(event.currentTarget)}
+                                sx={{ minWidth: 0, maxWidth: 220, gap: 1, px: 1, textAlign: "left" }}
                             >
                                 <Avatar
                                     sx={{
@@ -435,7 +464,7 @@ function AdminLayout() {
                                         fontWeight: 800,
                                     }}
                                 >
-                                    A
+                                    {displayName.trim().charAt(0).toUpperCase()}
                                 </Avatar>
 
                                 <Box
@@ -455,17 +484,33 @@ function AdminLayout() {
                                             fontWeight: 800,
                                         }}
                                     >
-                                        Quản trị viên
+                                        {displayName}
                                     </Typography>
 
                                     <Typography
                                         variant="caption"
                                         color="text.secondary"
                                     >
-                                        Admin
+                                        {loggingOut ? "Đang đăng xuất…" : roleLabel}
                                     </Typography>
                                 </Box>
-                            </Stack>
+                            </Button>
+                            <Menu
+                                id="admin-account-menu"
+                                anchorEl={accountAnchor}
+                                open={Boolean(accountAnchor)}
+                                onClose={() => setAccountAnchor(null)}
+                                slotProps={{ list: { "aria-labelledby": "admin-account-button" } }}
+                            >
+                                <Box sx={{ px: 2, py: 1, maxWidth: 280 }}>
+                                    <Typography sx={{ fontWeight: 600, overflowWrap: "anywhere" }}>{displayName}</Typography>
+                                    <Typography variant="body2" color="text.secondary">{roleLabel}</Typography>
+                                </Box>
+                                <Divider />
+                                <MenuItem onClick={handleLogout} disabled={loggingOut} sx={{ gap: 1, color: "error.main" }}>
+                                    <LogoutOutlinedIcon fontSize="small" /> Đăng xuất
+                                </MenuItem>
+                            </Menu>
                         </Stack>
                     </Stack>
                 </Box>

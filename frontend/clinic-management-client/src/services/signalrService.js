@@ -4,13 +4,11 @@ import {
     HubConnectionBuilder,
     LogLevel,
 } from "@microsoft/signalr";
+import { readSession } from "../utils/authStorage";
 
 let connection = null;
 
 export async function startSignalR() {
-    const token =
-        localStorage.getItem("accessToken");
-
     if (connection) {
         return connection;
     }
@@ -21,7 +19,7 @@ export async function startSignalR() {
                 "https://localhost:7001/notificationHub",
             {
                 accessTokenFactory: () =>
-                    token || "",
+                    readSession()?.accessToken || "",
             }
         )
         .withAutomaticReconnect()

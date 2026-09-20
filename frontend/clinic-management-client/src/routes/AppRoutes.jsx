@@ -29,6 +29,8 @@ function AppRoutes() {
                     Patient / Public Routes
                 ========================= */}
                 <Route element={<PatientLayout />}>
+                    <Route path="/internal/login" element={<AuthPage />} />
+                    <Route path="/patient-portal" element={<Navigate to="/login" replace />} />
 
                     <Route
                         path="/"
@@ -60,11 +62,6 @@ function AppRoutes() {
                     />
 
                 </Route>
-
-                {/* =========================
-                    Internal sign-in
-                ========================= */}
-                <Route path="/internal/login" element={<AuthPage />} />
 
                 {/* =========================
                     Internal Routes (Protected)
