@@ -249,6 +249,7 @@ function MedicineCategoriesPage() {
                 )}
 
                 <MedicineCategoryFormDialog
+                    key={`${formOpen}-${selectedCategory ? JSON.stringify(selectedCategory) : "new"}`}
                     open={formOpen}
                     category={selectedCategory}
                     saving={saving}

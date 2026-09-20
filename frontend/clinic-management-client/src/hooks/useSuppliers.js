@@ -65,6 +65,8 @@ function useSuppliers() {
     }, [requestParams]);
 
     useEffect(() => {
+        // Fetch remote data when query inputs change.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         loadSuppliers();
     }, [loadSuppliers]);
 
@@ -98,7 +100,7 @@ function useSuppliers() {
                     getApiErrorMessage(
                         err,
                         "Không lưu được nhà cung cấp."
-                    )
+                    ), { cause: err }
                 );
             } finally {
                 setSaving(false);
@@ -119,7 +121,7 @@ function useSuppliers() {
                     getApiErrorMessage(
                         err,
                         "Không xóa được nhà cung cấp."
-                    )
+                    ), { cause: err }
                 );
             } finally {
                 setSaving(false);

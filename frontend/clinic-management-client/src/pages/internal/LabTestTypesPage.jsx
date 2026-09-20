@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Box,
+  Alert,
   Button,
   Chip,
   Paper,
@@ -14,12 +15,18 @@ import {
 } from '@mui/material';
 import { labTestTypeApi } from '../../api/labTestTypeApi';
 import LabTestTypeModal from './LabTestTypeModal';
+import useAuth from '../../hooks/useAuth';
+import getApiErrorMessage from '../../utils/errorHandler';
 
 const formatCurrency = (val) => {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val || 0);
 };
 
 export default function LabTestTypesPage() {
+  const { role } = useAuth();
+  const canEdit = role === 'Admin';
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -27,11 +34,11 @@ export default function LabTestTypesPage() {
 
   const fetchList = useCallback(async () => {
     setLoading(true);
+    setError('');
     try {
       const res = await labTestTypeApi.getAll(true);
       
       // Log kiểm tra cấu trúc dữ liệu trả về từ backend
-      console.log('API Response:', res);
 
       // Xử lý trích xuất mảng an toàn (phòng trường hợp backend bọc dữ liệu trong data/items)
       const rawData = res?.data?.data || res?.data?.items || res?.data;
@@ -39,7 +46,7 @@ export default function LabTestTypesPage() {
 
       setList(dataArray);
     } catch (err) {
-      console.error('Lỗi khi tải danh sách loại xét nghiệm:', err);
+      setError(getApiErrorMessage(err));
       setList([]); // Tránh rò rỉ state hỏng nếu API lỗi
     } finally {
       setLoading(false);
@@ -47,6 +54,8 @@ export default function LabTestTypesPage() {
   }, []);
 
   useEffect(() => {
+    // Load the remote catalog when the page mounts.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchList();
   }, [fetchList]);
 
@@ -69,11 +78,13 @@ export default function LabTestTypesPage() {
       await labTestTypeApi.delete(id);
       await fetchList();
     } catch (err) {
-      console.error('Lỗi xóa:', err);
+      setError(getApiErrorMessage(err));
     }
   };
 
   const handleFormSubmit = async (data) => {
+    setSaving(true);
+    setError('');
     try {
       if (selectedItem) {
         await labTestTypeApi.update(selectedItem.id, data);
@@ -83,8 +94,8 @@ export default function LabTestTypesPage() {
       setIsModalOpen(false);
       await fetchList();
     } catch (err) {
-      console.error('Lỗi lưu dữ liệu:', err);
-    }
+      setError(getApiErrorMessage(err));
+    } finally { setSaving(false); }
   };
 
   // Kiểm tra an toàn biến list có phải là mảng không trước khi render
@@ -92,6 +103,7 @@ export default function LabTestTypesPage() {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#F5F9FD', p: 3 }}>
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       {/* Header Section */}
       <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: { md: 'center' }, gap: 2, mb: 3 }}>
         <Box>
@@ -105,6 +117,7 @@ export default function LabTestTypesPage() {
         <Button
           variant="contained"
           onClick={handleOpenCreate}
+          disabled={!canEdit}
           sx={{
             bgcolor: '#1976D2',
             '&:hover': { bgcolor: '#1565C0' },
@@ -181,12 +194,12 @@ export default function LabTestTypesPage() {
                       <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
                         <Button
                           size="small"
-                          onClick={() => handleOpenEdit(item)}
+                          onClick={() => handleOpenEdit(item)} disabled={!canEdit}
                           sx={{ color: '#1976D2', '&:hover': { color: '#1565C0' }, fontWeight: 600, textTransform: 'none', minWidth: 'auto', p: 0.5 }}
                         >
                           Sửa
                         </Button>
-                        {item.isActive && (
+                        {canEdit && item.isActive && (
                           <Button
                             size="small"
                             onClick={() => handleDelete(item.id)}
@@ -207,6 +220,9 @@ export default function LabTestTypesPage() {
 
       {/* Modal Thêm/Sửa */}
       <LabTestTypeModal
+        key={`${isModalOpen}-${selectedItem?.id ?? 'new'}`}
+        saving={saving}
+        error={error}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleFormSubmit}

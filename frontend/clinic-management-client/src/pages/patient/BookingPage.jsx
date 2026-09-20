@@ -73,7 +73,7 @@ function formatTime(value) {
 }
 
 function toDateInput(date) {
-    return date.toISOString().slice(0, 10);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 function getDateCards(selectedDate, slots) {
@@ -100,7 +100,7 @@ function getDateCards(selectedDate, slots) {
             availableCount:
                 value === selectedDate
                     ? selectedAvailableCount
-                    : Math.max(4, 12 - index),
+                    : null,
         };
     });
 }
@@ -182,6 +182,8 @@ function BookingPage() {
 
     useEffect(() => {
         if (booking.successAppointment) {
+            // Reset the supplementary fields after the asynchronous booking completes.
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setBirthDate("");
             setGender("Nam");
             setInsuranceNumber("");
@@ -237,7 +239,7 @@ function BookingPage() {
                     ) : null}
 
                     <Grid container spacing={3} alignItems="flex-start">
-                        <Grid item xs={12} lg={8}>
+                        <Grid size={{ xs: 12, lg: 8 }}>
                             <Stack spacing={3}>
                                 <PaperCard>
                                     <Stack spacing={2.5}>
@@ -273,7 +275,7 @@ function BookingPage() {
                                                         }
                                                     >
                                                         {
-                                                            department.departmentName
+                                                            department.name
                                                         }
                                                     </MenuItem>
                                                 )
@@ -291,10 +293,7 @@ function BookingPage() {
                                             <Grid container spacing={1.5}>
                                                 {booking.doctors.map(
                                                     (doctor) => (
-                                                        <Grid
-                                                            item
-                                                            xs={12}
-                                                            sm={6}
+                                                        <Grid size={{ xs: 12, sm: 6 }}
                                                             key={
                                                                 doctor.doctorId
                                                             }
@@ -328,15 +327,11 @@ function BookingPage() {
                                         <SectionTitle
                                             icon={<CalendarMonthIcon />}
                                             title="3. Chọn Ngày Khám Bệnh"
-                                            meta="Chọn ngày để tải khung giờ từ GetAvailableSlots"
+                                            meta="Chọn ngày để xem giờ khám còn trống"
                                         />
                                         <Grid container spacing={1.5}>
                                             {dateCards.map((card) => (
-                                                <Grid
-                                                    item
-                                                    xs={6}
-                                                    sm={4}
-                                                    md={2}
+                                                <Grid size={{ xs: 6, sm: 4, md: 2 }}
                                                     key={card.value}
                                                 >
                                                     <DateCard
@@ -380,12 +375,12 @@ function BookingPage() {
                                         ) : (
                                             <Stack spacing={2.5}>
                                                 <SlotSection
-                                                    title="Buổi Sáng (08:00 - 11:30)"
+                                                    title="Buổi Sáng"
                                                     slots={morningSlots}
                                                     booking={booking}
                                                 />
                                                 <SlotSection
-                                                    title="Buổi Chiều (13:30 - 17:00)"
+                                                    title="Buổi Chiều"
                                                     slots={afternoonSlots}
                                                     booking={booking}
                                                 />
@@ -399,7 +394,7 @@ function BookingPage() {
                                         <SectionTitle
                                             icon={<PersonIcon />}
                                             title="5. Thông Tin Bệnh Nhân & Triệu Chứng Ban Đầu"
-                                            meta="Dữ liệu được mã hóa và bảo mật theo tiêu chuẩn y tế"
+                                            meta="Nhập thông tin liên hệ và lý do khám"
                                         />
                                         <Box
                                             sx={{
@@ -592,7 +587,7 @@ function BookingPage() {
                             </Stack>
                         </Grid>
 
-                        <Grid item xs={12} lg={4}>
+                        <Grid size={{ xs: 12, lg: 4 }}>
                             <Stack
                                 spacing={2.5}
                                 sx={{ position: "sticky", top: 94 }}
@@ -686,7 +681,7 @@ function BreadcrumbText({ booking }) {
                     fontWeight: 800,
                 }}
             >
-                {booking.selectedDepartment?.departmentName ||
+                {booking.selectedDepartment?.name ||
                     "Chọn chuyên khoa"}
             </Typography>
         </Stack>
@@ -708,7 +703,7 @@ function StepperCard({
                         && !done;
 
                     return (
-                        <Grid item xs={6} sm={4} md={2} key={step}>
+                        <Grid size={{ xs: 6, sm: 4, md: 2 }} key={step}>
                             <Stack alignItems="center" spacing={0.75}>
                                 <Avatar
                                     sx={{
@@ -948,7 +943,7 @@ function DateCard({ card, selected, onClick }) {
                         fontWeight: 700,
                     }}
                 >
-                    {card.availableCount} khung
+                    {card.availableCount === null ? "Chọn để xem" : `${card.availableCount} khung`}
                 </Typography>
             </Stack>
         </Button>
@@ -1001,7 +996,7 @@ function SlotSection({ title, slots, booking }) {
                         booking.selectedSlot?.startTime === slot.startTime;
 
                     return (
-                        <Grid item xs={6} sm={4} md={3} key={slot.startTime}>
+                        <Grid size={{ xs: 6, sm: 4, md: 3 }} key={slot.startTime}>
                             <Button
                                 fullWidth
                                 disabled={!slot.isAvailable}
@@ -1145,7 +1140,7 @@ function SummaryPanel({
                                 fontWeight: 700,
                             }}
                         >
-                            {booking.selectedDepartment?.departmentName ||
+                            {booking.selectedDepartment?.name ||
                                 "Chưa chọn chuyên khoa"}
                         </Typography>
                     </Box>
@@ -1234,7 +1229,7 @@ function SummaryPanel({
                 <Button
                     variant="contained"
                     size="large"
-                    disabled={!canSubmit || booking.loading.submitting}
+                    disabled={!canSubmit || booking.loading.submitting || booking.loading.slots || booking.loading.doctors}
                     onClick={onSubmit}
                     endIcon={
                         booking.loading.submitting ? (

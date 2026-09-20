@@ -65,6 +65,8 @@ function useMedicineCategories() {
     }, [requestParams]);
 
     useEffect(() => {
+        // Fetch remote data when query inputs change.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         loadCategories();
     }, [loadCategories]);
 
@@ -101,7 +103,7 @@ function useMedicineCategories() {
                     getApiErrorMessage(
                         err,
                         "Không lưu được danh mục thuốc."
-                    )
+                    ), { cause: err }
                 );
             } finally {
                 setSaving(false);
@@ -122,7 +124,7 @@ function useMedicineCategories() {
                     getApiErrorMessage(
                         err,
                         "Không xóa được danh mục thuốc."
-                    )
+                    ), { cause: err }
                 );
             } finally {
                 setSaving(false);

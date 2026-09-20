@@ -1,11 +1,14 @@
 using ClinicManagement.DTOs.LabTestTypes;
 using ClinicManagement.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using ClinicManagement.Commons;
 
 namespace ClinicManagement.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(Roles = RoleConstants.Admin + "," + RoleConstants.Doctor)]
     public class LabTestTypesController : ControllerBase
     {
         private readonly ILabTestTypeService _service;
@@ -31,6 +34,7 @@ namespace ClinicManagement.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = RoleConstants.Admin)]
         public async Task<IActionResult> Create([FromBody] CreateLabTestTypeDto dto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -39,6 +43,7 @@ namespace ClinicManagement.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = RoleConstants.Admin)]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateLabTestTypeDto dto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -48,6 +53,7 @@ namespace ClinicManagement.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = RoleConstants.Admin)]
         public async Task<IActionResult> Delete(int id)
         {
             var success = await _service.DeleteAsync(id);

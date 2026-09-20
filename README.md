@@ -43,7 +43,7 @@
 | Frontend | React 18+ (Vite), React Router, Axios |
 | CSDL | SQL Server |
 | ORM | Entity Framework Core (Code First + Migrations) |
-| Xác thực | ASP.NET Core Identity + JWT (Access Token + Refresh Token) |
+| Xác thực | Users/Roles custom + BCrypt + JWT (Access Token + Refresh Token) |
 | Real-time | SignalR |
 | UI Library | MUI / Ant Design |
 | State management | Redux Toolkit (hoặc Context API) |
@@ -89,7 +89,7 @@ Cài đặt sẵn các công cụ sau trước khi bắt đầu:
 
 1. **Di chuyển vào thư mục backend**
    ```bash
-   cd ClinicManagement
+   cd backend/ClinicManagement
    ```
 
 2. **Khôi phục package**
@@ -109,7 +109,8 @@ Cài đặt sẵn các công cụ sau trước khi bắt đầu:
        "Key": "your-secret-key-min-32-characters",
        "Issuer": "ClinicManagementAPI",
        "Audience": "ClinicManagementClient",
-       "ExpireMinutes": 60
+       "AccessTokenExpirationMinutes": 60,
+       "RefreshTokenExpirationDays": 7
      }
    }
    ```
@@ -130,7 +131,7 @@ Cài đặt sẵn các công cụ sau trước khi bắt đầu:
 
 1. **Di chuyển vào thư mục frontend**
    ```bash
-   cd clinic-management-client
+   cd frontend/clinic-management-client
    ```
 
 2. **Cài đặt dependencies**

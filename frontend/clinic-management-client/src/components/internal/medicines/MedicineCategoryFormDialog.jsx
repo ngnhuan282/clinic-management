@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
     Alert,
     Box,
@@ -27,26 +27,13 @@ function MedicineCategoryFormDialog({
     onClose,
     onSubmit,
 }) {
-    const [form, setForm] = useState(EMPTY_FORM);
+    const [form, setForm] = useState(() => category ? {
+                categoryName: category.categoryName || "",
+            } : EMPTY_FORM);
     const [error, setError] = useState("");
 
     const isEditing = Boolean(category);
 
-    useEffect(() => {
-        if (!open) {
-            return;
-        }
-
-        setError("");
-
-        if (category) {
-            setForm({
-                categoryName: category.categoryName || "",
-            });
-        } else {
-            setForm(EMPTY_FORM);
-        }
-    }, [open, category]);
 
     const handleChange = (event) => {
         setForm({

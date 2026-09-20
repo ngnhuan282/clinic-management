@@ -249,6 +249,7 @@ function SuppliersPage() {
                 )}
 
                 <SupplierFormDialog
+                    key={`${formOpen}-${selectedSupplier ? JSON.stringify(selectedSupplier) : "new"}`}
                     open={formOpen}
                     supplier={selectedSupplier}
                     saving={saving}

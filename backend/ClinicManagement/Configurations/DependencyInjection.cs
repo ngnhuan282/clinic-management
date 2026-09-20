@@ -11,6 +11,7 @@ public static class DependencyInjection
         this IServiceCollection services)
     {
         services.AddHttpContextAccessor();
+        services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 
         // =========================
         // Common / Security

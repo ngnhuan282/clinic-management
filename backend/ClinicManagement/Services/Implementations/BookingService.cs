@@ -6,6 +6,7 @@ using ClinicManagement.Exceptions;
 using ClinicManagement.Repositories.Interfaces;
 using ClinicManagement.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.SqlClient;
 
 namespace ClinicManagement.Services.Implementations;
 
@@ -14,33 +15,26 @@ public class BookingService : IBookingService
     private static readonly TimeSpan SlotDuration =
         TimeSpan.FromMinutes(30);
 
-    private static readonly TimeSpan MorningStart =
-        new(8, 0, 0);
-
-    private static readonly TimeSpan MorningEnd =
-        new(11, 30, 0);
-
-    private static readonly TimeSpan AfternoonStart =
-        new(13, 30, 0);
-
-    private static readonly TimeSpan AfternoonEnd =
-        new(16, 30, 0);
+    private static DateTime ClinicNow => TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTime.UtcNow, "Asia/Ho_Chi_Minh");
 
     private readonly IDepartmentRepository _departmentRepository;
     private readonly IDoctorRepository _doctorRepository;
     private readonly IAppointmentRepository _appointmentRepository;
     private readonly ILogger<BookingService> _logger;
+    private readonly ICurrentUserService _currentUser;
 
     public BookingService(
         IDepartmentRepository departmentRepository,
         IDoctorRepository doctorRepository,
         IAppointmentRepository appointmentRepository,
-        ILogger<BookingService> logger)
+        ILogger<BookingService> logger,
+        ICurrentUserService currentUser)
     {
         _departmentRepository = departmentRepository;
         _doctorRepository = doctorRepository;
         _appointmentRepository = appointmentRepository;
         _logger = logger;
+        _currentUser = currentUser;
     }
 
     public async Task<List<DepartmentResponse>> GetDepartmentsAsync()
@@ -79,7 +73,7 @@ public class BookingService : IBookingService
         int doctorId,
         DateTime appointmentDate)
     {
-        if (appointmentDate.Date < DateTime.Today)
+        if (appointmentDate.Date < ClinicNow.Date)
         {
             throw new AppException(
                 ErrorCode.INVALID_REQUEST
@@ -109,13 +103,15 @@ public class BookingService : IBookingService
                 .Select(x => x.StartTime)
                 .ToHashSet();
 
-        return BuildDailySlots()
+        var schedules = await _doctorRepository.GetSchedulesAsync(doctorId, appointmentDate.DayOfWeek);
+        return BuildDailySlots(schedules)
             .Select(x => new AvailableSlotResponse
             {
                 StartTime = x.StartTime,
                 EndTime = x.EndTime,
                 IsAvailable =
                     !bookedStartTimes.Contains(x.StartTime)
+                    && appointmentDate.Date.Add(x.StartTime) > ClinicNow
             })
             .ToList();
     }
@@ -141,7 +137,8 @@ public class BookingService : IBookingService
             );
         }
 
-        if (!IsValidSlot(startTime))
+        var schedules = await _doctorRepository.GetSchedulesAsync(request.DoctorId, date.DayOfWeek);
+        if (!BuildDailySlots(schedules).Any(x => x.StartTime == startTime))
         {
             throw new AppException(
                 ErrorCode.INVALID_REQUEST
@@ -165,6 +162,7 @@ public class BookingService : IBookingService
         var appointment = new Appointment
         {
             DoctorId = request.DoctorId,
+            PatientId = _currentUser.GetRequiredUserId(),
             PatientName = request.PatientName.Trim(),
             PatientPhone = request.PatientPhone.Trim(),
             AppointmentDate = date,
@@ -183,7 +181,7 @@ public class BookingService : IBookingService
         {
             await _appointmentRepository.SaveChangesAsync();
         }
-        catch (DbUpdateException exception)
+        catch (DbUpdateException exception) when (exception.InnerException is SqlException { Number: 2601 or 2627 })
         {
             _logger.LogWarning(
                 exception,
@@ -204,7 +202,7 @@ public class BookingService : IBookingService
         CreateAppointmentRequest request)
     {
         if (request.DoctorId <= 0
-            || request.AppointmentDate.Date < DateTime.Today
+            || request.AppointmentDate.Date.Add(request.StartTime) <= ClinicNow
             || string.IsNullOrWhiteSpace(request.PatientName)
             || string.IsNullOrWhiteSpace(request.PatientPhone)
             || string.IsNullOrWhiteSpace(request.Reason))
@@ -215,21 +213,14 @@ public class BookingService : IBookingService
         }
     }
 
-    private static bool IsValidSlot(
-        TimeSpan startTime)
-    {
-        return BuildDailySlots()
-            .Any(x => x.StartTime == startTime);
-    }
-
-    private static List<AvailableSlotResponse> BuildDailySlots()
+    private static List<AvailableSlotResponse> BuildDailySlots(IEnumerable<DoctorSchedule> schedules)
     {
         var slots = new List<AvailableSlotResponse>();
 
-        AddSlots(slots, MorningStart, MorningEnd);
-        AddSlots(slots, AfternoonStart, AfternoonEnd);
+        foreach (var schedule in schedules)
+            AddSlots(slots, schedule.StartTime, schedule.EndTime);
 
-        return slots;
+        return slots.DistinctBy(x => x.StartTime).OrderBy(x => x.StartTime).ToList();
     }
 
     private static void AddSlots(
@@ -238,7 +229,7 @@ public class BookingService : IBookingService
         TimeSpan end)
     {
         for (var current = start;
-             current < end;
+             current.Add(SlotDuration) <= end;
              current = current.Add(SlotDuration))
         {
             slots.Add(new AvailableSlotResponse

@@ -86,6 +86,8 @@ function useMedicines() {
     }, [requestParams]);
 
     useEffect(() => {
+        // Fetch remote data when query inputs change.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         loadReferenceData().catch((err) => {
             setError(
                 getApiErrorMessage(
@@ -97,6 +99,8 @@ function useMedicines() {
     }, [loadReferenceData]);
 
     useEffect(() => {
+        // Fetch remote data when query inputs change.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         loadMedicines();
     }, [loadMedicines]);
 
@@ -130,7 +134,7 @@ function useMedicines() {
                     getApiErrorMessage(
                         err,
                         "Không lưu được thuốc."
-                    )
+                    ), { cause: err }
                 );
             } finally {
                 setSaving(false);
@@ -151,7 +155,7 @@ function useMedicines() {
                     getApiErrorMessage(
                         err,
                         "Không xóa được thuốc."
-                    )
+                    ), { cause: err }
                 );
             } finally {
                 setSaving(false);

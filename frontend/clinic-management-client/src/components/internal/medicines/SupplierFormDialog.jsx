@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
     Alert,
     Box,
@@ -29,28 +29,15 @@ function SupplierFormDialog({
     onClose,
     onSubmit,
 }) {
-    const [form, setForm] = useState(EMPTY_FORM);
+    const [form, setForm] = useState(() => supplier ? {
+                supplierName: supplier.supplierName || "",
+                contactInfo: supplier.contactInfo || "",
+                address: supplier.address || "",
+            } : EMPTY_FORM);
     const [error, setError] = useState("");
 
     const isEditing = Boolean(supplier);
 
-    useEffect(() => {
-        if (!open) {
-            return;
-        }
-
-        setError("");
-
-        if (supplier) {
-            setForm({
-                supplierName: supplier.supplierName || "",
-                contactInfo: supplier.contactInfo || "",
-                address: supplier.address || "",
-            });
-        } else {
-            setForm(EMPTY_FORM);
-        }
-    }, [open, supplier]);
 
     const handleChange = (field) => (event) => {
         setForm((current) => ({

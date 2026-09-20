@@ -36,6 +36,19 @@ public class AuthController : ControllerBase
     }
 
     [AllowAnonymous]
+    [HttpPost("refresh")]
+    public async Task<IActionResult> Refresh(RefreshTokenRequest request) =>
+        Ok(ApiResponse<AuthResponse>.Success(await _authService.RefreshAsync(request)));
+
+    [AllowAnonymous]
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout(RefreshTokenRequest request)
+    {
+        await _authService.LogoutAsync(request);
+        return NoContent();
+    }
+
+    [AllowAnonymous]
     [HttpPost("login")]
     public async Task<IActionResult> Login(
         LoginRequest request)

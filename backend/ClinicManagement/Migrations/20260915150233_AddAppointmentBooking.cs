@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -13,20 +13,6 @@ namespace ClinicManagement.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateTable(
-                name: "Departments",
-                columns: table => new
-                {
-                    DepartmentId = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    DepartmentName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    Description = table.Column<string>(type: "nvarchar(300)", maxLength: 300, nullable: true),
-                    IsActive = table.Column<bool>(type: "bit", nullable: false, defaultValue: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Departments", x => x.DepartmentId);
-                });
 
             migrationBuilder.CreateTable(
                 name: "Doctors",
@@ -86,15 +72,6 @@ namespace ClinicManagement.Migrations
                         onDelete: ReferentialAction.Restrict);
                 });
 
-            migrationBuilder.InsertData(
-                table: "Departments",
-                columns: new[] { "DepartmentId", "DepartmentName", "Description", "IsActive" },
-                values: new object[,]
-                {
-                    { 1, "Khoa Tim Mạch", "Khám và tư vấn bệnh lý tim mạch", true },
-                    { 2, "Khoa Nội Tổng Quát", "Khám tổng quát và bệnh lý nội khoa", true },
-                    { 3, "Khoa Da Liễu", "Khám da, dị ứng và chăm sóc da", true }
-                });
 
             migrationBuilder.InsertData(
                 table: "Doctors",
@@ -118,11 +95,6 @@ namespace ClinicManagement.Migrations
                 table: "Appointments",
                 column: "PatientId");
 
-            migrationBuilder.CreateIndex(
-                name: "IX_Departments_DepartmentName",
-                table: "Departments",
-                column: "DepartmentName",
-                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_Doctors_DepartmentId",
@@ -139,8 +111,6 @@ namespace ClinicManagement.Migrations
             migrationBuilder.DropTable(
                 name: "Doctors");
 
-            migrationBuilder.DropTable(
-                name: "Departments");
         }
     }
 }

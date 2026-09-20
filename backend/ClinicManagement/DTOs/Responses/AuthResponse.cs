@@ -2,6 +2,7 @@ namespace ClinicManagement.DTOs.Responses;
 
 public class AuthResponse
 {
+    public string RefreshToken { get; set; } = string.Empty;
     public string AccessToken { get; set; } = string.Empty;
 
     public int UserId { get; set; }

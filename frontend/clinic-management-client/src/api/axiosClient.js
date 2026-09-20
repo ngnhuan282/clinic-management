@@ -1,4 +1,8 @@
 import axios from "axios";
+import store from "../store/store";
+import { setCredentials, logout } from "../store/authSlice";
+
+let refreshPromise;
 
 const axiosClient = axios.create({
     baseURL:
@@ -24,10 +28,24 @@ axiosClient.interceptors.request.use(
 axiosClient.interceptors.response.use(
     (response) => response,
     async (error) => {
-        if (error.response?.status === 401) {
-            localStorage.removeItem("accessToken");
-            localStorage.removeItem("user");
-            if (window.location.pathname !== "/login") window.location.href = "/login";
+        const original = error.config;
+        if (error.response?.status === 401 && !original?.url?.startsWith("/auth/")) {
+            const refreshToken = localStorage.getItem("refreshToken");
+            if (refreshToken && original && !original._retry) {
+                original._retry = true;
+                try {
+                    refreshPromise ??= axios.post(`${axiosClient.defaults.baseURL}/auth/refresh`, { refreshToken })
+                        .then(({ data }) => {
+                            const { accessToken, refreshToken: nextToken, ...user } = data.result;
+                            store.dispatch(setCredentials({ accessToken, refreshToken: nextToken, user }));
+                            return accessToken;
+                        }).finally(() => { refreshPromise = null; });
+                    const token = await refreshPromise;
+                    original.headers.Authorization = `Bearer ${token}`;
+                    return axiosClient(original);
+                } catch { /* An expired session requires signing in again. */ }
+            }
+            store.dispatch(logout());
         }
         return Promise.reject(error);
     }

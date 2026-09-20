@@ -23,12 +23,15 @@ public static class JwtConfiguration
             );
         }
 
-        if (string.IsNullOrWhiteSpace(jwtSettings.Key))
+        if (string.IsNullOrWhiteSpace(jwtSettings.Key) || Encoding.UTF8.GetByteCount(jwtSettings.Key) < 32)
         {
             throw new InvalidOperationException(
                 "JWT secret key is missing."
             );
         }
+
+        if (jwtSettings.AccessTokenExpirationMinutes <= 0 || jwtSettings.RefreshTokenExpirationDays <= 0)
+            throw new InvalidOperationException("JWT expiration settings must be positive.");
 
         services
             .AddAuthentication(options =>

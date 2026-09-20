@@ -245,6 +245,7 @@ function MedicinesPage() {
             )}
 
             <MedicineFormDialog
+                    key={`${formOpen}-${selectedMedicine ? JSON.stringify(selectedMedicine) : "new"}`}
                 open={formOpen}
                 medicine={selectedMedicine}
                 categories={categories}

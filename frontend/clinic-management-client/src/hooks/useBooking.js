@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
     createAppointment,
@@ -9,6 +9,7 @@ import {
 import getApiErrorMessage from "../utils/errorHandler";
 
 export function useBooking() {
+    const slotRequest = useRef(0);
     const [departments, setDepartments] = useState([]);
     const [doctors, setDoctors] = useState([]);
     const [slots, setSlots] = useState([]);
@@ -144,8 +145,11 @@ export function useBooking() {
     }, [selectedDepartmentId]);
 
     const refreshSlots = useCallback(async () => {
+        const requestId = ++slotRequest.current;
+        setSelectedSlot(null);
+        setSlots([]);
         if (!selectedDoctorId || !selectedDate) {
-            setSlots([]);
+            setLoading(prev => ({ ...prev, slots: false }));
             return;
         }
 
@@ -153,7 +157,6 @@ export function useBooking() {
             ...prev,
             slots: true,
         }));
-        setError("");
         setSelectedSlot(null);
 
         try {
@@ -162,11 +165,11 @@ export function useBooking() {
                 selectedDate
             );
 
-            setSlots(result || []);
+            if (requestId === slotRequest.current) setSlots(result || []);
         } catch (apiError) {
-            setError(getApiErrorMessage(apiError));
+            if (requestId === slotRequest.current) setError(getApiErrorMessage(apiError));
         } finally {
-            setLoading((prev) => ({
+            if (requestId === slotRequest.current) setLoading((prev) => ({
                 ...prev,
                 slots: false,
             }));
@@ -174,12 +177,16 @@ export function useBooking() {
     }, [selectedDate, selectedDoctorId]);
 
     useEffect(() => {
+        // Synchronize availability with the selected doctor/date and cancel stale results.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         refreshSlots();
+        const requestId = slotRequest.current;
+        return () => { slotRequest.current = requestId + 1; };
     }, [refreshSlots]);
 
     const submitBooking = useCallback(async () => {
         if (
-            !selectedDoctorId ||
+            loading.slots || loading.submitting || !selectedDoctorId ||
             !selectedDate ||
             !selectedSlot ||
             !patientName.trim() ||
@@ -220,6 +227,8 @@ export function useBooking() {
         }
     }, [
         patientName,
+        loading.slots,
+        loading.submitting,
         patientPhone,
         reason,
         refreshSlots,

@@ -5,6 +5,11 @@ using ClinicManagement.DTOs.Responses;
 using ClinicManagement.Exceptions;
 using ClinicManagement.Repositories.Interfaces;
 using ClinicManagement.Services.Interfaces;
+using ClinicManagement.Configurations;
+using Microsoft.Extensions.Options;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace ClinicManagement.Services.Implementations;
 
@@ -14,17 +19,26 @@ public class AuthService : IAuthService
     private readonly IRoleRepository _roleRepository;
     private readonly IPasswordHasherService _passwordHasher;
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
+    private readonly IRefreshTokenRepository _refreshTokens;
+    private readonly IRefreshTokenGenerator _refreshTokenGenerator;
+    private readonly JwtSettings _settings;
 
     public AuthService(
         IUserRepository userRepository,
         IRoleRepository roleRepository,
         IPasswordHasherService passwordHasher,
-        IJwtTokenGenerator jwtTokenGenerator)
+        IJwtTokenGenerator jwtTokenGenerator,
+        IRefreshTokenRepository refreshTokens,
+        IRefreshTokenGenerator refreshTokenGenerator,
+        IOptions<JwtSettings> settings)
     {
         _userRepository = userRepository;
         _roleRepository = roleRepository;
         _passwordHasher = passwordHasher;
         _jwtTokenGenerator = jwtTokenGenerator;
+        _refreshTokens = refreshTokens;
+        _refreshTokenGenerator = refreshTokenGenerator;
+        _settings = settings.Value;
     }
 
     public async Task<AuthResponse> RegisterAsync(
@@ -41,7 +55,7 @@ public class AuthService : IAuthService
 
         var existingUser =
             await _userRepository.GetByUsernameAsync(
-                request.Username
+                request.Username.Trim()
             );
 
         if (existingUser != null)
@@ -55,7 +69,7 @@ public class AuthService : IAuthService
         {
             var existingEmail =
                 await _userRepository.GetByEmailAsync(
-                    request.Email
+                    request.Email.Trim()
                 );
 
             if (existingEmail != null)
@@ -100,20 +114,8 @@ public class AuthService : IAuthService
         await _userRepository.AddAsync(user);
         await _userRepository.SaveChangesAsync();
 
-        var token =
-            _jwtTokenGenerator.GenerateAccessToken(
-                user.UserId,
-                patientRole.RoleName
-            );
-
-        return new AuthResponse
-        {
-            AccessToken = token,
-            UserId = user.UserId,
-            Username = user.Username,
-            FullName = user.FullName,
-            Role = patientRole.RoleName
-        };
+        user.Role = patientRole;
+        return await IssueTokensAsync(user);
     }
 
     public async Task<AuthResponse> LoginAsync(
@@ -121,7 +123,7 @@ public class AuthService : IAuthService
     {
         var user =
             await _userRepository.GetByUsernameAsync(
-                request.Username
+                request.Username.Trim()
             );
 
         if (user == null)
@@ -151,19 +153,58 @@ public class AuthService : IAuthService
             );
         }
 
-        var token =
-            _jwtTokenGenerator.GenerateAccessToken(
-                user.UserId,
-                user.Role.RoleName
-            );
+        return await IssueTokensAsync(user);
+    }
+
+    public async Task<AuthResponse> RefreshAsync(RefreshTokenRequest request)
+    {
+        var token = await _refreshTokens.GetByHashAsync(HashToken(request.RefreshToken));
+        if (token == null || token.RevokedAt != null || token.ExpiresAt <= DateTime.UtcNow || !token.User.Status)
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+
+        token.RevokedAt = DateTime.UtcNow;
+        try
+        {
+            // Revocation and replacement are committed together; rowversion prevents double use.
+            return await IssueTokensAsync(token.User);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+    }
+
+    public async Task LogoutAsync(RefreshTokenRequest request)
+    {
+        var token = await _refreshTokens.GetByHashAsync(HashToken(request.RefreshToken));
+        if (token == null || token.RevokedAt != null) return;
+        token.RevokedAt = DateTime.UtcNow;
+        try { await _refreshTokens.SaveChangesAsync(); }
+        catch (DbUpdateConcurrencyException) { /* Already consumed by another request. */ }
+    }
+
+    private async Task<AuthResponse> IssueTokensAsync(User user)
+    {
+        var refreshToken = _refreshTokenGenerator.GenerateRefreshToken();
+        await _refreshTokens.AddAsync(new RefreshToken
+        {
+            UserId = user.UserId,
+            TokenHash = HashToken(refreshToken),
+            ExpiresAt = DateTime.UtcNow.AddDays(_settings.RefreshTokenExpirationDays)
+        });
+        await _refreshTokens.SaveChangesAsync();
 
         return new AuthResponse
         {
-            AccessToken = token,
+            AccessToken = _jwtTokenGenerator.GenerateAccessToken(user.UserId, user.Role.RoleName),
+            RefreshToken = refreshToken,
             UserId = user.UserId,
             Username = user.Username,
             FullName = user.FullName,
             Role = user.Role.RoleName
         };
     }
+
+    private static string HashToken(string token) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
 }

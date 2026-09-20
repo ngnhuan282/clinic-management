@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
     Alert,
     Box,
@@ -82,7 +82,14 @@ function MedicineFormDialog({
     onClose,
     onSubmit,
 }) {
-    const [form, setForm] = useState(EMPTY_FORM);
+    const [form, setForm] = useState(() => medicine ? {
+                medicineName: medicine.medicineName || "",
+                categoryId: medicine.categoryId || "",
+                supplierId: medicine.supplierId || "",
+                unit: medicine.unit || "",
+                unitPrice: medicine.unitPrice ?? "",
+                description: medicine.description || "",
+            } : EMPTY_FORM);
     const [error, setError] = useState("");
 
     const isEditing = Boolean(medicine);
@@ -92,26 +99,6 @@ function MedicineFormDialog({
         [categories]
     );
 
-    useEffect(() => {
-        if (!open) {
-            return;
-        }
-
-        setError("");
-
-        if (medicine) {
-            setForm({
-                medicineName: medicine.medicineName || "",
-                categoryId: medicine.categoryId || "",
-                supplierId: medicine.supplierId || "",
-                unit: medicine.unit || "",
-                unitPrice: medicine.unitPrice ?? "",
-                description: medicine.description || "",
-            });
-        } else {
-            setForm(EMPTY_FORM);
-        }
-    }, [open, medicine]);
 
     const handleChange = (field) => (event) => {
         setForm((current) => ({

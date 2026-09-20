@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -9,24 +9,17 @@ import {
   Checkbox,
   Button,
   Box,
+  Alert,
   Typography,
 } from '@mui/material';
 
-export default function LabTestTypeModal({ isOpen, onClose, onSubmit, initialData }) {
-  const [formData, setFormData] = useState({
+export default function LabTestTypeModal({ isOpen, onClose, onSubmit, initialData, saving, error }) {
+  const [formData, setFormData] = useState(initialData || {
     name: '',
     description: '',
     price: 0,
     isActive: true
   });
-
-  useEffect(() => {
-    if (initialData) {
-      setFormData(initialData);
-    } else {
-      setFormData({ name: '', description: '', price: 0, isActive: true });
-    }
-  }, [initialData, isOpen]);
 
   if (!isOpen) return null;
 
@@ -38,7 +31,7 @@ export default function LabTestTypeModal({ isOpen, onClose, onSubmit, initialDat
   return (
     <Dialog
       open={isOpen}
-      onClose={onClose}
+      onClose={saving ? undefined : onClose}
       maxWidth="xs"
       fullWidth
       PaperProps={{
@@ -67,6 +60,7 @@ export default function LabTestTypeModal({ isOpen, onClose, onSubmit, initialDat
       {/* Body Form */}
       <Box component="form" onSubmit={handleSubmit}>
         <DialogContent sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+          {error && <Alert severity="error">{error}</Alert>}
           <TextField
             label="Tên xét nghiệm"
             variant="outlined"
@@ -162,6 +156,7 @@ export default function LabTestTypeModal({ isOpen, onClose, onSubmit, initialDat
           </Button>
           <Button
             type="submit"
+            disabled={saving}
             variant="contained"
             sx={{
               bgcolor: '#1976D2',

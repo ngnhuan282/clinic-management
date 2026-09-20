@@ -91,6 +91,8 @@ function useInventory() {
     }, [requestParams]);
 
     useEffect(() => {
+        // Fetch remote data when query inputs change.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         loadReferenceData().catch((err) => {
             setError(
                 getApiErrorMessage(
@@ -102,6 +104,8 @@ function useInventory() {
     }, [loadReferenceData]);
 
     useEffect(() => {
+        // Fetch remote data when query inputs change.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         loadInventory();
     }, [loadInventory]);
 
@@ -135,7 +139,7 @@ function useInventory() {
                     getApiErrorMessage(
                         err,
                         "Không lưu được lô tồn kho."
-                    )
+                    ), { cause: err }
                 );
             } finally {
                 setSaving(false);
@@ -156,7 +160,7 @@ function useInventory() {
                     getApiErrorMessage(
                         err,
                         "Không xóa được lô tồn kho."
-                    )
+                    ), { cause: err }
                 );
             } finally {
                 setSaving(false);

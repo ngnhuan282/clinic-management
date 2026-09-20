@@ -27,6 +27,7 @@ import PeopleAltOutlinedIcon from "@mui/icons-material/PeopleAltOutlined";
 import ScienceOutlinedIcon from "@mui/icons-material/ScienceOutlined";
 import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
+import useAuth from "../hooks/useAuth";
 import {
     Link as RouterLink,
     Outlet,
@@ -37,6 +38,9 @@ const SIDEBAR_WIDTH = 260;
 const TOPBAR_HEIGHT = 76;
 
 const menuItems = [
+    { label: "Khoa", path: "/internal/departments", icon: BusinessOutlinedIcon, roles: ["Admin"] },
+    { label: "Chuyên khoa", path: "/internal/specializations", icon: BusinessOutlinedIcon, roles: ["Admin"] },
+    { label: "Phòng", path: "/internal/rooms", icon: BusinessOutlinedIcon, roles: ["Admin"] },
     {
         label: "Tổng quan",
         path: "/internal/dashboard",
@@ -72,7 +76,8 @@ const menuItems = [
     },
     {
         label: "Xét nghiệm",
-        path: "/internal/lab-tests",
+        path: "/internal/lab-test-types",
+        roles: ["Admin", "Doctor"],
         icon: ScienceOutlinedIcon,
     },
     {
@@ -94,6 +99,7 @@ const menuItems = [
 
 function AdminLayout() {
     const { pathname } = useLocation();
+    const { role, logout } = useAuth();
 
     const isMenuActive = (item) => {
         if (item.activePrefix) {
@@ -196,7 +202,7 @@ function AdminLayout() {
                     spacing={0.5}
                     sx={{ px: 1.5, flex: 1 }}
                 >
-                    {menuItems.map((item) => {
+                        {menuItems.filter(item => !item.roles || item.roles.includes(role)).map((item) => {
                         const Icon = item.icon;
                         const isActive = isMenuActive(item);
 
@@ -287,6 +293,7 @@ function AdminLayout() {
                     <Button
                         fullWidth
                         startIcon={<LogoutOutlinedIcon />}
+                        onClick={() => logout().catch(() => {})}
                         sx={{
                             justifyContent: "flex-start",
                             color: "#DC2626",

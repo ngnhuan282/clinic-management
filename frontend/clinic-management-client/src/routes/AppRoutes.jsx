@@ -18,6 +18,7 @@ import MedicinesPage from "../pages/internal/admin/MedicinesPage";
 import SuppliersPage from "../pages/internal/admin/SuppliersPage";
 import CatalogManagementPage from "../pages/internal/CatalogManagementPage";
 import LabTestTypesPage from "../pages/internal/LabTestTypesPage";
+import AuthPage from "../pages/auth/AuthPage";
 
 function AppRoutes() {
     return (
@@ -37,25 +38,20 @@ function AppRoutes() {
                     <Route
                         path="/login"
                         element={
-                            <div>
-                                Login Page
-                            </div>
+                            <AuthPage key="login" />
                         }
                     />
 
                     <Route
                         path="/register"
                         element={
-                            <div>
-                                Register Page
-                            </div>
+                            <AuthPage key="register" register />
                         }
                     />
 
-                    <Route
-                        path="/booking"
-                        element={<BookingPage />}
-                    />
+                    <Route element={<ProtectedRoute allowedRoles={["Patient"]} />}>
+                        <Route path="/booking" element={<BookingPage />} />
+                    </Route>
 
                     {/* Test Backend */}
                     <Route
@@ -66,14 +62,9 @@ function AppRoutes() {
                 </Route>
 
                 {/* =========================
-                    DEV TEST ROUTE (Không cần login)
+                    Internal sign-in
                 ========================= */}
-                <Route path="/internal" element={<AdminLayout />}>
-                    <Route
-                        path="lab-test-types"
-                        element={<LabTestTypesPage />}
-                    />
-                </Route>
+                <Route path="/internal/login" element={<AuthPage />} />
 
                 {/* =========================
                     Internal Routes (Protected)
@@ -123,7 +114,6 @@ function AppRoutes() {
                             <Route path="departments" element={<CatalogManagementPage resource="departments" />} />
                             <Route path="specializations" element={<CatalogManagementPage resource="specializations" />} />
                             <Route path="rooms" element={<CatalogManagementPage resource="rooms" />} />
-                        </Route>
 
                         <Route
                             path="medicines"
@@ -144,6 +134,10 @@ function AppRoutes() {
                             path="medicines/inventory"
                             element={<InventoryPage />}
                         />
+                        </Route>
+                        <Route element={<ProtectedRoute allowedRoles={["Admin", "Doctor"]} />}>
+                            <Route path="lab-test-types" element={<LabTestTypesPage />} />
+                        </Route>
                     </Route>
                 </Route>
 

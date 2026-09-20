@@ -3,6 +3,7 @@ using ClinicManagement.DTOs.Requests;
 using ClinicManagement.DTOs.Responses;
 using ClinicManagement.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace ClinicManagement.Controllers;
 
@@ -50,6 +51,7 @@ public class AppointmentsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = RoleConstants.Patient)]
     public async Task<IActionResult> CreateAppointment(
         CreateAppointmentRequest request)
     {

@@ -12,6 +12,8 @@ public class ApplicationDbContext : DbContext
     }
 
     public DbSet<Role> Roles => Set<Role>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<DoctorSchedule> DoctorSchedules => Set<DoctorSchedule>();
 
     public DbSet<User> Users => Set<User>();
 
@@ -40,6 +42,14 @@ public class ApplicationDbContext : DbContext
         ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            entity.Property(x => x.TokenHash).HasMaxLength(64).IsRequired();
+            entity.HasIndex(x => x.TokenHash).IsUnique();
+            entity.Property(x => x.Version).IsRowVersion();
+            entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
 
         // =========================
         // Role

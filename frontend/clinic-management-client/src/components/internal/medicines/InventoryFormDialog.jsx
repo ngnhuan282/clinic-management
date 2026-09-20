@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
     Alert,
     Box,
@@ -75,7 +75,13 @@ function InventoryFormDialog({
     onClose,
     onSubmit,
 }) {
-    const [form, setForm] = useState(EMPTY_FORM);
+    const [form, setForm] = useState(() => inventoryItem ? {
+                medicineId: inventoryItem.medicineId || "",
+                batchNumber: inventoryItem.batchNumber || "",
+                quantityInStock:
+                    inventoryItem.quantityInStock ?? "",
+                expiryDate: inventoryItem.expiryDate || "",
+            } : EMPTY_FORM);
     const [error, setError] = useState("");
 
     const isEditing = Boolean(inventoryItem);
@@ -90,25 +96,6 @@ function InventoryFormDialog({
         [form.medicineId, medicines]
     );
 
-    useEffect(() => {
-        if (!open) {
-            return;
-        }
-
-        setError("");
-
-        if (inventoryItem) {
-            setForm({
-                medicineId: inventoryItem.medicineId || "",
-                batchNumber: inventoryItem.batchNumber || "",
-                quantityInStock:
-                    inventoryItem.quantityInStock ?? "",
-                expiryDate: inventoryItem.expiryDate || "",
-            });
-        } else {
-            setForm(EMPTY_FORM);
-        }
-    }, [open, inventoryItem]);
 
     const handleChange = (field) => (event) => {
         setForm((current) => ({

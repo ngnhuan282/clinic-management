@@ -254,6 +254,7 @@ function InventoryPage() {
                 )}
 
                 <InventoryFormDialog
+                    key={`${formOpen}-${selectedInventory ? JSON.stringify(selectedInventory) : "new"}`}
                     open={formOpen}
                     inventoryItem={selectedInventory}
                     medicines={medicines}
