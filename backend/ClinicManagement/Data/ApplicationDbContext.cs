@@ -14,6 +14,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<DoctorSchedule> DoctorSchedules => Set<DoctorSchedule>();
+    public DbSet<TimeSlot> TimeSlots => Set<TimeSlot>();
 
     public DbSet<User> Users => Set<User>();
 

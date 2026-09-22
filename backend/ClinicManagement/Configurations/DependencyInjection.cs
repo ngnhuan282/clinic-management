@@ -37,6 +37,7 @@ public static class DependencyInjection
             IBookingService,
             BookingService
         >();
+        services.AddScoped<IDoctorScheduleService, DoctorScheduleService>();
 
         services.AddScoped<
             IRefreshTokenGenerator,

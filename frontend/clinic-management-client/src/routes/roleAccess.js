@@ -6,6 +6,7 @@ export const INTERNAL_PAGES = [
     { label: "Khoa", path: "/internal/departments", roles: ["Admin"] },
     { label: "Chuyên khoa", path: "/internal/specializations", roles: ["Admin"] },
     { label: "Phòng", path: "/internal/rooms", roles: ["Admin"] },
+    { label: "Lịch bác sĩ", path: "/internal/doctor-schedules", roles: ["Admin"] },
     { label: "Kho dược & Vật tư", path: "/internal/medicines", roles: ["Admin"] },
     { label: "Xét nghiệm", path: "/internal/lab-test-types", roles: ["Admin", "Doctor"] },
 ];
