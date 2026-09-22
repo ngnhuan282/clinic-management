@@ -21,10 +21,12 @@ public class JwtTokenGenerator : IJwtTokenGenerator
 
     public string GenerateAccessToken(
         int userId,
-        string role)
+        string role,
+        int securityVersion)
     {
         var claims = new List<Claim>
         {
+            new(ClaimConstants.SecurityVersion, securityVersion.ToString()),
             new(
                 ClaimConstants.UserId,
                 userId.ToString()

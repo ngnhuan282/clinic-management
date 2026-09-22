@@ -44,7 +44,7 @@ try
     Check(await db.Departments.CountAsync() == 3 && await db.Rooms.CountAsync() == 3 && await db.Specializations.CountAsync() == 3, "Catalog master data seeded");
     await db.Database.ExecuteSqlRawAsync(await File.ReadAllTextAsync(Path.Combine(root, "backend/ClinicManagement/Data/Seed/pharmacy-demo-data.sql")));
     Check(await db.Medicines.AnyAsync() && await db.Inventory.AnyAsync(), "Pharmacy demo seed works");
-    foreach (var (name, role) in new[] { ("testadmin", 1), ("testdoctor", 2) })
+    foreach (var (name, role) in new[] { ("testadmin", 1), ("testdoctor", 2), ("testreceptionist", 3) })
         db.Users.Add(new User { Username = name, FullName = name, PasswordHash = BCrypt.Net.BCrypt.HashPassword(password), RoleId = role, CreatedAt = DateTime.UtcNow });
     await db.SaveChangesAsync();
 
@@ -176,7 +176,8 @@ try
     await Send(HttpMethod.Post, "api/appointments", body);
     await Send(HttpMethod.Post, "api/appointments", new { doctorId = 1, appointmentDate = dateText, startTime = "12:00:00", patientName = "Test", patientPhone = "0901234567", reason = "Invalid shift" }, 400);
     await Send(HttpMethod.Get, "api/appointments/available-slots?doctorId=1&date=2000-01-01", status: 400);
-    Console.WriteLine($"SUCCESS: {checks} checks passed.");
+    await Week34Checks.RunAsync(client, db, password, Check);
+    Console.WriteLine($"SUCCESS: {checks} checks passed (weeks 2–4).");
 }
 catch
 {

@@ -102,6 +102,7 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<User>(entity =>
         {
             entity.HasKey(x => x.UserId);
+            entity.Property(x => x.SecurityVersion).IsConcurrencyToken();
 
             entity.Property(x => x.Username)
                 .HasMaxLength(50)

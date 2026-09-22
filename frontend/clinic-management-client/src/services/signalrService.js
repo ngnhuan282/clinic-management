@@ -1,58 +1,37 @@
-// src/services/signalrService.js
-
-import {
-    HubConnectionBuilder,
-    LogLevel,
-} from "@microsoft/signalr";
+import { HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
+import axiosClient, { getAccessToken } from "../api/axiosClient";
 import { readSession } from "../utils/authStorage";
 
-let connection = null;
-
-export async function startSignalR() {
-    if (connection) {
-        return connection;
-    }
-
-    connection = new HubConnectionBuilder()
-        .withUrl(
-            import.meta.env.VITE_SIGNALR_URL ||
-                "https://localhost:7001/notificationHub",
-            {
-                accessTokenFactory: () =>
-                    readSession()?.accessToken || "",
-            }
-        )
-        .withAutomaticReconnect()
-        .configureLogging(
-            LogLevel.Information
-        )
+export function connectNotifications(onNotification) {
+    const apiUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5212/api";
+    const hubUrl = import.meta.env.VITE_SIGNALR_HUB_URL || apiUrl.replace(/\/api\/?$/, "") + "/hubs/notification";
+    const connection = new HubConnectionBuilder()
+        .withUrl(hubUrl, { accessTokenFactory: getAccessToken })
+        .withAutomaticReconnect([0, 2000, 10000, 30000])
+        .configureLogging(LogLevel.None)
         .build();
-
-    try {
-        await connection.start();
-
-        return connection;
-    } catch (error) {
-        connection = null;
-        throw error;
+    let disposed = false;
+    let retryTimer;
+    const retry = () => {
+        if (!disposed && readSession()) retryTimer = setTimeout(start, 10000);
+    };
+    async function start() {
+        if (disposed || !readSession()) return;
+        try { await connection.start(); }
+        catch { retry(); }
     }
+    connection.on("NotificationReceived", notification => { if (!disposed) onNotification(notification); });
+    connection.onclose(async () => {
+        if (disposed || !readSession()) return;
+        try { await axiosClient.get("/auth/me"); }
+        catch { /* Invalid credentials are removed by the interceptor; network failures may retry. */ }
+        retry();
+    });
+    void start();
+    return () => {
+        disposed = true;
+        clearTimeout(retryTimer);
+        connection.off("NotificationReceived");
+        void connection.stop().catch(() => {});
+    };
 }
-
-export async function stopSignalR() {
-    if (!connection) {
-        return;
-    }
-
-    await connection.stop();
-    connection = null;
-}
-
-export function getSignalRConnection() {
-    return connection;
-}
-
-export default {
-    startSignalR,
-    stopSignalR,
-    getSignalRConnection,
-};

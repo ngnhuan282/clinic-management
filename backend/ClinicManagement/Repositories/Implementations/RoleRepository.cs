@@ -21,4 +21,7 @@ public class RoleRepository : IRoleRepository
                 x => x.RoleName == roleName
             );
     }
+
+    public Task<Role?> GetByIdAsync(int roleId) => _context.Roles.SingleOrDefaultAsync(x => x.RoleId == roleId);
+    public Task<List<Role>> GetAllAsync() => _context.Roles.AsNoTracking().OrderBy(x => x.RoleId).ToListAsync();
 }

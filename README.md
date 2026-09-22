@@ -144,7 +144,7 @@ Cài đặt sẵn các công cụ sau trước khi bắt đầu:
    Tạo file `.env` tại thư mục gốc:
    ```
    VITE_API_BASE_URL=http://localhost:5212/api
-   VITE_SIGNALR_HUB_URL=https://localhost:5001/hubs/notification
+   VITE_SIGNALR_HUB_URL=http://localhost:5212/hubs/notification
    ```
 
 4. **Chạy ứng dụng ở chế độ phát triển**

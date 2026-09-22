@@ -14,7 +14,7 @@ function ProtectedRoute({ allowedRoles = [] }) {
     if (!isAuthenticated) {
         return (
             <Navigate
-                to="/login"
+                to={location.pathname.startsWith("/internal") ? "/internal/login" : "/login"}
                 replace
                 state={{ from: location }}
             />

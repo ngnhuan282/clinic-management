@@ -1,6 +1,9 @@
 // src/utils/errorHandler.js
 
 const API_ERROR_MESSAGES = {
+    2007: "Bạn không thể tự khóa tài khoản hoặc đổi vai trò của mình.",
+    2008: "Hệ thống cần ít nhất một quản trị viên đang hoạt động.",
+    2009: "Quyền tài khoản vừa thay đổi. Vui lòng tải lại và thử lại.",
     9999: "Đã có lỗi không xác định. Vui lòng thử lại.",
     1001: "Yêu cầu không hợp lệ.",
     1002: "Bạn chưa đăng nhập.",

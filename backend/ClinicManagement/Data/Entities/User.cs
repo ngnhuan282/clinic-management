@@ -18,6 +18,8 @@ public class User
 
     public bool Status { get; set; } = true;
 
+    public int SecurityVersion { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     // Navigation

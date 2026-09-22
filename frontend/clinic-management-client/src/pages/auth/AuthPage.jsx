@@ -16,7 +16,7 @@ const SUPPORT_CARDS = [
     { icon: LockOutlined, title: "Giữ an toàn cho tài khoản", description: "Không chia sẻ mật khẩu. Hãy đăng xuất sau khi sử dụng máy tính dùng chung.", color: "#f59e0b", background: "#fffbeb" },
 ];
 
-function Introduction({ register }) {
+function Introduction({ register, internal }) {
     return <Box sx={{
         position: "relative", overflow: "hidden", color: "white", p: { xs: 3, md: 4, lg: 5.5 },
         background: register ? "linear-gradient(145deg, #1976d2, #1675ca)" : "linear-gradient(145deg, #124da9, #006da7)",
@@ -26,10 +26,10 @@ function Introduction({ register }) {
     }}>
         <Stack direction="row" spacing={1} alignItems="center" sx={{ alignSelf: "flex-start", borderRadius: 10, px: 1.75, py: 0.8, bgcolor: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.2)", mb: 3 }}>
             <ShieldOutlined sx={{ fontSize: 18, color: "#a5e6ff" }} />
-            <Typography sx={{ fontSize: 12, fontWeight: 700, letterSpacing: ".04em" }}>CỔNG DỊCH VỤ BỆNH NHÂN MEDICLINIC</Typography>
+            <Typography sx={{ fontSize: 12, fontWeight: 700, letterSpacing: ".04em" }}>{internal ? "CỔNG NỘI BỘ MEDICLINIC" : "CỔNG DỊCH VỤ BỆNH NHÂN MEDICLINIC"}</Typography>
         </Stack>
         <Typography component="h1" sx={{ color: "#fff", fontSize: { xs: 27, lg: 34 }, lineHeight: 1.35, fontWeight: 750, letterSpacing: "-.025em", maxWidth: 440 }}>
-            {register ? "Tạo tài khoản sức khỏe số MediClinic" : "Chăm sóc sức khỏe bắt đầu từ kết nối"}
+            {register ? "Tạo tài khoản sức khỏe số MediClinic" : internal ? "Kết nối đội ngũ, chăm sóc tận tâm" : "Chăm sóc sức khỏe bắt đầu từ kết nối"}
         </Typography>
         <Typography sx={{ mt: 2, fontSize: 15, lineHeight: 1.75, color: "#daebff", maxWidth: 435 }}>
             {register ? "Đồng hành cùng bạn và gia đình. Tạo tài khoản để chủ động lựa chọn bác sĩ và đặt lịch khám phù hợp." : "Chào mừng bạn trở lại. Đăng nhập để kết nối với phòng khám và sắp xếp lịch khám thuận tiện hơn."}
@@ -46,29 +46,29 @@ function Introduction({ register }) {
     </Box>;
 }
 
-export default function AuthPage({ register = false }) {
+export default function AuthPage({ register = false, internal = false }) {
     const location = useLocation();
     return <Box sx={{ bgcolor: register ? "#f5f9fd" : "#f0f5fa", py: { xs: 3, md: 5.5 } }}>
         <Container maxWidth="xl">
             <Breadcrumbs separator={<ChevronRight sx={{ fontSize: 17 }} />} sx={{ mb: { xs: 3, md: 4 }, fontSize: 14 }}>
                 <Link component={RouterLink} to="/" underline="hover" color="text.secondary" sx={{ display: "flex", alignItems: "center", gap: 0.75 }}><HomeOutlined sx={{ fontSize: 17 }} />Trang chủ</Link>
-                <Typography sx={{ fontSize: 14, display: { xs: "none", sm: "block" } }} color="text.secondary">Cổng dịch vụ bệnh nhân</Typography>
+                <Typography sx={{ fontSize: 14, display: { xs: "none", sm: "block" } }} color="text.secondary">{internal ? "Cổng nội bộ" : "Cổng dịch vụ bệnh nhân"}</Typography>
                 <Typography color="primary" sx={{ fontSize: 14, fontWeight: 600 }}>{register ? "Đăng ký tài khoản" : "Đăng nhập"}</Typography>
             </Breadcrumbs>
             <Paper variant="outlined" sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "5fr 7fr" }, borderRadius: 2.5, overflow: "hidden", borderColor: "#e2e8f0", boxShadow: "0 2px 4px rgba(15,23,42,.03)" }}>
-                <Introduction register={register} />
+                <Introduction register={register} internal={internal} />
                 <Box sx={{ p: { xs: 2.5, sm: 4, lg: 6 }, minWidth: 0 }}>
                     <Tabs value={register ? 1 : 0} aria-label="Đăng nhập hoặc đăng ký" sx={{ mb: { xs: 3, md: 4 }, borderBottom: "1px solid #e5e9f0", minHeight: 56, "& .MuiTab-root": { minHeight: 56, fontSize: { xs: 14, lg: 16 }, fontWeight: 650, px: { xs: 1.5, sm: 3 }, textTransform: "none", minWidth: 0 } }}>
-                        <Tab component={RouterLink} to="/login" state={location.state} icon={<LoginOutlined sx={{ fontSize: 21 }} />} iconPosition="start" label="Đăng nhập" />
-                        <Tab component={RouterLink} to="/register" state={location.state} icon={<PersonAddAltOutlined sx={{ fontSize: 21 }} />} iconPosition="start" label="Đăng ký tài khoản" />
+                        <Tab component={RouterLink} to={internal ? "/internal/login" : "/login"} state={location.state} icon={<LoginOutlined sx={{ fontSize: 21 }} />} iconPosition="start" label="Đăng nhập" />
+                        {!internal && <Tab component={RouterLink} to="/register" state={location.state} icon={<PersonAddAltOutlined sx={{ fontSize: 21 }} />} iconPosition="start" label="Đăng ký tài khoản" />}
                     </Tabs>
-                    <Typography component="h2" sx={{ fontSize: { xs: 23, lg: 28 }, lineHeight: 1.35, fontWeight: 700, letterSpacing: "-.02em" }}>{register ? "Đăng ký tài khoản mới" : "Đăng nhập Cổng Bệnh Nhân"}</Typography>
+                    <Typography component="h2" sx={{ fontSize: { xs: 23, lg: 28 }, lineHeight: 1.35, fontWeight: 700, letterSpacing: "-.02em" }}>{register ? "Đăng ký tài khoản mới" : internal ? "Đăng nhập Cổng Nội Bộ" : "Đăng nhập Cổng Bệnh Nhân"}</Typography>
                     <Typography sx={{ mt: 1, mb: 3.5, fontSize: 14, lineHeight: 1.7 }} color="text.secondary">{register ? "Điền thông tin bên dưới để tạo tài khoản và bắt đầu đặt lịch khám trực tuyến." : "Sử dụng tên đăng nhập và mật khẩu bạn đã đăng ký với phòng khám."}</Typography>
                     <AuthForm key={register ? "register" : "login"} register={register} />
                     <Divider sx={{ my: 3.5 }} />
                     <Typography sx={{ fontSize: 14, textAlign: "center", lineHeight: 1.9 }} color="text.secondary">
-                        {register ? "Đã có tài khoản tại MediClinic? " : "Bạn chưa có tài khoản tại MediClinic? "}
-                        <Link component={RouterLink} to={register ? "/login" : "/register"} state={location.state} sx={{ fontWeight: 650, whiteSpace: "nowrap" }}>{register ? "Đăng nhập ngay" : "Đăng ký ngay"}</Link>
+                        {internal ? "Liên hệ quản trị viên để được cấp quyền truy cập nội bộ. " : register ? "Đã có tài khoản tại MediClinic? " : "Bạn chưa có tài khoản tại MediClinic? "}
+                        <Link component={RouterLink} to={internal || register ? "/login" : "/register"} state={location.state} sx={{ fontWeight: 650, whiteSpace: "nowrap" }}>{internal ? "Cổng bệnh nhân" : register ? "Đăng nhập ngay" : "Đăng ký ngay"}</Link>
                     </Typography>
                 </Box>
             </Paper>

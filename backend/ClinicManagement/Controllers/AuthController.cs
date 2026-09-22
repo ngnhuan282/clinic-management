@@ -11,6 +11,11 @@ namespace ClinicManagement.Controllers;
 [Route("api/auth")]
 public class AuthController : ControllerBase
 {
+    [Authorize]
+    [HttpGet("me")]
+    public async Task<IActionResult> Me([FromServices] IUserService users, [FromServices] ICurrentUserService currentUser) =>
+        Ok(ApiResponse<UserResponse>.Success(await users.GetByIdAsync(currentUser.GetRequiredUserId())));
+
     private readonly IAuthService _authService;
 
     public AuthController(

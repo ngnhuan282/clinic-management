@@ -24,7 +24,10 @@ Harness tạo database riêng `ClinicWeek2Test_<GUID>`, khởi động API trên
 - Kiểm tra dữ liệu bắt buộc, xác nhận mật khẩu, tài khoản/email trùng và mật khẩu sai.
 - Khôi phục phiên sau khi tải lại, ghi nhớ đăng nhập qua tab mới, đăng xuất và thu hồi refresh token.
 - Điều hướng theo vai trò và tự làm mới JWT qua API thật.
-- Đăng xuất quản trị từ thanh bên trên màn hình thấp và từ menu tài khoản trên điện thoại; kiểm tra thu hồi refresh token, xóa phiên đã ghi nhớ, chặn truy cập lại trang quản trị và xóa phiên cục bộ khi API không kết nối được.
+- Đăng xuất nội bộ từ thanh trên ở desktop/mobile; kiểm tra thu hồi refresh token, xóa phiên đã ghi nhớ, chặn truy cập lại trang quản trị và xóa phiên cục bộ khi API không kết nối được.
+- Admin tìm tài khoản, gán RoleId và khóa/mở khóa qua UI; tài khoản Doctor bị thu hồi phiên ngay khi truy cập API sau khi khóa.
+- Menu và route theo vai trò Doctor/Receptionist; sửa vai trò trong storage không vượt qua việc xác minh phiên từ API.
+- Nhiều request bị 401 dùng chung một lần refresh; refresh hoàn thành sau khi đăng xuất không được khôi phục phiên và token mới được thu hồi.
 - Không tràn ngang ở chiều rộng 320, 390, 768 và 1024 px; ảnh desktop/mobile lưu trong `.tmp/auth-*.png`.
 
 Database kiểm thử và tiến trình được dọn sau khi chạy; không dùng database làm việc của dự án.

@@ -6,6 +6,7 @@ import { useDispatch } from "react-redux";
 import * as authApi from "../../api/authApi";
 import { setCredentials } from "../../store/authSlice";
 import getApiErrorMessage from "../../utils/errorHandler";
+import { canAccessPath, homeForRole } from "../../routes/roleAccess";
 
 function AuthField({ name, label, icon: Icon, error, password = false, ...props }) {
     const [visible, setVisible] = useState(false);
@@ -87,10 +88,9 @@ export default function AuthForm({ register }) {
             if (signal.aborted) return;
             dispatch(setCredentials({ accessToken, refreshToken, user, remember: !register && remember }));
             const from = location.state?.from;
-            const fallback = user.role === "Patient" ? "/booking" : "/internal/dashboard";
+            const fallback = homeForRole(user.role);
             const destination = from?.pathname?.startsWith("/") && !from.pathname.startsWith("//")
-                && !(user.role === "Patient" && from.pathname.startsWith("/internal"))
-                && !(user.role !== "Patient" && from.pathname === "/booking")
+                && canAccessPath(user.role, from.pathname)
                 ? `${from.pathname}${from.search || ""}${from.hash || ""}` : fallback;
             navigate(destination, { replace: true });
         } catch (err) {

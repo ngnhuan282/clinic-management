@@ -4,6 +4,7 @@ public interface IJwtTokenGenerator
 {
     string GenerateAccessToken(
         int userId,
-        string role
+        string role,
+        int securityVersion
     );
 }

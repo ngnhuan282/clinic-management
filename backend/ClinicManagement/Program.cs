@@ -7,6 +7,8 @@ using ClinicManagement.Repositories.Implementations;
 using ClinicManagement.Services;
 using ClinicManagement.Services.Interfaces;
 using ClinicManagement.Services.Implementations;
+using ClinicManagement.Hubs;
+using Microsoft.AspNetCore.SignalR;
 namespace ClinicManagement
 {
     public class Program
@@ -45,7 +47,10 @@ namespace ClinicManagement
             // =========================
             // Authorization
             // =========================
-            builder.Services.AddAuthorization();
+            builder.Services.AddApplicationAuthorization();
+            builder.Services.AddSignalR();
+            builder.Services.AddSingleton<NotificationConnections>();
+            builder.Services.AddSingleton<IUserIdProvider, NotificationUserIdProvider>();
 
             // =========================
             // Application Services
@@ -120,6 +125,7 @@ builder.Services.AddScoped<ILabTestTypeService, LabTestTypeService>();
             app.UseAuthorization();
 
             app.MapControllers();
+            app.MapHub<NotificationHub>("/hubs/notification", options => options.CloseOnAuthenticationExpiration = true);
 
             app.Run();
         }

@@ -1,4 +1,6 @@
 using System.Text;
+using ClinicManagement.Data;
+using Microsoft.EntityFrameworkCore;
 using ClinicManagement.Commons;
 using ClinicManagement.Exceptions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -84,6 +86,28 @@ public static class JwtConfiguration
                 // ============================
                 options.Events = new JwtBearerEvents
                 {
+                    OnMessageReceived = context =>
+                    {
+                        // Browser WebSockets/SSE cannot attach an Authorization header.
+                        if (context.Request.Path.StartsWithSegments("/hubs/notification"))
+                            context.Token = context.Request.Query["access_token"];
+                        return Task.CompletedTask;
+                    },
+                    OnTokenValidated = async context =>
+                    {
+                        var principal = context.Principal;
+                        if (!int.TryParse(principal?.FindFirst(ClaimConstants.UserId)?.Value, out var userId)
+                            || !int.TryParse(principal?.FindFirst(ClaimConstants.SecurityVersion)?.Value, out var version))
+                        {
+                            context.Fail("Invalid account claims");
+                            return;
+                        }
+                        var role = principal?.FindFirst(ClaimConstants.Role)?.Value;
+                        var db = context.HttpContext.RequestServices.GetRequiredService<ApplicationDbContext>();
+                        if (!await db.Users.AsNoTracking().AnyAsync(x => x.UserId == userId && x.Status
+                            && x.SecurityVersion == version && x.Role.RoleName == role, context.HttpContext.RequestAborted))
+                            context.Fail("Account access has changed");
+                    },
                     OnChallenge = async context =>
                     {
                         // Không cho ASP.NET tự trả response mặc định

@@ -12,19 +12,20 @@ function useAuth() {
         accessToken,
         user,
         isAuthenticated,
+        sessionChecked,
     } = useSelector((state) => state.auth);
 
     const logout = async () => {
         const refreshToken = readSession()?.refreshToken;
-        try {
-            if (refreshToken) await axiosClient.post("/auth/logout", { refreshToken });
-        } finally { dispatch(logoutAction()); }
+        dispatch(logoutAction());
+        if (refreshToken) await axiosClient.post("/auth/logout", { refreshToken });
     };
 
     return {
         accessToken,
         user,
         isAuthenticated,
+        sessionChecked,
         role: user?.role || null,
         userId: user?.userId || null,
         logout,

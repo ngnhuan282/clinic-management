@@ -9,6 +9,7 @@ const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright')
 await mkdir('.tmp', { recursive: true });
 const host = spawn('dotnet', ['run', '--no-restore', '--project', 'tests/Week2Verification', '--', '--ui'], { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
 let vite, browser, page, registered;
+const authRequests = [];
 const hostFinished = new Promise(resolve => host.once('exit', resolve));
 try {
     const session = await new Promise((resolve, reject) => {
@@ -37,7 +38,12 @@ try {
     browser = await chromium.launch({ channel: process.env.BROWSER_CHANNEL || 'msedge', headless: true });
     const context = await browser.newContext({ viewport: { width: 1440, height: 1100 } });
     page = await context.newPage();
+    page.setDefaultNavigationTimeout(30000);
     const pageErrors = [];
+    page.on('response', response => {
+        const path = new URL(response.url()).pathname;
+        if (path.startsWith('/api/auth/')) authRequests.push(`${response.request().method()} ${path}: ${response.status()}`);
+    });
     page.on('pageerror', error => pageErrors.push(error.message));
     await page.route('https://fonts.googleapis.com/**', route => route.abort());
     await page.route('https://fonts.gstatic.com/**', route => route.abort());
@@ -125,7 +131,15 @@ try {
     await page.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
     await page.waitForURL('**/internal/dashboard');
     const previousRefresh = await page.evaluate(() => sessionStorage.getItem('refreshToken'));
-    await page.evaluate(() => sessionStorage.setItem('accessToken', 'expired-test-token'));
+    // Seed expiration before app startup. Expiring a live token then navigating can
+    // cancel a background SignalR refresh after the server has already rotated it.
+    await page.addInitScript(() => {
+        if (sessionStorage.getItem('simulateExpiredSession')) {
+            sessionStorage.setItem('accessToken', 'expired-test-token');
+            sessionStorage.removeItem('simulateExpiredSession');
+        }
+    });
+    await page.evaluate(() => sessionStorage.setItem('simulateExpiredSession', 'true'));
     await page.goto('http://127.0.0.1:5190/internal/departments', { waitUntil: 'domcontentloaded' });
     await page.getByRole('cell', { name: 'Noi tong quat', exact: true }).waitFor();
     const currentRefresh = await page.evaluate(() => sessionStorage.getItem('refreshToken'));
@@ -148,7 +162,7 @@ try {
     console.log('PASS admin sidebar logout clears credentials, revokes refresh token and blocks protected pages');
 
     async function loginAdmin() {
-        await page.getByRole('heading', { name: 'Đăng nhập Cổng Bệnh Nhân' }).waitFor();
+        await page.getByRole('heading', { name: /Đăng nhập Cổng/ }).waitFor();
         await page.getByLabel('Tên đăng nhập', { exact: true }).fill('testadmin');
         await page.getByLabel('Mật khẩu', { exact: true }).fill(session.password);
         await page.getByRole('checkbox', { name: 'Ghi nhớ đăng nhập trên thiết bị này' }).check();
@@ -158,11 +172,10 @@ try {
     await loginAdmin();
     await page.setViewportSize({ width: 390, height: 844 });
     const mobileRefresh = await page.evaluate(() => localStorage.getItem('refreshToken'));
-    await page.getByRole('button', { name: 'Tài khoản quản trị' }).click();
-    await page.getByRole('menuitem', { name: 'Đăng xuất', exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Đăng xuất', exact: true }).waitFor();
     await page.screenshot({ path: '.tmp/admin-logout-mobile.png', fullPage: true });
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
-    await page.getByRole('menuitem', { name: 'Đăng xuất', exact: true }).click();
+    await page.getByRole('button', { name: 'Đăng xuất', exact: true }).click();
     await page.waitForURL('**/internal/login');
     assert(await page.evaluate(() => !localStorage.getItem('refreshToken') && !sessionStorage.getItem('refreshToken')));
     assert.equal((await page.request.post(session.baseUrl + 'api/auth/refresh', { data: { refreshToken: mobileRefresh } })).status(), 401);
@@ -171,16 +184,124 @@ try {
     await loginAdmin();
     const offlineRefresh = await page.evaluate(() => localStorage.getItem('refreshToken'));
     await page.route('**/api/auth/logout', route => route.abort('connectionfailed'));
-    await page.getByRole('button', { name: 'Tài khoản quản trị' }).click();
-    await page.getByRole('menuitem', { name: 'Đăng xuất', exact: true }).click();
+    await page.getByRole('button', { name: 'Đăng xuất', exact: true }).click();
     await page.waitForURL('**/internal/login');
     assert(await page.evaluate(() => !localStorage.getItem('accessToken') && !sessionStorage.getItem('accessToken')));
     await page.unroute('**/api/auth/logout');
     await page.request.post(session.baseUrl + 'api/auth/logout', { data: { refreshToken: offlineRefresh } });
     assert.deepEqual(pageErrors, []);
     console.log('PASS admin logout clears local credentials when the server is unreachable');
-    console.log('SUCCESS auth UI: real API/SQL Server flows and responsive layouts passed');
+    await loginAdmin();
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.getByRole('link', { name: 'Tài khoản & Vai trò', exact: true }).click();
+    await page.getByRole('heading', { name: 'Tài khoản & Vai trò' }).waitFor();
+    const selfRow = page.getByRole('row').filter({ hasText: 'testadmin' });
+    await selfRow.waitFor();
+    assert(await selfRow.getByRole('button', { name: 'Đổi vai trò' }).isDisabled());
+    assert(await selfRow.getByRole('button', { name: 'Khóa', exact: true }).isDisabled());
+    await page.getByLabel('Tìm tài khoản').fill(username);
+    await page.getByRole('button', { name: 'Tìm kiếm', exact: true }).click();
+    const targetRow = page.getByRole('row').filter({ hasText: username });
+    await targetRow.waitFor();
+    await targetRow.getByRole('button', { name: 'Đổi vai trò' }).click();
+    await page.getByRole('combobox', { name: 'Vai trò mới' }).click();
+    await page.getByRole('option', { name: 'Bác sĩ', exact: true }).click();
+    await page.getByRole('button', { name: 'Xác nhận', exact: true }).click();
+    await targetRow.getByText('Bác sĩ', { exact: true }).waitFor();
+    await page.screenshot({ path: '.tmp/week34-users-desktop.png', fullPage: true });
+    const doctorContext = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+    const doctorPage = await doctorContext.newPage();
+    doctorPage.on('pageerror', error => pageErrors.push(error.message));
+    async function loginOn(target, name, secret) {
+        await target.goto('http://127.0.0.1:5190/internal/login', { waitUntil: 'domcontentloaded' });
+        await target.getByLabel('Tên đăng nhập', { exact: true }).fill(name);
+        await target.getByLabel('Mật khẩu', { exact: true }).fill(secret);
+        await target.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
+        await target.waitForURL('**/internal/dashboard');
+    }
+    await loginOn(doctorPage, username, password);
+    assert.equal(await doctorPage.getByRole('link', { name: 'Tài khoản & Vai trò', exact: true }).count(), 0);
+    assert.equal(await doctorPage.getByRole('link', { name: 'Kho dược & Vật tư', exact: true }).count(), 0);
+    await doctorPage.getByRole('navigation').getByRole('link', { name: 'Xét nghiệm', exact: true }).waitFor();
+    await doctorPage.goto('http://127.0.0.1:5190/internal/users');
+    await doctorPage.getByRole('heading', { name: 'Không có quyền truy cập' }).waitFor();
+    await doctorPage.evaluate(() => {
+        const user = JSON.parse(sessionStorage.getItem('user')); user.role = 'Admin';
+        sessionStorage.setItem('user', JSON.stringify(user));
+    });
+    await doctorPage.goto('http://127.0.0.1:5190/internal/users');
+    await doctorPage.getByRole('heading', { name: 'Không có quyền truy cập' }).waitFor();
+    assert.equal(await doctorPage.evaluate(() => JSON.parse(sessionStorage.getItem('user')).role), 'Doctor');
+    console.log('PASS admin assigns RoleId through UI; doctor menus/routes and tampered storage are checked against the API');
+
+    await targetRow.getByRole('button', { name: 'Khóa', exact: true }).click();
+    await page.getByRole('button', { name: 'Xác nhận', exact: true }).click();
+    await targetRow.getByText('Đã khóa', { exact: true }).waitFor();
+    await doctorPage.goto('http://127.0.0.1:5190/internal/dashboard');
+    await doctorPage.waitForURL('**/internal/login');
+    assert.equal(await doctorPage.evaluate(() => sessionStorage.getItem('accessToken')), null);
+    await targetRow.getByRole('button', { name: 'Mở khóa', exact: true }).click();
+    await page.getByRole('button', { name: 'Xác nhận', exact: true }).click();
+    await targetRow.getByText('Đang hoạt động', { exact: true }).waitFor();
+    await loginOn(doctorPage, username, password);
+    await doctorPage.getByRole('button', { name: 'Đăng xuất', exact: true }).click();
+    await loginOn(doctorPage, 'testreceptionist', session.password);
+    assert.equal(await doctorPage.getByRole('navigation').getByRole('link').count(), 1);
+    await doctorPage.getByText('Tài khoản lễ tân đã sẵn sàng').waitFor();
+    await doctorPage.goto('http://127.0.0.1:5190/internal/lab-test-types');
+    await doctorPage.getByRole('heading', { name: 'Không có quyền truy cập' }).waitFor();
+    await doctorContext.close();
+    console.log('PASS account lock/unlock via UI invalidates existing session; receptionist access is restricted');
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+    await page.screenshot({ path: '.tmp/week34-users-mobile.png', fullPage: true });
+    await page.getByRole('button', { name: 'Mở menu' }).click();
+    await page.getByRole('navigation').getByRole('link', { name: 'Tài khoản & Vai trò', exact: true }).waitFor();
+    await page.getByRole('navigation').getByRole('link', { name: 'Tổng quan', exact: true }).click();
+    await page.waitForURL('**/internal/dashboard');
+    assert.deepEqual(pageErrors, []);
+    let refreshCalls = 0;
+    await page.route('**/api/auth/refresh', route => { refreshCalls++; return route.continue(); });
+    const concurrentStatuses = await page.evaluate(async () => {
+        const storage = localStorage.getItem('accessToken') ? localStorage : sessionStorage;
+        storage.setItem('accessToken', 'expired-concurrent-test');
+        const { default: api } = await import('/src/api/axiosClient.js');
+        return Promise.all(['/auth/me', '/users', '/roles'].map(path => api.get(path).then(response => response.status)));
+    });
+    assert.deepEqual(concurrentStatuses, [200, 200, 200]);
+    assert.equal(refreshCalls, 1, 'Concurrent API failures share a single refresh');
+    await page.unroute('**/api/auth/refresh');
+    let releaseRefresh;
+    const release = new Promise(resolve => { releaseRefresh = resolve; });
+    let refreshArrived;
+    const arrived = new Promise(resolve => { refreshArrived = resolve; });
+    let rotatedToken;
+    await page.route('**/api/auth/refresh', async route => {
+        const response = await route.fetch();
+        rotatedToken = (await response.json()).result.refreshToken;
+        refreshArrived();
+        await release;
+        await route.fulfill({ response });
+    });
+    await page.evaluate(async () => {
+        const storage = localStorage.getItem('accessToken') ? localStorage : sessionStorage;
+        storage.setItem('accessToken', 'expired-logout-race');
+        const { default: api } = await import('/src/api/axiosClient.js');
+        window.pendingAuthRequest = api.get('/auth/me').catch(() => null);
+    });
+    await Promise.race([arrived, delay(15000).then(() => { throw new Error('Refresh request did not arrive'); })]);
+    await page.getByRole('button', { name: 'Đăng xuất', exact: true }).click();
+    await page.waitForURL('**/internal/login');
+    releaseRefresh();
+    await page.evaluate(() => window.pendingAuthRequest);
+    assert(await page.evaluate(() => !localStorage.getItem('accessToken') && !sessionStorage.getItem('accessToken')));
+    assert.equal((await page.request.post(session.baseUrl + 'api/auth/refresh', { data: { refreshToken: rotatedToken } })).status(), 401);
+    await page.unroute('**/api/auth/refresh');
+    console.log('PASS concurrent refresh is single-flight and late refresh cannot restore a logged-out session');
+    console.log('SUCCESS weeks 3–4 UI: Auth/User/Role, protected routes, responsive internal layout passed');
 } catch (error) {
+    console.error('Last auth requests:', authRequests.slice(-20));
     await page?.screenshot({ path: '.tmp/auth-ui-failure.png', fullPage: true }).catch(() => {});
     throw error;
 } finally {

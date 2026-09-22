@@ -11,6 +11,8 @@ public static class DependencyInjection
         this IServiceCollection services)
     {
         services.AddHttpContextAccessor();
+        services.AddScoped<IUserService, UserService>();
+        services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 
         // =========================

@@ -9,6 +9,7 @@ const initialState = {
     accessToken: session?.accessToken || null,
     user: session?.user || null,
     isAuthenticated: Boolean(session),
+    sessionChecked: !session,
 };
 
 const authSlice = createSlice({
@@ -22,6 +23,7 @@ const authSlice = createSlice({
             state.accessToken = accessToken;
             state.user = user;
             state.isAuthenticated = true;
+            state.sessionChecked = true;
 
         },
 
@@ -29,8 +31,15 @@ const authSlice = createSlice({
             state.accessToken = null;
             state.user = null;
             state.isAuthenticated = false;
+            state.sessionChecked = true;
 
             clearSession();
+        },
+        sessionVerified: (state, action) => {
+            state.user = action.payload;
+            state.sessionChecked = true;
+            const saved = readSession();
+            if (saved) saveSession({ ...saved, user: action.payload });
         },
     },
 });
@@ -38,6 +47,7 @@ const authSlice = createSlice({
 export const {
     setCredentials,
     logout,
+    sessionVerified,
 } = authSlice.actions;
 
 export default authSlice.reducer;

@@ -101,6 +101,13 @@ public sealed class ErrorCode
     public static readonly ErrorCode CATALOG_NOT_FOUND =
         new(2100, "Catalog item not found", HttpStatusCode.NotFound);
 
+    public static readonly ErrorCode SELF_ACCESS_CHANGE =
+        new(2007, "You cannot lock your own account or change your own role", HttpStatusCode.Conflict);
+    public static readonly ErrorCode LAST_ADMIN =
+        new(2008, "At least one active administrator is required", HttpStatusCode.Conflict);
+    public static readonly ErrorCode USER_ACCESS_CONFLICT =
+        new(2009, "Account access changed concurrently. Reload and try again", HttpStatusCode.Conflict);
+
     public static readonly ErrorCode CATALOG_DUPLICATE =
         new(2101, "Catalog code or number already exists", HttpStatusCode.Conflict);
 

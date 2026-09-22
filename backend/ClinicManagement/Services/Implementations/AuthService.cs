@@ -159,7 +159,8 @@ public class AuthService : IAuthService
     public async Task<AuthResponse> RefreshAsync(RefreshTokenRequest request)
     {
         var token = await _refreshTokens.GetByHashAsync(HashToken(request.RefreshToken));
-        if (token == null || token.RevokedAt != null || token.ExpiresAt <= DateTime.UtcNow || !token.User.Status)
+        if (token == null || token.RevokedAt != null || token.ExpiresAt <= DateTime.UtcNow || !token.User.Status
+            || token.SecurityVersion != token.User.SecurityVersion)
             throw new AppException(ErrorCode.UNAUTHENTICATED);
 
         token.RevokedAt = DateTime.UtcNow;
@@ -189,6 +190,7 @@ public class AuthService : IAuthService
         await _refreshTokens.AddAsync(new RefreshToken
         {
             UserId = user.UserId,
+            SecurityVersion = user.SecurityVersion,
             TokenHash = HashToken(refreshToken),
             ExpiresAt = DateTime.UtcNow.AddDays(_settings.RefreshTokenExpirationDays)
         });
@@ -196,7 +198,7 @@ public class AuthService : IAuthService
 
         return new AuthResponse
         {
-            AccessToken = _jwtTokenGenerator.GenerateAccessToken(user.UserId, user.Role.RoleName),
+            AccessToken = _jwtTokenGenerator.GenerateAccessToken(user.UserId, user.Role.RoleName, user.SecurityVersion),
             RefreshToken = refreshToken,
             UserId = user.UserId,
             Username = user.Username,
