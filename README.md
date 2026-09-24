@@ -169,7 +169,16 @@ Cài đặt sẵn các công cụ sau trước khi bắt đầu:
 
 ## Tài khoản mặc định
 
-Sau khi chạy migration, tự tạo tài khoản Admin đầu tiên qua endpoint đăng ký (`POST /api/auth/register`) rồi cập nhật Role thành `Admin` trực tiếp trong bảng `Users`/`Roles`, hoặc bổ sung logic Seed Data trong `ApplicationDbContext` để tự tạo tài khoản Admin mẫu khi khởi tạo CSDL lần đầu.
+Sau khi chạy migration, có thể nạp dữ liệu mẫu bằng một file SQL. Từ thư mục gốc repository, chạy:
+
+```powershell
+dotnet ef database update --project backend/ClinicManagement
+sqlcmd -S "(localdb)\MSSQLLocalDB" -d ClinicManagementDb -E -b -i "backend/ClinicManagement/Data/Seed/clinic-all-tables-demo.sql"
+```
+
+Nếu `sqlcmd` không có trong PATH, dùng đường dẫn đầy đủ tới `SQLCMD.EXE` hoặc mở file SQL trong SSMS, chọn đúng database `ClinicManagementDb` rồi Execute. Nếu dùng SQL Server khác, thay `-S`, `-d` và kiểu xác thực theo connection string trong `appsettings.json`.
+
+File bảo đảm mỗi bảng nghiệp vụ có ít nhất 20 dòng, giữ nguyên dữ liệu đã có và có thể chạy lại. Một số bảng sẽ có tổng số dòng lớn hơn 20 vì migration đã tạo dữ liệu ban đầu. Bốn role thực dùng là Admin, Doctor, Receptionist, Patient; 16 role mẫu còn lại không được phép gán qua API. Nếu tài khoản `admin` đã tồn tại, file dùng lại tài khoản đó. Tài khoản quản trị mẫu: `admin` / `admin123`, đăng nhập tại `/internal/login`. File này chỉ dành cho môi trường phát triển; nếu đã có tài khoản `admin` với mật khẩu khác, chạy file sẽ đặt lại mật khẩu đó thành `admin123`.
 
 ## Thành viên nhóm
 
