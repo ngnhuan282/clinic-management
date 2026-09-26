@@ -11,7 +11,7 @@ import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutli
 import RadioButtonUncheckedOutlinedIcon from "@mui/icons-material/RadioButtonUncheckedOutlined";
 import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
 
-import { getDiseaseLabel } from "./MedicalRecordFormSections";
+import { getDiseaseLabel } from "./diseaseLabel";
 
 function ChecklistItem({ checked, label }) {
     const Icon = checked

@@ -2,6 +2,7 @@ using ClinicManagement.Data;
 using ClinicManagement.Data.Entities;
 using ClinicManagement.DTOs.Requests;
 using ClinicManagement.DTOs.Responses;
+using ClinicManagement.Exceptions;
 using ClinicManagement.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,18 +14,24 @@ public class DoctorScheduleService(ApplicationDbContext context) : IDoctorSchedu
 
     public async Task<DoctorScheduleResponse> CreateScheduleAsync(CreateDoctorScheduleRequest request)
     {
-        if (request.SlotDurationMinutes is not (15 or 20 or 30))
-            throw new ArgumentException("Slot duration must be 15, 20, or 30 minutes.");
-        if (request.MaxCapacity < 1)
-            throw new ArgumentException("Max capacity must be at least 1.");
+        if (request.DoctorId <= 0 || request.RoomId <= 0 || request.WorkDate == default
+            || !Enum.IsDefined(request.Shift) || request.SlotDurationMinutes is not (15 or 20 or 30)
+            || request.MaxCapacity < 1)
+            throw new AppException(ErrorCode.INVALID_REQUEST);
         if (!TimeSpan.TryParse(request.StartTime, out var start) ||
-            !TimeSpan.TryParse(request.EndTime, out var end) || start >= end)
-            throw new ArgumentException("StartTime and EndTime must be valid and StartTime must be before EndTime.");
+            !TimeSpan.TryParse(request.EndTime, out var end) || start < TimeSpan.Zero
+            || start >= end || end > TimeSpan.FromDays(1))
+            throw new AppException(ErrorCode.INVALID_REQUEST);
 
         var doctorExists = await _context.Doctors.AnyAsync(x => x.DoctorId == request.DoctorId && x.IsActive);
         var roomExists = await _context.Rooms.AnyAsync(x => x.RoomId == request.RoomId && x.IsActive);
         if (!doctorExists || !roomExists)
-            throw new ArgumentException("The selected doctor or room is not active.");
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+
+        var overlaps = await _context.DoctorSchedules.AnyAsync(x => x.WorkDate == request.WorkDate && x.IsActive
+            && (x.DoctorId == request.DoctorId || x.RoomId == request.RoomId)
+            && x.TimeSlots.Any(slot => slot.StartTime < end && slot.EndTime > start));
+        if (overlaps) throw new AppException(ErrorCode.DOCTOR_SCHEDULE_CONFLICT);
 
         var slots = new List<TimeSlot>();
         for (var cursor = start; cursor.Add(TimeSpan.FromMinutes(request.SlotDurationMinutes)) <= end;
@@ -38,7 +45,7 @@ public class DoctorScheduleService(ApplicationDbContext context) : IDoctorSchedu
             });
         }
         if (slots.Count == 0)
-            throw new ArgumentException("The selected range must contain at least one complete slot.");
+            throw new AppException(ErrorCode.INVALID_REQUEST);
 
         var schedule = new DoctorSchedule
         {

@@ -7,7 +7,7 @@
 - Không cho tự khóa hoặc tự đổi vai trò; giữ ít nhất một Admin hoạt động. Cập nhật quyền và thu hồi refresh token nằm trong transaction, có kiểm soát cập nhật đồng thời.
 - JWT chứa `securityVersion`; mỗi request được kiểm tra trạng thái, phiên bản và vai trò hiện tại trong database. Khóa/mở khóa/đổi RoleId tăng phiên bản và thu hồi mọi refresh token của tài khoản. JWT cũ không có hiệu lực trở lại khi mở khóa hoặc đổi về vai trò cũ.
 - `GET /api/auth/me` trả thông tin tài khoản hiện tại. Frontend xác minh phiên lưu trước khi dựng route; tự refresh khi 401 và dùng chung một yêu cầu refresh cho các request đồng thời. Kết quả refresh đến muộn không khôi phục phiên đã đăng xuất.
-- `InternalLayout` dùng chung cho Admin, Doctor, Receptionist; menu và route kiểm tra vai trò. Menu thu gọn trên điện thoại. Doctor chỉ xem danh mục xét nghiệm; Receptionist có trang tổng quan nền. Các nghiệp vụ tiếp nhận, khám bệnh không thuộc A3/A4.
+- `InternalLayout` dùng chung cho Admin, Doctor, Receptionist và LabTechnician; menu và route kiểm tra vai trò. Menu thu gọn trên điện thoại. Doctor có trang chỉ định xét nghiệm; Receptionist quản lý lịch hẹn; LabTechnician xử lý hàng chờ xét nghiệm.
 - Bỏ endpoint thử nghiệm cấp JWT và ghi Role không cần xác thực.
 
 ## API
@@ -27,7 +27,7 @@ Response thành công của các API đọc/cập nhật được bọc trong `A
 | `PATCH /api/users/{id}/role` | Admin; body `{ "roleId": 2 }`; ID phải có trong Roles |
 | `GET /api/roles` | Admin; danh sách vai trò có sẵn |
 
-Policy `InternalAccess` yêu cầu Admin/Doctor/Receptionist. Các controller nghiệp vụ hiện có tiếp tục dùng `[Authorize(Roles = RoleConstants...)]`. Chưa đăng nhập nhận 401; sai vai trò nhận 403. Thiếu trường cập nhật nhận 400, tài khoản/vai trò không tồn tại nhận 404, tự đổi quyền hoặc xung đột nhận 409.
+Policy `InternalAccess` yêu cầu Admin/Doctor/Receptionist/LabTechnician. Các controller nghiệp vụ hiện có tiếp tục dùng `[Authorize(Roles = RoleConstants...)]`. Chưa đăng nhập nhận 401; sai vai trò nhận 403. Thiếu trường cập nhật nhận 400, tài khoản/vai trò không tồn tại nhận 404, tự đổi quyền hoặc xung đột nhận 409.
 
 ## SignalR nền
 
@@ -74,7 +74,7 @@ npm run lint
 npm run build
 ```
 
-Bộ tích hợp hiện chạy cả tuần 2–4: 146 kiểm tra trên SQL Server LocalDB, database ngẫu nhiên riêng và được dọn sau khi chạy. Bao gồm ma trận 401/403, DTO không lộ thông tin nhạy cảm, phân trang/tìm kiếm, bảo vệ tài khoản Admin, khóa/mở khóa, đổi vai trò, thu hồi token, refresh đồng thời, CORS, SignalR negotiate, WebSocket thật và đóng kết nối khi khóa. EF xác nhận không còn thay đổi model ngoài migration. Sáu kiểm tra lưu phiên frontend đạt.
+Bộ tích hợp hiện chạy cả tuần 2–4: 199 kiểm tra trên SQL Server LocalDB, database ngẫu nhiên riêng và được dọn sau khi chạy. Bao gồm ma trận 401/403, DTO không lộ thông tin nhạy cảm, phân trang/tìm kiếm, bảo vệ tài khoản Admin, khóa/mở khóa, đổi vai trò, thu hồi token, refresh đồng thời, CORS, SignalR negotiate, WebSocket thật, lịch bác sĩ, xử lý lịch hẹn, hồ sơ khám và xét nghiệm. EF xác nhận không còn thay đổi model ngoài migration. Sáu kiểm tra lưu phiên frontend đạt.
 
 Kiểm thử trình duyệt trong `tests/auth-ui.mjs` dùng API và SQL Server thật. Yêu cầu Playwright và Edge; đặt `PLAYWRIGHT_MODULE` theo hướng dẫn [AUTH-TESTING](../tests/AUTH-TESTING.md) nếu module nằm ngoài dự án. Script kiểm tra đăng ký/đăng nhập/refresh/logout, quản lý User/Role, Doctor/Receptionist, chống dùng vai trò giả trong storage, refresh đồng thời, đăng xuất khi refresh chưa hoàn tất và giao diện desktop/mobile. Ảnh kiểm tra lưu trong `.tmp/`.
 

@@ -156,12 +156,12 @@ public class AuthService : IAuthService
         return await IssueTokensAsync(user);
     }
 
-    public async Task<AuthResponse> RefreshAsync(RefreshTokenRequest request)
+    public async Task<AuthResponse?> RefreshAsync(RefreshTokenRequest request)
     {
         var token = await _refreshTokens.GetByHashAsync(HashToken(request.RefreshToken));
         if (token == null || token.RevokedAt != null || token.ExpiresAt <= DateTime.UtcNow || !token.User.Status
             || token.SecurityVersion != token.User.SecurityVersion)
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
+            return null;
 
         token.RevokedAt = DateTime.UtcNow;
         try
@@ -171,7 +171,7 @@ public class AuthService : IAuthService
         }
         catch (DbUpdateConcurrencyException)
         {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
+            return null;
         }
     }
 

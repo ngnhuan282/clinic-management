@@ -280,7 +280,8 @@ function useMedicalRecordForm({
     }, [appointmentId, initialAppointment]);
 
     useEffect(() => {
-        loadData();
+        const timer = setTimeout(() => { void loadData(); }, 0);
+        return () => clearTimeout(timer);
     }, [loadData]);
 
     const updateField = (field, value) => {

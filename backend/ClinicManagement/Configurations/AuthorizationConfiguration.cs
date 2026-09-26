@@ -11,7 +11,7 @@ public static class AuthorizationConfiguration
             options.AddPolicy(PolicyConstants.ManageUsers, policy =>
                 policy.RequireAuthenticatedUser().RequireRole(RoleConstants.Admin));
             options.AddPolicy(PolicyConstants.InternalAccess, policy =>
-                policy.RequireAuthenticatedUser().RequireRole(RoleConstants.Admin, RoleConstants.Doctor, RoleConstants.Receptionist));
+                policy.RequireAuthenticatedUser().RequireRole(RoleConstants.Admin, RoleConstants.Doctor, RoleConstants.Receptionist, RoleConstants.LabTechnician));
         });
         return services;
     }

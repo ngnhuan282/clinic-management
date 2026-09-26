@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -50,7 +50,8 @@ export default function DoctorLabOrdersPage() {
   };
 
   useEffect(() => {
-    fetchOrders();
+    const timer = setTimeout(() => { void fetchOrders(); }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const handleSubmit = async (e) => {
@@ -73,7 +74,7 @@ export default function DoctorLabOrdersPage() {
       setLabTestTypeId('');
       setClinicalDiagnosis('');
       fetchOrders();
-    } catch (err) {
+    } catch {
       setToast({
         open: true,
         message: 'Lỗi khi tạo chỉ định xét nghiệm!',

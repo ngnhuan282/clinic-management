@@ -6,6 +6,7 @@ import ProtectedRoute from "./ProtectedRoute";
 import { INTERNAL_ROLES } from "./roleAccess";
 import HomePage from "../pages/patient/HomePage";
 import BookingPage from "../pages/patient/BookingPage";
+import LabResultsPage from "../pages/patient/LabResultsPage";
 import InventoryPage from "../pages/internal/admin/InventoryPage";
 import MedicineCategoriesPage from "../pages/internal/admin/MedicineCategoriesPage";
 import MedicinesPage from "../pages/internal/admin/MedicinesPage";
@@ -34,6 +35,7 @@ export default function AppRoutes() {
             <Route path="/patient-portal" element={<Navigate to="/login" replace />} />
             <Route element={<ProtectedRoute allowedRoles={["Patient"]} />}>
                 <Route path="/booking" element={<BookingPage />} />
+                <Route path="/lab-results" element={<LabResultsPage />} />
             </Route>
             <Route path="/unauthorized" element={<Box sx={{ py: 8, px: 3, textAlign: "center" }}>
                 <Typography variant="h3" component="h1">Không có quyền truy cập</Typography>
@@ -62,16 +64,12 @@ export default function AppRoutes() {
                 <Route element={<ProtectedRoute allowedRoles={["Admin", "Doctor"]} />}>
                     <Route path="diseases" element={<DiseasesPage />} />
                     <Route path="lab-test-types" element={<LabTestTypesPage />} />
-                    <Route path="doctor/lab-orders" element={<DoctorLabOrdersPage />} />
                 </Route>
-             {/* Admin & Technician */}
-                     <Route element={<ProtectedRoute allowedRoles={["Admin", "Technician"]} />}>
-                            <Route path="technician/lab-queue" element={<TechnicianLabQueuePage />} />
-                        </Route>
-
-
-
+                <Route element={<ProtectedRoute allowedRoles={["LabTechnician"]} />}>
+                    <Route path="technician/lab-queue" element={<TechnicianLabQueuePage />} />
+                </Route>
                 <Route element={<ProtectedRoute allowedRoles={["Doctor"]} />}>
+                    <Route path="doctor/lab-orders" element={<DoctorLabOrdersPage />} />
                     <Route path="examinations" element={<DoctorAppointmentsPage />} />
                     <Route path="examinations/:appointmentId/record" element={<MedicalRecordDetailPage />} />
                     <Route path="examinations/:appointmentId" element={<MedicalRecordPage />} />

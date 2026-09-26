@@ -110,7 +110,9 @@ namespace ClinicManagement
                 app.UseSwaggerUI();
             }
 
-            app.UseHttpsRedirection();
+            // The local HTTP profile has no HTTPS listener to redirect to.
+            if (!app.Environment.IsDevelopment())
+                app.UseHttpsRedirection();
 
             // =========================
             // CORS

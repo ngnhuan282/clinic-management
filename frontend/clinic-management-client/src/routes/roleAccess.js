@@ -2,6 +2,7 @@ export const INTERNAL_ROLES = [
     "Admin",
     "Doctor",
     "Receptionist",
+    "LabTechnician",
 ];
 
 export const ROLE_LABELS = {
@@ -9,6 +10,7 @@ export const ROLE_LABELS = {
     Doctor: "Bác sĩ",
     Receptionist: "Lễ tân",
     Patient: "Bệnh nhân",
+    LabTechnician: "Kỹ thuật viên xét nghiệm",
 };
 
 export const INTERNAL_PAGES = [
@@ -21,15 +23,19 @@ export const INTERNAL_PAGES = [
     { label: "Lịch bác sĩ", path: "/internal/doctor-schedules", roles: ["Admin"] },
     { label: "Kho dược & Vật tư", path: "/internal/medicines", roles: ["Admin"] },
     { label: "Xét nghiệm", path: "/internal/lab-test-types", roles: ["Admin", "Doctor"] },
+    { label: "Chỉ định xét nghiệm", path: "/internal/doctor/lab-orders", roles: ["Doctor"] },
+    { label: "Hàng chờ xét nghiệm", path: "/internal/technician/lab-queue", roles: ["LabTechnician"] },
 ];
 
 export const homeForRole = (role) =>
-    INTERNAL_ROLES.includes(role)
+    role === "LabTechnician"
+        ? "/internal/technician/lab-queue"
+        : INTERNAL_ROLES.includes(role)
         ? "/internal/dashboard"
         : "/booking";
 
 export function canAccessPath(role, path) {
-    if (path === "/booking") {
+    if (path === "/booking" || path === "/lab-results") {
         return role === "Patient";
     }
 

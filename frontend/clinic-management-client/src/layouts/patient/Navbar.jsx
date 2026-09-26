@@ -397,6 +397,9 @@ function Navbar() {
                 <MenuItem onClick={() => { setAccountAnchor(null); setMobileOpen(false); navigate(role === "Patient" ? "/booking" : "/internal/dashboard"); }}>
                     {role === "Patient" ? "Đặt lịch khám" : "Trang quản lý"}
                 </MenuItem>
+                {role === "Patient" && <MenuItem onClick={() => { setAccountAnchor(null); setMobileOpen(false); navigate("/lab-results"); }}>
+                    Kết quả xét nghiệm
+                </MenuItem>}
                 <MenuItem onClick={handleLogout}>Đăng xuất</MenuItem>
             </Menu>
         </>

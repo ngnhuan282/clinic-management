@@ -64,5 +64,5 @@ public class UserService(IUserRepository users, IRoleRepository roles, ICurrentU
 
     private static bool IsSupportedRole(string name) =>
         name is RoleConstants.Admin or RoleConstants.Doctor
-            or RoleConstants.Receptionist or RoleConstants.Patient;
+            or RoleConstants.Receptionist or RoleConstants.Patient or RoleConstants.LabTechnician;
 }

@@ -70,7 +70,8 @@ function useDiseases() {
     }, [requestParams]);
 
     useEffect(() => {
-        loadDiseases();
+        const timer = setTimeout(() => { void loadDiseases(); }, 0);
+        return () => clearTimeout(timer);
     }, [loadDiseases]);
 
     const updateFilters = useCallback((nextFilters) => {

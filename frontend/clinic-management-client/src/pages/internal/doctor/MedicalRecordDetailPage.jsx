@@ -111,7 +111,8 @@ function MedicalRecordDetailPage() {
     }, [appointmentId, initialAppointment]);
 
     useEffect(() => {
-        loadRecord();
+        const timer = setTimeout(() => { void loadRecord(); }, 0);
+        return () => clearTimeout(timer);
     }, [loadRecord]);
 
     if (loading && !record) {

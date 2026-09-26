@@ -21,14 +21,7 @@ import MedicalInformationOutlinedIcon from "@mui/icons-material/MedicalInformati
 import { useState } from "react";
 
 import DiseaseFormDialog from "../diseases/DiseaseFormDialog";
-
-export function getDiseaseLabel(option) {
-    if (!option) {
-        return "";
-    }
-
-    return `${option.diseaseCode} - ${option.diseaseName}`;
-}
+import { getDiseaseLabel } from "./diseaseLabel";
 
 function SectionHeader({ icon, title, subtitle, sx = {} }) {
     const Icon = icon;

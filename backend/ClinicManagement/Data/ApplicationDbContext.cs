@@ -102,6 +102,12 @@ public class ApplicationDbContext : DbContext
                     RoleId = 4,
                     RoleName = "Patient",
                     Description = "Patient"
+                },
+                new Role
+                {
+                    RoleId = 5,
+                    RoleName = "LabTechnician",
+                    Description = "Lab technician"
                 }
             );
         });

@@ -1,6 +1,6 @@
 # Hệ thống Quản lý Phòng khám Đa khoa
 
-Ứng dụng quản lý phòng khám đa khoa: đặt lịch khám, khám bệnh, kê đơn thuốc, quản lý kho thuốc, xét nghiệm, hóa đơn – thanh toán và báo cáo thống kê. Hệ thống phục vụ 4 vai trò người dùng (Admin, Bác sĩ, Lễ tân, Bệnh nhân) qua hai giao diện: **Patient Portal** (công khai, dành cho bệnh nhân) và **Internal Portal** (dashboard nội bộ cho Admin/Bác sĩ/Lễ tân).
+Ứng dụng quản lý phòng khám đa khoa: đặt lịch khám, khám bệnh, kê đơn thuốc, quản lý kho thuốc, xét nghiệm, hóa đơn – thanh toán và báo cáo thống kê. Hệ thống phục vụ 5 vai trò người dùng (Admin, Bác sĩ, Lễ tân, Bệnh nhân, Kỹ thuật viên xét nghiệm) qua hai giao diện: **Patient Portal** (công khai, dành cho bệnh nhân) và **Internal Portal** (dashboard nội bộ cho Admin/Bác sĩ/Lễ tân/Kỹ thuật viên xét nghiệm).
 
 > Đồ án môn học Lập trình .NET.
 
@@ -178,7 +178,11 @@ sqlcmd -S "(localdb)\MSSQLLocalDB" -d ClinicManagementDb -E -b -i "backend/Clini
 
 Nếu `sqlcmd` không có trong PATH, dùng đường dẫn đầy đủ tới `SQLCMD.EXE` hoặc mở file SQL trong SSMS, chọn đúng database `ClinicManagementDb` rồi Execute. Nếu dùng SQL Server khác, thay `-S`, `-d` và kiểu xác thực theo connection string trong `appsettings.json`.
 
-File bảo đảm mỗi bảng nghiệp vụ có ít nhất 20 dòng, giữ nguyên dữ liệu đã có và có thể chạy lại. Một số bảng sẽ có tổng số dòng lớn hơn 20 vì migration đã tạo dữ liệu ban đầu. Bốn role thực dùng là Admin, Doctor, Receptionist, Patient; 16 role mẫu còn lại không được phép gán qua API. Nếu tài khoản `admin` đã tồn tại, file dùng lại tài khoản đó. Tài khoản quản trị mẫu: `admin` / `admin123`, đăng nhập tại `/internal/login`. File này chỉ dành cho môi trường phát triển; nếu đã có tài khoản `admin` với mật khẩu khác, chạy file sẽ đặt lại mật khẩu đó thành `admin123`.
+**Lưu ý:** File này xóa toàn bộ dữ liệu ứng dụng hiện có rồi nạp lại dữ liệu mẫu trong một giao dịch; chỉ chạy trên database phát triển khi đã sao lưu dữ liệu cần giữ. Lịch sử migration được giữ nguyên. Chạy lại file sẽ tạo lại cùng bộ dữ liệu. Hai mươi bảng ứng dụng đều có khoảng 20 dòng: 24 lịch hẹn và 25 chỉ định xét nghiệm để có cả hồ sơ đã khám, hàng đợi tiếp đón và xét nghiệm đang chờ; các bảng khác có 20 dòng. Năm role sử dụng là Admin, Doctor, Receptionist, Patient, LabTechnician; 15 role mẫu còn lại không được phép gán qua API.
+
+Tài khoản quản trị: `admin` / `admin123`, đăng nhập tại `/internal/login`. Các tài khoản mẫu `demo_doctor`, `demo_reception`, `demo_labtech`, `demo_patient04` cũng dùng mật khẩu `admin123` để thử từng vai trò. Mật khẩu mẫu chỉ dành cho môi trường phát triển.
+
+Sau mỗi lần chạy lại file seed, hãy đăng nhập lại: access token và refresh token của phiên cũ đều bị vô hiệu hóa.
 
 ## Thành viên nhóm
 

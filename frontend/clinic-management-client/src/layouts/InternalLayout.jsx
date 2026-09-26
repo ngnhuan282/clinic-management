@@ -58,6 +58,8 @@ const MENU_ICONS = {
     "/internal/rooms": FolderSharedOutlinedIcon,
     "/internal/medicines": LocalPharmacyOutlinedIcon,
     "/internal/lab-test-types": ScienceOutlinedIcon,
+    "/internal/doctor/lab-orders": ScienceOutlinedIcon,
+    "/internal/technician/lab-queue": ScienceOutlinedIcon,
     "/internal/invoices": PaymentsOutlinedIcon,
     "/internal/reports": BarChartOutlinedIcon,
     "/internal/settings": SettingsOutlinedIcon,
@@ -75,6 +77,10 @@ const ROLE_BRANDS = {
     Receptionist: {
         title: "MediFlow Desk",
         subtitle: "Tiếp nhận & Thu ngân",
+    },
+    LabTechnician: {
+        title: "MediFlow Lab",
+        subtitle: "Xét nghiệm",
     },
 };
 
@@ -124,14 +130,12 @@ function InternalLayout() {
         }
     }
 
-    const primaryActionPath =
-        role === "Doctor"
-            ? "/internal/examinations"
-            : "/internal/dashboard";
-    const primaryActionLabel =
-        role === "Doctor"
-            ? "Gọi lượt kế tiếp"
-            : "Tiếp đón & Đặt hẹn mới";
+    const primaryActionPath = role === "LabTechnician"
+        ? "/internal/technician/lab-queue"
+        : role === "Doctor" ? "/internal/examinations" : "/internal/dashboard";
+    const primaryActionLabel = role === "LabTechnician"
+        ? "Xem hàng chờ xét nghiệm"
+        : role === "Doctor" ? "Gọi lượt kế tiếp" : "Tiếp đón & Đặt hẹn mới";
 
     const navigation = (
         <Stack sx={{ height: "100%" }}>

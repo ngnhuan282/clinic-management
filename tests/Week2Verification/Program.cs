@@ -8,7 +8,11 @@ using ClinicManagement.Data;
 using ClinicManagement.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
-var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
+var rootDirectory = new DirectoryInfo(AppContext.BaseDirectory);
+while (rootDirectory != null && !File.Exists(Path.Combine(rootDirectory.FullName,
+           "backend", "ClinicManagement", "ClinicManagement.csproj")))
+    rootDirectory = rootDirectory.Parent;
+var root = rootDirectory?.FullName ?? throw new DirectoryNotFoundException("Repository root not found");
 var database = "ClinicWeek2Test_" + Guid.NewGuid().ToString("N");
 var connection = $"Server=(localdb)\\MSSQLLocalDB;Database={database};Trusted_Connection=True;TrustServerCertificate=True";
 var options = new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlServer(connection).Options;
@@ -44,12 +48,12 @@ try
     Check(await db.Departments.CountAsync() == 3 && await db.Rooms.CountAsync() == 3 && await db.Specializations.CountAsync() == 3, "Catalog master data seeded");
     await db.Database.ExecuteSqlRawAsync(await File.ReadAllTextAsync(Path.Combine(root, "backend/ClinicManagement/Data/Seed/pharmacy-demo-data.sql")));
     Check(await db.Medicines.AnyAsync() && await db.Inventory.AnyAsync(), "Pharmacy demo seed works");
-    foreach (var (name, role) in new[] { ("testadmin", 1), ("testdoctor", 2), ("testreceptionist", 3) })
+    foreach (var (name, role) in new[] { ("testadmin", 1), ("testdoctor", 2), ("testreceptionist", 3), ("testlab", 5) })
         db.Users.Add(new User { Username = name, FullName = name, PasswordHash = BCrypt.Net.BCrypt.HashPassword(password), RoleId = role, CreatedAt = DateTime.UtcNow });
     await db.SaveChangesAsync();
 
     var start = new ProcessStartInfo("dotnet") { WorkingDirectory = Path.Combine(root, "backend/ClinicManagement"), UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
-    start.ArgumentList.Add(Path.Combine(root, "backend/ClinicManagement/bin/Debug/net8.0/ClinicManagement.dll"));
+    start.ArgumentList.Add(Path.Combine(AppContext.BaseDirectory, "ClinicManagement.dll"));
     start.Environment["ASPNETCORE_URLS"] = client.BaseAddress.ToString().TrimEnd('/');
     start.Environment["ASPNETCORE_ENVIRONMENT"] = "Development";
     start.Environment["ConnectionStrings__DefaultConnection"] = connection;
@@ -157,9 +161,15 @@ try
     var date = DateTime.Today.AddDays(2);
     while (date.DayOfWeek == DayOfWeek.Sunday) date = date.AddDays(1);
     var dateText = date.ToString("yyyy-MM-dd");
+    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", admin["accessToken"]!.GetValue<string>());
+    await Send(HttpMethod.Post, "api/doctor-schedules", new { doctorId = 1, roomId = 1, workDate = dateText, shift = 0, startTime = "08:00", endTime = "12:00", slotDurationMinutes = 30, maxCapacity = 1 });
+    await Send(HttpMethod.Post, "api/doctor-schedules", new { doctorId = 1, roomId = 1, workDate = dateText, shift = 1, startTime = "13:00", endTime = "15:30", slotDurationMinutes = 30, maxCapacity = 1 });
+    await Send(HttpMethod.Post, "api/doctor-schedules", new { doctorId = 1, roomId = 2, workDate = dateText, shift = 0, startTime = "09:00", endTime = "10:00", slotDurationMinutes = 30, maxCapacity = 1 }, 409);
+    await Send(HttpMethod.Post, "api/doctor-schedules", new { doctorId = 1, roomId = 2, workDate = dateText, shift = 0, startTime = "17:00", endTime = "16:00", slotDurationMinutes = 30, maxCapacity = 1 }, 400);
+    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", patient["accessToken"]!.GetValue<string>());
     var slots = (await Send(HttpMethod.Get, $"api/appointments/available-slots?doctorId=1&date={dateText}"))!["result"]!.AsArray();
-    Check(slots.Count == 13, "Availability comes from seeded working shifts");
-    var schedule = await db.DoctorSchedules.FirstAsync(x => x.DoctorId == 1 && x.DayOfWeek == date.DayOfWeek);
+    Check(slots.Count == 13, "Availability comes from created working shifts");
+    var schedule = await db.DoctorSchedules.FirstAsync(x => x.DoctorId == 1 && x.WorkDate == DateOnly.FromDateTime(date) && x.Shift == Shift.Morning);
     schedule.IsActive = false; await db.SaveChangesAsync();
     var reducedSlots = (await Send(HttpMethod.Get, $"api/appointments/available-slots?doctorId=1&date={dateText}"))!["result"]!.AsArray();
     Check(reducedSlots.Count < slots.Count, "Changing database schedule changes available slots");
@@ -173,42 +183,162 @@ try
     var booked = (await Send(HttpMethod.Get, $"api/appointments/available-slots?doctorId=1&date={dateText}"))!["result"]!.AsArray();
     Check(!booked.First(x => x!["startTime"]!.GetValue<string>() == "08:00:00")!["isAvailable"]!.GetValue<bool>(), "Booked slot is unavailable");
     var appointment = await db.Appointments.SingleAsync(); appointment.Status = "Cancelled"; await db.SaveChangesAsync();
-    await Send(HttpMethod.Post, "api/appointments", body);
+    var rebooked = (await Send(HttpMethod.Post, "api/appointments", body))!["result"]!;
     await Send(HttpMethod.Post, "api/appointments", new { doctorId = 1, appointmentDate = dateText, startTime = "12:00:00", patientName = "Test", patientPhone = "0901234567", reason = "Invalid shift" }, 400);
     await Send(HttpMethod.Get, "api/appointments/available-slots?doctorId=1&date=2000-01-01", status: 400);
+
+    var rebookedId = rebooked["appointmentId"]!.GetValue<int>();
+    await Send(HttpMethod.Patch, $"api/appointments/{rebookedId}/confirm", status: 403);
+    var receptionist = (await Send(HttpMethod.Post, "api/auth/login", new { username = "testreceptionist", password }))!["result"]!;
+    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", receptionist["accessToken"]!.GetValue<string>());
+    var confirmed = (await Send(HttpMethod.Patch, $"api/appointments/{rebookedId}/confirm"))!["result"]!;
+    Check(confirmed["status"]!.GetValue<string>() == "Confirmed", "Receptionist confirms a pending appointment");
+    await Send(HttpMethod.Patch, $"api/appointments/{rebookedId}/confirm", status: 400);
+    var rescheduled = (await Send(HttpMethod.Patch, $"api/appointments/{rebookedId}/reschedule", new { doctorId = 1, appointmentDate = dateText, startTime = "08:30:00" }))!["result"]!;
+    Check(rescheduled["startTime"]!.GetValue<string>().StartsWith("08:30"), "Receptionist reschedules to an available slot");
+    var cancelled = (await Send(HttpMethod.Patch, $"api/appointments/{rebookedId}/cancel"))!["result"]!;
+    Check(cancelled["status"]!.GetValue<string>() == "Cancelled", "Receptionist cancels an appointment");
+
+    db.Appointments.Add(new Appointment { DoctorId = 1, PatientId = savedPatient.UserId,
+        PatientName = "Examination test", PatientPhone = "0901234567", AppointmentDate = DateTime.Today,
+        StartTime = new TimeSpan(16, 0, 0), EndTime = new TimeSpan(16, 30, 0),
+        Reason = "Examination", Status = "InProgress", CreatedAt = DateTime.UtcNow });
+    await db.SaveChangesAsync();
+    var examinationId = await db.Appointments.Where(x => x.PatientName == "Examination test").Select(x => x.AppointmentId).SingleAsync();
+    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", doctor["accessToken"]!.GetValue<string>());
+    var disease = (await Send(HttpMethod.Post, "api/diseases", new { diseaseCode = "QA-D3", diseaseName = "Test diagnosis" }, 201))!["result"]!;
+    var diseaseId = disease["diseaseId"]!.GetValue<int>();
+    var recordRequest = new { appointmentId = examinationId, symptoms = "Fever", conclusion = "Observation", markCompleted = true,
+        diagnoses = new[] { new { diseaseId, isPrimary = true } } };
+    var record = (await Send(HttpMethod.Post, "api/medical-records", recordRequest, 201))!["result"]!;
+    var recordId = record["medicalRecordId"]!.GetValue<int>();
+    await Send(HttpMethod.Get, $"api/medical-records/by-appointment/{examinationId}");
+    await Send(HttpMethod.Post, "api/medical-records", recordRequest, 409);
+    await Send(HttpMethod.Put, $"api/medical-records/{recordId}", new { symptoms = "Improving", conclusion = "Stable", markCompleted = true,
+        diagnoses = new[] { new { diseaseId, isPrimary = true } } });
+    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", patient["accessToken"]!.GetValue<string>());
+    await Send(HttpMethod.Get, $"api/medical-records/{recordId}", status: 403);
+
+    var secondPatient = (await Send(HttpMethod.Post, "api/auth/register", new { username = "otherpatient", password, fullName = "Other patient" }))!["result"]!;
+    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", admin["accessToken"]!.GetValue<string>());
+    var testType = (await Send(HttpMethod.Post, "api/LabTestTypes", new { name = "Week3 blood test", price = 50000m }, 201))!;
+    var testTypeId = testType["id"]!.GetValue<int>();
+    await Send(HttpMethod.Post, "api/LabTests", new { patientId = savedPatient.UserId, labTestTypeId = testTypeId }, 403);
+    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", doctor["accessToken"]!.GetValue<string>());
+    await Send(HttpMethod.Post, "api/LabTests", new { patientId = 2147483647, labTestTypeId = testTypeId }, 404);
+    var labOrder = (await Send(HttpMethod.Post, "api/LabTests", new { patientId = savedPatient.UserId, labTestTypeId = testTypeId, clinicalDiagnosis = "Check blood" }))!;
+    var labOrderId = labOrder["id"]!.GetValue<int>();
+    Check(labOrder["doctorId"]!.GetValue<int>() == (await db.Users.SingleAsync(x => x.Username == "testdoctor")).UserId,
+        "Lab order records the authenticated doctor");
+    await Send(HttpMethod.Post, "api/LabTests/results", new { labTestId = labOrderId, resultSummary = "Normal" }, 403);
+    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", secondPatient["accessToken"]!.GetValue<string>());
+    Check((await Send(HttpMethod.Get, "api/LabTests"))!.AsArray().Count == 0, "Other patient cannot list lab orders");
+    await Send(HttpMethod.Get, $"api/LabTests/{labOrderId}", status: 404);
+    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", patient["accessToken"]!.GetValue<string>());
+    Check((await Send(HttpMethod.Get, "api/LabTests"))!.AsArray().Count == 1, "Patient sees only own lab orders");
+    var labTechnician = (await Send(HttpMethod.Post, "api/auth/login", new { username = "testlab", password }))!["result"]!;
+    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", labTechnician["accessToken"]!.GetValue<string>());
+    Check((await Send(HttpMethod.Get, "api/LabTests/pending"))!.AsArray().Count == 1, "Lab technician sees pending tests");
+    await Send(HttpMethod.Post, "api/LabTests/results", new { labTestId = labOrderId, resultSummary = "Normal" });
+    await Send(HttpMethod.Post, "api/LabTests/results", new { labTestId = labOrderId, resultSummary = "Duplicate" }, 409);
+    Check((await Send(HttpMethod.Get, "api/LabTests/pending"))!.AsArray().Count == 0, "Completed test leaves pending queue");
+    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", patient["accessToken"]!.GetValue<string>());
+    Check((await Send(HttpMethod.Get, $"api/LabTests/{labOrderId}"))!["result"]!["resultSummary"]!.GetValue<string>() == "Normal",
+        "Patient can read their own completed lab result");
     await Week34Checks.RunAsync(client, db, password, Check);
     var allTablesSeed = await File.ReadAllTextAsync(
         Path.Combine(root, "backend/ClinicManagement/Data/Seed/clinic-all-tables-demo.sql"));
     await db.Database.ExecuteSqlRawAsync(allTablesSeed);
+    var firstSeedVersion = await db.Users.AsNoTracking().Where(x => x.Username == "admin")
+        .Select(x => x.SecurityVersion).SingleAsync();
+    client.DefaultRequestHeaders.Authorization = null;
+    var firstSeedAdmin = (await Send(HttpMethod.Post, "api/auth/login",
+        new { username = "admin", password = "admin123" }))!["result"]!;
+    await db.Database.ExecuteSqlRawAsync(
+        "INSERT INTO dbo.MedicineCategories (CategoryName) VALUES ('seed-should-delete-me')");
+    Check(await db.MedicineCategories.AsNoTracking()
+        .Where(x => x.CategoryName == "seed-should-delete-me")
+        .Select(x => x.CategoryId).SingleAsync() == 1021,
+        "Reset seed restarts generated IDs after the sample rows");
     await db.Database.ExecuteSqlRawAsync(allTablesSeed);
-    Check(await db.Roles.CountAsync() == 20, "Demo seed retains four functional roles and adds 16 reserved roles");
-    Check(await db.Users.CountAsync(x => x.UserId >= 1001 && x.UserId <= 1020) == 20
-        && await db.RefreshTokens.CountAsync(x => x.RefreshTokenId >= 1001 && x.RefreshTokenId <= 1020) == 20,
-        "Demo seed creates 20 users and revoked refresh token records");
-    Check(await db.Departments.CountAsync(x => x.DepartmentId >= 1001 && x.DepartmentId <= 1020) == 20
-        && await db.Specializations.CountAsync(x => x.SpecializationId >= 1001 && x.SpecializationId <= 1020) == 20
-        && await db.Rooms.CountAsync(x => x.RoomId >= 1001 && x.RoomId <= 1020) == 20
-        && await db.Doctors.CountAsync(x => x.DoctorId >= 1001 && x.DoctorId <= 1020) == 20
-        && await db.DoctorSchedules.CountAsync(x => x.DoctorScheduleId >= 1001 && x.DoctorScheduleId <= 1020) == 20
-        && await db.Appointments.CountAsync(x => x.AppointmentId >= 1001 && x.AppointmentId <= 1020) == 20,
-        "Demo seed creates 20 catalog and booking rows per table");
-    Check(await db.MedicineCategories.CountAsync(x => x.CategoryId >= 1001 && x.CategoryId <= 1020) == 20
-        && await db.Suppliers.CountAsync(x => x.SupplierId >= 1001 && x.SupplierId <= 1020) == 20
-        && await db.Medicines.CountAsync(x => x.MedicineId >= 1001 && x.MedicineId <= 1020) == 20
-        && await db.Inventory.CountAsync(x => x.InventoryId >= 1001 && x.InventoryId <= 1020) == 20
-        && await db.LabTestTypes.CountAsync(x => x.Id >= 1001 && x.Id <= 1020) == 20,
-        "Demo seed creates 20 pharmacy and lab rows per table");
-    Check(await db.RefreshTokens.Where(x => x.RefreshTokenId >= 1001 && x.RefreshTokenId <= 1020)
-        .AllAsync(x => x.RevokedAt != null), "Demo refresh token rows cannot be used");
+    db.ChangeTracker.Clear();
+    Check(await db.Users.AsNoTracking().Where(x => x.Username == "admin")
+        .Select(x => x.SecurityVersion).SingleAsync() == firstSeedVersion + 1,
+        "Reset seed invalidates access tokens for reused demo account IDs");
+    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+        "Bearer", firstSeedAdmin["accessToken"]!.GetValue<string>());
+    await Send(HttpMethod.Get, "api/auth/me", status: 401);
+    var staleRefresh = await Send(HttpMethod.Post, "api/auth/refresh",
+        new { refreshToken = firstSeedAdmin["refreshToken"]!.GetValue<string>() }, 401);
+    Check(staleRefresh!["code"]!.GetValue<int>() == 1002,
+        "Reset seed rejects old refresh tokens with the normal 401 response");
+    client.DefaultRequestHeaders.Authorization = null;
+    Check(await db.Roles.CountAsync() == 20 && await db.Users.CountAsync() == 20
+        && await db.RefreshTokens.CountAsync() == 20, "Reset seed creates accounts, roles and revoked tokens");
+    Check(await db.Departments.CountAsync() == 20 && await db.Specializations.CountAsync() == 20
+        && await db.Rooms.CountAsync() == 20 && await db.Doctors.CountAsync() == 20
+        && await db.DoctorSchedules.CountAsync() == 20 && await db.TimeSlots.CountAsync() == 20
+        && await db.Appointments.CountAsync() == 24, "Reset seed creates catalog and booking data");
+    Check(await db.MedicineCategories.CountAsync() == 20 && await db.Suppliers.CountAsync() == 20
+        && await db.Medicines.CountAsync() == 20 && await db.Inventory.CountAsync() == 20,
+        "Reset seed creates the full pharmacy catalog and inventory");
+    Check(await db.LabTestTypes.CountAsync() == 20 && await db.LabTests.CountAsync() == 25
+        && await db.LabTestResults.CountAsync() == 20 && await db.LabTests.CountAsync(x => x.Status == "Pending") == 5,
+        "Reset seed creates completed and pending lab workflows");
+    Check(await db.Diseases.CountAsync() == 20 && await db.MedicalRecords.CountAsync() == 20
+        && await db.RecordDiagnoses.CountAsync() == 20,
+        "Reset seed creates diseases, examination records and diagnoses");
+    var appliedMigrationsAfterSeed = await db.Database.GetAppliedMigrationsAsync();
+    Check(!await db.Users.AnyAsync(x => x.Username == "testadmin")
+        && !await db.MedicineCategories.AnyAsync(x => x.CategoryName == "seed-should-delete-me")
+        && appliedMigrationsAfterSeed.Contains("20260926172919_AddLabTechnicianRole"),
+        "Reset seed removes old application rows and preserves migration history");
+    Check(await db.RefreshTokens.AllAsync(x => x.RevokedAt != null),
+        "Demo refresh token rows cannot be used");
+    Check(await db.LabTests.AllAsync(x => x.PatientId == 1004 || (x.PatientId >= 1006 && x.PatientId <= 1020)),
+        "Seeded lab orders belong to patient accounts");
     var seededAdmin = (await Send(HttpMethod.Post, "api/auth/login",
         new { username = "admin", password = "admin123" }))!["result"]!;
     Check(seededAdmin["role"]!.GetValue<string>() == "Admin",
         "Seeded admin can sign in through the live API");
+    var seededDoctor = (await Send(HttpMethod.Post, "api/auth/login",
+        new { username = "demo_doctor", password = "admin123" }))!["result"]!;
+    var seededReception = (await Send(HttpMethod.Post, "api/auth/login",
+        new { username = "demo_reception", password = "admin123" }))!["result"]!;
+    var seededPatient = (await Send(HttpMethod.Post, "api/auth/login",
+        new { username = "demo_patient04", password = "admin123" }))!["result"]!;
+    var seededTechnician = (await Send(HttpMethod.Post, "api/auth/login",
+        new { username = "demo_labtech", password = "admin123" }))!["result"]!;
+    Check(seededDoctor["role"]!.GetValue<string>() == "Doctor"
+        && seededReception["role"]!.GetValue<string>() == "Receptionist"
+        && seededPatient["role"]!.GetValue<string>() == "Patient"
+        && seededTechnician["role"]!.GetValue<string>() == "LabTechnician",
+        "All seeded demo accounts sign in with their intended roles");
+    client.DefaultRequestHeaders.Authorization =
+        new AuthenticationHeaderValue("Bearer", seededTechnician["accessToken"]!.GetValue<string>());
+    Check((await Send(HttpMethod.Get, "api/LabTests/pending"))!.AsArray().Count == 5,
+        "Seeded lab queue is available to the technician");
+    client.DefaultRequestHeaders.Authorization =
+        new AuthenticationHeaderValue("Bearer", seededPatient["accessToken"]!.GetValue<string>());
+    var seededFutureDate = await db.DoctorSchedules.AsNoTracking().Where(x => x.DoctorId == 1005)
+        .Select(x => x.WorkDate).SingleAsync();
+    var seededSlots = (await Send(HttpMethod.Get,
+        $"api/appointments/available-slots?doctorId=1005&date={seededFutureDate:yyyy-MM-dd}"))!["result"]!.AsArray();
+    Check(seededSlots.Count == 1 && seededSlots[0]!["isAvailable"]!.GetValue<bool>(),
+        "Seeded future schedule exposes a bookable slot");
     client.DefaultRequestHeaders.Authorization =
         new AuthenticationHeaderValue("Bearer", seededAdmin["accessToken"]!.GetValue<string>());
     var availableRoles = (await Send(HttpMethod.Get, "api/roles"))!["result"]!.AsArray();
-    Check(availableRoles.Count == 4, "Only functional roles can be assigned");
+    Check(availableRoles.Count == 5, "Only functional roles can be assigned");
+    await Send(HttpMethod.Patch, "api/users/1004/role", new { roleId = 5 });
+    var assignedTechnician = (await Send(HttpMethod.Post, "api/auth/login",
+        new { username = "demo_patient04", password = "admin123" }))!["result"]!;
+    Check(assignedTechnician["role"]!.GetValue<string>() == "LabTechnician",
+        "Admin can assign the lab technician role through the API");
     await Send(HttpMethod.Patch, "api/users/1004/role", new { roleId = 1005 }, 404);
+    Check(!serverLog.Any(line => line.Contains("AuthService.RefreshAsync", StringComparison.Ordinal)
+        || line.Contains("Failed to determine the https port", StringComparison.Ordinal)),
+        "Expected refresh 401 and HTTP development profile do not emit server errors");
     Console.WriteLine($"SUCCESS: {checks} checks passed (weeks 2–4).");
 }
 catch

@@ -35,7 +35,7 @@ internal static class Week34Checks
         await Send(HttpMethod.Get, "api/users?access_token=" + adminToken, status: 401);
 
         var roleList = (await Send(HttpMethod.Get, "api/roles", token: adminToken))!["result"]!.AsArray();
-        check(roleList.Count == 4, "Exactly four supported roles, no public role creation");
+        check(roleList.Count == 5, "Exactly five supported roles, no public role creation");
         var doctorRole = roleList.Single(x => x!["roleName"]!.GetValue<string>() == "Doctor")!["roleId"]!.GetValue<int>();
         var patientRole = roleList.Single(x => x!["roleName"]!.GetValue<string>() == "Patient")!["roleId"]!.GetValue<int>();
         var registered = (await Send(HttpMethod.Post, "api/auth/register", new

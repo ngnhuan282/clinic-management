@@ -333,7 +333,6 @@ public class BookingService : IBookingService
         }
 
         appointment.DoctorId = request.DoctorId;
-        appointment.Doctor = doctor;
         appointment.AppointmentDate = date;
         appointment.StartTime = startTime;
         appointment.EndTime = startTime.Add(SlotDuration);
@@ -355,6 +354,8 @@ public class BookingService : IBookingService
                 ErrorCode.APPOINTMENT_CONFLICT
             );
         }
+
+        appointment.Doctor = doctor;
 
         return MapAppointment(appointment);
     }

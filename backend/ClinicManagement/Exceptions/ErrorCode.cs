@@ -296,4 +296,13 @@ public sealed class ErrorCode
             "Medical record already exists for this appointment",
             HttpStatusCode.Conflict
         );
+
+    public static readonly ErrorCode LAB_TEST_NOT_FOUND =
+        new(7201, "Lab test not found", HttpStatusCode.NotFound);
+    public static readonly ErrorCode LAB_TEST_TYPE_NOT_FOUND =
+        new(7202, "Lab test type not found or inactive", HttpStatusCode.NotFound);
+    public static readonly ErrorCode LAB_TEST_CONFLICT =
+        new(7203, "Lab test already has a result", HttpStatusCode.Conflict);
+    public static readonly ErrorCode DOCTOR_SCHEDULE_CONFLICT =
+        new(7301, "Doctor or room already has a schedule at this time", HttpStatusCode.Conflict);
 }
