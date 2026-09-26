@@ -12,6 +12,7 @@ import MedicinesPage from "../pages/internal/admin/MedicinesPage";
 import SuppliersPage from "../pages/internal/admin/SuppliersPage";
 import CatalogManagementPage from "../pages/internal/CatalogManagementPage";
 import LabTestTypesPage from "../pages/internal/LabTestTypesPage";
+import DiseasesPage from "../pages/internal/DiseasesPage";
 import UsersPage from "../pages/internal/admin/UsersPage";
 import DashboardPage from "../pages/internal/DashboardPage";
 import AuthPage from "../pages/auth/AuthPage";
@@ -50,7 +51,21 @@ export default function AppRoutes() {
                     <Route path="medicines/inventory" element={<InventoryPage />} />
                 </Route>
                 <Route element={<ProtectedRoute allowedRoles={["Admin", "Doctor"]} />}>
+                    <Route path="diseases" element={<DiseasesPage />} />
                     <Route path="lab-test-types" element={<LabTestTypesPage />} />
+                    <Route path="doctor/lab-orders" element={<DoctorLabOrdersPage />} />
+                </Route>
+             {/* Admin & Technician */}
+                     <Route element={<ProtectedRoute allowedRoles={["Admin", "Technician"]} />}>
+                            <Route path="technician/lab-queue" element={<TechnicianLabQueuePage />} />
+                        </Route>
+
+
+
+                <Route element={<ProtectedRoute allowedRoles={["Doctor"]} />}>
+                    <Route path="examinations" element={<DoctorAppointmentsPage />} />
+                    <Route path="examinations/:appointmentId/record" element={<MedicalRecordDetailPage />} />
+                    <Route path="examinations/:appointmentId" element={<MedicalRecordPage />} />
                 </Route>
             </Route>
         </Route>

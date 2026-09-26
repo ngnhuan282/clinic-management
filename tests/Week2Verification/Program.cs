@@ -177,6 +177,38 @@ try
     await Send(HttpMethod.Post, "api/appointments", new { doctorId = 1, appointmentDate = dateText, startTime = "12:00:00", patientName = "Test", patientPhone = "0901234567", reason = "Invalid shift" }, 400);
     await Send(HttpMethod.Get, "api/appointments/available-slots?doctorId=1&date=2000-01-01", status: 400);
     await Week34Checks.RunAsync(client, db, password, Check);
+    var allTablesSeed = await File.ReadAllTextAsync(
+        Path.Combine(root, "backend/ClinicManagement/Data/Seed/clinic-all-tables-demo.sql"));
+    await db.Database.ExecuteSqlRawAsync(allTablesSeed);
+    await db.Database.ExecuteSqlRawAsync(allTablesSeed);
+    Check(await db.Roles.CountAsync() == 20, "Demo seed retains four functional roles and adds 16 reserved roles");
+    Check(await db.Users.CountAsync(x => x.UserId >= 1001 && x.UserId <= 1020) == 20
+        && await db.RefreshTokens.CountAsync(x => x.RefreshTokenId >= 1001 && x.RefreshTokenId <= 1020) == 20,
+        "Demo seed creates 20 users and revoked refresh token records");
+    Check(await db.Departments.CountAsync(x => x.DepartmentId >= 1001 && x.DepartmentId <= 1020) == 20
+        && await db.Specializations.CountAsync(x => x.SpecializationId >= 1001 && x.SpecializationId <= 1020) == 20
+        && await db.Rooms.CountAsync(x => x.RoomId >= 1001 && x.RoomId <= 1020) == 20
+        && await db.Doctors.CountAsync(x => x.DoctorId >= 1001 && x.DoctorId <= 1020) == 20
+        && await db.DoctorSchedules.CountAsync(x => x.DoctorScheduleId >= 1001 && x.DoctorScheduleId <= 1020) == 20
+        && await db.Appointments.CountAsync(x => x.AppointmentId >= 1001 && x.AppointmentId <= 1020) == 20,
+        "Demo seed creates 20 catalog and booking rows per table");
+    Check(await db.MedicineCategories.CountAsync(x => x.CategoryId >= 1001 && x.CategoryId <= 1020) == 20
+        && await db.Suppliers.CountAsync(x => x.SupplierId >= 1001 && x.SupplierId <= 1020) == 20
+        && await db.Medicines.CountAsync(x => x.MedicineId >= 1001 && x.MedicineId <= 1020) == 20
+        && await db.Inventory.CountAsync(x => x.InventoryId >= 1001 && x.InventoryId <= 1020) == 20
+        && await db.LabTestTypes.CountAsync(x => x.Id >= 1001 && x.Id <= 1020) == 20,
+        "Demo seed creates 20 pharmacy and lab rows per table");
+    Check(await db.RefreshTokens.Where(x => x.RefreshTokenId >= 1001 && x.RefreshTokenId <= 1020)
+        .AllAsync(x => x.RevokedAt != null), "Demo refresh token rows cannot be used");
+    var seededAdmin = (await Send(HttpMethod.Post, "api/auth/login",
+        new { username = "admin", password = "admin123" }))!["result"]!;
+    Check(seededAdmin["role"]!.GetValue<string>() == "Admin",
+        "Seeded admin can sign in through the live API");
+    client.DefaultRequestHeaders.Authorization =
+        new AuthenticationHeaderValue("Bearer", seededAdmin["accessToken"]!.GetValue<string>());
+    var availableRoles = (await Send(HttpMethod.Get, "api/roles"))!["result"]!.AsArray();
+    Check(availableRoles.Count == 4, "Only functional roles can be assigned");
+    await Send(HttpMethod.Patch, "api/users/1004/role", new { roleId = 1005 }, 404);
     Console.WriteLine($"SUCCESS: {checks} checks passed (weeks 2–4).");
 }
 catch

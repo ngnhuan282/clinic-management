@@ -158,6 +158,78 @@ namespace ClinicManagement.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ClinicManagement.Data.Entities.Disease", b =>
+                {
+                    b.Property<int>("DiseaseId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("DiseaseId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETDATE()");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("DiseaseCode")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("DiseaseName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.HasKey("DiseaseId");
+
+                    b.HasIndex("DiseaseCode")
+                        .IsUnique();
+
+                    b.HasIndex("DiseaseName")
+                        .IsUnique();
+
+                    b.ToTable("Diseases");
+
+                    b.HasData(
+                        new
+                        {
+                            DiseaseId = 1,
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Description = "Tăng huyết áp nguyên phát",
+                            DiseaseCode = "I10",
+                            DiseaseName = "Tăng huyết áp",
+                            IsActive = true
+                        },
+                        new
+                        {
+                            DiseaseId = 2,
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Description = "Đái tháo đường không phụ thuộc insulin",
+                            DiseaseCode = "E11",
+                            DiseaseName = "Đái tháo đường type 2",
+                            IsActive = true
+                        },
+                        new
+                        {
+                            DiseaseId = 3,
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Description = "Viêm đường hô hấp trên cấp",
+                            DiseaseCode = "J06",
+                            DiseaseName = "Nhiễm khuẩn hô hấp trên cấp",
+                            IsActive = true
+                        });
+                });
+
             modelBuilder.Entity("ClinicManagement.Data.Entities.Doctor", b =>
                 {
                     b.Property<int>("DoctorId")
@@ -314,6 +386,75 @@ namespace ClinicManagement.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ClinicManagement.Data.Entities.LabTest", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ClinicalDiagnosis")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DoctorId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("LabTestTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PatientId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LabTestTypeId");
+
+                    b.ToTable("LabTests");
+                });
+
+            modelBuilder.Entity("ClinicManagement.Data.Entities.LabTestResult", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("FileUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("LabTestId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("PerformedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ResultSummary")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("TechnicianId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LabTestId")
+                        .IsUnique();
+
+                    b.ToTable("LabTestResults");
+                });
+
             modelBuilder.Entity("ClinicManagement.Data.Entities.LabTestType", b =>
                 {
                     b.Property<int>("Id")
@@ -346,6 +487,57 @@ namespace ClinicManagement.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("LabTestTypes");
+                });
+
+            modelBuilder.Entity("ClinicManagement.Data.Entities.MedicalRecord", b =>
+                {
+                    b.Property<int>("MedicalRecordId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("MedicalRecordId"));
+
+                    b.Property<int>("AppointmentId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Conclusion")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETDATE()");
+
+                    b.Property<int>("DoctorId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("ExaminationDate")
+                        .HasColumnType("date");
+
+                    b.Property<int?>("PatientId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Symptoms")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETDATE()");
+
+                    b.HasKey("MedicalRecordId");
+
+                    b.HasIndex("AppointmentId")
+                        .IsUnique();
+
+                    b.HasIndex("DoctorId");
+
+                    b.HasIndex("PatientId");
+
+                    b.ToTable("MedicalRecords");
                 });
 
             modelBuilder.Entity("ClinicManagement.Data.Entities.Medicine", b =>
@@ -411,6 +603,37 @@ namespace ClinicManagement.Migrations
                         .IsUnique();
 
                     b.ToTable("MedicineCategories");
+                });
+
+            modelBuilder.Entity("ClinicManagement.Data.Entities.RecordDiagnosis", b =>
+                {
+                    b.Property<int>("RecordDiagnosisId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RecordDiagnosisId"));
+
+                    b.Property<int>("DiseaseId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsPrimary")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("MedicalRecordId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("RecordDiagnosisId");
+
+                    b.HasIndex("DiseaseId");
+
+                    b.HasIndex("MedicalRecordId", "DiseaseId")
+                        .IsUnique();
+
+                    b.ToTable("RecordDiagnoses");
                 });
 
             modelBuilder.Entity("ClinicManagement.Data.Entities.RefreshToken", b =>
@@ -872,6 +1095,52 @@ namespace ClinicManagement.Migrations
                     b.Navigation("Medicine");
                 });
 
+            modelBuilder.Entity("ClinicManagement.Data.Entities.LabTest", b =>
+                {
+                    b.HasOne("ClinicManagement.Data.Entities.LabTestType", "LabTestType")
+                        .WithMany()
+                        .HasForeignKey("LabTestTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("LabTestType");
+                });
+
+            modelBuilder.Entity("ClinicManagement.Data.Entities.LabTestResult", b =>
+                {
+                    b.HasOne("ClinicManagement.Data.Entities.LabTest", "LabTest")
+                        .WithOne("LabTestResult")
+                        .HasForeignKey("ClinicManagement.Data.Entities.LabTestResult", "LabTestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("LabTest");
+            modelBuilder.Entity("ClinicManagement.Data.Entities.MedicalRecord", b =>
+                {
+                    b.HasOne("ClinicManagement.Data.Entities.Appointment", "Appointment")
+                        .WithOne("MedicalRecord")
+                        .HasForeignKey("ClinicManagement.Data.Entities.MedicalRecord", "AppointmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ClinicManagement.Data.Entities.Doctor", "Doctor")
+                        .WithMany("MedicalRecords")
+                        .HasForeignKey("DoctorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ClinicManagement.Data.Entities.User", "Patient")
+                        .WithMany("MedicalRecords")
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Appointment");
+
+                    b.Navigation("Doctor");
+
+                    b.Navigation("Patient");
+                });
+
             modelBuilder.Entity("ClinicManagement.Data.Entities.Medicine", b =>
                 {
                     b.HasOne("ClinicManagement.Data.Entities.MedicineCategory", "Category")
@@ -888,6 +1157,25 @@ namespace ClinicManagement.Migrations
                     b.Navigation("Category");
 
                     b.Navigation("Supplier");
+                });
+
+            modelBuilder.Entity("ClinicManagement.Data.Entities.RecordDiagnosis", b =>
+                {
+                    b.HasOne("ClinicManagement.Data.Entities.Disease", "Disease")
+                        .WithMany("RecordDiagnoses")
+                        .HasForeignKey("DiseaseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ClinicManagement.Data.Entities.MedicalRecord", "MedicalRecord")
+                        .WithMany("Diagnoses")
+                        .HasForeignKey("MedicalRecordId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Disease");
+
+                    b.Navigation("MedicalRecord");
                 });
 
             modelBuilder.Entity("ClinicManagement.Data.Entities.RefreshToken", b =>
@@ -945,6 +1233,11 @@ namespace ClinicManagement.Migrations
                     b.Navigation("Role");
                 });
 
+            modelBuilder.Entity("ClinicManagement.Data.Entities.Appointment", b =>
+                {
+                    b.Navigation("MedicalRecord");
+                });
+
             modelBuilder.Entity("ClinicManagement.Data.Entities.Department", b =>
                 {
                     b.Navigation("Rooms");
@@ -952,9 +1245,26 @@ namespace ClinicManagement.Migrations
                     b.Navigation("Specializations");
                 });
 
+            modelBuilder.Entity("ClinicManagement.Data.Entities.Disease", b =>
+                {
+                    b.Navigation("RecordDiagnoses");
+                });
+
             modelBuilder.Entity("ClinicManagement.Data.Entities.Doctor", b =>
                 {
                     b.Navigation("Appointments");
+
+                    b.Navigation("MedicalRecords");
+                });
+
+            modelBuilder.Entity("ClinicManagement.Data.Entities.MedicalRecord", b =>
+                {
+                    b.Navigation("Diagnoses");
+                });
+
+            modelBuilder.Entity("ClinicManagement.Data.Entities.LabTest", b =>
+                {
+                    b.Navigation("LabTestResult");
                 });
 
             modelBuilder.Entity("ClinicManagement.Data.Entities.DoctorSchedule", b =>
@@ -980,6 +1290,11 @@ namespace ClinicManagement.Migrations
             modelBuilder.Entity("ClinicManagement.Data.Entities.Supplier", b =>
                 {
                     b.Navigation("Medicines");
+                });
+
+            modelBuilder.Entity("ClinicManagement.Data.Entities.User", b =>
+                {
+                    b.Navigation("MedicalRecords");
                 });
 #pragma warning restore 612, 618
         }

@@ -90,6 +90,16 @@ public static class DependencyInjection
             InventoryRepository
         >();
 
+        services.AddScoped<
+            IDiseaseRepository,
+            DiseaseRepository
+        >();
+
+        services.AddScoped<
+            IMedicalRecordRepository,
+            MedicalRecordRepository
+        >();
+
         // =========================
         // Business Services
         // =========================
@@ -119,6 +129,16 @@ public static class DependencyInjection
         services.AddScoped<
             IInventoryService,
             InventoryService
+        >();
+
+        services.AddScoped<
+            IDiseaseService,
+            DiseaseService
+        >();
+
+        services.AddScoped<
+            IMedicalRecordService,
+            MedicalRecordService
         >();
 
         return services;
