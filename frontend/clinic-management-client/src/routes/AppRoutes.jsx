@@ -16,6 +16,8 @@ import DiseasesPage from "../pages/internal/DiseasesPage";
 import UsersPage from "../pages/internal/admin/UsersPage";
 import DashboardPage from "../pages/internal/DashboardPage";
 import AuthPage from "../pages/auth/AuthPage";
+import DoctorLabOrdersPage from '../pages/internal/doctor/DoctorLabOrdersPage';
+import TechnicianLabQueuePage from '../pages/internal/technician/TechnicianLabQueuePage';
 import DoctorAppointmentsPage from "../pages/internal/doctor/DoctorAppointmentsPage";
 import MedicalRecordPage from "../pages/internal/doctor/MedicalRecordPage";
 import MedicalRecordDetailPage from "../pages/internal/doctor/MedicalRecordDetailPage";
@@ -54,7 +56,15 @@ export default function AppRoutes() {
                 <Route element={<ProtectedRoute allowedRoles={["Admin", "Doctor"]} />}>
                     <Route path="diseases" element={<DiseasesPage />} />
                     <Route path="lab-test-types" element={<LabTestTypesPage />} />
+                    <Route path="doctor/lab-orders" element={<DoctorLabOrdersPage />} />
                 </Route>
+             {/* Admin & Technician */}
+                     <Route element={<ProtectedRoute allowedRoles={["Admin", "Technician"]} />}>
+                            <Route path="technician/lab-queue" element={<TechnicianLabQueuePage />} />
+                        </Route>
+
+
+
                 <Route element={<ProtectedRoute allowedRoles={["Doctor"]} />}>
                     <Route path="examinations" element={<DoctorAppointmentsPage />} />
                     <Route path="examinations/:appointmentId/record" element={<MedicalRecordDetailPage />} />

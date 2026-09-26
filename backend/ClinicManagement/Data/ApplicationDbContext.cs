@@ -38,6 +38,8 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<LabTestType> LabTestTypes { get; set; }
 
+    public DbSet<LabTest> LabTests { get; set; }
+    public DbSet<LabTestResult> LabTestResults { get; set; }
     public DbSet<Disease> Diseases => Set<Disease>();
 
     public DbSet<MedicalRecord> MedicalRecords => Set<MedicalRecord>();
