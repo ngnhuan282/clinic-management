@@ -40,6 +40,12 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<LabTest> LabTests { get; set; }
     public DbSet<LabTestResult> LabTestResults { get; set; }
+    public DbSet<Disease> Diseases => Set<Disease>();
+
+    public DbSet<MedicalRecord> MedicalRecords => Set<MedicalRecord>();
+
+    public DbSet<RecordDiagnosis> RecordDiagnoses =>
+        Set<RecordDiagnosis>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
@@ -297,6 +303,137 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(x => x.Medicine)
                 .WithMany(x => x.Inventories)
                 .HasForeignKey(x => x.MedicineId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // =========================
+        // Disease
+        // =========================
+        modelBuilder.Entity<Disease>(entity =>
+        {
+            entity.HasKey(x => x.DiseaseId);
+
+            entity.Property(x => x.DiseaseCode)
+                .HasMaxLength(30)
+                .IsRequired();
+
+            entity.Property(x => x.DiseaseName)
+                .HasMaxLength(150)
+                .IsRequired();
+
+            entity.Property(x => x.Description)
+                .HasMaxLength(500);
+
+            entity.Property(x => x.IsActive)
+                .HasDefaultValue(true);
+
+            entity.Property(x => x.CreatedAt)
+                .HasDefaultValueSql("GETDATE()");
+
+            entity.HasIndex(x => x.DiseaseCode)
+                .IsUnique();
+
+            entity.HasIndex(x => x.DiseaseName)
+                .IsUnique();
+
+            entity.HasData(
+                new Disease
+                {
+                    DiseaseId = 1,
+                    DiseaseCode = "I10",
+                    DiseaseName = "Tăng huyết áp",
+                    Description = "Tăng huyết áp nguyên phát",
+                    IsActive = true,
+                    CreatedAt = new DateTime(2026, 1, 1)
+                },
+                new Disease
+                {
+                    DiseaseId = 2,
+                    DiseaseCode = "E11",
+                    DiseaseName = "Đái tháo đường type 2",
+                    Description = "Đái tháo đường không phụ thuộc insulin",
+                    IsActive = true,
+                    CreatedAt = new DateTime(2026, 1, 1)
+                },
+                new Disease
+                {
+                    DiseaseId = 3,
+                    DiseaseCode = "J06",
+                    DiseaseName = "Nhiễm khuẩn hô hấp trên cấp",
+                    Description = "Viêm đường hô hấp trên cấp",
+                    IsActive = true,
+                    CreatedAt = new DateTime(2026, 1, 1)
+                }
+            );
+        });
+
+        // =========================
+        // Medical Record
+        // =========================
+        modelBuilder.Entity<MedicalRecord>(entity =>
+        {
+            entity.HasKey(x => x.MedicalRecordId);
+
+            entity.Property(x => x.ExaminationDate)
+                .HasColumnType("date");
+
+            entity.Property(x => x.Symptoms)
+                .HasMaxLength(1000)
+                .IsRequired();
+
+            entity.Property(x => x.Conclusion)
+                .HasMaxLength(1000);
+
+            entity.Property(x => x.CreatedAt)
+                .HasDefaultValueSql("GETDATE()");
+
+            entity.Property(x => x.UpdatedAt)
+                .HasDefaultValueSql("GETDATE()");
+
+            entity.HasIndex(x => x.AppointmentId)
+                .IsUnique();
+
+            entity.HasOne(x => x.Appointment)
+                .WithOne(x => x.MedicalRecord)
+                .HasForeignKey<MedicalRecord>(x => x.AppointmentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(x => x.Doctor)
+                .WithMany(x => x.MedicalRecords)
+                .HasForeignKey(x => x.DoctorId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(x => x.Patient)
+                .WithMany(x => x.MedicalRecords)
+                .HasForeignKey(x => x.PatientId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // =========================
+        // Record Diagnosis
+        // =========================
+        modelBuilder.Entity<RecordDiagnosis>(entity =>
+        {
+            entity.HasKey(x => x.RecordDiagnosisId);
+
+            entity.Property(x => x.Note)
+                .HasMaxLength(500);
+
+            entity.HasIndex(x => new
+            {
+                x.MedicalRecordId,
+                x.DiseaseId
+            })
+            .IsUnique();
+
+            entity.HasOne(x => x.MedicalRecord)
+                .WithMany(x => x.Diagnoses)
+                .HasForeignKey(x => x.MedicalRecordId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(x => x.Disease)
+                .WithMany(x => x.RecordDiagnoses)
+                .HasForeignKey(x => x.DiseaseId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
     }

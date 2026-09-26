@@ -4,6 +4,7 @@ using ClinicManagement.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ClinicManagement.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260924160526_AddExaminationRecords")]
+    partial class AddExaminationRecords
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -695,75 +698,6 @@ namespace ClinicManagement.Migrations
                         });
                 });
 
-            modelBuilder.Entity("ClinicManagement.Data.Entities.LabTest", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("ClinicalDiagnosis")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("DoctorId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("LabTestTypeId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("PatientId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("LabTestTypeId");
-
-                    b.ToTable("LabTests");
-                });
-
-            modelBuilder.Entity("ClinicManagement.Data.Entities.LabTestResult", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("FileUrl")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("LabTestId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Note")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("PerformedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ResultSummary")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("TechnicianId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("LabTestId")
-                        .IsUnique();
-
-                    b.ToTable("LabTestResults");
-                });
-
             modelBuilder.Entity("ClinicManagement.Data.Entities.LabTestType", b =>
                 {
                     b.Property<int>("Id")
@@ -1353,26 +1287,6 @@ namespace ClinicManagement.Migrations
                     b.Navigation("Medicine");
                 });
 
-            modelBuilder.Entity("ClinicManagement.Data.Entities.LabTest", b =>
-                {
-                    b.HasOne("ClinicManagement.Data.Entities.LabTestType", "LabTestType")
-                        .WithMany()
-                        .HasForeignKey("LabTestTypeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("LabTestType");
-                });
-
-            modelBuilder.Entity("ClinicManagement.Data.Entities.LabTestResult", b =>
-                {
-                    b.HasOne("ClinicManagement.Data.Entities.LabTest", "LabTest")
-                        .WithOne("LabTestResult")
-                        .HasForeignKey("ClinicManagement.Data.Entities.LabTestResult", "LabTestId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("LabTest");
             modelBuilder.Entity("ClinicManagement.Data.Entities.MedicalRecord", b =>
                 {
                     b.HasOne("ClinicManagement.Data.Entities.Appointment", "Appointment")
@@ -1507,11 +1421,6 @@ namespace ClinicManagement.Migrations
             modelBuilder.Entity("ClinicManagement.Data.Entities.MedicalRecord", b =>
                 {
                     b.Navigation("Diagnoses");
-                });
-
-            modelBuilder.Entity("ClinicManagement.Data.Entities.LabTest", b =>
-                {
-                    b.Navigation("LabTestResult");
                 });
 
             modelBuilder.Entity("ClinicManagement.Data.Entities.Medicine", b =>

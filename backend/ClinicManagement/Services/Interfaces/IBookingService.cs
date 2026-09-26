@@ -16,4 +16,7 @@ public interface IBookingService
 
     Task<AppointmentResponse> CreateAppointmentAsync(
         CreateAppointmentRequest request);
+
+    Task<AppointmentResponse> StartExaminationAsync(
+        int appointmentId);
 }

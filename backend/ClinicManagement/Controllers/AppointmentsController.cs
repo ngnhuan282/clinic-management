@@ -67,4 +67,22 @@ public class AppointmentsController : ControllerBase
             )
         );
     }
+
+    [HttpPatch("{appointmentId:int}/start-examination")]
+    [Authorize(Roles = RoleConstants.Admin + "," + RoleConstants.Doctor)]
+    public async Task<IActionResult> StartExamination(
+        int appointmentId)
+    {
+        var result =
+            await _bookingService.StartExaminationAsync(
+                appointmentId
+            );
+
+        return Ok(
+            ApiResponse<AppointmentResponse>.Success(
+                result,
+                "Appointment examination started successfully"
+            )
+        );
+    }
 }

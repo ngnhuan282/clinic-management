@@ -243,4 +243,57 @@ public sealed class ErrorCode
             "Inventory batch already exists for this medicine and expiry date",
             HttpStatusCode.Conflict
         );
+
+    // =========================
+    // Examination / Medical Record
+    // =========================
+
+    public static readonly ErrorCode DISEASE_NOT_FOUND =
+        new(
+            7001,
+            "Disease not found",
+            HttpStatusCode.NotFound
+        );
+
+    public static readonly ErrorCode DISEASE_CODE_EXISTED =
+        new(
+            7002,
+            "Disease code already exists",
+            HttpStatusCode.Conflict
+        );
+
+    public static readonly ErrorCode DISEASE_NAME_EXISTED =
+        new(
+            7003,
+            "Disease name already exists",
+            HttpStatusCode.Conflict
+        );
+
+    public static readonly ErrorCode DISEASE_HAS_DIAGNOSES =
+        new(
+            7004,
+            "Disease already has medical record diagnoses",
+            HttpStatusCode.Conflict
+        );
+
+    public static readonly ErrorCode DISEASE_INACTIVE =
+        new(
+            7005,
+            "Disease is inactive",
+            HttpStatusCode.BadRequest
+        );
+
+    public static readonly ErrorCode MEDICAL_RECORD_NOT_FOUND =
+        new(
+            7101,
+            "Medical record not found",
+            HttpStatusCode.NotFound
+        );
+
+    public static readonly ErrorCode MEDICAL_RECORD_EXISTED =
+        new(
+            7102,
+            "Medical record already exists for this appointment",
+            HttpStatusCode.Conflict
+        );
 }

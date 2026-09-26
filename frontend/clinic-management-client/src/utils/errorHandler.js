@@ -30,6 +30,13 @@ const API_ERROR_MESSAGES = {
     6009: "Nhà cung cấp đã liên kết thuốc nên không thể xóa.",
     6010: "Không tìm thấy lô tồn kho.",
     6011: "Lô tồn kho đã tồn tại cho thuốc và hạn dùng này.",
+    7001: "Không tìm thấy bệnh.",
+    7002: "Mã bệnh đã tồn tại.",
+    7003: "Tên bệnh đã tồn tại.",
+    7004: "Bệnh đã được dùng trong hồ sơ chẩn đoán nên không thể xóa.",
+    7005: "Bệnh đang tạm ngưng.",
+    7101: "Không tìm thấy hồ sơ bệnh án.",
+    7102: "Lượt khám này đã có hồ sơ bệnh án.",
 };
 
 const API_MESSAGE_TRANSLATIONS = {
@@ -52,6 +59,15 @@ const API_MESSAGE_TRANSLATIONS = {
         "Tên nhà cung cấp đã tồn tại.",
     "Inventory batch already exists for this medicine and expiry date":
         "Lô tồn kho đã tồn tại cho thuốc và hạn dùng này.",
+    "Disease not found": "Không tìm thấy bệnh.",
+    "Disease code already exists": "Mã bệnh đã tồn tại.",
+    "Disease name already exists": "Tên bệnh đã tồn tại.",
+    "Disease already has medical record diagnoses":
+        "Bệnh đã được dùng trong hồ sơ chẩn đoán nên không thể xóa.",
+    "Disease is inactive": "Bệnh đang tạm ngưng.",
+    "Medical record not found": "Không tìm thấy hồ sơ bệnh án.",
+    "Medical record already exists for this appointment":
+        "Lượt khám này đã có hồ sơ bệnh án.",
 };
 
 function translateMessage(message) {
