@@ -12,57 +12,14 @@ export const ROLE_LABELS = {
 };
 
 export const INTERNAL_PAGES = [
-    {
-        label: "Tổng quan",
-        path: "/internal/dashboard",
-        roles: INTERNAL_ROLES,
-    },
-    {
-        label: "Lịch khám bệnh",
-        path: "/internal/examinations",
-        roles: ["Doctor"],
-    },
-    {
-        label: "Danh mục bệnh",
-        path: "/internal/diseases",
-        roles: [
-            "Admin",
-            "Doctor",
-        ],
-    },
-    {
-        label: "Tài khoản & Vai trò",
-        path: "/internal/users",
-        roles: ["Admin"],
-    },
-    {
-        label: "Khoa",
-        path: "/internal/departments",
-        roles: ["Admin"],
-    },
-    {
-        label: "Chuyên khoa",
-        path: "/internal/specializations",
-        roles: ["Admin"],
-    },
-    {
-        label: "Phòng",
-        path: "/internal/rooms",
-        roles: ["Admin"],
-    },
-    {
-        label: "Kho dược & Vật tư",
-        path: "/internal/medicines",
-        roles: ["Admin"],
-    },
-    {
-        label: "Xét nghiệm",
-        path: "/internal/lab-test-types",
-        roles: [
-            "Admin",
-            "Doctor",
-        ],
-    },
+    { label: "Tổng quan", path: "/internal/dashboard", roles: INTERNAL_ROLES },
+    { label: "Tài khoản & Vai trò", path: "/internal/users", roles: ["Admin"] },
+    { label: "Khoa", path: "/internal/departments", roles: ["Admin"] },
+    { label: "Chuyên khoa", path: "/internal/specializations", roles: ["Admin"] },
+    { label: "Phòng", path: "/internal/rooms", roles: ["Admin"] },
+    { label: "Lịch bác sĩ", path: "/internal/doctor-schedules", roles: ["Admin"] },
+    { label: "Kho dược & Vật tư", path: "/internal/medicines", roles: ["Admin"] },
+    { label: "Xét nghiệm", path: "/internal/lab-test-types", roles: ["Admin", "Doctor"] },
 ];
 
 export const homeForRole = (role) =>

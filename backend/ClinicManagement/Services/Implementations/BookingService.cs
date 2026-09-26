@@ -103,7 +103,7 @@ public class BookingService : IBookingService
                 .Select(x => x.StartTime)
                 .ToHashSet();
 
-        var schedules = await _doctorRepository.GetSchedulesAsync(doctorId, appointmentDate.DayOfWeek);
+        var schedules = await _doctorRepository.GetSchedulesAsync(doctorId, DateOnly.FromDateTime(appointmentDate.Date));
         return BuildDailySlots(schedules)
             .Select(x => new AvailableSlotResponse
             {
@@ -137,7 +137,7 @@ public class BookingService : IBookingService
             );
         }
 
-        var schedules = await _doctorRepository.GetSchedulesAsync(request.DoctorId, date.DayOfWeek);
+        var schedules = await _doctorRepository.GetSchedulesAsync(request.DoctorId, DateOnly.FromDateTime(date));
         if (!BuildDailySlots(schedules).Any(x => x.StartTime == startTime))
         {
             throw new AppException(
@@ -265,7 +265,14 @@ public class BookingService : IBookingService
         var slots = new List<AvailableSlotResponse>();
 
         foreach (var schedule in schedules)
-            AddSlots(slots, schedule.StartTime, schedule.EndTime);
+        foreach (var slot in schedule.TimeSlots.Where(x => x.IsAvailable))
+            slots.Add(new AvailableSlotResponse
+            {
+                SlotId = slot.SlotId,
+                StartTime = slot.StartTime,
+                EndTime = slot.EndTime,
+                IsAvailable = slot.CurrentBooked < slot.MaxCapacity
+            });
 
         return slots.DistinctBy(x => x.StartTime).OrderBy(x => x.StartTime).ToList();
     }

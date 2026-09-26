@@ -16,11 +16,7 @@ import DiseasesPage from "../pages/internal/DiseasesPage";
 import UsersPage from "../pages/internal/admin/UsersPage";
 import DashboardPage from "../pages/internal/DashboardPage";
 import AuthPage from "../pages/auth/AuthPage";
-import DoctorLabOrdersPage from '../pages/internal/doctor/DoctorLabOrdersPage';
-import TechnicianLabQueuePage from '../pages/internal/technician/TechnicianLabQueuePage';
-import DoctorAppointmentsPage from "../pages/internal/doctor/DoctorAppointmentsPage";
-import MedicalRecordPage from "../pages/internal/doctor/MedicalRecordPage";
-import MedicalRecordDetailPage from "../pages/internal/doctor/MedicalRecordDetailPage";
+import DoctorScheduleManagementPage from "../pages/internal/DoctorScheduleManagementPage";
 
 export default function AppRoutes() {
     return <BrowserRouter><Routes>
@@ -48,6 +44,7 @@ export default function AppRoutes() {
                     <Route path="departments" element={<CatalogManagementPage resource="departments" />} />
                     <Route path="specializations" element={<CatalogManagementPage resource="specializations" />} />
                     <Route path="rooms" element={<CatalogManagementPage resource="rooms" />} />
+                    <Route path="doctor-schedules" element={<DoctorScheduleManagementPage />} />
                     <Route path="medicines" element={<MedicinesPage />} />
                     <Route path="medicines/categories" element={<MedicineCategoriesPage />} />
                     <Route path="medicines/suppliers" element={<SuppliersPage />} />

@@ -18,6 +18,10 @@ public class Doctor
 
     public Department Department { get; set; } = null!;
 
+    public int SpecializationId { get; set; }
+
+    public Specialization Specialization { get; set; } = null!;
+
     public ICollection<Appointment> Appointments { get; set; }
         = new List<Appointment>();
 
