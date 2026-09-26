@@ -2,6 +2,7 @@ export const INTERNAL_ROLES = ["Admin", "Doctor", "Receptionist"];
 export const ROLE_LABELS = { Admin: "Quản trị viên", Doctor: "Bác sĩ", Receptionist: "Lễ tân", Patient: "Bệnh nhân" };
 export const INTERNAL_PAGES = [
     { label: "Tổng quan", path: "/internal/dashboard", roles: INTERNAL_ROLES },
+    { label: "Lịch hẹn", path: "/internal/appointments", roles: ["Admin", "Receptionist"] },
     { label: "Tài khoản & Vai trò", path: "/internal/users", roles: ["Admin"] },
     { label: "Khoa", path: "/internal/departments", roles: ["Admin"] },
     { label: "Chuyên khoa", path: "/internal/specializations", roles: ["Admin"] },

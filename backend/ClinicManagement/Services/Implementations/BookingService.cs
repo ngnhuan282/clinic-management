@@ -37,6 +37,33 @@ public class BookingService : IBookingService
         _currentUser = currentUser;
     }
 
+    public async Task<PagedResponse<AppointmentResponse>> GetAppointmentsAsync(
+        AppointmentQuery query)
+    {
+        ValidateStatusFilter(query.Status);
+
+        if (query.DateFrom.HasValue
+            && query.DateTo.HasValue
+            && query.DateFrom.Value.Date > query.DateTo.Value.Date)
+        {
+            throw new AppException(
+                ErrorCode.INVALID_REQUEST
+            );
+        }
+
+        var (items, total) =
+            await _appointmentRepository.GetPageAsync(
+                query
+            );
+
+        return new PagedResponse<AppointmentResponse>(
+            items.Select(MapAppointment),
+            query.PageNumber,
+            query.PageSize,
+            total
+        );
+    }
+
     public async Task<List<DepartmentResponse>> GetDepartmentsAsync()
     {
         var departments =
@@ -119,6 +146,28 @@ public class BookingService : IBookingService
     public async Task<AppointmentResponse> CreateAppointmentAsync(
         CreateAppointmentRequest request)
     {
+        return await CreateAppointmentInternalAsync(
+            request,
+            _currentUser.GetRequiredUserId(),
+            AppointmentStatusConstants.Pending
+        );
+    }
+
+    public async Task<AppointmentResponse> CreateDirectAppointmentAsync(
+        CreateAppointmentRequest request)
+    {
+        return await CreateAppointmentInternalAsync(
+            request,
+            null,
+            AppointmentStatusConstants.Confirmed
+        );
+    }
+
+    private async Task<AppointmentResponse> CreateAppointmentInternalAsync(
+        CreateAppointmentRequest request,
+        int? patientId,
+        string status)
+    {
         ValidateCreateRequest(request);
 
         var date = request.AppointmentDate.Date;
@@ -162,14 +211,14 @@ public class BookingService : IBookingService
         var appointment = new Appointment
         {
             DoctorId = request.DoctorId,
-            PatientId = _currentUser.GetRequiredUserId(),
+            PatientId = patientId,
             PatientName = request.PatientName.Trim(),
             PatientPhone = request.PatientPhone.Trim(),
             AppointmentDate = date,
             StartTime = startTime,
             EndTime = endTime,
             Reason = request.Reason.Trim(),
-            Status = AppointmentStatusConstants.Pending,
+            Status = status,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -198,6 +247,141 @@ public class BookingService : IBookingService
         return MapAppointment(appointment);
     }
 
+    public async Task<AppointmentResponse> ConfirmAppointmentAsync(
+        int appointmentId)
+    {
+        var appointment =
+            await GetAppointmentForReceptionAsync(
+                appointmentId
+            );
+
+        if (appointment.Status != AppointmentStatusConstants.Pending)
+        {
+            throw new AppException(
+                ErrorCode.APPOINTMENT_INVALID_STATUS
+            );
+        }
+
+        appointment.Status =
+            AppointmentStatusConstants.Confirmed;
+
+        await _appointmentRepository.SaveChangesAsync();
+
+        return MapAppointment(appointment);
+    }
+
+    public async Task<AppointmentResponse> RescheduleAppointmentAsync(
+        int appointmentId,
+        RescheduleAppointmentRequest request)
+    {
+        ValidateRescheduleRequest(request);
+
+        var appointment =
+            await GetAppointmentForReceptionAsync(
+                appointmentId
+            );
+
+        if (appointment.Status is AppointmentStatusConstants.Cancelled
+            or AppointmentStatusConstants.Completed
+            or AppointmentStatusConstants.InProgress)
+        {
+            throw new AppException(
+                ErrorCode.APPOINTMENT_INVALID_STATUS
+            );
+        }
+
+        var doctor =
+            await _doctorRepository.GetActiveByIdAsync(
+                request.DoctorId
+            );
+
+        if (doctor == null)
+        {
+            throw new AppException(
+                ErrorCode.DOCTOR_NOT_FOUND
+            );
+        }
+
+        var date = request.AppointmentDate.Date;
+        var startTime = request.StartTime;
+        var schedules =
+            await _doctorRepository.GetSchedulesAsync(
+                request.DoctorId,
+                date.DayOfWeek
+            );
+
+        if (!BuildDailySlots(schedules).Any(x => x.StartTime == startTime))
+        {
+            throw new AppException(
+                ErrorCode.INVALID_REQUEST
+            );
+        }
+
+        var hasConflict =
+            await _appointmentRepository.HasConflictAsync(
+                request.DoctorId,
+                date,
+                startTime,
+                appointmentId
+            );
+
+        if (hasConflict)
+        {
+            throw new AppException(
+                ErrorCode.APPOINTMENT_CONFLICT
+            );
+        }
+
+        appointment.DoctorId = request.DoctorId;
+        appointment.Doctor = doctor;
+        appointment.AppointmentDate = date;
+        appointment.StartTime = startTime;
+        appointment.EndTime = startTime.Add(SlotDuration);
+        appointment.Status = AppointmentStatusConstants.Confirmed;
+
+        try
+        {
+            await _appointmentRepository.SaveChangesAsync();
+        }
+        catch (DbUpdateException exception) when (exception.InnerException is SqlException { Number: 2601 or 2627 })
+        {
+            _logger.LogWarning(
+                exception,
+                "Appointment reschedule slot conflict."
+            );
+
+            throw new AppException(
+                ErrorCode.APPOINTMENT_CONFLICT
+            );
+        }
+
+        return MapAppointment(appointment);
+    }
+
+    public async Task<AppointmentResponse> CancelAppointmentAsync(
+        int appointmentId)
+    {
+        var appointment =
+            await GetAppointmentForReceptionAsync(
+                appointmentId
+            );
+
+        if (appointment.Status is AppointmentStatusConstants.Cancelled
+            or AppointmentStatusConstants.Completed)
+        {
+            throw new AppException(
+                ErrorCode.APPOINTMENT_INVALID_STATUS
+            );
+        }
+
+        appointment.Status =
+            AppointmentStatusConstants.Cancelled;
+
+        await _appointmentRepository.SaveChangesAsync();
+
+        return MapAppointment(appointment);
+    }
+
     private static void ValidateCreateRequest(
         CreateAppointmentRequest request)
     {
@@ -211,6 +395,60 @@ public class BookingService : IBookingService
                 ErrorCode.INVALID_REQUEST
             );
         }
+    }
+
+    private async Task<Appointment> GetAppointmentForReceptionAsync(
+        int appointmentId)
+    {
+        var appointment =
+            await _appointmentRepository.GetByIdAsync(
+                appointmentId
+            );
+
+        if (appointment == null)
+        {
+            throw new AppException(
+                ErrorCode.APPOINTMENT_NOT_FOUND
+            );
+        }
+
+        return appointment;
+    }
+
+    private static void ValidateRescheduleRequest(
+        RescheduleAppointmentRequest request)
+    {
+        if (request.DoctorId <= 0
+            || request.AppointmentDate.Date.Add(request.StartTime) <= ClinicNow)
+        {
+            throw new AppException(
+                ErrorCode.INVALID_REQUEST
+            );
+        }
+    }
+
+    private static void ValidateStatusFilter(
+        string? status)
+    {
+        if (string.IsNullOrWhiteSpace(status)
+            || IsKnownStatus(status.Trim()))
+        {
+            return;
+        }
+
+        throw new AppException(
+            ErrorCode.APPOINTMENT_INVALID_STATUS
+        );
+    }
+
+    private static bool IsKnownStatus(
+        string status)
+    {
+        return status is AppointmentStatusConstants.Pending
+            or AppointmentStatusConstants.Confirmed
+            or AppointmentStatusConstants.InProgress
+            or AppointmentStatusConstants.Completed
+            or AppointmentStatusConstants.Cancelled;
     }
 
     private static List<AvailableSlotResponse> BuildDailySlots(IEnumerable<DoctorSchedule> schedules)

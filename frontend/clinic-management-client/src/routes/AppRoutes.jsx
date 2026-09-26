@@ -14,6 +14,7 @@ import CatalogManagementPage from "../pages/internal/CatalogManagementPage";
 import LabTestTypesPage from "../pages/internal/LabTestTypesPage";
 import UsersPage from "../pages/internal/admin/UsersPage";
 import DashboardPage from "../pages/internal/DashboardPage";
+import AppointmentsPage from "../pages/internal/AppointmentsPage";
 import AuthPage from "../pages/auth/AuthPage";
 
 export default function AppRoutes() {
@@ -37,6 +38,9 @@ export default function AppRoutes() {
             <Route path="/internal" element={<InternalLayout />}>
                 <Route index element={<Navigate to="dashboard" replace />} />
                 <Route path="dashboard" element={<DashboardPage />} />
+                <Route element={<ProtectedRoute allowedRoles={["Admin", "Receptionist"]} />}>
+                    <Route path="appointments" element={<AppointmentsPage />} />
+                </Route>
                 <Route element={<ProtectedRoute allowedRoles={["Admin"]} />}>
                     <Route path="users" element={<UsersPage />} />
                     <Route path="departments" element={<CatalogManagementPage resource="departments" />} />
