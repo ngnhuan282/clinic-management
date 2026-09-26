@@ -13,6 +13,8 @@ public interface IAppointmentRepository
         DateTime appointmentDate,
         TimeSpan startTime);
 
+    Task<Appointment?> GetByIdAsync(int appointmentId);
+
     Task AddAsync(Appointment appointment);
 
     Task SaveChangesAsync();

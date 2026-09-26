@@ -198,6 +198,53 @@ public class BookingService : IBookingService
         return MapAppointment(appointment);
     }
 
+    public async Task<AppointmentResponse> StartExaminationAsync(
+        int appointmentId)
+    {
+        var appointment =
+            await _appointmentRepository.GetByIdAsync(
+                appointmentId
+            );
+
+        if (appointment == null)
+        {
+            throw new AppException(
+                ErrorCode.APPOINTMENT_NOT_FOUND
+            );
+        }
+
+        if (appointment.Status == AppointmentStatusConstants.Cancelled ||
+            appointment.Status == AppointmentStatusConstants.Completed)
+        {
+            throw new AppException(
+                ErrorCode.APPOINTMENT_INVALID_STATUS
+            );
+        }
+
+        if (appointment.Status == AppointmentStatusConstants.Pending ||
+            appointment.Status == AppointmentStatusConstants.Confirmed)
+        {
+            if (appointment.AppointmentDate.Date != ClinicNow.Date)
+            {
+                throw new AppException(
+                    ErrorCode.APPOINTMENT_INVALID_STATUS
+                );
+            }
+
+            appointment.Status = AppointmentStatusConstants.InProgress;
+            await _appointmentRepository.SaveChangesAsync();
+        }
+
+        if (appointment.Status != AppointmentStatusConstants.InProgress)
+        {
+            throw new AppException(
+                ErrorCode.APPOINTMENT_INVALID_STATUS
+            );
+        }
+
+        return MapAppointment(appointment);
+    }
+
     private static void ValidateCreateRequest(
         CreateAppointmentRequest request)
     {
