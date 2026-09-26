@@ -1115,6 +1115,8 @@ namespace ClinicManagement.Migrations
                         .IsRequired();
 
                     b.Navigation("LabTest");
+                });
+
             modelBuilder.Entity("ClinicManagement.Data.Entities.MedicalRecord", b =>
                 {
                     b.HasOne("ClinicManagement.Data.Entities.Appointment", "Appointment")

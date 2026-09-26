@@ -6,7 +6,8 @@ public static class CorsConfiguration
 
     public static IServiceCollection AddApplicationCors(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IHostEnvironment environment)
     {
         var frontendUrls =
             configuration["Cors:FrontendUrl"]
@@ -18,6 +19,18 @@ public static class CorsConfiguration
                 StringSplitOptions.RemoveEmptyEntries
                 | StringSplitOptions.TrimEntries
             );
+
+        if (environment.IsDevelopment())
+        {
+            origins = origins
+                .Concat(Enumerable.Range(5173, 3).SelectMany(port => new[]
+                {
+                    $"http://localhost:{port}",
+                    $"http://127.0.0.1:{port}"
+                }))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
 
         services.AddCors(options =>
         {

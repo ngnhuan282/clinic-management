@@ -112,15 +112,6 @@ public class AppointmentRepository : IAppointmentRepository
                 && x.Status != AppointmentStatusConstants.Cancelled);
     }
 
-    public Task<Appointment?> GetByIdAsync(int appointmentId)
-    {
-        return _context.Appointments
-            .Include(x => x.Doctor)
-                .ThenInclude(x => x.Department)
-            .FirstOrDefaultAsync(x =>
-                x.AppointmentId == appointmentId);
-    }
-
     public async Task AddAsync(
         Appointment appointment)
     {

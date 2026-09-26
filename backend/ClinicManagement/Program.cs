@@ -67,7 +67,8 @@ namespace ClinicManagement
             // CORS
             // =========================
             builder.Services.AddApplicationCors(
-                builder.Configuration
+                builder.Configuration,
+                builder.Environment
             );
 
             // =========================

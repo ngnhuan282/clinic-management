@@ -18,6 +18,11 @@ import DashboardPage from "../pages/internal/DashboardPage";
 import AppointmentsPage from "../pages/internal/AppointmentsPage";
 import AuthPage from "../pages/auth/AuthPage";
 import DoctorScheduleManagementPage from "../pages/internal/DoctorScheduleManagementPage";
+import DoctorLabOrdersPage from "../pages/internal/doctor/DoctorLabOrdersPage";
+import TechnicianLabQueuePage from "../pages/internal/technician/TechnicianLabQueuePage";
+import DoctorAppointmentsPage from "../pages/internal/doctor/DoctorAppointmentsPage";
+import MedicalRecordDetailPage from "../pages/internal/doctor/MedicalRecordDetailPage";
+import MedicalRecordPage from "../pages/internal/doctor/MedicalRecordPage";
 
 export default function AppRoutes() {
     return <BrowserRouter><Routes>
