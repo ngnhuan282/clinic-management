@@ -38,6 +38,9 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<LabTestType> LabTestTypes { get; set; }
 
+    public DbSet<LabTest> LabTests { get; set; }
+    public DbSet<LabTestResult> LabTestResults { get; set; }
+
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {

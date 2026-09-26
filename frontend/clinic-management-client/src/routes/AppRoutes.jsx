@@ -15,7 +15,8 @@ import LabTestTypesPage from "../pages/internal/LabTestTypesPage";
 import UsersPage from "../pages/internal/admin/UsersPage";
 import DashboardPage from "../pages/internal/DashboardPage";
 import AuthPage from "../pages/auth/AuthPage";
-
+import DoctorLabOrdersPage from '../pages/internal/doctor/DoctorLabOrdersPage';
+import TechnicianLabQueuePage from '../pages/internal/technician/TechnicianLabQueuePage';
 export default function AppRoutes() {
     return <BrowserRouter><Routes>
         <Route element={<PatientLayout />}>
@@ -49,7 +50,15 @@ export default function AppRoutes() {
                 </Route>
                 <Route element={<ProtectedRoute allowedRoles={["Admin", "Doctor"]} />}>
                     <Route path="lab-test-types" element={<LabTestTypesPage />} />
+                    <Route path="doctor/lab-orders" element={<DoctorLabOrdersPage />} />
                 </Route>
+             {/* Admin & Technician */}
+                     <Route element={<ProtectedRoute allowedRoles={["Admin", "Technician"]} />}>
+                            <Route path="technician/lab-queue" element={<TechnicianLabQueuePage />} />
+                        </Route>
+
+
+
             </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
