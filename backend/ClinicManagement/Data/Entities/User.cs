@@ -24,4 +24,7 @@ public class User
 
     // Navigation
     public Role Role { get; set; } = null!;
+
+    public ICollection<MedicalRecord> MedicalRecords { get; set; }
+        = new List<MedicalRecord>();
 }

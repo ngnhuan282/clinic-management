@@ -32,4 +32,7 @@ public interface IBookingService
 
     Task<AppointmentResponse> CancelAppointmentAsync(
         int appointmentId);
+
+    Task<AppointmentResponse> StartExaminationAsync(
+        int appointmentId);
 }

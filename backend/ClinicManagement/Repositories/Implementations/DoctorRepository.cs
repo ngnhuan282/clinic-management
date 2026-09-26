@@ -7,10 +7,11 @@ namespace ClinicManagement.Repositories.Implementations;
 
 public class DoctorRepository : IDoctorRepository
 {
-    public Task<List<DoctorSchedule>> GetSchedulesAsync(int doctorId, DayOfWeek dayOfWeek) =>
+    public Task<List<DoctorSchedule>> GetSchedulesAsync(int doctorId, DateOnly workDate) =>
         _context.DoctorSchedules.AsNoTracking()
-            .Where(x => x.DoctorId == doctorId && x.DayOfWeek == dayOfWeek && x.IsActive)
-            .OrderBy(x => x.StartTime).ToListAsync();
+            .Include(x => x.TimeSlots)
+            .Where(x => x.DoctorId == doctorId && x.WorkDate == workDate && x.IsActive)
+            .OrderBy(x => x.WorkDate).ToListAsync();
     private readonly ApplicationDbContext _context;
 
     public DoctorRepository(

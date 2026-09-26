@@ -27,4 +27,6 @@ public class Appointment
     public string Status { get; set; } = string.Empty;
 
     public DateTime CreatedAt { get; set; }
+
+    public MedicalRecord? MedicalRecord { get; set; }
 }

@@ -9,6 +9,7 @@ using ClinicManagement.Services.Interfaces;
 using ClinicManagement.Services.Implementations;
 using ClinicManagement.Hubs;
 using Microsoft.AspNetCore.SignalR;
+
 namespace ClinicManagement
 {
     public class Program
@@ -88,7 +89,10 @@ namespace ClinicManagement
             //  Program Registration labtest 
 
             builder.Services.AddScoped<ILabTestTypeRepository, LabTestTypeRepository>();
-builder.Services.AddScoped<ILabTestTypeService, LabTestTypeService>();
+            builder.Services.AddScoped<ILabTestTypeService, LabTestTypeService>();
+
+
+                builder.Services.AddScoped<ILabTestService, LabTestService>();
             var app = builder.Build();
 
             // =========================

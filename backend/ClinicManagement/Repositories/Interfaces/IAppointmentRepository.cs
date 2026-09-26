@@ -19,6 +19,8 @@ public interface IAppointmentRepository
         TimeSpan startTime,
         int? ignoredAppointmentId = null);
 
+    Task<Appointment?> GetByIdAsync(int appointmentId);
+
     Task AddAsync(Appointment appointment);
 
     Task SaveChangesAsync();

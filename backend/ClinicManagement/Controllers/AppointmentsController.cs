@@ -13,8 +13,7 @@ public class AppointmentsController : ControllerBase
 {
     private readonly IBookingService _bookingService;
 
-    public AppointmentsController(
-        IBookingService bookingService)
+    public AppointmentsController(IBookingService bookingService)
     {
         _bookingService = bookingService;
     }
@@ -155,6 +154,24 @@ public class AppointmentsController : ControllerBase
             ApiResponse<AppointmentResponse>.Success(
                 result,
                 "Appointment cancelled successfully"
+            )
+        );
+    }
+
+    [HttpPatch("{appointmentId:int}/start-examination")]
+    [Authorize(Roles = RoleConstants.Admin + "," + RoleConstants.Doctor)]
+    public async Task<IActionResult> StartExamination(
+        int appointmentId)
+    {
+        var result =
+            await _bookingService.StartExaminationAsync(
+                appointmentId
+            );
+
+        return Ok(
+            ApiResponse<AppointmentResponse>.Success(
+                result,
+                "Appointment examination started successfully"
             )
         );
     }

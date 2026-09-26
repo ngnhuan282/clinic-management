@@ -69,3 +69,48 @@ h6 {
 p {
   margin: 0;
 }
+
+.slot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 0.75rem;
+}
+
+.slot-chip {
+  min-height: 42px;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font: 500 13px/18px var(--font-sans);
+  cursor: pointer;
+}
+
+.slot-chip-available {
+  color: var(--primary-deep);
+  background: #f0fdf4;
+  border: 1px solid #10b981;
+}
+
+.slot-chip-full {
+  color: var(--text-muted);
+  background: #f3f4f6;
+  border: 1px solid var(--border-subtle);
+  text-decoration: line-through;
+  cursor: not-allowed;
+}
+
+.slot-skeleton {
+  height: 42px;
+  border-radius: 0.5rem;
+  background: linear-gradient(90deg, #eaeef2 25%, #f6fafe 50%, #eaeef2 75%);
+  background-size: 200% 100%;
+  animation: slot-pulse 1.2s infinite;
+}
+
+@keyframes slot-pulse {
+  to { background-position: -200% 0; }
+}
+
+.slot-empty {
+  color: var(--text-muted);
+  font-size: 14px;
+}
