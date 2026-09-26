@@ -4,6 +4,11 @@ namespace ClinicManagement.Repositories.Interfaces;
 
 public interface IAppointmentRepository
 {
+    Task<(List<Appointment> Items, int Total)> GetPageAsync(
+        ClinicManagement.DTOs.Requests.AppointmentQuery request);
+
+    Task<Appointment?> GetByIdAsync(int appointmentId);
+
     Task<List<Appointment>> GetBookedSlotsAsync(
         int doctorId,
         DateTime appointmentDate);
@@ -11,7 +16,8 @@ public interface IAppointmentRepository
     Task<bool> HasConflictAsync(
         int doctorId,
         DateTime appointmentDate,
-        TimeSpan startTime);
+        TimeSpan startTime,
+        int? ignoredAppointmentId = null);
 
     Task<Appointment?> GetByIdAsync(int appointmentId);
 
