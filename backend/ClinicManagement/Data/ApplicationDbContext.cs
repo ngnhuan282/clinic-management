@@ -18,6 +18,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<RbacAudit> RbacAudits => Set<RbacAudit>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<DoctorSchedule> DoctorSchedules => Set<DoctorSchedule>();
+    public DbSet<DoctorScheduleRequest> DoctorScheduleRequests => Set<DoctorScheduleRequest>();
     public DbSet<TimeSlot> TimeSlots => Set<TimeSlot>();
 
     public DbSet<User> Users => Set<User>();
@@ -146,7 +147,8 @@ public class ApplicationDbContext : DbContext
                 [RoleConstants.Receptionist] = 3, [RoleConstants.Patient] = 4,
                 [RoleConstants.LabTechnician] = 5
             };
-            entity.HasData(PermissionCatalog.DefaultRoles.SelectMany(role => role.Value.Select(code =>
+            entity.HasData(PermissionCatalog.DefaultRoles.Where(role => role.Key != RoleConstants.DepartmentHead)
+                .SelectMany(role => role.Value.Select(code =>
                 new RolePermission { RoleId = roleIds[role.Key], PermissionCode = code })));
         });
 
@@ -166,6 +168,34 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(x => x.UserId).IsUnique().HasFilter("[UserId] IS NOT NULL");
             entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<DoctorScheduleRequest>(entity =>
+        {
+            entity.HasKey(x => x.RequestId);
+            entity.Property(x => x.WorkDate).HasColumnType("date");
+            entity.Property(x => x.Status).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.RejectReason).HasMaxLength(200);
+            entity.Property(x => x.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+            entity.ToTable(x =>
+            {
+                x.HasCheckConstraint("CK_DoctorScheduleRequests_Time", "[StartTime] < [EndTime]");
+                x.HasCheckConstraint("CK_DoctorScheduleRequests_Status", "[Status] IN ('Pending','Approved','Rejected','Cancelled')");
+                x.HasCheckConstraint("CK_DoctorScheduleRequests_RejectReason", "[Status] <> 'Rejected' OR ([RejectReason] IS NOT NULL AND LEN(LTRIM(RTRIM([RejectReason]))) > 0)");
+            });
+            entity.HasIndex(x => new { x.DoctorId, x.WorkDate, x.Status });
+            entity.HasOne(x => x.Doctor).WithMany().HasForeignKey(x => x.DoctorId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Room).WithMany().HasForeignKey(x => x.RoomId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Reviewer).WithMany().HasForeignKey(x => x.ReviewerId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Schedule).WithOne(x => x.Request).HasForeignKey<DoctorSchedule>(x => x.RequestId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<DoctorSchedule>(entity =>
+        {
+            entity.Property(x => x.WorkDate).HasColumnType("date");
+            entity.HasIndex(x => x.RequestId).IsUnique().HasFilter("[RequestId] IS NOT NULL");
+            entity.HasIndex(x => new { x.DoctorId, x.WorkDate, x.StartTime });
+            entity.HasIndex(x => new { x.RoomId, x.WorkDate, x.StartTime });
         });
 
         // =========================

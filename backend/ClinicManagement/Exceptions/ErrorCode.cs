@@ -319,4 +319,8 @@ public sealed class ErrorCode
         new(7203, "Lab test already has a result", HttpStatusCode.Conflict);
     public static readonly ErrorCode DOCTOR_SCHEDULE_CONFLICT =
         new(7301, "Doctor or room already has a schedule at this time", HttpStatusCode.Conflict);
+    public static readonly ErrorCode SCHEDULE_REQUEST_NOT_FOUND =
+        new(7302, "Schedule request not found", HttpStatusCode.NotFound);
+    public static readonly ErrorCode SCHEDULE_REQUEST_INVALID_STATUS =
+        new(7303, "Schedule request is no longer pending", HttpStatusCode.Conflict);
 }

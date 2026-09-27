@@ -9,6 +9,7 @@ public static class PermissionCodes
     public const string AccountsManageRoles = "accounts.manageRoles";
     public const string CatalogManage = "catalog.manage";
     public const string SchedulesManage = "schedules.manage";
+    public const string SchedulesReview = "schedules.review";
     public const string AppointmentsView = "appointments.view";
     public const string AppointmentsViewOwn = "appointments.viewOwn";
     public const string AppointmentsBookSelf = "appointments.bookSelf";
@@ -53,6 +54,7 @@ public static class PermissionCatalog
 {
     public static readonly PermissionDefinition[] All =
     [
+        new(PermissionCodes.SchedulesReview, "Lịch bác sĩ", "Duyệt ca khám", "Duyệt", "Theo khoa hoặc yêu cầu của Trưởng khoa"),
         new(PermissionCodes.AccountsView, "Tài khoản", "Xem tài khoản", "Xem"),
         new(PermissionCodes.AccountsCreate, "Tài khoản", "Tạo tài khoản nhân viên", "Tạo", IsImplemented: false),
         new(PermissionCodes.AccountsUpdate, "Tài khoản", "Khóa hoặc mở khóa tài khoản", "Sửa"),
@@ -105,6 +107,10 @@ public static class PermissionCatalog
             && x != PermissionCodes.LabsViewOwnResult && x != PermissionCodes.BillingViewOwn
             && x != PermissionCodes.LabsOrder && x != PermissionCodes.LabsEnterResult
             && x != PermissionCodes.LabsViewPending).ToArray(),
+        [RoleConstants.DepartmentHead] = [PermissionCodes.SchedulesReview, PermissionCodes.AppointmentsStartExamination, PermissionCodes.ClinicalViewAssigned,
+            PermissionCodes.ClinicalWriteRecord, PermissionCodes.ClinicalEditDiagnosis, PermissionCodes.ClinicalManageDiseases,
+            PermissionCodes.PharmacyViewInventory, PermissionCodes.PharmacyViewCatalog,
+            PermissionCodes.PharmacyPrescribe, PermissionCodes.LabsViewTypes, PermissionCodes.LabsViewOrders, PermissionCodes.LabsOrder],
         [RoleConstants.Doctor] = [PermissionCodes.AppointmentsStartExamination, PermissionCodes.ClinicalViewAssigned,
             PermissionCodes.ClinicalWriteRecord, PermissionCodes.ClinicalEditDiagnosis, PermissionCodes.ClinicalManageDiseases,
             PermissionCodes.PharmacyViewInventory, PermissionCodes.PharmacyViewCatalog,

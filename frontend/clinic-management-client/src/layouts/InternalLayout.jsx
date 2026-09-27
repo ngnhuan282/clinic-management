@@ -55,6 +55,7 @@ const MENU_ICONS = {
     "/internal/diseases": FactCheckOutlinedIcon,
     "/internal/users": BadgeOutlinedIcon,
     "/internal/roles-permissions": SecurityOutlinedIcon,
+    "/internal/schedule-requests": FactCheckOutlinedIcon,
     "/internal/departments": BusinessOutlinedIcon,
     "/internal/specializations": PeopleAltOutlinedIcon,
     "/internal/rooms": FolderSharedOutlinedIcon,
@@ -75,6 +76,10 @@ const ROLE_BRANDS = {
     Doctor: {
         title: "MediFlow Doctor",
         subtitle: "Nghiệp vụ lâm sàng",
+    },
+    DepartmentHead: {
+        title: "MediFlow Doctor",
+        subtitle: "Trưởng khoa",
     },
     Receptionist: {
         title: "MediFlow Desk",
@@ -124,11 +129,11 @@ function InternalLayout() {
 
     const primaryActionPath = role === "LabTechnician"
         ? "/internal/technician/lab-queue"
-        : role === "Doctor" ? "/internal/examinations" : "/internal/dashboard";
+        : role === "Doctor" || role === "DepartmentHead" ? "/internal/examinations" : "/internal/dashboard";
     const primaryActionLabel = role === "LabTechnician"
         ? "Xem hàng chờ xét nghiệm"
-        : role === "Doctor" ? "Gọi lượt kế tiếp" : "Tiếp đón & Đặt hẹn mới";
-    const showPrimaryAction = role === "Doctor" || role === "LabTechnician" ||
+        : role === "Doctor" || role === "DepartmentHead" ? "Gọi lượt kế tiếp" : "Tiếp đón & Đặt hẹn mới";
+    const showPrimaryAction = role === "Doctor" || role === "DepartmentHead" || role === "LabTechnician" ||
         ((role === "Admin" || role === "Receptionist") && user?.permissions?.includes("appointments.view"));
 
     const navigation = (

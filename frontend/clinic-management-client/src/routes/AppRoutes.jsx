@@ -24,6 +24,7 @@ import TechnicianLabQueuePage from "../pages/internal/technician/TechnicianLabQu
 import DoctorAppointmentsPage from "../pages/internal/doctor/DoctorAppointmentsPage";
 import MedicalRecordDetailPage from "../pages/internal/doctor/MedicalRecordDetailPage";
 import MedicalRecordPage from "../pages/internal/doctor/MedicalRecordPage";
+import ScheduleReviewPage from "../pages/internal/ScheduleReviewPage";
 
 function UnauthorizedPage() {
     const { state } = useLocation();
@@ -49,7 +50,8 @@ export default function AppRoutes() {
                 <Route path="/booking" element={<BookingPage />} />
                 <Route path="/lab-results" element={<LabResultsPage />} />
             </Route>
-            <Route path="/unauthorized" element={<UnauthorizedPage />} />
+            <Route path="/403" element={<UnauthorizedPage />} />
+            <Route path="/unauthorized" element={<Navigate to="/403" replace />} />
         </Route>
         <Route element={<ProtectedRoute allowInternal />}>
             <Route path="/internal" element={<InternalLayout />}>
@@ -71,6 +73,9 @@ export default function AppRoutes() {
                 </Route>
                 <Route element={<ProtectedRoute allowedPermissions={["schedules.manage"]} />}>
                     <Route path="doctor-schedules" element={<DoctorScheduleManagementPage />} />
+                </Route>
+                <Route element={<ProtectedRoute allowedRoles={["Admin", "DepartmentHead"]} allowedPermissions={["schedules.review"]} />}>
+                    <Route path="schedule-requests" element={<ScheduleReviewPage />} />
                 </Route>
                 <Route element={<ProtectedRoute allowedPermissions={["pharmacy.manageCatalog"]} />}>
                     <Route path="medicines" element={<MedicinesPage />} />

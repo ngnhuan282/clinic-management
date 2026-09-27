@@ -1,3 +1,4 @@
+using System.Data;
 using ClinicManagement.Data;
 using ClinicManagement.Data.Entities;
 using ClinicManagement.DTOs.Requests;
@@ -28,9 +29,10 @@ public class DoctorScheduleService(ApplicationDbContext context) : IDoctorSchedu
         if (!doctorExists || !roomExists)
             throw new AppException(ErrorCode.INVALID_REQUEST);
 
+        await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
         var overlaps = await _context.DoctorSchedules.AnyAsync(x => x.WorkDate == request.WorkDate && x.IsActive
             && (x.DoctorId == request.DoctorId || x.RoomId == request.RoomId)
-            && x.TimeSlots.Any(slot => slot.StartTime < end && slot.EndTime > start));
+            && x.StartTime < end && start < x.EndTime);
         if (overlaps) throw new AppException(ErrorCode.DOCTOR_SCHEDULE_CONFLICT);
 
         var slots = new List<TimeSlot>();
@@ -52,12 +54,15 @@ public class DoctorScheduleService(ApplicationDbContext context) : IDoctorSchedu
             DoctorId = request.DoctorId,
             RoomId = request.RoomId,
             WorkDate = request.WorkDate,
+            StartTime = start,
+            EndTime = end,
             Shift = request.Shift,
             MaxPatients = slots.Count * request.MaxCapacity,
             TimeSlots = slots
         };
         _context.DoctorSchedules.Add(schedule);
         await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
         var created = await GetScheduleQuery().SingleAsync(x => x.ScheduleId == schedule.ScheduleId);
         return MapSchedule(created);
     }
@@ -81,7 +86,8 @@ public class DoctorScheduleService(ApplicationDbContext context) : IDoctorSchedu
     {
         return _context.TimeSlots.AsNoTracking()
             .Where(x => x.Schedule.DoctorId == doctorId && x.Schedule.WorkDate == date &&
-                        x.Schedule.IsActive && x.Schedule.Doctor.IsActive &&
+                        x.Schedule.IsActive && x.Schedule.RequestId != null &&
+                        x.Schedule.Request!.Status == "Approved" && x.Schedule.Doctor.IsActive &&
                         (!specializationId.HasValue || x.Schedule.Doctor.SpecializationId == specializationId.Value))
             .OrderBy(x => x.StartTime)
             .Select(x => new AvailableSlotResponse

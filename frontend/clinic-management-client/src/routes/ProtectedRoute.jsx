@@ -2,7 +2,7 @@
 
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
-import { INTERNAL_ROLES } from "./roleAccess";
+import { redirectForProtectedRoute } from "./roleAccess";
 
 function ProtectedRoute({ allowedRoles = [], allowedPermissions = [], allowInternal = false }) {
     const {
@@ -13,22 +13,25 @@ function ProtectedRoute({ allowedRoles = [], allowedPermissions = [], allowInter
 
     const location = useLocation();
 
-    if (!isAuthenticated) {
+    const redirect = redirectForProtectedRoute(
+        { isAuthenticated, role, permissions }, location.pathname,
+        { allowedRoles, allowedPermissions, allowInternal }
+    );
+
+    if (redirect === "/internal/login" || redirect === "/login") {
         return (
             <Navigate
-                to={location.pathname.startsWith("/internal") ? "/internal/login" : "/login"}
+                to={redirect}
                 replace
                 state={{ from: location }}
             />
         );
     }
 
-    if ((allowedRoles.length > 0 && !allowedRoles.includes(role)) ||
-        (allowedPermissions.length > 0 && !allowedPermissions.some(code => permissions.includes(code))) ||
-        (allowInternal && !(INTERNAL_ROLES.includes(role) || (role !== "Patient" && permissions.length > 0)))) {
+    if (redirect) {
         return (
             <Navigate
-                to="/unauthorized"
+                to={redirect}
                 replace
                 state={{ deniedPath: location.pathname }}
             />

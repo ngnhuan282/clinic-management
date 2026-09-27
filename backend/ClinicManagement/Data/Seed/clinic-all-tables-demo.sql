@@ -24,6 +24,7 @@ BEGIN TRY
        OR OBJECT_ID('dbo.RecordDiagnoses', 'U') IS NULL
        OR OBJECT_ID('dbo.RolePermissions', 'U') IS NULL
        OR COL_LENGTH('dbo.Doctors', 'UserId') IS NULL
+       OR OBJECT_ID('dbo.DoctorScheduleRequests', 'U') IS NULL
        OR NOT EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId = '20260926172919_AddLabTechnicianRole')
         THROW 51000, 'Apply all EF migrations before running clinic-all-tables-demo.sql.', 1;
 
@@ -40,6 +41,7 @@ BEGIN TRY
     DELETE FROM dbo.Appointments;
     DELETE FROM dbo.TimeSlots;
     DELETE FROM dbo.DoctorSchedules;
+    DELETE FROM dbo.DoctorScheduleRequests;
     DELETE FROM dbo.Inventory;
     DELETE FROM dbo.Medicines;
     DELETE FROM dbo.LabTestTypes;
@@ -69,11 +71,12 @@ BEGIN TRY
         (2, 'Doctor', 'Doctor', 1),
         (3, 'Receptionist', 'Receptionist', 1),
         (4, 'Patient', 'Patient', 1),
-        (5, 'LabTechnician', 'Lab technician', 1);
+        (5, 'LabTechnician', 'Lab technician', 1),
+        (6, 'DepartmentHead', 'Department head and doctor', 1);
     INSERT INTO dbo.Roles (RoleId, RoleName, Description)
     SELECT 1000+n, CONCAT('DemoRole', RIGHT(CONCAT('0', n), 2)),
            'Reserved demo role; not assignable through the API'
-    FROM @n WHERE n BETWEEN 6 AND 20;
+    FROM @n WHERE n BETWEEN 7 AND 20;
     SET IDENTITY_INSERT dbo.Roles OFF;
 
     INSERT INTO dbo.RolePermissions (RoleId, PermissionCode)
@@ -97,6 +100,11 @@ BEGIN TRY
     INSERT INTO dbo.RolePermissions (RoleId, PermissionCode)
     SELECT 5, Code FROM dbo.Permissions WHERE Code IN
         ('labs.viewOrders','labs.viewPending','labs.start','labs.enterResult');
+    INSERT INTO dbo.RolePermissions (RoleId, PermissionCode)
+    SELECT 6, Code FROM dbo.Permissions WHERE Code IN
+        ('schedules.review','appointments.startExamination','clinical.viewAssigned','clinical.writeRecord',
+         'clinical.editDiagnosis','clinical.manageDiseases','pharmacy.viewInventory','pharmacy.viewCatalog',
+         'pharmacy.prescribe','labs.viewTypes','labs.viewOrders','labs.order');
 
     DECLARE @departmentNames TABLE (n int PRIMARY KEY, Code varchar(30), Name nvarchar(150));
     INSERT INTO @departmentNames VALUES
@@ -133,12 +141,24 @@ BEGIN TRY
     FROM @departmentNames;
     SET IDENTITY_INSERT dbo.Doctors OFF;
 
-    INSERT INTO dbo.DoctorSchedules (ScheduleId, DoctorId, RoomId, WorkDate, Shift, MaxPatients, IsActive, CreatedAt)
+    SET IDENTITY_INSERT dbo.DoctorScheduleRequests ON;
+    INSERT INTO dbo.DoctorScheduleRequests
+        (RequestId, DoctorId, RoomId, WorkDate, StartTime, EndTime, Status, CreatedAt)
+    SELECT 1000+n, 1000+n, 1000+n,
+           CASE WHEN n BETWEEN 1 AND 4 OR n BETWEEN 17 AND 20 THEN @today ELSE DATEADD(day, n-4, @today) END,
+           CASE WHEN n <= 4 THEN CAST('09:00:00' AS time) ELSE CAST('08:00:00' AS time) END,
+           CASE WHEN n <= 4 THEN CAST('09:30:00' AS time) ELSE CAST('08:30:00' AS time) END,
+           'Approved', @now FROM @n;
+    SET IDENTITY_INSERT dbo.DoctorScheduleRequests OFF;
+
+    INSERT INTO dbo.DoctorSchedules (ScheduleId, DoctorId, RoomId, WorkDate, StartTime, EndTime, RequestId, Shift, MaxPatients, IsActive, CreatedAt)
     SELECT CONVERT(uniqueidentifier, CONCAT('00000000-0000-0000-0000-', RIGHT(CONCAT('000000000000', 1000+n), 12))),
            1000+n, 1000+n,
            CASE WHEN n BETWEEN 1 AND 4 OR n BETWEEN 17 AND 20 THEN @today
                 ELSE DATEADD(day, n-4, @today) END,
-           'Morning', 1, 1, @now FROM @n;
+           CASE WHEN n <= 4 THEN CAST('09:00:00' AS time) ELSE CAST('08:00:00' AS time) END,
+           CASE WHEN n <= 4 THEN CAST('09:30:00' AS time) ELSE CAST('08:30:00' AS time) END,
+           1000+n, 'Morning', 1, 1, @now FROM @n;
 
     INSERT INTO dbo.TimeSlots (SlotId, ScheduleId, StartTime, EndTime, MaxCapacity, CurrentBooked, IsAvailable)
     SELECT CONVERT(uniqueidentifier, CONCAT('00000000-0000-0000-0001-', RIGHT(CONCAT('000000000000', 1000+n), 12))),
@@ -316,6 +336,7 @@ BEGIN TRY
 
     -- Keep the next generated IDs predictable even if old data used larger IDs.
     DBCC CHECKIDENT ('dbo.Roles', RESEED, 1020) WITH NO_INFOMSGS;
+    DBCC CHECKIDENT ('dbo.DoctorScheduleRequests', RESEED, 1020) WITH NO_INFOMSGS;
     DBCC CHECKIDENT ('dbo.Users', RESEED, 1020) WITH NO_INFOMSGS;
     DBCC CHECKIDENT ('dbo.RefreshTokens', RESEED, 1020) WITH NO_INFOMSGS;
     DBCC CHECKIDENT ('dbo.Departments', RESEED, 1020) WITH NO_INFOMSGS;

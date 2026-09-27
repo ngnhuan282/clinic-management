@@ -74,6 +74,13 @@ try
         await Task.Delay(200);
     }
     await Send(HttpMethod.Get, "swagger/v1/swagger.json");
+    if (args.Contains("--a4"))
+    {
+        await ScheduleReviewChecks.VerifyRoleMigrationCollisionAsync(db, Check);
+        await ScheduleReviewChecks.RunAsync(client, db, password, Check);
+        Console.WriteLine($"SUCCESS: {checks} A4 checks passed.");
+        return;
+    }
     if (args.Contains("--ui"))
     {
         // Consumed by the browser harness; test credentials never enter the repository.
@@ -167,6 +174,19 @@ try
     client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", admin["accessToken"]!.GetValue<string>());
     await Send(HttpMethod.Post, "api/doctor-schedules", new { doctorId = 1, roomId = 1, workDate = dateText, shift = 0, startTime = "08:00", endTime = "12:00", slotDurationMinutes = 30, maxCapacity = 1 });
     await Send(HttpMethod.Post, "api/doctor-schedules", new { doctorId = 1, roomId = 1, workDate = dateText, shift = 1, startTime = "13:00", endTime = "15:30", slotDurationMinutes = 30, maxCapacity = 1 });
+    foreach (var shift in new[] { Shift.Morning, Shift.Afternoon })
+    {
+        var approvedSchedule = await db.DoctorSchedules.SingleAsync(x => x.DoctorId == 1 && x.WorkDate == DateOnly.FromDateTime(date) && x.Shift == shift);
+        var approvedRequest = new DoctorScheduleRequest
+        {
+            DoctorId = approvedSchedule.DoctorId, RoomId = approvedSchedule.RoomId,
+            WorkDate = approvedSchedule.WorkDate, StartTime = approvedSchedule.StartTime,
+            EndTime = approvedSchedule.EndTime, Status = "Approved", CreatedAt = DateTime.UtcNow
+        };
+        db.DoctorScheduleRequests.Add(approvedRequest);
+        approvedSchedule.Request = approvedRequest;
+    }
+    await db.SaveChangesAsync();
     await Send(HttpMethod.Post, "api/doctor-schedules", new { doctorId = 1, roomId = 2, workDate = dateText, shift = 0, startTime = "09:00", endTime = "10:00", slotDurationMinutes = 30, maxCapacity = 1 }, 409);
     await Send(HttpMethod.Post, "api/doctor-schedules", new { doctorId = 1, roomId = 2, workDate = dateText, shift = 0, startTime = "17:00", endTime = "16:00", slotDurationMinutes = 30, maxCapacity = 1 }, 400);
     client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", patient["accessToken"]!.GetValue<string>());
@@ -248,6 +268,7 @@ try
     client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", patient["accessToken"]!.GetValue<string>());
     Check((await Send(HttpMethod.Get, $"api/LabTests/{labOrderId}"))!["result"]!["resultSummary"]!.GetValue<string>() == "Normal",
         "Patient can read their own completed lab result");
+    await ScheduleReviewChecks.RunAsync(client, db, password, Check);
     await Week34Checks.RunAsync(client, db, password, Check);
     await RbacChecks.RunAsync(client, db, password, Check);
     var allTablesSeed = await File.ReadAllTextAsync(
@@ -339,7 +360,7 @@ try
         new { username = "demo_patient04", password = "admin123" }))!["result"]!;
     Check(assignedTechnician["role"]!.GetValue<string>() == "LabTechnician",
         "Admin can assign the lab technician role through the API");
-    await Send(HttpMethod.Patch, "api/users/1004/role", new { roleId = 1006 });
+    await Send(HttpMethod.Patch, "api/users/1004/role", new { roleId = 1007 });
     Check(!serverLog.Any(line => line.Contains("AuthService.RefreshAsync", StringComparison.Ordinal)
         || line.Contains("Failed to determine the https port", StringComparison.Ordinal)),
         "Expected refresh 401 and HTTP development profile do not emit server errors");

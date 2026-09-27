@@ -10,7 +10,8 @@ public class DoctorRepository : IDoctorRepository
     public Task<List<DoctorSchedule>> GetSchedulesAsync(int doctorId, DateOnly workDate) =>
         _context.DoctorSchedules.AsNoTracking()
             .Include(x => x.TimeSlots)
-            .Where(x => x.DoctorId == doctorId && x.WorkDate == workDate && x.IsActive)
+            .Where(x => x.DoctorId == doctorId && x.WorkDate == workDate && x.IsActive
+                && x.RequestId != null && x.Request!.Status == "Approved")
             .OrderBy(x => x.WorkDate).ToListAsync();
     private readonly ApplicationDbContext _context;
 

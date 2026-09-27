@@ -8,6 +8,10 @@ public class DoctorSchedule
     public int RoomId { get; set; }
     public Room Room { get; set; } = null!;
     public DateOnly WorkDate { get; set; }
+    public TimeSpan StartTime { get; set; }
+    public TimeSpan EndTime { get; set; }
+    public int? RequestId { get; set; }
+    public DoctorScheduleRequest? Request { get; set; }
     public Shift Shift { get; set; }
     public int MaxPatients { get; set; }
     public bool IsActive { get; set; } = true;

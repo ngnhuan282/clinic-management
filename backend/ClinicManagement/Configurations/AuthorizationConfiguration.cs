@@ -20,7 +20,7 @@ public static class AuthorizationConfiguration
                 policy.RequireAuthenticatedUser().RequireRole(RoleConstants.Admin)
                     .AddRequirements(new PermissionRequirement(PermissionCodes.AccountsManageRoles)));
             options.AddPolicy(PolicyConstants.InternalAccess, policy =>
-                policy.RequireAuthenticatedUser().RequireRole(RoleConstants.Admin, RoleConstants.Doctor, RoleConstants.Receptionist, RoleConstants.LabTechnician));
+                policy.RequireAuthenticatedUser().RequireRole(RoleConstants.Admin, RoleConstants.Doctor, RoleConstants.DepartmentHead, RoleConstants.Receptionist, RoleConstants.LabTechnician));
         });
         services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
         return services;
