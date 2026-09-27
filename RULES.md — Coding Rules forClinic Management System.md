@@ -961,6 +961,7 @@ Role dùng thống nhất:
 Admin
 Doctor
 Receptionist
+LabTechnician
 Patient
 ```
 

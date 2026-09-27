@@ -51,6 +51,9 @@ try
     foreach (var (name, role) in new[] { ("testadmin", 1), ("testdoctor", 2), ("testreceptionist", 3), ("testlab", 5) })
         db.Users.Add(new User { Username = name, FullName = name, PasswordHash = BCrypt.Net.BCrypt.HashPassword(password), RoleId = role, CreatedAt = DateTime.UtcNow });
     await db.SaveChangesAsync();
+    (await db.Doctors.SingleAsync(x => x.DoctorId == 1)).UserId =
+        (await db.Users.SingleAsync(x => x.Username == "testdoctor")).UserId;
+    await db.SaveChangesAsync();
 
     var start = new ProcessStartInfo("dotnet") { WorkingDirectory = Path.Combine(root, "backend/ClinicManagement"), UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
     start.ArgumentList.Add(Path.Combine(AppContext.BaseDirectory, "ClinicManagement.dll"));
@@ -246,6 +249,7 @@ try
     Check((await Send(HttpMethod.Get, $"api/LabTests/{labOrderId}"))!["result"]!["resultSummary"]!.GetValue<string>() == "Normal",
         "Patient can read their own completed lab result");
     await Week34Checks.RunAsync(client, db, password, Check);
+    await RbacChecks.RunAsync(client, db, password, Check);
     var allTablesSeed = await File.ReadAllTextAsync(
         Path.Combine(root, "backend/ClinicManagement/Data/Seed/clinic-all-tables-demo.sql"));
     await db.Database.ExecuteSqlRawAsync(allTablesSeed);
@@ -329,13 +333,13 @@ try
     client.DefaultRequestHeaders.Authorization =
         new AuthenticationHeaderValue("Bearer", seededAdmin["accessToken"]!.GetValue<string>());
     var availableRoles = (await Send(HttpMethod.Get, "api/roles"))!["result"]!.AsArray();
-    Check(availableRoles.Count == 5, "Only functional roles can be assigned");
+    Check(availableRoles.Count == 20, "System and demo custom roles are available for assignment");
     await Send(HttpMethod.Patch, "api/users/1004/role", new { roleId = 5 });
     var assignedTechnician = (await Send(HttpMethod.Post, "api/auth/login",
         new { username = "demo_patient04", password = "admin123" }))!["result"]!;
     Check(assignedTechnician["role"]!.GetValue<string>() == "LabTechnician",
         "Admin can assign the lab technician role through the API");
-    await Send(HttpMethod.Patch, "api/users/1004/role", new { roleId = 1005 }, 404);
+    await Send(HttpMethod.Patch, "api/users/1004/role", new { roleId = 1006 });
     Check(!serverLog.Any(line => line.Contains("AuthService.RefreshAsync", StringComparison.Ordinal)
         || line.Contains("Failed to determine the https port", StringComparison.Ordinal)),
         "Expected refresh 401 and HTTP development profile do not emit server errors");

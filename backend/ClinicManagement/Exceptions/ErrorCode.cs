@@ -107,6 +107,20 @@ public sealed class ErrorCode
         new(2008, "At least one active administrator is required", HttpStatusCode.Conflict);
     public static readonly ErrorCode USER_ACCESS_CONFLICT =
         new(2009, "Account access changed concurrently. Reload and try again", HttpStatusCode.Conflict);
+    public static readonly ErrorCode ROLE_NAME_EXISTS =
+        new(2010, "Role name already exists", HttpStatusCode.Conflict);
+    public static readonly ErrorCode SYSTEM_ROLE_PROTECTED =
+        new(2011, "System role name and deletion are protected", HttpStatusCode.Conflict);
+    public static readonly ErrorCode ROLE_IN_USE =
+        new(2012, "Role is assigned to accounts", HttpStatusCode.Conflict);
+    public static readonly ErrorCode ROLE_CONFLICT =
+        new(2013, "Role changed concurrently. Reload and try again", HttpStatusCode.Conflict);
+    public static readonly ErrorCode PERMISSION_NOT_FOUND =
+        new(2014, "Unknown or unavailable permission code", HttpStatusCode.BadRequest);
+    public static readonly ErrorCode ADMIN_PERMISSION_REQUIRED =
+        new(2015, "Admin must retain RBAC management permissions", HttpStatusCode.Conflict);
+    public static readonly ErrorCode ROLE_PERMISSION_NOT_ALLOWED =
+        new(2016, "This permission is not valid for the system role", HttpStatusCode.BadRequest);
 
     public static readonly ErrorCode CATALOG_DUPLICATE =
         new(2101, "Catalog code or number already exists", HttpStatusCode.Conflict);

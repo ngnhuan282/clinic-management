@@ -12,6 +12,7 @@ public static class DependencyInjection
     {
         services.AddHttpContextAccessor();
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<RbacService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 

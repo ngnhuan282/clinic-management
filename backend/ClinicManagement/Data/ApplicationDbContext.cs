@@ -1,5 +1,6 @@
 ﻿using ClinicManagement.Data.Entities;
 using Microsoft.EntityFrameworkCore;
+using ClinicManagement.Commons;
 
 namespace ClinicManagement.Data;
 
@@ -12,6 +13,9 @@ public class ApplicationDbContext : DbContext
     }
 
     public DbSet<Role> Roles => Set<Role>();
+    public DbSet<Permission> Permissions => Set<Permission>();
+    public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+    public DbSet<RbacAudit> RbacAudits => Set<RbacAudit>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<DoctorSchedule> DoctorSchedules => Set<DoctorSchedule>();
     public DbSet<TimeSlot> TimeSlots => Set<TimeSlot>();
@@ -77,39 +81,91 @@ public class ApplicationDbContext : DbContext
 
             entity.Property(x => x.Description)
                 .HasMaxLength(200);
+            entity.Property(x => x.Version).IsRowVersion();
 
             entity.HasData(
                 new Role
                 {
                     RoleId = 1,
                     RoleName = "Admin",
-                    Description = "System administrator"
+                    Description = "System administrator", IsSystem = true
                 },
                 new Role
                 {
                     RoleId = 2,
                     RoleName = "Doctor",
-                    Description = "Doctor"
+                    Description = "Doctor", IsSystem = true
                 },
                 new Role
                 {
                     RoleId = 3,
                     RoleName = "Receptionist",
-                    Description = "Receptionist"
+                    Description = "Receptionist", IsSystem = true
                 },
                 new Role
                 {
                     RoleId = 4,
                     RoleName = "Patient",
-                    Description = "Patient"
+                    Description = "Patient", IsSystem = true
                 },
                 new Role
                 {
                     RoleId = 5,
                     RoleName = "LabTechnician",
-                    Description = "Lab technician"
+                    Description = "Lab technician", IsSystem = true
                 }
             );
+        });
+
+        modelBuilder.Entity<Permission>(entity =>
+        {
+            entity.HasKey(x => x.Code);
+            entity.Property(x => x.Code).HasMaxLength(80);
+            entity.Property(x => x.Module).HasMaxLength(80).IsRequired();
+            entity.Property(x => x.Name).HasMaxLength(160).IsRequired();
+            entity.Property(x => x.Kind).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Scope).HasMaxLength(250);
+            entity.HasData(PermissionCatalog.All.Select(x => new Permission
+            {
+                Code = x.Code, Module = x.Module, Name = x.Name, Kind = x.Kind,
+                Scope = x.Scope, IsImplemented = x.IsImplemented
+            }));
+        });
+
+        modelBuilder.Entity<RolePermission>(entity =>
+        {
+            entity.HasKey(x => new { x.RoleId, x.PermissionCode });
+            entity.Property(x => x.PermissionCode).HasMaxLength(80);
+            entity.HasOne(x => x.Role).WithMany(x => x.RolePermissions).HasForeignKey(x => x.RoleId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Permission).WithMany(x => x.RolePermissions).HasForeignKey(x => x.PermissionCode)
+                .OnDelete(DeleteBehavior.Restrict);
+            var roleIds = new Dictionary<string, int>
+            {
+                [RoleConstants.Admin] = 1, [RoleConstants.Doctor] = 2,
+                [RoleConstants.Receptionist] = 3, [RoleConstants.Patient] = 4,
+                [RoleConstants.LabTechnician] = 5
+            };
+            entity.HasData(PermissionCatalog.DefaultRoles.SelectMany(role => role.Value.Select(code =>
+                new RolePermission { RoleId = roleIds[role.Key], PermissionCode = code })));
+        });
+
+        modelBuilder.Entity<RbacAudit>(entity =>
+        {
+            entity.HasKey(x => x.RbacAuditId);
+            entity.Property(x => x.Action).HasMaxLength(60).IsRequired();
+            entity.Property(x => x.EntityType).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.BeforeJson).HasColumnType("nvarchar(max)");
+            entity.Property(x => x.AfterJson).HasColumnType("nvarchar(max)");
+            entity.HasIndex(x => x.CreatedAt);
+            entity.HasOne<User>().WithMany().HasForeignKey(x => x.ActorUserId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Doctor>(entity =>
+        {
+            entity.HasIndex(x => x.UserId).IsUnique().HasFilter("[UserId] IS NOT NULL");
+            entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         // =========================

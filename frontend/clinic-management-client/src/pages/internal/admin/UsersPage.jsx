@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Alert, Avatar, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, LinearProgress, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TextField, Typography } from "@mui/material";
 import { LockOpenOutlined, LockOutlined, ManageAccountsOutlined, RefreshOutlined, SearchOutlined } from "@mui/icons-material";
+import { Link as RouterLink } from "react-router-dom";
 import useUsers from "../../../hooks/useUsers";
 import useAuth from "../../../hooks/useAuth";
 import { updateUserRole, updateUserStatus } from "../../../api/userApi";
@@ -31,7 +32,10 @@ export default function UsersPage() {
     return <Stack spacing={3}>
         <Stack direction="row" spacing={2} sx={{ justifyContent: "space-between", alignItems: "center" }}>
             <Box><Typography variant="overline" color="primary">Quản trị hệ thống</Typography><Typography variant="h4" component="h1">Tài khoản & Vai trò</Typography><Typography color="text.secondary" sx={{ mt: 1 }}>Quản lý quyền truy cập của nhân viên và bệnh nhân.</Typography></Box>
-            <Button aria-label="Tải lại danh sách" startIcon={<RefreshOutlined />} onClick={reload} disabled={loading} sx={{ flexShrink: 0, whiteSpace: "nowrap" }}><Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>Tải lại</Box></Button>
+            <Stack direction="row" spacing={1}>
+                <Button component={RouterLink} to="/internal/roles-permissions" variant="outlined" sx={{ whiteSpace: "nowrap" }}>Ma trận quyền</Button>
+                <Button aria-label="Tải lại danh sách" startIcon={<RefreshOutlined />} onClick={reload} disabled={loading} sx={{ flexShrink: 0, whiteSpace: "nowrap" }}><Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>Tải lại</Box></Button>
+            </Stack>
         </Stack>
         {success && <Alert severity="success" onClose={() => setSuccess("")}>{success}</Alert>}
         {error && <Alert severity="error" action={<Button onClick={reload}>Thử lại</Button>}>{error}</Alert>}

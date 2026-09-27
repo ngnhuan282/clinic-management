@@ -6,6 +6,8 @@ using ClinicManagement.Exceptions;
 using ClinicManagement.Mappings;
 using ClinicManagement.Repositories.Interfaces;
 using ClinicManagement.Services.Interfaces;
+using ClinicManagement.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace ClinicManagement.Services.Implementations;
 
@@ -19,18 +21,25 @@ public class MedicalRecordService : IMedicalRecordService
 
     private readonly IMedicalRecordRepository _medicalRecordRepository;
     private readonly IDiseaseRepository _diseaseRepository;
+    private readonly ApplicationDbContext _db;
+    private readonly ICurrentUserService _currentUser;
 
     public MedicalRecordService(
         IMedicalRecordRepository medicalRecordRepository,
-        IDiseaseRepository diseaseRepository)
+        IDiseaseRepository diseaseRepository, ApplicationDbContext db,
+        ICurrentUserService currentUser)
     {
         _medicalRecordRepository = medicalRecordRepository;
         _diseaseRepository = diseaseRepository;
+        _db = db;
+        _currentUser = currentUser;
     }
 
     public async Task<PagedResponse<ExaminationQueueResponse>> GetQueueAsync(
         ExaminationQueueFilterRequest request)
     {
+        if (_currentUser.Role != RoleConstants.Admin)
+            request.DoctorId = await AllowedDoctorIdAsync();
         var (items, totalItems) =
             await _medicalRecordRepository.GetQueueAsync(request);
 
@@ -59,6 +68,8 @@ public class MedicalRecordService : IMedicalRecordService
             throw new AppException(ErrorCode.MEDICAL_RECORD_NOT_FOUND);
         }
 
+        await RequireRecordScopeAsync(record.DoctorId);
+
         return record.ToResponse();
     }
 
@@ -74,6 +85,8 @@ public class MedicalRecordService : IMedicalRecordService
         {
             throw new AppException(ErrorCode.MEDICAL_RECORD_NOT_FOUND);
         }
+
+        await RequireRecordScopeAsync(record.DoctorId);
 
         return record.ToResponse();
     }
@@ -97,6 +110,7 @@ public class MedicalRecordService : IMedicalRecordService
         {
             throw new AppException(ErrorCode.APPOINTMENT_NOT_FOUND);
         }
+        await RequireRecordScopeAsync(appointment.DoctorId);
 
         if (appointment.Status == AppointmentStatusConstants.Cancelled)
         {
@@ -167,6 +181,7 @@ public class MedicalRecordService : IMedicalRecordService
         {
             throw new AppException(ErrorCode.MEDICAL_RECORD_NOT_FOUND);
         }
+        await RequireRecordScopeAsync(record.DoctorId);
 
         var diagnoses =
             await BuildDiagnosesAsync(request.Diagnoses);
@@ -220,6 +235,23 @@ public class MedicalRecordService : IMedicalRecordService
         {
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
+    }
+
+    private async Task<int?> AllowedDoctorIdAsync()
+    {
+        if (_currentUser.Role == RoleConstants.Admin) return null;
+        var doctorId = await _db.Doctors.AsNoTracking()
+            .Where(x => x.UserId == _currentUser.GetRequiredUserId() && x.IsActive)
+            .Select(x => (int?)x.DoctorId).SingleOrDefaultAsync();
+        if (!doctorId.HasValue) throw new AppException(ErrorCode.UNAUTHORIZED);
+        return doctorId;
+    }
+
+    private async Task RequireRecordScopeAsync(int doctorId)
+    {
+        var allowedDoctorId = await AllowedDoctorIdAsync();
+        if (allowedDoctorId.HasValue && allowedDoctorId.Value != doctorId)
+            throw new AppException(ErrorCode.UNAUTHORIZED);
     }
 
     private async Task<List<RecordDiagnosis>> BuildDiagnosesAsync(

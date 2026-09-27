@@ -22,6 +22,8 @@ BEGIN TRY
        OR COL_LENGTH('dbo.Doctors', 'SpecializationId') IS NULL
        OR OBJECT_ID('dbo.LabTestResults', 'U') IS NULL
        OR OBJECT_ID('dbo.RecordDiagnoses', 'U') IS NULL
+       OR OBJECT_ID('dbo.RolePermissions', 'U') IS NULL
+       OR COL_LENGTH('dbo.Doctors', 'UserId') IS NULL
        OR NOT EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId = '20260926172919_AddLabTechnicianRole')
         THROW 51000, 'Apply all EF migrations before running clinic-all-tables-demo.sql.', 1;
 
@@ -30,6 +32,7 @@ BEGIN TRY
     SET @securityVersion = CASE WHEN @securityVersion >= 2147483647 THEN 1 ELSE @securityVersion + 1 END;
 
     -- Delete children before parents. Constraints and migration metadata stay intact.
+    DELETE FROM dbo.RbacAudits;
     DELETE FROM dbo.LabTestResults;
     DELETE FROM dbo.LabTests;
     DELETE FROM dbo.RecordDiagnoses;
@@ -49,6 +52,7 @@ BEGIN TRY
     DELETE FROM dbo.Rooms;
     DELETE FROM dbo.Specializations;
     DELETE FROM dbo.Departments;
+    DELETE FROM dbo.RolePermissions;
     DELETE FROM dbo.Roles;
 
     DECLARE @n TABLE (n int PRIMARY KEY);
@@ -60,17 +64,39 @@ BEGIN TRY
     DECLARE @today date = CAST(SYSDATETIMEOFFSET() AT TIME ZONE 'SE Asia Standard Time' AS date);
 
     SET IDENTITY_INSERT dbo.Roles ON;
-    INSERT INTO dbo.Roles (RoleId, RoleName, Description) VALUES
-        (1, 'Admin', 'System administrator'),
-        (2, 'Doctor', 'Doctor'),
-        (3, 'Receptionist', 'Receptionist'),
-        (4, 'Patient', 'Patient'),
-        (5, 'LabTechnician', 'Lab technician');
+    INSERT INTO dbo.Roles (RoleId, RoleName, Description, IsSystem) VALUES
+        (1, 'Admin', 'System administrator', 1),
+        (2, 'Doctor', 'Doctor', 1),
+        (3, 'Receptionist', 'Receptionist', 1),
+        (4, 'Patient', 'Patient', 1),
+        (5, 'LabTechnician', 'Lab technician', 1);
     INSERT INTO dbo.Roles (RoleId, RoleName, Description)
     SELECT 1000+n, CONCAT('DemoRole', RIGHT(CONCAT('0', n), 2)),
            'Reserved demo role; not assignable through the API'
     FROM @n WHERE n BETWEEN 6 AND 20;
     SET IDENTITY_INSERT dbo.Roles OFF;
+
+    INSERT INTO dbo.RolePermissions (RoleId, PermissionCode)
+    SELECT 1, Code FROM dbo.Permissions WHERE Code NOT IN
+        ('appointments.viewOwn','appointments.bookSelf','appointments.cancelOwn','clinical.viewOwn',
+         'pharmacy.viewOwnPrescription','labs.viewOwnResult','billing.viewOwn',
+         'labs.order','labs.enterResult','labs.viewPending');
+    INSERT INTO dbo.RolePermissions (RoleId, PermissionCode)
+    SELECT 2, Code FROM dbo.Permissions WHERE Code IN
+        ('appointments.startExamination','clinical.viewAssigned','clinical.writeRecord','clinical.editDiagnosis',
+         'clinical.manageDiseases','pharmacy.viewInventory','pharmacy.viewCatalog','pharmacy.prescribe',
+         'labs.viewTypes','labs.viewOrders','labs.order');
+    INSERT INTO dbo.RolePermissions (RoleId, PermissionCode)
+    SELECT 3, Code FROM dbo.Permissions WHERE Code IN
+        ('appointments.view','appointments.createWalkIn','appointments.confirm','appointments.reschedule',
+         'appointments.checkIn','pharmacy.dispense','billing.view','billing.create','billing.recordPayment');
+    INSERT INTO dbo.RolePermissions (RoleId, PermissionCode)
+    SELECT 4, Code FROM dbo.Permissions WHERE Code IN
+        ('appointments.viewOwn','appointments.bookSelf','appointments.cancelOwn','clinical.viewOwn',
+         'pharmacy.viewOwnPrescription','labs.viewOrders','labs.viewOwnResult','billing.viewOwn');
+    INSERT INTO dbo.RolePermissions (RoleId, PermissionCode)
+    SELECT 5, Code FROM dbo.Permissions WHERE Code IN
+        ('labs.viewOrders','labs.viewPending','labs.start','labs.enterResult');
 
     DECLARE @departmentNames TABLE (n int PRIMARY KEY, Code varchar(30), Name nvarchar(150));
     INSERT INTO @departmentNames VALUES
@@ -139,6 +165,8 @@ BEGIN TRY
            1, @securityVersion, @now
     FROM @n;
     SET IDENTITY_INSERT dbo.Users OFF;
+
+    UPDATE dbo.Doctors SET UserId = 1002 WHERE DoctorId = 1005;
 
     DECLARE @appointments TABLE (n int PRIMARY KEY);
     INSERT INTO @appointments SELECT n FROM @n;

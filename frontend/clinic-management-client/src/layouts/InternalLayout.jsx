@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
     Avatar,
-    Badge,
     Box,
     Button,
     Chip,
@@ -32,6 +31,7 @@ import PeopleAltOutlinedIcon from "@mui/icons-material/PeopleAltOutlined";
 import ScienceOutlinedIcon from "@mui/icons-material/ScienceOutlined";
 import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
+import SecurityOutlinedIcon from "@mui/icons-material/SecurityOutlined";
 import {
     Link as RouterLink,
     Outlet,
@@ -43,6 +43,7 @@ import useAuth from "../hooks/useAuth";
 import {
     INTERNAL_PAGES,
     ROLE_LABELS,
+    canSeePage,
 } from "../routes/roleAccess";
 
 const SIDEBAR_WIDTH = 260;
@@ -53,6 +54,7 @@ const MENU_ICONS = {
     "/internal/examinations": CalendarMonthOutlinedIcon,
     "/internal/diseases": FactCheckOutlinedIcon,
     "/internal/users": BadgeOutlinedIcon,
+    "/internal/roles-permissions": SecurityOutlinedIcon,
     "/internal/departments": BusinessOutlinedIcon,
     "/internal/specializations": PeopleAltOutlinedIcon,
     "/internal/rooms": FolderSharedOutlinedIcon,
@@ -84,14 +86,6 @@ const ROLE_BRANDS = {
     },
 };
 
-function getBadgeForPage(page) {
-    if (page.path === "/internal/medicines") {
-        return "3";
-    }
-
-    return "";
-}
-
 function InternalLayout() {
     const {
         user,
@@ -103,10 +97,8 @@ function InternalLayout() {
     const [mobileOpen, setMobileOpen] = useState(false);
     const [loggingOut, setLoggingOut] = useState(false);
 
-    const pages = INTERNAL_PAGES.filter((page) =>
-        page.roles.includes(role)
-    );
-    const brand = ROLE_BRANDS[role] || ROLE_BRANDS.Admin;
+    const pages = INTERNAL_PAGES.filter((page) => canSeePage(user, page));
+    const brand = ROLE_BRANDS[role] || { title: `MediFlow ${role || "Portal"}`, subtitle: "Nội bộ phòng khám" };
     const roleLabel = ROLE_LABELS[role] || role || "Nội bộ";
     const initial =
         user?.fullName?.trim()?.slice(0, 1) ||
@@ -136,6 +128,8 @@ function InternalLayout() {
     const primaryActionLabel = role === "LabTechnician"
         ? "Xem hàng chờ xét nghiệm"
         : role === "Doctor" ? "Gọi lượt kế tiếp" : "Tiếp đón & Đặt hẹn mới";
+    const showPrimaryAction = role === "Doctor" || role === "LabTechnician" ||
+        ((role === "Admin" || role === "Receptionist") && user?.permissions?.includes("appointments.view"));
 
     const navigation = (
         <Stack sx={{ height: "100%" }}>
@@ -207,7 +201,7 @@ function InternalLayout() {
                 </Box>
             </Stack>
 
-            <Box sx={{ p: 1.5 }}>
+            {showPrimaryAction && <Box sx={{ p: 1.5 }}>
                 <Button
                     component={RouterLink}
                     to={primaryActionPath}
@@ -223,7 +217,7 @@ function InternalLayout() {
                 >
                     {primaryActionLabel}
                 </Button>
-            </Box>
+            </Box>}
 
             <Stack
                 component="nav"
@@ -239,7 +233,6 @@ function InternalLayout() {
                         MENU_ICONS[page.path] ||
                         DashboardOutlinedIcon;
                     const selected = isMenuActive(page);
-                    const badge = getBadgeForPage(page);
 
                     return (
                         <Button
@@ -294,29 +287,6 @@ function InternalLayout() {
                                     {page.label}
                                 </Box>
 
-                                {badge && (
-                                    <Box
-                                        component="span"
-                                        sx={{
-                                            minWidth: 24,
-                                            ml: 1.25,
-                                            px: 0.75,
-                                            py: 0.15,
-                                            borderRadius: 999,
-                                            color: selected
-                                                ? "#E11D48"
-                                                : "#2563EB",
-                                            backgroundColor: selected
-                                                ? "#FFE4E6"
-                                                : "#DBEAFE",
-                                            fontSize: 12,
-                                            fontWeight: 900,
-                                            textAlign: "center",
-                                        }}
-                                    >
-                                        {badge}
-                                    </Box>
-                                )}
                             </Stack>
                         </Button>
                     );
@@ -485,20 +455,6 @@ function InternalLayout() {
                                 />
                             </Box>
 
-                            <Button
-                                variant="outlined"
-                                startIcon={<BusinessOutlinedIcon />}
-                                sx={{
-                                    display: { xs: "none", sm: "flex" },
-                                    height: 44,
-                                    flexShrink: 0,
-                                    color: "#374151",
-                                    borderColor: "#D6DADE",
-                                    backgroundColor: "#FFFFFF",
-                                }}
-                            >
-                                Cơ sở 1: 128 Nguyễn Trãi
-                            </Button>
                         </Stack>
 
                         <Stack
@@ -510,7 +466,7 @@ function InternalLayout() {
                                 flexShrink: 0,
                             }}
                         >
-                            <Button
+                            {showPrimaryAction && <Button
                                 component={RouterLink}
                                 to={primaryActionPath}
                                 variant="contained"
@@ -524,16 +480,11 @@ function InternalLayout() {
                                 }}
                             >
                                 {primaryActionLabel}
-                            </Button>
+                            </Button>}
 
                             <Tooltip title="Thông báo">
                                 <IconButton aria-label="Thông báo">
-                                    <Badge
-                                        color="error"
-                                        badgeContent={5}
-                                    >
-                                        <NotificationsNoneOutlinedIcon />
-                                    </Badge>
+                                    <NotificationsNoneOutlinedIcon />
                                 </IconButton>
                             </Tooltip>
 

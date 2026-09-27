@@ -1,6 +1,9 @@
 namespace ClinicManagement.DTOs.Responses;
 
 public record UserResponse(int UserId, string Username, string FullName, string? Email,
-    string? Phone, int RoleId, string Role, bool Status, DateTime CreatedAt);
+    string? Phone, int RoleId, string Role, bool Status, DateTime CreatedAt)
+{
+    public IReadOnlyList<string>? Permissions { get; init; }
+}
 
-public record RoleResponse(int RoleId, string RoleName, string? Description);
+public record RoleResponse(int RoleId, string RoleName, string? Description, bool IsSystem = false);

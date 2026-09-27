@@ -78,21 +78,24 @@ public class LabTestService(ApplicationDbContext context) : ILabTestService
         return true;
     }
 
-    public Task<LabTestResponseDto?> GetLabTestByIdAsync(int id, int currentUserId, string currentUserRole) =>
-        Project(VisibleTo(context.LabTests.AsNoTracking(), currentUserId, currentUserRole)
-            .Where(x => x.Id == id)).SingleOrDefaultAsync();
+    public async Task<LabTestResponseDto?> GetLabTestByIdAsync(int id, int currentUserId, string currentUserRole) =>
+        await Project((await VisibleToAsync(currentUserId)).Where(x => x.Id == id)).SingleOrDefaultAsync();
 
-    public Task<List<LabTestResponseDto>> GetLabTestsAsync(int currentUserId, string currentUserRole) =>
-        Project(VisibleTo(context.LabTests.AsNoTracking(), currentUserId, currentUserRole))
-            .OrderByDescending(x => x.CreatedAt).ToListAsync();
+    public async Task<List<LabTestResponseDto>> GetLabTestsAsync(int currentUserId, string currentUserRole) =>
+        await Project(await VisibleToAsync(currentUserId)).OrderByDescending(x => x.CreatedAt).ToListAsync();
 
-    private static IQueryable<LabTest> VisibleTo(IQueryable<LabTest> query, int userId, string role) => role switch
+    private async Task<IQueryable<LabTest>> VisibleToAsync(int userId)
     {
-        RoleConstants.Admin or RoleConstants.LabTechnician => query,
-        RoleConstants.Doctor => query.Where(x => x.DoctorId == userId),
-        RoleConstants.Patient => query.Where(x => x.PatientId == userId),
-        _ => query.Where(_ => false)
-    };
+        var rights = await context.Users.AsNoTracking().Where(x => x.UserId == userId)
+            .SelectMany(x => x.Role.RolePermissions.Select(right => right.PermissionCode)).ToListAsync();
+        var query = context.LabTests.AsNoTracking();
+        if (await context.Users.AsNoTracking().AnyAsync(x => x.UserId == userId
+            && x.Role.RoleName == RoleConstants.Admin)) return query;
+        if (rights.Contains(PermissionCodes.LabsViewPending)) return query;
+        var authored = rights.Contains(PermissionCodes.LabsOrder);
+        var owned = rights.Contains(PermissionCodes.LabsViewOwnResult);
+        return query.Where(x => (authored && x.DoctorId == userId) || (owned && x.PatientId == userId));
+    }
 
     private static IQueryable<LabTestResponseDto> Project(IQueryable<LabTest> query) =>
         query.Select(x => new LabTestResponseDto

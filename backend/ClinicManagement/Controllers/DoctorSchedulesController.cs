@@ -11,7 +11,7 @@ namespace ClinicManagement.Controllers;
 public class DoctorSchedulesController(IDoctorScheduleService service) : ControllerBase
 {
     [HttpPost]
-    [Authorize(Roles = RoleConstants.Admin)]
+    [Authorize(Policy = PermissionCodes.SchedulesManage)]
     public async Task<IActionResult> Create(CreateDoctorScheduleRequest request) =>
         Ok(ApiResponse<object>.Success(await service.CreateScheduleAsync(request), "Doctor schedule created"));
 

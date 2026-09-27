@@ -9,7 +9,7 @@ namespace ClinicManagement.Controllers;
 
 [ApiController]
 [Route("api/medicine-categories")]
-[Authorize(Roles = RoleConstants.Admin)]
+[Authorize]
 public class MedicineCategoriesController : ControllerBase
 {
     private readonly IMedicineCategoryService _categoryService;
@@ -21,6 +21,7 @@ public class MedicineCategoriesController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = PermissionCodes.PharmacyViewCatalog)]
     public async Task<IActionResult> GetPaged(
         [FromQuery] MedicineCategoryFilterRequest request)
     {
@@ -34,6 +35,7 @@ public class MedicineCategoriesController : ControllerBase
     }
 
     [HttpGet("summary")]
+    [Authorize(Policy = PermissionCodes.PharmacyViewCatalog)]
     public async Task<IActionResult> GetSummary()
     {
         var result =
@@ -46,6 +48,7 @@ public class MedicineCategoriesController : ControllerBase
     }
 
     [HttpGet("{categoryId:int}")]
+    [Authorize(Policy = PermissionCodes.PharmacyViewCatalog)]
     public async Task<IActionResult> GetById(int categoryId)
     {
         var result =
@@ -58,6 +61,7 @@ public class MedicineCategoriesController : ControllerBase
     }
 
     [HttpGet("options")]
+    [Authorize(Policy = PermissionCodes.PharmacyViewCatalog)]
     public async Task<IActionResult> GetOptions()
     {
         var result =
@@ -71,6 +75,7 @@ public class MedicineCategoriesController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = PermissionCodes.PharmacyManageCatalog)]
     public async Task<IActionResult> Create(
         CreateMedicineCategoryRequest request)
     {
@@ -88,6 +93,7 @@ public class MedicineCategoriesController : ControllerBase
     }
 
     [HttpPut("{categoryId:int}")]
+    [Authorize(Policy = PermissionCodes.PharmacyManageCatalog)]
     public async Task<IActionResult> Update(
         int categoryId,
         UpdateMedicineCategoryRequest request)
@@ -107,6 +113,7 @@ public class MedicineCategoriesController : ControllerBase
     }
 
     [HttpDelete("{categoryId:int}")]
+    [Authorize(Policy = PermissionCodes.PharmacyManageCatalog)]
     public async Task<IActionResult> Delete(int categoryId)
     {
         await _categoryService.DeleteAsync(categoryId);

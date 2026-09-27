@@ -8,7 +8,7 @@ namespace ClinicManagement.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = RoleConstants.Admin + "," + RoleConstants.Doctor)]
+    [Authorize(Policy = PermissionCodes.LabsViewTypes)]
     public class LabTestTypesController : ControllerBase
     {
         private readonly ILabTestTypeService _service;
@@ -34,7 +34,7 @@ namespace ClinicManagement.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = RoleConstants.Admin)]
+        [Authorize(Policy = PermissionCodes.LabsManageTypes)]
         public async Task<IActionResult> Create([FromBody] CreateLabTestTypeDto dto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -43,7 +43,7 @@ namespace ClinicManagement.Controllers
         }
 
         [HttpPut("{id}")]
-        [Authorize(Roles = RoleConstants.Admin)]
+        [Authorize(Policy = PermissionCodes.LabsManageTypes)]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateLabTestTypeDto dto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -53,7 +53,7 @@ namespace ClinicManagement.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = RoleConstants.Admin)]
+        [Authorize(Policy = PermissionCodes.LabsManageTypes)]
         public async Task<IActionResult> Delete(int id)
         {
             var success = await _service.DeleteAsync(id);

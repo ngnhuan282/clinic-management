@@ -399,6 +399,10 @@ public class BookingService : IBookingService
             );
         }
 
+        if (_currentUser.Role != RoleConstants.Admin &&
+            appointment.Doctor.UserId != _currentUser.GetRequiredUserId())
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+
         if (appointment.Status == AppointmentStatusConstants.Cancelled
             || appointment.Status == AppointmentStatusConstants.Completed)
         {

@@ -17,6 +17,7 @@ export const INTERNAL_PAGES = [
     { label: "Tổng quan", path: "/internal/dashboard", roles: INTERNAL_ROLES },
     { label: "Lịch hẹn", path: "/internal/appointments", roles: ["Admin", "Receptionist"] },
     { label: "Tài khoản & Vai trò", path: "/internal/users", roles: ["Admin"] },
+    { label: "Vai trò & Phân quyền", path: "/internal/roles-permissions", roles: ["Admin"] },
     { label: "Khoa", path: "/internal/departments", roles: ["Admin"] },
     { label: "Chuyên khoa", path: "/internal/specializations", roles: ["Admin"] },
     { label: "Phòng", path: "/internal/rooms", roles: ["Admin"] },
@@ -27,27 +28,64 @@ export const INTERNAL_PAGES = [
     { label: "Hàng chờ xét nghiệm", path: "/internal/technician/lab-queue", roles: ["LabTechnician"] },
 ];
 
-export const homeForRole = (role) =>
-    role === "LabTechnician"
-        ? "/internal/technician/lab-queue"
-        : INTERNAL_ROLES.includes(role)
-        ? "/internal/dashboard"
-        : "/booking";
+// These routes are available from page flows, but do not belong in the sidebar.
+const ADDITIONAL_INTERNAL_ROUTES = [
+    { path: "/internal/diseases", roles: ["Admin", "Doctor"] },
+    { path: "/internal/examinations", roles: ["Doctor"] },
+];
 
-export function canAccessPath(role, path) {
+const PAGE_PERMISSIONS = {
+    "/internal/appointments": "appointments.view",
+    "/internal/users": "accounts.view",
+    "/internal/roles-permissions": "accounts.manageRoles",
+    "/internal/departments": "catalog.manage",
+    "/internal/specializations": "catalog.manage",
+    "/internal/rooms": "catalog.manage",
+    "/internal/doctor-schedules": "schedules.manage",
+    "/internal/medicines": "pharmacy.manageCatalog",
+    "/internal/lab-test-types": "labs.viewTypes",
+    "/internal/doctor/lab-orders": "labs.order",
+    "/internal/technician/lab-queue": "labs.viewPending",
+    "/internal/diseases": "clinical.manageDiseases",
+    "/internal/examinations": "clinical.viewAssigned",
+};
+
+const asUser = value => typeof value === "string" ? { role: value } : value || {};
+
+export function canSeePage(value, page) {
+    const user = asUser(value);
+    if (Array.isArray(user.permissions)) {
+        const permission = PAGE_PERMISSIONS[page.path];
+        if (permission?.startsWith("accounts.") && user.role !== "Admin") return false;
+        return user.role !== "Patient" && (!permission || user.permissions.includes(permission));
+    }
+    return page.roles.includes(user.role);
+}
+
+export const homeForRole = (value) =>
+    asUser(value).role === "Patient"
+        ? "/booking"
+        : asUser(value).role === "LabTechnician"
+        ? "/internal/technician/lab-queue"
+        : (INTERNAL_ROLES.includes(asUser(value).role) || asUser(value).permissions?.length)
+        ? "/internal/dashboard"
+        : "/unauthorized";
+
+export function canAccessPath(value, path) {
+    const user = asUser(value);
     if (path === "/booking" || path === "/lab-results") {
-        return role === "Patient";
+        return user.role === "Patient";
     }
 
     if (!path.startsWith("/internal")) {
         return true;
     }
 
-    const page = INTERNAL_PAGES.find(
+    const page = [...INTERNAL_PAGES, ...ADDITIONAL_INTERNAL_ROUTES].find(
         (item) =>
             path === item.path ||
             path.startsWith(`${item.path}/`)
     );
 
-    return Boolean(page?.roles.includes(role));
+    return Boolean(page && canSeePage(user, page));
 }

@@ -19,7 +19,7 @@ public class AppointmentsController : ControllerBase
     }
 
     [HttpGet]
-    [Authorize(Roles = RoleConstants.Admin + "," + RoleConstants.Receptionist)]
+    [Authorize(Policy = PermissionCodes.AppointmentsView)]
     public async Task<IActionResult> GetAppointments(
         [FromQuery] AppointmentQuery query)
     {
@@ -67,7 +67,7 @@ public class AppointmentsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = RoleConstants.Patient)]
+    [Authorize(Policy = PermissionCodes.AppointmentsBookSelf)]
     public async Task<IActionResult> CreateAppointment(
         CreateAppointmentRequest request)
     {
@@ -85,7 +85,7 @@ public class AppointmentsController : ControllerBase
     }
 
     [HttpPost("direct")]
-    [Authorize(Roles = RoleConstants.Admin + "," + RoleConstants.Receptionist)]
+    [Authorize(Policy = PermissionCodes.AppointmentsCreateWalkIn)]
     public async Task<IActionResult> CreateDirectAppointment(
         CreateAppointmentRequest request)
     {
@@ -103,7 +103,7 @@ public class AppointmentsController : ControllerBase
     }
 
     [HttpPatch("{id:int}/confirm")]
-    [Authorize(Roles = RoleConstants.Admin + "," + RoleConstants.Receptionist)]
+    [Authorize(Policy = PermissionCodes.AppointmentsConfirm)]
     public async Task<IActionResult> ConfirmAppointment(
         int id)
     {
@@ -121,7 +121,7 @@ public class AppointmentsController : ControllerBase
     }
 
     [HttpPatch("{id:int}/reschedule")]
-    [Authorize(Roles = RoleConstants.Admin + "," + RoleConstants.Receptionist)]
+    [Authorize(Policy = PermissionCodes.AppointmentsReschedule)]
     public async Task<IActionResult> RescheduleAppointment(
         int id,
         RescheduleAppointmentRequest request)
@@ -141,7 +141,7 @@ public class AppointmentsController : ControllerBase
     }
 
     [HttpPatch("{id:int}/cancel")]
-    [Authorize(Roles = RoleConstants.Admin + "," + RoleConstants.Receptionist)]
+    [Authorize(Policy = PermissionCodes.AppointmentsReschedule)]
     public async Task<IActionResult> CancelAppointment(
         int id)
     {
@@ -159,7 +159,7 @@ public class AppointmentsController : ControllerBase
     }
 
     [HttpPatch("{appointmentId:int}/start-examination")]
-    [Authorize(Roles = RoleConstants.Admin + "," + RoleConstants.Doctor)]
+    [Authorize(Policy = PermissionCodes.AppointmentsStartExamination)]
     public async Task<IActionResult> StartExamination(
         int appointmentId)
     {

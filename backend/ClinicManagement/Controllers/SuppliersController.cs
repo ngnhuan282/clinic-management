@@ -9,7 +9,7 @@ namespace ClinicManagement.Controllers;
 
 [ApiController]
 [Route("api/suppliers")]
-[Authorize(Roles = RoleConstants.Admin)]
+[Authorize]
 public class SuppliersController : ControllerBase
 {
     private readonly ISupplierService _supplierService;
@@ -20,6 +20,7 @@ public class SuppliersController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = PermissionCodes.PharmacyViewCatalog)]
     public async Task<IActionResult> GetPaged(
         [FromQuery] SupplierFilterRequest request)
     {
@@ -33,6 +34,7 @@ public class SuppliersController : ControllerBase
     }
 
     [HttpGet("summary")]
+    [Authorize(Policy = PermissionCodes.PharmacyViewCatalog)]
     public async Task<IActionResult> GetSummary()
     {
         var result =
@@ -45,6 +47,7 @@ public class SuppliersController : ControllerBase
     }
 
     [HttpGet("{supplierId:int}")]
+    [Authorize(Policy = PermissionCodes.PharmacyViewCatalog)]
     public async Task<IActionResult> GetById(int supplierId)
     {
         var result =
@@ -56,6 +59,7 @@ public class SuppliersController : ControllerBase
     }
 
     [HttpGet("options")]
+    [Authorize(Policy = PermissionCodes.PharmacyViewCatalog)]
     public async Task<IActionResult> GetOptions()
     {
         var result =
@@ -68,6 +72,7 @@ public class SuppliersController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = PermissionCodes.PharmacyManageCatalog)]
     public async Task<IActionResult> Create(
         CreateSupplierRequest request)
     {
@@ -85,6 +90,7 @@ public class SuppliersController : ControllerBase
     }
 
     [HttpPut("{supplierId:int}")]
+    [Authorize(Policy = PermissionCodes.PharmacyManageCatalog)]
     public async Task<IActionResult> Update(
         int supplierId,
         UpdateSupplierRequest request)
@@ -104,6 +110,7 @@ public class SuppliersController : ControllerBase
     }
 
     [HttpDelete("{supplierId:int}")]
+    [Authorize(Policy = PermissionCodes.PharmacyManageCatalog)]
     public async Task<IActionResult> Delete(int supplierId)
     {
         await _supplierService.DeleteAsync(supplierId);

@@ -9,7 +9,7 @@ namespace ClinicManagement.Controllers;
 
 [ApiController]
 [Route("api/diseases")]
-[Authorize(Roles = RoleConstants.Admin + "," + RoleConstants.Doctor)]
+[Authorize(Policy = PermissionCodes.ClinicalManageDiseases)]
 public class DiseasesController : ControllerBase
 {
     private readonly IDiseaseService _diseaseService;
