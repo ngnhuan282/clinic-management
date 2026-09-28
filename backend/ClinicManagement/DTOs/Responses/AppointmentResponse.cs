@@ -23,4 +23,8 @@ public class AppointmentResponse
     public string Reason { get; set; } = string.Empty;
 
     public string Status { get; set; } = string.Empty;
+    public int? PatientProfileId { get; set; }
+    public int? PatientBookId { get; set; }
+    public DateTime? BookVerifiedAt { get; set; }
+    public DateTime? CheckedInAt { get; set; }
 }
