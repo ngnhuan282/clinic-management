@@ -193,6 +193,9 @@ public class BookingService : IBookingService
                 ErrorCode.INVALID_REQUEST
             );
         }
+        var timeSlotId = schedules.SelectMany(x => x.TimeSlots)
+            .Where(x => x.StartTime == startTime && x.IsAvailable)
+            .Select(x => (Guid?)x.SlotId).FirstOrDefault();
 
         var hasConflict =
             await _appointmentRepository.HasConflictAsync(
@@ -212,6 +215,7 @@ public class BookingService : IBookingService
         {
             DoctorId = request.DoctorId,
             PatientId = patientId,
+            TimeSlotId = timeSlotId,
             PatientName = request.PatientName.Trim(),
             PatientPhone = request.PatientPhone.Trim(),
             AppointmentDate = date,

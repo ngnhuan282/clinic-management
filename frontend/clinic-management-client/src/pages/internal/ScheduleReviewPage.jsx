@@ -219,10 +219,10 @@ function RejectDialog({ detail, working, onClose, onConfirm }) {
                         multiline minRows={3} maxRows={6}
                         label="Lý do từ chối duyệt *"
                         placeholder="Nhập chi tiết lý do từ chối..."
-                        inputProps={{ maxLength:500 }}
+                        inputProps={{ maxLength:200 }}
                         value={reason}
                         onChange={(e) => setReason(e.target.value)}
-                        helperText={`${reason.length}/500 ký tự`}
+                        helperText={`${reason.length}/200 ký tự`}
                         fullWidth
                     />
                 </Stack>
@@ -231,7 +231,7 @@ function RejectDialog({ detail, working, onClose, onConfirm }) {
                 <Button variant="outlined" onClick={onClose} disabled={working}>Hủy bỏ</Button>
                 <Button variant="contained" color="error"
                     startIcon={working ? <CircularProgress size={16} color="inherit" /> : <CancelOutlinedIcon />}
-                    disabled={working || reason.trim().length < 5}
+                    disabled={working || reason.trim().length === 0}
                     onClick={() => onConfirm(reason.trim())}
                     sx={{ fontWeight:800 }}>
                     Gửi thông báo Từ chối
@@ -644,16 +644,11 @@ export default function ScheduleReviewPage() {
                                                         {item.roomName || "–"}
                                                     </Typography>
                                                     {isConflict && (
-                                                        <Tooltip title="Xung đột phòng">
+                                                        <Tooltip title="Có xung đột lịch">
                                                             <WarningAmberOutlinedIcon sx={{ fontSize:16, color:"#EF4444" }} />
                                                         </Tooltip>
                                                     )}
                                                 </Stack>
-                                                {isConflict && item.conflictDetails && (
-                                                    <Typography variant="caption" sx={{ color:"#DC2626", fontSize:11, display:"block" }}>
-                                                        Trùng với: {item.conflictDetails}
-                                                    </Typography>
-                                                )}
                                             </TableCell>
 
                                             {/* Thời gian gửi (DepartmentHead) */}

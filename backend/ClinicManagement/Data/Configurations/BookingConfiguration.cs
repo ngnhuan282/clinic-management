@@ -32,6 +32,8 @@ public class AppointmentConfiguration : IEntityTypeConfiguration<Appointment>
         entity.Property(x => x.CreatedAt).HasDefaultValueSql("GETDATE()");
         entity.HasOne(x => x.Doctor).WithMany(x => x.Appointments).HasForeignKey(x => x.DoctorId).OnDelete(DeleteBehavior.Restrict);
         entity.HasOne(x => x.Patient).WithMany().HasForeignKey(x => x.PatientId).OnDelete(DeleteBehavior.Restrict);
+        entity.HasOne(x => x.TimeSlot).WithMany().HasForeignKey(x => x.TimeSlotId).OnDelete(DeleteBehavior.Restrict);
+        entity.HasIndex(x => x.TimeSlotId);
         entity.HasIndex(x => new { x.DoctorId, x.AppointmentDate, x.StartTime })
             .IsUnique().HasFilter("[Status] <> 'Cancelled'");
     }

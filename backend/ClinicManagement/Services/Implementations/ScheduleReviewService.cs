@@ -21,9 +21,8 @@ public class ScheduleReviewService(ApplicationDbContext db, ICurrentUserService 
         if (status is not null && status is not ("Pending" or "Approved" or "Rejected" or "Cancelled"))
             throw new AppException(ErrorCode.INVALID_REQUEST);
         var query = _db.DoctorScheduleRequests.AsNoTracking();
-        query = isAdmin
-            ? query.Where(x => x.Doctor.User != null && x.Doctor.User.Role.RoleName == RoleConstants.DepartmentHead)
-            : query.Where(x => x.Doctor.DepartmentId == departmentId);
+        if (!isAdmin)
+            query = query.Where(x => x.Doctor.DepartmentId == departmentId);
         if (status is not null) query = query.Where(x => x.Status == status);
         var total = await query.CountAsync();
         var items = await query.OrderByDescending(x => x.CreatedAt).ThenByDescending(x => x.RequestId)
@@ -39,7 +38,34 @@ public class ScheduleReviewService(ApplicationDbContext db, ICurrentUserService 
                 CanReview = x.Status == "Pending" && (isAdmin || x.Doctor.UserId != userId)
                     && (isAdmin || x.Doctor.User == null || x.Doctor.User.Role.RoleName != RoleConstants.DepartmentHead)
             }).ToListAsync();
+        foreach (var item in items)
+            item.Conflicts = await ConflictQuery(item).ToListAsync();
         return new PagedResponse<ScheduleRequestResponse>(items, pageNumber, pageSize, total);
+    }
+
+    private IQueryable<ScheduleConflictResponse> ConflictQuery(ScheduleRequestResponse item)
+    {
+        var requests = _db.DoctorScheduleRequests.AsNoTracking()
+            .Where(x => x.RequestId != item.RequestId && x.Status == "Pending" &&
+                x.WorkDate == item.WorkDate && x.StartTime < item.EndTime && item.StartTime < x.EndTime &&
+                (x.DoctorId == item.DoctorId || x.RoomId == item.RoomId));
+        return requests.Select(x => new ScheduleConflictResponse
+        {
+            Type = x.DoctorId == item.DoctorId ? "Doctor" : "Room",
+            RequestId = x.RequestId, DoctorId = x.DoctorId, DoctorName = x.Doctor.FullName,
+            RoomId = x.RoomId, RoomName = x.Room.Name, WorkDate = x.WorkDate,
+            StartTime = x.StartTime, EndTime = x.EndTime
+        }).Concat(_db.DoctorSchedules.AsNoTracking()
+            .Where(x => x.Status == "Approved" && x.IsActive && x.WorkDate == item.WorkDate &&
+                x.StartTime < item.EndTime && item.StartTime < x.EndTime &&
+                (x.DoctorId == item.DoctorId || x.RoomId == item.RoomId))
+            .Select(x => new ScheduleConflictResponse
+            {
+                Type = x.DoctorId == item.DoctorId ? "Doctor" : "Room",
+                RequestId = x.RequestId ?? 0, DoctorId = x.DoctorId, DoctorName = x.Doctor.FullName,
+                RoomId = x.RoomId, RoomName = x.Room.Name, WorkDate = x.WorkDate,
+                StartTime = x.StartTime, EndTime = x.EndTime
+            }));
     }
 
     public async Task<ScheduleRequestResponse> GetAsync(int id)
@@ -72,8 +98,7 @@ public class ScheduleReviewService(ApplicationDbContext db, ICurrentUserService 
             if (request.Status != "Pending") throw new AppException(ErrorCode.SCHEDULE_REQUEST_INVALID_STATUS);
             if (request.StartTime >= request.EndTime ||
                 (request.EndTime - request.StartTime).Ticks % TimeSpan.FromMinutes(30).Ticks != 0 ||
-                request.Doctor.DepartmentId != request.Room.DepartmentId
-                || !request.Doctor.IsActive || !request.Room.IsActive)
+                !request.Doctor.IsActive || !request.Room.IsActive)
                 throw new AppException(ErrorCode.INVALID_REQUEST);
 
             if (reason is null)
@@ -92,7 +117,8 @@ public class ScheduleReviewService(ApplicationDbContext db, ICurrentUserService 
                     RequestId = request.RequestId, DoctorId = request.DoctorId, RoomId = request.RoomId,
                     WorkDate = request.WorkDate, StartTime = request.StartTime, EndTime = request.EndTime,
                     Shift = request.StartTime.Hours < 12 ? Shift.Morning : request.StartTime.Hours < 17 ? Shift.Afternoon : Shift.Evening,
-                    MaxPatients = slots.Count, IsActive = true, CreatedAt = DateTime.UtcNow, TimeSlots = slots
+                    MaxPatients = slots.Count, IsActive = true, Status = "Approved",
+                    CreatedAt = DateTime.UtcNow, TimeSlots = slots
                 });
                 request.Status = "Approved";
             }
@@ -140,9 +166,9 @@ public class ScheduleReviewService(ApplicationDbContext db, ICurrentUserService 
     private static void CheckScope(DoctorScheduleRequest request, (int UserId, int? DepartmentId, bool IsAdmin) reviewer, bool forReview)
     {
         var isHeadRequest = request.Doctor.User?.Role.RoleName == RoleConstants.DepartmentHead;
-        if (reviewer.IsAdmin ? !isHeadRequest
-            : request.Doctor.DepartmentId != reviewer.DepartmentId ||
-              (forReview && (request.Doctor.UserId == reviewer.UserId || isHeadRequest)))
+        if (!reviewer.IsAdmin &&
+            (request.Doctor.DepartmentId != reviewer.DepartmentId ||
+             (forReview && (request.Doctor.UserId == reviewer.UserId || isHeadRequest))))
             throw new AppException(ErrorCode.UNAUTHORIZED);
     }
 

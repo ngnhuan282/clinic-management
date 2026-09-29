@@ -151,14 +151,14 @@ BEGIN TRY
            'Approved', @now FROM @n;
     SET IDENTITY_INSERT dbo.DoctorScheduleRequests OFF;
 
-    INSERT INTO dbo.DoctorSchedules (ScheduleId, DoctorId, RoomId, WorkDate, StartTime, EndTime, RequestId, Shift, MaxPatients, IsActive, CreatedAt)
+    INSERT INTO dbo.DoctorSchedules (ScheduleId, DoctorId, RoomId, WorkDate, StartTime, EndTime, RequestId, Shift, MaxPatients, IsActive, Status, CreatedAt)
     SELECT CONVERT(uniqueidentifier, CONCAT('00000000-0000-0000-0000-', RIGHT(CONCAT('000000000000', 1000+n), 12))),
            1000+n, 1000+n,
            CASE WHEN n BETWEEN 1 AND 4 OR n BETWEEN 17 AND 20 THEN @today
                 ELSE DATEADD(day, n-4, @today) END,
            CASE WHEN n <= 4 THEN CAST('09:00:00' AS time) ELSE CAST('08:00:00' AS time) END,
            CASE WHEN n <= 4 THEN CAST('09:30:00' AS time) ELSE CAST('08:30:00' AS time) END,
-           1000+n, 'Morning', 1, 1, @now FROM @n;
+           1000+n, 'Morning', 1, 1, 'Approved', @now FROM @n;
 
     INSERT INTO dbo.TimeSlots (SlotId, ScheduleId, StartTime, EndTime, MaxCapacity, CurrentBooked, IsAvailable)
     SELECT CONVERT(uniqueidentifier, CONCAT('00000000-0000-0000-0001-', RIGHT(CONCAT('000000000000', 1000+n), 12))),
