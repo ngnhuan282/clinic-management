@@ -23,6 +23,8 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<User> Users => Set<User>();
 
+    public DbSet<PatientBook> PatientBooks => Set<PatientBook>();
+
     public DbSet<Department> Departments => Set<Department>();
 
     public DbSet<Specialization> Specializations => Set<Specialization>();
@@ -52,6 +54,11 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<RecordDiagnosis> RecordDiagnoses =>
         Set<RecordDiagnosis>();
+
+    public DbSet<Prescription> Prescriptions => Set<Prescription>();
+
+    public DbSet<PrescriptionDetail> PrescriptionDetails =>
+        Set<PrescriptionDetail>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
@@ -240,6 +247,50 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(x => x.Role)
                 .WithMany(x => x.Users)
                 .HasForeignKey(x => x.RoleId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<PatientBook>(entity =>
+        {
+            entity.HasKey(x => x.PatientBookId);
+
+            entity.Property(x => x.BookNumber)
+                .HasMaxLength(30);
+
+            entity.Property(x => x.Status)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(x => x.CreatedAt)
+                .HasDefaultValueSql("GETDATE()");
+
+            entity.Property(x => x.UpdatedAt)
+                .HasDefaultValueSql("GETDATE()");
+
+            entity.HasIndex(x => x.BookNumber)
+                .IsUnique()
+                .HasFilter("[BookNumber] IS NOT NULL");
+
+            entity.HasIndex(x => x.PatientId)
+                .IsUnique()
+                .HasFilter("[PatientId] IS NOT NULL AND [Status] = 'Issued'");
+
+            entity.HasOne(x => x.Patient)
+                .WithMany()
+                .HasForeignKey(x => x.PatientId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(x => x.PreviousBook)
+                .WithMany()
+                .HasForeignKey(x => x.PreviousBookId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Appointment>(entity =>
+        {
+            entity.HasOne(x => x.PatientBook)
+                .WithMany()
+                .HasForeignKey(x => x.PatientBookId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
@@ -500,6 +551,11 @@ public class ApplicationDbContext : DbContext
                 .WithMany(x => x.MedicalRecords)
                 .HasForeignKey(x => x.PatientId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(x => x.PatientBook)
+                .WithMany()
+                .HasForeignKey(x => x.PatientBookId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         // =========================
@@ -527,6 +583,78 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(x => x.Disease)
                 .WithMany(x => x.RecordDiagnoses)
                 .HasForeignKey(x => x.DiseaseId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // =========================
+        // Prescription
+        // =========================
+        modelBuilder.Entity<Prescription>(entity =>
+        {
+            entity.HasKey(x => x.PrescriptionId);
+
+            entity.Property(x => x.PrescriptionDate)
+                .HasDefaultValueSql("GETDATE()");
+
+            entity.Property(x => x.Status)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(x => x.Notes)
+                .HasMaxLength(1000);
+
+            entity.Property(x => x.CreatedAt)
+                .HasDefaultValueSql("GETDATE()");
+
+            entity.Property(x => x.UpdatedAt)
+                .HasDefaultValueSql("GETDATE()");
+
+            entity.HasIndex(x => x.MedicalRecordId)
+                .IsUnique();
+
+            entity.HasOne(x => x.MedicalRecord)
+                .WithOne(x => x.Prescription)
+                .HasForeignKey<Prescription>(x => x.MedicalRecordId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // =========================
+        // Prescription Detail
+        // =========================
+        modelBuilder.Entity<PrescriptionDetail>(entity =>
+        {
+            entity.HasKey(x => x.PrescriptionDetailId);
+
+            entity.Property(x => x.Dosage)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.Property(x => x.Instructions)
+                .HasMaxLength(255)
+                .IsRequired();
+
+            entity.HasIndex(x => new
+            {
+                x.PrescriptionId,
+                x.MedicineId
+            })
+            .IsUnique();
+
+            entity.ToTable(x =>
+                x.HasCheckConstraint(
+                    "CK_PrescriptionDetails_Quantity",
+                    "[Quantity] > 0"
+                )
+            );
+
+            entity.HasOne(x => x.Prescription)
+                .WithMany(x => x.Details)
+                .HasForeignKey(x => x.PrescriptionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(x => x.Medicine)
+                .WithMany(x => x.PrescriptionDetails)
+                .HasForeignKey(x => x.MedicineId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
     }

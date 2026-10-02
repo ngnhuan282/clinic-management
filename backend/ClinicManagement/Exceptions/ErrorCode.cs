@@ -311,6 +311,18 @@ public sealed class ErrorCode
             HttpStatusCode.Conflict
         );
 
+    public static readonly ErrorCode PATIENT_BOOK_NOT_FOUND =
+        new(7103, "Patient book not found", HttpStatusCode.NotFound);
+
+    public static readonly ErrorCode PATIENT_BOOK_REQUIRED =
+        new(7104, "Patient book is required before completing the examination", HttpStatusCode.BadRequest);
+
+    public static readonly ErrorCode PAPER_BOOK_CONFIRMATION_REQUIRED =
+        new(7105, "Paper book update confirmation is required before completing the examination", HttpStatusCode.BadRequest);
+
+    public static readonly ErrorCode PATIENT_BOOK_INVALID_STATUS =
+        new(7106, "Patient book status is invalid", HttpStatusCode.BadRequest);
+
     public static readonly ErrorCode LAB_TEST_NOT_FOUND =
         new(7201, "Lab test not found", HttpStatusCode.NotFound);
     public static readonly ErrorCode LAB_TEST_TYPE_NOT_FOUND =
@@ -323,4 +335,13 @@ public sealed class ErrorCode
         new(7302, "Schedule request not found", HttpStatusCode.NotFound);
     public static readonly ErrorCode SCHEDULE_REQUEST_INVALID_STATUS =
         new(7303, "Schedule request is no longer pending", HttpStatusCode.Conflict);
+
+    public static readonly ErrorCode PRESCRIPTION_NOT_FOUND =
+        new(7401, "Prescription not found", HttpStatusCode.NotFound);
+
+    public static readonly ErrorCode PRESCRIPTION_EXISTED =
+        new(7402, "Prescription already exists for this medical record", HttpStatusCode.Conflict);
+
+    public static readonly ErrorCode PRESCRIPTION_INVALID_STATUS =
+        new(7403, "Invalid prescription status", HttpStatusCode.BadRequest);
 }

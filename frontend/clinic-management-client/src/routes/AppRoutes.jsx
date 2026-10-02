@@ -25,6 +25,7 @@ import DoctorAppointmentsPage from "../pages/internal/doctor/DoctorAppointmentsP
 import MedicalRecordDetailPage from "../pages/internal/doctor/MedicalRecordDetailPage";
 import MedicalRecordPage from "../pages/internal/doctor/MedicalRecordPage";
 import ScheduleReviewPage from "../pages/internal/ScheduleReviewPage";
+import PrescriptionPage from "../pages/internal/doctor/PrescriptionPage";
 
 function UnauthorizedPage() {
     const { state } = useLocation();
@@ -96,6 +97,9 @@ export default function AppRoutes() {
                 </Route>
                 <Route element={<ProtectedRoute allowedPermissions={["labs.order"]} />}>
                     <Route path="doctor/lab-orders" element={<DoctorLabOrdersPage />} />
+                </Route>
+                <Route element={<ProtectedRoute allowedPermissions={["pharmacy.prescribe"]} />}>
+                    <Route path="examinations/:appointmentId/prescription" element={<PrescriptionPage />} />
                 </Route>
                 <Route element={<ProtectedRoute allowedPermissions={["clinical.viewAssigned"]} />}>
                     <Route path="examinations" element={<DoctorAppointmentsPage />} />

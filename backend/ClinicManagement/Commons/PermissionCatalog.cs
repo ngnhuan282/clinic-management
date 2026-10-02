@@ -80,7 +80,7 @@ public static class PermissionCatalog
         new(PermissionCodes.PharmacyManageInventory, "Đơn thuốc và kho", "Nhập và điều chỉnh tồn", "Sửa"),
         new(PermissionCodes.PharmacyViewCatalog, "Đơn thuốc và kho", "Xem danh mục thuốc", "Xem"),
         new(PermissionCodes.PharmacyManageCatalog, "Đơn thuốc và kho", "Quản lý danh mục thuốc", "Sửa"),
-        new(PermissionCodes.PharmacyPrescribe, "Đơn thuốc và kho", "Kê đơn", "Tạo", IsImplemented: false),
+        new(PermissionCodes.PharmacyPrescribe, "Đơn thuốc và kho", "Kê đơn", "Tạo"),
         new(PermissionCodes.PharmacyDispense, "Đơn thuốc và kho", "Xác nhận cấp thuốc", "Nghiệp vụ", IsImplemented: false),
         new(PermissionCodes.PharmacyViewOwnPrescription, "Đơn thuốc và kho", "Xem đơn thuốc bản thân", "Xem", IsImplemented: false),
         new(PermissionCodes.LabsViewTypes, "Xét nghiệm", "Xem loại xét nghiệm", "Xem"),

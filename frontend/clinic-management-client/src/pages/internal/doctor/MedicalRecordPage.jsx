@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
     Alert,
     Box,
@@ -10,9 +10,12 @@ import {
 } from "@mui/material";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
+import LocalPharmacyOutlinedIcon from "@mui/icons-material/LocalPharmacyOutlined";
 import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
+import { getPrescriptionByMedicalRecord } from "../../../api/prescriptionApi";
+import ConfirmDialog from "../../../components/common/ConfirmDialog";
 import Loading from "../../../components/common/Loading";
 import MedicalRecordFormSections from "../../../components/internal/examinations/MedicalRecordFormSections";
 import MedicalRecordPatientSummary from "../../../components/internal/examinations/MedicalRecordPatientSummary";
@@ -57,25 +60,98 @@ function MedicalRecordPage() {
         initialAppointment,
     });
 
+    const [
+        completeWithoutPrescriptionOpen,
+        setCompleteWithoutPrescriptionOpen,
+    ] = useState(false);
+    const [prescription, setPrescription] = useState(null);
+    const [checkingPrescription, setCheckingPrescription] = useState(false);
+
+    useEffect(() => {
+        let ignore = false;
+
+        if (!medicalRecord?.medicalRecordId) {
+            setPrescription(null);
+            setCheckingPrescription(false);
+            return () => {
+                ignore = true;
+            };
+        }
+
+        setCheckingPrescription(true);
+        getPrescriptionByMedicalRecord(medicalRecord.medicalRecordId)
+            .then((result) => {
+                if (!ignore) {
+                    setPrescription(result || null);
+                }
+            })
+            .catch(() => {
+                if (!ignore) {
+                    setPrescription(null);
+                }
+            })
+            .finally(() => {
+                if (!ignore) {
+                    setCheckingPrescription(false);
+                }
+            });
+
+        return () => {
+            ignore = true;
+        };
+    }, [medicalRecord?.medicalRecordId]);
+
+    const handleSubmitRecord = useCallback(
+        async (markCompleted) => {
+            const savedRecord = await submitRecord(markCompleted);
+
+            if (markCompleted && savedRecord?.appointmentId) {
+                navigate(
+                    `/internal/examinations/${savedRecord.appointmentId}/record`,
+                    {
+                        replace: true,
+                        state: { appointment },
+                    }
+                );
+            }
+
+            return savedRecord;
+        },
+        [appointment, navigate, submitRecord]
+    );
+
+    const handleCompleteExam = useCallback(async () => {
+        setCompleteWithoutPrescriptionOpen(false);
+        return handleSubmitRecord(true);
+    }, [handleSubmitRecord]);
+
+    const handleRequestCompleteExam = useCallback(() => {
+        if (!prescription) {
+            setCompleteWithoutPrescriptionOpen(true);
+            return null;
+        }
+
+        return handleSubmitRecord(true);
+    }, [handleSubmitRecord, prescription]);
+
+    const handleStatusPanelSubmit = useCallback(
+        (markCompleted) => {
+            if (markCompleted) {
+                return handleRequestCompleteExam();
+            }
+
+            return handleSubmitRecord(false);
+        },
+        [handleRequestCompleteExam, handleSubmitRecord]
+    );
+
+    const handleCompleteDialogCancel = useCallback(() => {
+        setCompleteWithoutPrescriptionOpen(false);
+    }, []);
+
     if (loading && !appointment) {
         return <Loading />;
     }
-
-    const handleSubmitRecord = async (markCompleted) => {
-        const savedRecord = await submitRecord(markCompleted);
-
-        if (markCompleted && savedRecord?.appointmentId) {
-            navigate(
-                `/internal/examinations/${savedRecord.appointmentId}/record`,
-                {
-                    replace: true,
-                    state: { appointment },
-                }
-            );
-        }
-
-        return savedRecord;
-    };
 
     return (
         <>
@@ -172,11 +248,29 @@ function MedicalRecordPage() {
                             </Button>
 
                             <Button
+                                variant="outlined"
+                                startIcon={<LocalPharmacyOutlinedIcon />}
+                                disabled={saving || !medicalRecord}
+                                onClick={() =>
+                                    navigate(
+                                        `/internal/examinations/${appointmentId}/prescription`
+                                    )
+                                }
+                                sx={{ minHeight: 42 }}
+                            >
+                                Kê đơn thuốc
+                            </Button>
+
+                            <Button
                                 variant="contained"
                                 color="success"
                                 startIcon={<CheckCircleOutlineOutlinedIcon />}
-                                disabled={saving || !completionReady}
-                                onClick={() => handleSubmitRecord(true)}
+                                disabled={
+                                    saving ||
+                                    checkingPrescription ||
+                                    !completionReady
+                                }
+                                onClick={handleRequestCompleteExam}
                                 sx={{ minHeight: 42 }}
                             >
                                 Hoàn tất khám
@@ -231,6 +325,7 @@ function MedicalRecordPage() {
                 >
                     <MedicalRecordFormSections
                         appointment={appointment}
+                        medicalRecord={medicalRecord}
                         form={form}
                         diseases={diseases}
                         updateField={updateField}
@@ -243,15 +338,31 @@ function MedicalRecordPage() {
                     />
 
                     <MedicalRecordStatusPanel
+                        appointment={appointment}
                         diseases={diseases}
                         selectedDiagnoses={selectedDiagnoses}
                         form={form}
-                        saving={saving}
+                        saving={saving || checkingPrescription}
                         completionReady={completionReady}
-                        submitRecord={handleSubmitRecord}
+                        submitRecord={handleStatusPanelSubmit}
                     />
                 </Box>
             </Stack>
+
+            <ConfirmDialog
+                open={completeWithoutPrescriptionOpen}
+                title="Hoàn tất khám không kê đơn?"
+                message={
+                    medicalRecord?.medicalRecordId
+                        ? "Hồ sơ này chưa có đơn thuốc. Bạn muốn hoàn tất lượt khám mà không kê đơn?"
+                        : "Hồ sơ này chưa có đơn thuốc. Nếu cần kê đơn, hãy lưu tạm hồ sơ rồi mở kê đơn thuốc trước khi hoàn tất."
+                }
+                confirmText="Hoàn tất không kê đơn"
+                cancelText="Tiếp tục nhập hồ sơ"
+                loading={saving}
+                onCancel={handleCompleteDialogCancel}
+                onConfirm={handleCompleteExam}
+            />
 
             <Snackbar
                 open={Boolean(successMessage)}

@@ -4,6 +4,7 @@ using ClinicManagement.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ClinicManagement.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260927092354_AddPrescriptions")]
+    partial class AddPrescriptions
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -33,9 +36,6 @@ namespace ClinicManagement.Migrations
                     b.Property<DateTime>("AppointmentDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime?>("BookVerifiedAt")
-                        .HasColumnType("datetime2");
-
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
@@ -48,9 +48,6 @@ namespace ClinicManagement.Migrations
                         .HasColumnType("time");
 
                     b.Property<int?>("PatientId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("PatientBookId")
                         .HasColumnType("int");
 
                     b.Property<string>("PatientName")
@@ -79,8 +76,6 @@ namespace ClinicManagement.Migrations
                     b.HasKey("AppointmentId");
 
                     b.HasIndex("PatientId");
-
-                    b.HasIndex("PatientBookId");
 
                     b.HasIndex("DoctorId", "AppointmentDate", "StartTime")
                         .IsUnique()
@@ -339,16 +334,10 @@ namespace ClinicManagement.Migrations
                     b.Property<int>("DoctorId")
                         .HasColumnType("int");
 
-                    b.Property<TimeSpan>("EndTime")
-                        .HasColumnType("time");
-
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
                     b.Property<int>("MaxPatients")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("RequestId")
                         .HasColumnType("int");
 
                     b.Property<int>("RoomId")
@@ -359,90 +348,18 @@ namespace ClinicManagement.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
-                    b.Property<TimeSpan>("StartTime")
-                        .HasColumnType("time");
-
                     b.Property<DateOnly>("WorkDate")
                         .HasColumnType("date");
 
                     b.HasKey("ScheduleId");
 
-                    b.HasIndex("RequestId")
-                        .IsUnique()
-                        .HasFilter("[RequestId] IS NOT NULL");
-
                     b.HasIndex("DoctorId", "WorkDate");
 
                     b.HasIndex("RoomId", "WorkDate");
 
-                    b.HasIndex("DoctorId", "WorkDate", "StartTime");
-
-                    b.HasIndex("RoomId", "WorkDate", "StartTime");
-
                     b.ToTable("DoctorSchedules", t =>
                         {
                             t.HasCheckConstraint("CK_DoctorSchedules_MaxPatients", "[MaxPatients] > 0");
-                        });
-                });
-
-            modelBuilder.Entity("ClinicManagement.Data.Entities.DoctorScheduleRequest", b =>
-                {
-                    b.Property<int>("RequestId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RequestId"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETUTCDATE()");
-
-                    b.Property<int>("DoctorId")
-                        .HasColumnType("int");
-
-                    b.Property<TimeSpan>("EndTime")
-                        .HasColumnType("time");
-
-                    b.Property<string>("RejectReason")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<DateTime?>("ReviewedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int?>("ReviewerId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("RoomId")
-                        .HasColumnType("int");
-
-                    b.Property<TimeSpan>("StartTime")
-                        .HasColumnType("time");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<DateOnly>("WorkDate")
-                        .HasColumnType("date");
-
-                    b.HasKey("RequestId");
-
-                    b.HasIndex("ReviewerId");
-
-                    b.HasIndex("RoomId");
-
-                    b.HasIndex("DoctorId", "WorkDate", "Status");
-
-                    b.ToTable("DoctorScheduleRequests", t =>
-                        {
-                            t.HasCheckConstraint("CK_DoctorScheduleRequests_RejectReason", "[Status] <> 'Rejected' OR ([RejectReason] IS NOT NULL AND LEN(LTRIM(RTRIM([RejectReason]))) > 0)");
-
-                            t.HasCheckConstraint("CK_DoctorScheduleRequests_Status", "[Status] IN ('Pending','Approved','Rejected','Cancelled')");
-
-                            t.HasCheckConstraint("CK_DoctorScheduleRequests_Time", "[StartTime] < [EndTime]");
                         });
                 });
 
@@ -611,12 +528,6 @@ namespace ClinicManagement.Migrations
                     b.Property<int?>("PatientId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("PatientBookId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("PaperBookUpdatedAt")
-                        .HasColumnType("datetime2");
-
                     b.Property<string>("Symptoms")
                         .IsRequired()
                         .HasMaxLength(1000)
@@ -636,60 +547,7 @@ namespace ClinicManagement.Migrations
 
                     b.HasIndex("PatientId");
 
-                    b.HasIndex("PatientBookId");
-
                     b.ToTable("MedicalRecords");
-                });
-
-            modelBuilder.Entity("ClinicManagement.Data.Entities.PatientBook", b =>
-                {
-                    b.Property<int>("PatientBookId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PatientBookId"));
-
-                    b.Property<string>("BookNumber")
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
-
-                    b.Property<DateTime?>("IssuedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int?>("PatientId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("PreviousBookId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
-
-                    b.HasKey("PatientBookId");
-
-                    b.HasIndex("BookNumber")
-                        .IsUnique()
-                        .HasFilter("[BookNumber] IS NOT NULL");
-
-                    b.HasIndex("PatientId")
-                        .IsUnique()
-                        .HasFilter("[PatientId] IS NOT NULL AND [Status] = 'Issued'");
-
-                    b.HasIndex("PreviousBookId");
-
-                    b.ToTable("PatientBooks");
                 });
 
             modelBuilder.Entity("ClinicManagement.Data.Entities.Medicine", b =>
@@ -790,15 +648,6 @@ namespace ClinicManagement.Migrations
                     b.ToTable("Permissions");
 
                     b.HasData(
-                        new
-                        {
-                            Code = "schedules.review",
-                            IsImplemented = true,
-                            Kind = "Duyệt",
-                            Module = "Lịch bác sĩ",
-                            Name = "Duyệt ca khám",
-                            Scope = "Theo khoa hoặc yêu cầu của Trưởng khoa"
-                        },
                         new
                         {
                             Code = "accounts.view",
@@ -1443,11 +1292,6 @@ namespace ClinicManagement.Migrations
                         new
                         {
                             RoleId = 1,
-                            PermissionCode = "schedules.review"
-                        },
-                        new
-                        {
-                            RoleId = 1,
                             PermissionCode = "accounts.view"
                         },
                         new
@@ -2080,16 +1924,9 @@ namespace ClinicManagement.Migrations
                         .HasForeignKey("PatientId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("ClinicManagement.Data.Entities.PatientBook", "PatientBook")
-                        .WithMany()
-                        .HasForeignKey("PatientBookId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.Navigation("Doctor");
 
                     b.Navigation("Patient");
-
-                    b.Navigation("PatientBook");
                 });
 
             modelBuilder.Entity("ClinicManagement.Data.Entities.Doctor", b =>
@@ -2126,11 +1963,6 @@ namespace ClinicManagement.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("ClinicManagement.Data.Entities.DoctorScheduleRequest", "Request")
-                        .WithOne("Schedule")
-                        .HasForeignKey("ClinicManagement.Data.Entities.DoctorSchedule", "RequestId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("ClinicManagement.Data.Entities.Room", "Room")
                         .WithMany()
                         .HasForeignKey("RoomId")
@@ -2138,34 +1970,6 @@ namespace ClinicManagement.Migrations
                         .IsRequired();
 
                     b.Navigation("Doctor");
-
-                    b.Navigation("Request");
-
-                    b.Navigation("Room");
-                });
-
-            modelBuilder.Entity("ClinicManagement.Data.Entities.DoctorScheduleRequest", b =>
-                {
-                    b.HasOne("ClinicManagement.Data.Entities.Doctor", "Doctor")
-                        .WithMany()
-                        .HasForeignKey("DoctorId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("ClinicManagement.Data.Entities.User", "Reviewer")
-                        .WithMany()
-                        .HasForeignKey("ReviewerId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("ClinicManagement.Data.Entities.Room", "Room")
-                        .WithMany()
-                        .HasForeignKey("RoomId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Doctor");
-
-                    b.Navigation("Reviewer");
 
                     b.Navigation("Room");
                 });
@@ -2222,35 +2026,11 @@ namespace ClinicManagement.Migrations
                         .HasForeignKey("PatientId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("ClinicManagement.Data.Entities.PatientBook", "PatientBook")
-                        .WithMany()
-                        .HasForeignKey("PatientBookId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.Navigation("Appointment");
 
                     b.Navigation("Doctor");
 
                     b.Navigation("Patient");
-
-                    b.Navigation("PatientBook");
-                });
-
-            modelBuilder.Entity("ClinicManagement.Data.Entities.PatientBook", b =>
-                {
-                    b.HasOne("ClinicManagement.Data.Entities.User", "Patient")
-                        .WithMany()
-                        .HasForeignKey("PatientId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("ClinicManagement.Data.Entities.PatientBook", "PreviousBook")
-                        .WithMany()
-                        .HasForeignKey("PreviousBookId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Patient");
-
-                    b.Navigation("PreviousBook");
                 });
 
             modelBuilder.Entity("ClinicManagement.Data.Entities.Medicine", b =>
@@ -2430,11 +2210,6 @@ namespace ClinicManagement.Migrations
             modelBuilder.Entity("ClinicManagement.Data.Entities.DoctorSchedule", b =>
                 {
                     b.Navigation("TimeSlots");
-                });
-
-            modelBuilder.Entity("ClinicManagement.Data.Entities.DoctorScheduleRequest", b =>
-                {
-                    b.Navigation("Schedule");
                 });
 
             modelBuilder.Entity("ClinicManagement.Data.Entities.LabTest", b =>
