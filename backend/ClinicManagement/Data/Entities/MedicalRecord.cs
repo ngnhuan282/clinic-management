@@ -16,11 +16,17 @@ public class MedicalRecord
 
     public User? Patient { get; set; }
 
+    public int? PatientBookId { get; set; }
+
+    public PatientBook? PatientBook { get; set; }
+
     public DateTime ExaminationDate { get; set; }
 
     public string Symptoms { get; set; } = string.Empty;
 
     public string? Conclusion { get; set; }
+
+    public DateTime? PaperBookUpdatedAt { get; set; }
 
     public DateTime CreatedAt { get; set; }
 
@@ -28,4 +34,6 @@ public class MedicalRecord
 
     public ICollection<RecordDiagnosis> Diagnoses { get; set; }
         = new List<RecordDiagnosis>();
+
+    public Prescription? Prescription { get; set; }
 }

@@ -22,4 +22,7 @@ public class Medicine
 
     public ICollection<Inventory> Inventories { get; set; }
         = new List<Inventory>();
+
+    public ICollection<PrescriptionDetail> PrescriptionDetails { get; set; }
+        = new List<PrescriptionDetail>();
 }

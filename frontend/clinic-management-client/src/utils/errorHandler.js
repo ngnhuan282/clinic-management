@@ -37,6 +37,13 @@ const API_ERROR_MESSAGES = {
     7005: "Bệnh đang tạm ngưng.",
     7101: "Không tìm thấy hồ sơ bệnh án.",
     7102: "Lượt khám này đã có hồ sơ bệnh án.",
+    7103: "Không tìm thấy sổ khám giấy.",
+    7104: "Cần có sổ khám giấy trước khi hoàn tất khám.",
+    7105: "Cần xác nhận đã ghi sổ giấy trước khi hoàn tất khám.",
+    7106: "Trạng thái sổ khám giấy không hợp lệ.",
+    7401: "Không tìm thấy đơn thuốc.",
+    7402: "Hồ sơ bệnh án này đã có đơn thuốc.",
+    7403: "Trạng thái đơn thuốc không hợp lệ.",
     7301: "Bác sĩ hoặc phòng đã có lịch trong khoảng thời gian này.",
     7302: "Không tìm thấy yêu cầu đăng ký lịch.",
     7303: "Yêu cầu này không còn ở trạng thái chờ duyệt.",
@@ -71,6 +78,18 @@ const API_MESSAGE_TRANSLATIONS = {
     "Medical record not found": "Không tìm thấy hồ sơ bệnh án.",
     "Medical record already exists for this appointment":
         "Lượt khám này đã có hồ sơ bệnh án.",
+    "Patient book not found": "Không tìm thấy sổ khám giấy.",
+    "Patient book is required before completing the examination":
+        "Cần có sổ khám giấy trước khi hoàn tất khám.",
+    "Paper book update confirmation is required before completing the examination":
+        "Cần xác nhận đã ghi sổ giấy trước khi hoàn tất khám.",
+    "Patient book status is invalid":
+        "Trạng thái sổ khám giấy không hợp lệ.",
+    "Prescription not found": "Không tìm thấy đơn thuốc.",
+    "Prescription already exists for this medical record":
+        "Hồ sơ bệnh án này đã có đơn thuốc.",
+    "Invalid prescription status":
+        "Trạng thái đơn thuốc không hợp lệ.",
 };
 
 function translateMessage(message) {

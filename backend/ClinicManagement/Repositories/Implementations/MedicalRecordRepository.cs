@@ -36,6 +36,7 @@ public class MedicalRecordRepository : IMedicalRecordRepository
         return _context.Appointments
             .Include(x => x.Doctor)
             .Include(x => x.Patient)
+            .Include(x => x.PatientBook)
             .Include(x => x.MedicalRecord)
             .FirstOrDefaultAsync(x => x.AppointmentId == appointmentId);
     }
@@ -72,6 +73,7 @@ public class MedicalRecordRepository : IMedicalRecordRepository
         var query = _context.Appointments
             .Include(x => x.Doctor)
             .Include(x => x.Patient)
+            .Include(x => x.PatientBook)
             .Include(x => x.MedicalRecord)
             .AsNoTracking()
             .Where(x =>
@@ -124,8 +126,10 @@ public class MedicalRecordRepository : IMedicalRecordRepository
     {
         return _context.MedicalRecords
             .Include(x => x.Appointment)
+                .ThenInclude(x => x.PatientBook)
             .Include(x => x.Doctor)
             .Include(x => x.Patient)
+            .Include(x => x.PatientBook)
             .Include(x => x.Diagnoses)
                 .ThenInclude(x => x.Disease);
     }

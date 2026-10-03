@@ -38,6 +38,7 @@ function ChecklistItem({ checked, label }) {
 }
 
 function MedicalRecordStatusPanel({
+    appointment,
     diseases,
     selectedDiagnoses,
     form,
@@ -45,6 +46,7 @@ function MedicalRecordStatusPanel({
     completionReady,
     submitRecord,
 }) {
+    const hasPatientBook = Boolean(appointment?.patientBookId);
     const selectedDiagnosisDetails = selectedDiagnoses.map(
         (diagnosis) => ({
             ...diagnosis,
@@ -89,6 +91,13 @@ function MedicalRecordStatusPanel({
                     <ChecklistItem
                         checked={Boolean(form.conclusion.trim())}
                         label="Đã nhập kết luận"
+                    />
+                    <ChecklistItem
+                        checked={
+                            hasPatientBook &&
+                            Boolean(form.paperBookConfirmed)
+                        }
+                        label="Đã ghi lượt khám vào sổ giấy"
                     />
                 </Stack>
 

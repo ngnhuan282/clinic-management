@@ -38,6 +38,9 @@ public static class ExaminationMapping
             DoctorId = appointment.DoctorId,
             DoctorName = appointment.Doctor.FullName,
             PatientId = appointment.PatientId,
+            PatientBookId = appointment.PatientBookId,
+            PatientBookNumber = appointment.PatientBook?.BookNumber,
+            BookVerifiedAt = appointment.BookVerifiedAt,
             PatientName = appointment.PatientName,
             PatientPhone = appointment.PatientPhone,
             AppointmentDate = appointment.AppointmentDate,
@@ -59,12 +62,21 @@ public static class ExaminationMapping
             DoctorId = record.DoctorId,
             DoctorName = record.Doctor.FullName,
             PatientId = record.PatientId,
+            PatientBookId =
+                record.PatientBookId ??
+                record.Appointment.PatientBookId,
+            PatientBookNumber =
+                record.PatientBook?.BookNumber ??
+                record.Appointment.PatientBook?.BookNumber,
+            BookVerifiedAt = record.Appointment.BookVerifiedAt,
             PatientName = record.Appointment.PatientName,
             PatientPhone = record.Appointment.PatientPhone,
             AppointmentDate = record.Appointment.AppointmentDate,
             StartTime = record.Appointment.StartTime,
+            Reason = record.Appointment.Reason,
             Symptoms = record.Symptoms,
             Conclusion = record.Conclusion,
+            PaperBookUpdatedAt = record.PaperBookUpdatedAt,
             Status = record.Appointment.Status,
             CreatedAt = record.CreatedAt,
             UpdatedAt = record.UpdatedAt,

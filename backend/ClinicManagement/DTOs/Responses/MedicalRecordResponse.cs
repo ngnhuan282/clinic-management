@@ -12,6 +12,12 @@ public class MedicalRecordResponse
 
     public int? PatientId { get; set; }
 
+    public int? PatientBookId { get; set; }
+
+    public string? PatientBookNumber { get; set; }
+
+    public DateTime? BookVerifiedAt { get; set; }
+
     public string PatientName { get; set; } = string.Empty;
 
     public string PatientPhone { get; set; } = string.Empty;
@@ -20,9 +26,13 @@ public class MedicalRecordResponse
 
     public TimeSpan StartTime { get; set; }
 
+    public string Reason { get; set; } = string.Empty;
+
     public string Symptoms { get; set; } = string.Empty;
 
     public string? Conclusion { get; set; }
+
+    public DateTime? PaperBookUpdatedAt { get; set; }
 
     public string Status { get; set; } = string.Empty;
 

@@ -125,6 +125,9 @@ function mapQueueAppointment(item) {
             item.patientId,
             item.appointmentId
         ),
+        patientBookId: item.patientBookId || null,
+        patientBookNumber: item.patientBookNumber || "",
+        bookVerifiedAt: item.bookVerifiedAt || null,
         phone: item.patientPhone,
         reason: item.reason,
     };

@@ -9,13 +9,16 @@ import {
 } from "@mui/material";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import EditNoteOutlinedIcon from "@mui/icons-material/EditNoteOutlined";
+import LocalPharmacyOutlinedIcon from "@mui/icons-material/LocalPharmacyOutlined";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import Loading from "../../../components/common/Loading";
 import MedicalRecordAuditPanel from "../../../components/internal/examinations/MedicalRecordAuditPanel";
 import MedicalRecordPatientSummary from "../../../components/internal/examinations/MedicalRecordPatientSummary";
 import MedicalRecordReadOnlySections from "../../../components/internal/examinations/MedicalRecordReadOnlySections";
+import MedicalRecordPrescriptionPanel from "../../../components/internal/prescriptions/MedicalRecordPrescriptionPanel";
 import { getMedicalRecordByAppointment } from "../../../api/examinationApi";
+import { getPrescriptionByMedicalRecord } from "../../../api/prescriptionApi";
 import getApiErrorMessage from "../../../utils/errorHandler";
 import { normalizeExaminationStatus } from "../../../components/internal/examinations/examinationStatus";
 
@@ -84,6 +87,9 @@ function MedicalRecordDetailPage() {
     );
     const [record, setRecord] = useState(null);
     const [appointment, setAppointment] = useState(initialAppointment);
+    const [prescription, setPrescription] = useState(null);
+    const [prescriptionLoading, setPrescriptionLoading] = useState(false);
+    const [prescriptionError, setPrescriptionError] = useState("");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
@@ -98,6 +104,27 @@ function MedicalRecordDetailPage() {
             setAppointment(
                 mapRecordToAppointment(result, initialAppointment)
             );
+
+            setPrescriptionLoading(true);
+            setPrescriptionError("");
+            setPrescription(null);
+
+            try {
+                const loadedPrescription =
+                    await getPrescriptionByMedicalRecord(
+                        result.medicalRecordId
+                    );
+                setPrescription(loadedPrescription || null);
+            } catch (prescriptionErr) {
+                setPrescriptionError(
+                    getApiErrorMessage(
+                        prescriptionErr,
+                        "Không thể tải đơn thuốc."
+                    )
+                );
+            } finally {
+                setPrescriptionLoading(false);
+            }
         } catch (err) {
             setError(
                 getApiErrorMessage(
@@ -208,6 +235,19 @@ function MedicalRecordDetailPage() {
                         >
                             Chỉnh sửa
                         </Button>
+                        <Button
+                            variant="outlined"
+                            startIcon={<LocalPharmacyOutlinedIcon />}
+                            disabled={!record}
+                            onClick={() =>
+                                navigate(
+                                    `/internal/examinations/${appointmentId}/prescription`
+                                )
+                            }
+                            sx={{ minHeight: 42 }}
+                        >
+                            Kê đơn thuốc
+                        </Button>
                     </Stack>
                 </Box>
             </Paper>
@@ -250,7 +290,20 @@ function MedicalRecordDetailPage() {
                     >
                         <MedicalRecordReadOnlySections record={record} />
 
-                        <MedicalRecordAuditPanel record={record} />
+                        <Stack spacing={3}>
+                            <MedicalRecordAuditPanel record={record} />
+
+                            <MedicalRecordPrescriptionPanel
+                                prescription={prescription}
+                                loading={prescriptionLoading}
+                                error={prescriptionError}
+                                onOpen={() =>
+                                    navigate(
+                                        `/internal/examinations/${appointmentId}/prescription`
+                                    )
+                                }
+                            />
+                        </Stack>
                     </Box>
                 </>
             )}
