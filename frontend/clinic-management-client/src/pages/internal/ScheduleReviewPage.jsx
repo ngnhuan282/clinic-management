@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
     Alert,
     Avatar,
@@ -298,8 +298,9 @@ export default function ScheduleReviewPage() {
     const [pageNumber,  setPageNumber]  = useState(1);
     const PAGE_SIZE = 10;
 
-    const [list,    setList]    = useState({ items:[], totalItems:0, totalPages:0 });
-    const [loading, setLoading] = useState(false);
+    const [listResult, setListResult] = useState(null);
+    const listRequestId = useRef(0);
+    const [refreshing, setRefreshing] = useState(false);
     const [error,   setError]   = useState("");
     const [success, setSuccess] = useState("");
 
@@ -310,21 +311,37 @@ export default function ScheduleReviewPage() {
 
     const currentTab = tabsConfig[activeTab] || tabsConfig[0];
     const apiStatus = (currentTab.value === "Mine" || currentTab.value === "All") ? undefined : currentTab.value;
+    const list = listResult?.data ?? { items:[], totalItems:0, totalPages:0 };
+    const loading = refreshing || listResult?.apiStatus !== apiStatus || listResult?.pageNumber !== pageNumber;
 
-    const load = useCallback(async (silent = false) => {
-        if (!silent) setLoading(true);
-        setError("");
-        try {
-            const params = { pageNumber, pageSize: PAGE_SIZE };
-            if (apiStatus) params.status = apiStatus;
-            const data = await scheduleRequestApi.list(params);
-            setList(data);
-        } catch (err) {
-            setError(getApiErrorMessage(err));
-        } finally {
-            if (!silent) setLoading(false);
-        }
+    const load = useCallback((isActive = () => true) => {
+        const requestId = ++listRequestId.current;
+        const isCurrent = () => isActive() && requestId === listRequestId.current;
+        const params = { pageNumber, pageSize: PAGE_SIZE };
+        if (apiStatus) params.status = apiStatus;
+        return scheduleRequestApi.list(params)
+            .then(data => {
+                if (isCurrent()) {
+                    setListResult({ data, apiStatus, pageNumber });
+                    setError("");
+                }
+            })
+            .catch(err => {
+                if (isCurrent()) {
+                    setListResult({ data: { items:[], totalItems:0, totalPages:0 }, apiStatus, pageNumber });
+                    setError(getApiErrorMessage(err));
+                }
+            })
+            .finally(() => {
+                if (isCurrent()) setRefreshing(false);
+            });
     }, [apiStatus, pageNumber]);
+
+    const refresh = () => {
+        setRefreshing(true);
+        setError("");
+        void load();
+    };
 
     // refresh tab counts
     useEffect(() => {
@@ -336,7 +353,11 @@ export default function ScheduleReviewPage() {
         });
     }, [success]);
 
-    useEffect(() => { load(); }, [load]);
+    useEffect(() => {
+        let active = true;
+        void load(() => active);
+        return () => { active = false; };
+    }, [load]);
 
     // client-side filtering
     const filteredItems = list.items.filter(item => {
@@ -359,9 +380,9 @@ export default function ScheduleReviewPage() {
             await scheduleRequestApi.approve(approveItem.requestId);
             setSuccess(`Đã phê duyệt yêu cầu #${approveItem.requestId} thành công.`);
             setApproveItem(null);
-            await load(true);
+            await load();
         } catch (err) {
-            if ([409, 403].includes(err.response?.status)) load(true);
+            if ([409, 403].includes(err.response?.status)) void load();
             setError(getApiErrorMessage(err));
         } finally { setWorking(false); }
     }
@@ -372,9 +393,9 @@ export default function ScheduleReviewPage() {
             await scheduleRequestApi.reject(rejectItem.requestId, reason);
             setSuccess(`Đã từ chối yêu cầu #${rejectItem.requestId}.`);
             setRejectItem(null);
-            await load(true);
+            await load();
         } catch (err) {
-            if ([409, 403].includes(err.response?.status)) load(true);
+            if ([409, 403].includes(err.response?.status)) void load();
             setError(getApiErrorMessage(err));
         } finally { setWorking(false); }
     }
@@ -438,7 +459,7 @@ export default function ScheduleReviewPage() {
                             Xuất Báo Cáo Ca
                         </Button>
                         <Button variant="contained" startIcon={<RefreshOutlinedIcon />} size="small"
-                            onClick={() => load()} sx={{ whiteSpace:"nowrap", fontWeight:700 }}>
+                            onClick={refresh} sx={{ whiteSpace:"nowrap", fontWeight:700 }}>
                             Làm Mới Dữ Liệu
                         </Button>
                     </Stack>
@@ -516,7 +537,7 @@ export default function ScheduleReviewPage() {
                             {rooms.map(r => <MenuItem key={r} value={r}>{r}</MenuItem>)}
                         </TextField>
                         <Tooltip title="Làm mới danh sách">
-                            <IconButton size="small" onClick={() => load()}
+                            <IconButton size="small" onClick={refresh}
                                 sx={{ border:"1px solid #E5E9F0" }}>
                                 <RefreshOutlinedIcon fontSize="small" />
                             </IconButton>

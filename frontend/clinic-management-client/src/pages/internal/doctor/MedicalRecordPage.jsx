@@ -64,42 +64,35 @@ function MedicalRecordPage() {
         completeWithoutPrescriptionOpen,
         setCompleteWithoutPrescriptionOpen,
     ] = useState(false);
-    const [prescription, setPrescription] = useState(null);
-    const [checkingPrescription, setCheckingPrescription] = useState(false);
+    const [prescriptionResult, setPrescriptionResult] = useState(null);
+    const medicalRecordId = medicalRecord?.medicalRecordId;
+    const prescription = medicalRecordId && prescriptionResult?.medicalRecordId === medicalRecordId
+        ? prescriptionResult.value
+        : null;
+    const checkingPrescription = Boolean(medicalRecordId)
+        && prescriptionResult?.medicalRecordId !== medicalRecordId;
 
     useEffect(() => {
         let ignore = false;
 
-        if (!medicalRecord?.medicalRecordId) {
-            setPrescription(null);
-            setCheckingPrescription(false);
-            return () => {
-                ignore = true;
-            };
-        }
+        if (!medicalRecordId) return;
 
-        setCheckingPrescription(true);
-        getPrescriptionByMedicalRecord(medicalRecord.medicalRecordId)
+        getPrescriptionByMedicalRecord(medicalRecordId)
             .then((result) => {
                 if (!ignore) {
-                    setPrescription(result || null);
+                    setPrescriptionResult({ medicalRecordId, value: result || null });
                 }
             })
             .catch(() => {
                 if (!ignore) {
-                    setPrescription(null);
-                }
-            })
-            .finally(() => {
-                if (!ignore) {
-                    setCheckingPrescription(false);
+                    setPrescriptionResult({ medicalRecordId, value: null });
                 }
             });
 
         return () => {
             ignore = true;
         };
-    }, [medicalRecord?.medicalRecordId]);
+    }, [medicalRecordId]);
 
     const handleSubmitRecord = useCallback(
         async (markCompleted) => {
