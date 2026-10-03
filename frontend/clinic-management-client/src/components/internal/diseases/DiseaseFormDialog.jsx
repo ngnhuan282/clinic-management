@@ -51,10 +51,12 @@ function DiseaseFormDialog({
     const isEditing = Boolean(disease);
 
     useEffect(() => {
-        if (open) {
+        if (!open) return undefined;
+        const timer = setTimeout(() => {
             setForm(getInitialForm(disease));
             setError("");
-        }
+        }, 0);
+        return () => clearTimeout(timer);
     }, [disease, open]);
 
     const handleChange = (field) => (event) => {

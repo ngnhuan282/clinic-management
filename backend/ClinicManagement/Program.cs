@@ -18,6 +18,15 @@ namespace ClinicManagement
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            if (builder.Environment.IsDevelopment())
+            {
+                builder.Configuration.AddJsonFile(
+                    "appsettings.Development.Local.json",
+                    optional: true,
+                    reloadOnChange: true);
+                builder.Configuration.AddEnvironmentVariables();
+            }
+
             // =========================
             // Controllers
             // =========================
@@ -67,7 +76,8 @@ namespace ClinicManagement
             // CORS
             // =========================
             builder.Services.AddApplicationCors(
-                builder.Configuration
+                builder.Configuration,
+                builder.Environment
             );
 
             // =========================
@@ -109,7 +119,9 @@ namespace ClinicManagement
                 app.UseSwaggerUI();
             }
 
-            app.UseHttpsRedirection();
+            // The local HTTP profile has no HTTPS listener to redirect to.
+            if (!app.Environment.IsDevelopment())
+                app.UseHttpsRedirection();
 
             // =========================
             // CORS

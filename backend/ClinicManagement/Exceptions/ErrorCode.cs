@@ -107,6 +107,20 @@ public sealed class ErrorCode
         new(2008, "At least one active administrator is required", HttpStatusCode.Conflict);
     public static readonly ErrorCode USER_ACCESS_CONFLICT =
         new(2009, "Account access changed concurrently. Reload and try again", HttpStatusCode.Conflict);
+    public static readonly ErrorCode ROLE_NAME_EXISTS =
+        new(2010, "Role name already exists", HttpStatusCode.Conflict);
+    public static readonly ErrorCode SYSTEM_ROLE_PROTECTED =
+        new(2011, "System role name and deletion are protected", HttpStatusCode.Conflict);
+    public static readonly ErrorCode ROLE_IN_USE =
+        new(2012, "Role is assigned to accounts", HttpStatusCode.Conflict);
+    public static readonly ErrorCode ROLE_CONFLICT =
+        new(2013, "Role changed concurrently. Reload and try again", HttpStatusCode.Conflict);
+    public static readonly ErrorCode PERMISSION_NOT_FOUND =
+        new(2014, "Unknown or unavailable permission code", HttpStatusCode.BadRequest);
+    public static readonly ErrorCode ADMIN_PERMISSION_REQUIRED =
+        new(2015, "Admin must retain RBAC management permissions", HttpStatusCode.Conflict);
+    public static readonly ErrorCode ROLE_PERMISSION_NOT_ALLOWED =
+        new(2016, "This permission is not valid for the system role", HttpStatusCode.BadRequest);
 
     public static readonly ErrorCode CATALOG_DUPLICATE =
         new(2101, "Catalog code or number already exists", HttpStatusCode.Conflict);
@@ -137,6 +151,21 @@ public sealed class ErrorCode
             "Patient not found",
             HttpStatusCode.NotFound
         );
+
+    public static readonly ErrorCode PATIENT_MATCH_REQUIRED =
+        new(4002, "Existing patient must be matched before creating a new profile", HttpStatusCode.Conflict);
+    public static readonly ErrorCode PATIENT_IDENTITY_MISMATCH =
+        new(4003, "Patient identity does not match the appointment", HttpStatusCode.BadRequest);
+    public static readonly ErrorCode BOOK_NOT_FOUND =
+        new(4004, "Patient book not found", HttpStatusCode.NotFound);
+    public static readonly ErrorCode BOOK_NOT_VERIFIED =
+        new(4005, "An issued patient book must be verified before check-in", HttpStatusCode.BadRequest);
+    public static readonly ErrorCode BOOK_CONFLICT =
+        new(4006, "Book number or invoice has already been used", HttpStatusCode.Conflict);
+    public static readonly ErrorCode BOOK_INVOICE_NOT_FOUND =
+        new(4007, "Book invoice not found", HttpStatusCode.NotFound);
+    public static readonly ErrorCode BOOK_INVOICE_INVALID_STATUS =
+        new(4008, "Book invoice must be paid and not already used", HttpStatusCode.Conflict);
 
     // =========================
     // Appointment
@@ -296,4 +325,38 @@ public sealed class ErrorCode
             "Medical record already exists for this appointment",
             HttpStatusCode.Conflict
         );
+
+    public static readonly ErrorCode PATIENT_BOOK_NOT_FOUND =
+        new(7103, "Patient book not found", HttpStatusCode.NotFound);
+
+    public static readonly ErrorCode PATIENT_BOOK_REQUIRED =
+        new(7104, "Patient book is required before completing the examination", HttpStatusCode.BadRequest);
+
+    public static readonly ErrorCode PAPER_BOOK_CONFIRMATION_REQUIRED =
+        new(7105, "Paper book update confirmation is required before completing the examination", HttpStatusCode.BadRequest);
+
+    public static readonly ErrorCode PATIENT_BOOK_INVALID_STATUS =
+        new(7106, "Patient book status is invalid", HttpStatusCode.BadRequest);
+
+    public static readonly ErrorCode LAB_TEST_NOT_FOUND =
+        new(7201, "Lab test not found", HttpStatusCode.NotFound);
+    public static readonly ErrorCode LAB_TEST_TYPE_NOT_FOUND =
+        new(7202, "Lab test type not found or inactive", HttpStatusCode.NotFound);
+    public static readonly ErrorCode LAB_TEST_CONFLICT =
+        new(7203, "Lab test already has a result", HttpStatusCode.Conflict);
+    public static readonly ErrorCode DOCTOR_SCHEDULE_CONFLICT =
+        new(7301, "Doctor or room already has a schedule at this time", HttpStatusCode.Conflict);
+    public static readonly ErrorCode SCHEDULE_REQUEST_NOT_FOUND =
+        new(7302, "Schedule request not found", HttpStatusCode.NotFound);
+    public static readonly ErrorCode SCHEDULE_REQUEST_INVALID_STATUS =
+        new(7303, "Schedule request is no longer pending", HttpStatusCode.Conflict);
+
+    public static readonly ErrorCode PRESCRIPTION_NOT_FOUND =
+        new(7401, "Prescription not found", HttpStatusCode.NotFound);
+
+    public static readonly ErrorCode PRESCRIPTION_EXISTED =
+        new(7402, "Prescription already exists for this medical record", HttpStatusCode.Conflict);
+
+    public static readonly ErrorCode PRESCRIPTION_INVALID_STATUS =
+        new(7403, "Invalid prescription status", HttpStatusCode.BadRequest);
 }

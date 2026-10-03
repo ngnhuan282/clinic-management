@@ -12,11 +12,29 @@ namespace ClinicManagement.Controllers;
 public class AppointmentsController : ControllerBase
 {
     private readonly IBookingService _bookingService;
+    private readonly IReceptionService _receptionService;
 
-    public AppointmentsController(
-        IBookingService bookingService)
+    public AppointmentsController(IBookingService bookingService, IReceptionService receptionService)
     {
         _bookingService = bookingService;
+        _receptionService = receptionService;
+    }
+
+    [HttpGet]
+    [Authorize(Policy = PermissionCodes.AppointmentsView)]
+    public async Task<IActionResult> GetAppointments(
+        [FromQuery] AppointmentQuery query)
+    {
+        var result =
+            await _bookingService.GetAppointmentsAsync(
+                query
+            );
+
+        return Ok(
+            ApiResponse<PagedResponse<AppointmentResponse>>.Success(
+                result
+            )
+        );
     }
 
     [HttpGet("departments")]
@@ -51,7 +69,7 @@ public class AppointmentsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = RoleConstants.Patient)]
+    [Authorize(Policy = PermissionCodes.AppointmentsBookSelf)]
     public async Task<IActionResult> CreateAppointment(
         CreateAppointmentRequest request)
     {
@@ -68,8 +86,82 @@ public class AppointmentsController : ControllerBase
         );
     }
 
+    [HttpPost("direct")]
+    [Authorize(Policy = PermissionCodes.AppointmentsCreateWalkIn)]
+    public async Task<IActionResult> CreateDirectAppointment(
+        CreateDirectAppointmentRequest request)
+    {
+        var result =
+            await _bookingService.CreateDirectAppointmentAsync(
+                request
+            );
+
+        return Ok(
+            ApiResponse<AppointmentResponse>.Success(
+                result,
+                "Appointment created successfully"
+            )
+        );
+    }
+
+    [HttpPatch("{id:int}/confirm")]
+    [Authorize(Policy = PermissionCodes.AppointmentsConfirm)]
+    public async Task<IActionResult> ConfirmAppointment(
+        int id)
+    {
+        var result =
+            await _bookingService.ConfirmAppointmentAsync(
+                id
+            );
+
+        return Ok(
+            ApiResponse<AppointmentResponse>.Success(
+                result,
+                "Appointment confirmed successfully"
+            )
+        );
+    }
+
+    [HttpPatch("{id:int}/reschedule")]
+    [Authorize(Policy = PermissionCodes.AppointmentsReschedule)]
+    public async Task<IActionResult> RescheduleAppointment(
+        int id,
+        RescheduleAppointmentRequest request)
+    {
+        var result =
+            await _bookingService.RescheduleAppointmentAsync(
+                id,
+                request
+            );
+
+        return Ok(
+            ApiResponse<AppointmentResponse>.Success(
+                result,
+                "Appointment rescheduled successfully"
+            )
+        );
+    }
+
+    [HttpPatch("{id:int}/cancel")]
+    [Authorize(Policy = PermissionCodes.AppointmentsReschedule)]
+    public async Task<IActionResult> CancelAppointment(
+        int id)
+    {
+        var result =
+            await _bookingService.CancelAppointmentAsync(
+                id
+            );
+
+        return Ok(
+            ApiResponse<AppointmentResponse>.Success(
+                result,
+                "Appointment cancelled successfully"
+            )
+        );
+    }
+
     [HttpPatch("{appointmentId:int}/start-examination")]
-    [Authorize(Roles = RoleConstants.Admin + "," + RoleConstants.Doctor)]
+    [Authorize(Policy = PermissionCodes.AppointmentsStartExamination)]
     public async Task<IActionResult> StartExamination(
         int appointmentId)
     {
@@ -84,5 +176,21 @@ public class AppointmentsController : ControllerBase
                 "Appointment examination started successfully"
             )
         );
+    }
+
+    [HttpPatch("{id:int}/patient-profile")]
+    [Authorize(Policy = PermissionCodes.AppointmentsCheckIn)]
+    public async Task<IActionResult> MatchPatient(int id, MatchAppointmentPatientRequest request)
+    {
+        var result = await _receptionService.MatchAppointmentPatientAsync(id, request.PatientProfileId);
+        return Ok(ApiResponse<AppointmentResponse>.Success(result));
+    }
+
+    [HttpPatch("{id:int}/check-in")]
+    [Authorize(Policy = PermissionCodes.AppointmentsCheckIn)]
+    public async Task<IActionResult> CheckIn(int id, CheckInAppointmentRequest request)
+    {
+        var result = await _receptionService.CheckInAsync(id, request);
+        return Ok(ApiResponse<AppointmentResponse>.Success(result, "Patient checked in successfully"));
     }
 }

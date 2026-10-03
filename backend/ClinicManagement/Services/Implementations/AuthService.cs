@@ -22,6 +22,7 @@ public class AuthService : IAuthService
     private readonly IRefreshTokenRepository _refreshTokens;
     private readonly IRefreshTokenGenerator _refreshTokenGenerator;
     private readonly JwtSettings _settings;
+    private readonly ClinicManagement.Data.ApplicationDbContext _db;
 
     public AuthService(
         IUserRepository userRepository,
@@ -30,7 +31,8 @@ public class AuthService : IAuthService
         IJwtTokenGenerator jwtTokenGenerator,
         IRefreshTokenRepository refreshTokens,
         IRefreshTokenGenerator refreshTokenGenerator,
-        IOptions<JwtSettings> settings)
+        IOptions<JwtSettings> settings,
+        ClinicManagement.Data.ApplicationDbContext db)
     {
         _userRepository = userRepository;
         _roleRepository = roleRepository;
@@ -39,6 +41,7 @@ public class AuthService : IAuthService
         _refreshTokens = refreshTokens;
         _refreshTokenGenerator = refreshTokenGenerator;
         _settings = settings.Value;
+        _db = db;
     }
 
     public async Task<AuthResponse> RegisterAsync(
@@ -156,12 +159,12 @@ public class AuthService : IAuthService
         return await IssueTokensAsync(user);
     }
 
-    public async Task<AuthResponse> RefreshAsync(RefreshTokenRequest request)
+    public async Task<AuthResponse?> RefreshAsync(RefreshTokenRequest request)
     {
         var token = await _refreshTokens.GetByHashAsync(HashToken(request.RefreshToken));
         if (token == null || token.RevokedAt != null || token.ExpiresAt <= DateTime.UtcNow || !token.User.Status
             || token.SecurityVersion != token.User.SecurityVersion)
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
+            return null;
 
         token.RevokedAt = DateTime.UtcNow;
         try
@@ -171,7 +174,7 @@ public class AuthService : IAuthService
         }
         catch (DbUpdateConcurrencyException)
         {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
+            return null;
         }
     }
 
@@ -186,6 +189,8 @@ public class AuthService : IAuthService
 
     private async Task<AuthResponse> IssueTokensAsync(User user)
     {
+        var permissions = await _db.RolePermissions.AsNoTracking().Where(x => x.RoleId == user.RoleId)
+            .Select(x => x.PermissionCode).OrderBy(x => x).ToListAsync();
         var refreshToken = _refreshTokenGenerator.GenerateRefreshToken();
         await _refreshTokens.AddAsync(new RefreshToken
         {
@@ -203,7 +208,8 @@ public class AuthService : IAuthService
             UserId = user.UserId,
             Username = user.Username,
             FullName = user.FullName,
-            Role = user.Role.RoleName
+            Role = user.Role.RoleName,
+            Permissions = permissions
         };
     }
 

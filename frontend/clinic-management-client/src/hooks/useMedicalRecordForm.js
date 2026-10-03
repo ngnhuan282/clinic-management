@@ -27,6 +27,7 @@ function createEmptyForm() {
     return {
         symptoms: "",
         conclusion: "",
+        paperBookConfirmed: false,
         diagnoses: [createDiagnosisRow()],
     };
 }
@@ -93,6 +94,9 @@ function mapQueueAppointment(item) {
             item.patientId,
             item.appointmentId
         ),
+        patientBookId: item.patientBookId || null,
+        patientBookNumber: item.patientBookNumber || "",
+        bookVerifiedAt: item.bookVerifiedAt || null,
         phone: item.patientPhone,
         reason: item.reason,
     };
@@ -112,8 +116,11 @@ function mapRecordAppointment(record) {
             record.patientId,
             record.appointmentId
         ),
+        patientBookId: record.patientBookId || null,
+        patientBookNumber: record.patientBookNumber || "",
+        bookVerifiedAt: record.bookVerifiedAt || null,
         phone: record.patientPhone,
-        reason: "",
+        reason: record.reason || "",
     };
 }
 
@@ -125,6 +132,7 @@ function mapRecordForm(record) {
     return {
         symptoms: record.symptoms || "",
         conclusion: record.conclusion || "",
+        paperBookConfirmed: Boolean(record.paperBookUpdatedAt),
         diagnoses,
     };
 }
@@ -198,7 +206,9 @@ function useMedicalRecordForm({
     const completionReady = Boolean(
         form.symptoms.trim() &&
         form.conclusion.trim() &&
-        selectedDiagnoses.length > 0
+        selectedDiagnoses.length > 0 &&
+        form.paperBookConfirmed &&
+        (medicalRecord?.patientBookId || appointment?.patientBookId)
     );
 
     const loadData = useCallback(async () => {
@@ -280,7 +290,8 @@ function useMedicalRecordForm({
     }, [appointmentId, initialAppointment]);
 
     useEffect(() => {
-        loadData();
+        const timer = setTimeout(() => { void loadData(); }, 0);
+        return () => clearTimeout(timer);
     }, [loadData]);
 
     const updateField = (field, value) => {
@@ -451,6 +462,17 @@ function useMedicalRecordForm({
             return "Vui lòng nhập kết luận trước khi hoàn tất khám.";
         }
 
+        if (
+            markCompleted &&
+            !(medicalRecord?.patientBookId || appointment?.patientBookId)
+        ) {
+            return "Lượt khám chưa có sổ khám giấy được đối chiếu.";
+        }
+
+        if (markCompleted && !form.paperBookConfirmed) {
+            return "Vui lòng xác nhận đã ghi lượt khám vào sổ giấy.";
+        }
+
         return "";
     };
 
@@ -467,6 +489,11 @@ function useMedicalRecordForm({
             appointmentId: Number(appointmentId),
             symptoms: form.symptoms.trim(),
             conclusion: form.conclusion.trim() || null,
+            patientBookId:
+                medicalRecord?.patientBookId ||
+                appointment?.patientBookId ||
+                null,
+            paperBookConfirmed: form.paperBookConfirmed,
             markCompleted,
             diagnoses: selectedDiagnoses,
         };

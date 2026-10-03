@@ -12,6 +12,7 @@ public static class DependencyInjection
     {
         services.AddHttpContextAccessor();
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<RbacService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 
@@ -37,6 +38,9 @@ public static class DependencyInjection
             IBookingService,
             BookingService
         >();
+        services.AddScoped<IDoctorScheduleService, DoctorScheduleService>();
+        services.AddScoped<IReceptionService, ReceptionService>();
+        services.AddScoped<IScheduleReviewService, ScheduleReviewService>();
 
         services.AddScoped<
             IRefreshTokenGenerator,
@@ -56,6 +60,7 @@ public static class DependencyInjection
             RoleRepository
         >();
         services.AddScoped<IDepartmentRepository, DepartmentRepository>();
+        services.AddScoped<IReceptionRepository, ReceptionRepository>();
         services.AddScoped<ISpecializationRepository, SpecializationRepository>();
         services.AddScoped<IRoomRepository, RoomRepository>();
 
@@ -99,6 +104,11 @@ public static class DependencyInjection
             MedicalRecordRepository
         >();
 
+        services.AddScoped<
+            IPrescriptionRepository,
+            PrescriptionRepository
+        >();
+
         // =========================
         // Business Services
         // =========================
@@ -138,6 +148,11 @@ public static class DependencyInjection
         services.AddScoped<
             IMedicalRecordService,
             MedicalRecordService
+        >();
+
+        services.AddScoped<
+            IPrescriptionService,
+            PrescriptionService
         >();
 
         return services;

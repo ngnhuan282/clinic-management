@@ -11,7 +11,7 @@ namespace ClinicManagement.Controllers;
 public abstract class CatalogControllerBase : ControllerBase { }
 
 [Route("api/departments")]
-[Authorize(Roles = RoleConstants.Admin)]
+[Authorize(Policy = PermissionCodes.CatalogManage)]
 public class DepartmentsController(IDepartmentService service) : CatalogControllerBase
 {
     [HttpGet] public async Task<IActionResult> Get([FromQuery] CatalogQuery query) => Ok(ApiResponse<PagedResponse<DepartmentResponse>>.Success(await service.GetAsync(query)));
@@ -22,7 +22,7 @@ public class DepartmentsController(IDepartmentService service) : CatalogControll
 }
 
 [Route("api/specializations")]
-[Authorize(Roles = RoleConstants.Admin)]
+[Authorize(Policy = PermissionCodes.CatalogManage)]
 public class SpecializationsController(ISpecializationService service) : CatalogControllerBase
 {
     [HttpGet] public async Task<IActionResult> Get([FromQuery] CatalogQuery query) => Ok(ApiResponse<PagedResponse<SpecializationResponse>>.Success(await service.GetAsync(query)));
@@ -33,7 +33,7 @@ public class SpecializationsController(ISpecializationService service) : Catalog
 }
 
 [Route("api/rooms")]
-[Authorize(Roles = RoleConstants.Admin)]
+[Authorize(Policy = PermissionCodes.CatalogManage)]
 public class RoomsController(IRoomService service) : CatalogControllerBase
 {
     [HttpGet] public async Task<IActionResult> Get([FromQuery] CatalogQuery query) => Ok(ApiResponse<PagedResponse<RoomResponse>>.Success(await service.GetAsync(query)));

@@ -4,23 +4,23 @@ import { Chip } from "@mui/material";
 
 const STATUS_CONFIG = {
     Pending: {
-        label: "Pending",
+        label: "Chờ xác nhận",
         color: "warning",
     },
     Confirmed: {
-        label: "Confirmed",
+        label: "Đã xác nhận",
         color: "primary",
     },
     InProgress: {
-        label: "In Progress",
+        label: "Đang khám",
         color: "info",
     },
     Completed: {
-        label: "Completed",
+        label: "Hoàn tất",
         color: "success",
     },
     Cancelled: {
-        label: "Cancelled",
+        label: "Đã hủy",
         color: "error",
     },
     Unpaid: {

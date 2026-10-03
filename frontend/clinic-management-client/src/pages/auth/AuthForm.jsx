@@ -88,9 +88,9 @@ export default function AuthForm({ register }) {
             if (signal.aborted) return;
             dispatch(setCredentials({ accessToken, refreshToken, user, remember: !register && remember }));
             const from = location.state?.from;
-            const fallback = homeForRole(user.role);
+            const fallback = homeForRole(user);
             const destination = from?.pathname?.startsWith("/") && !from.pathname.startsWith("//")
-                && canAccessPath(user.role, from.pathname)
+                && canAccessPath(user, from.pathname)
                 ? `${from.pathname}${from.search || ""}${from.hash || ""}` : fallback;
             navigate(destination, { replace: true });
         } catch (err) {

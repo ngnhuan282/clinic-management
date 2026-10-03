@@ -1,5 +1,6 @@
 ﻿using ClinicManagement.Data.Entities;
 using Microsoft.EntityFrameworkCore;
+using ClinicManagement.Commons;
 
 namespace ClinicManagement.Data;
 
@@ -13,8 +14,13 @@ public class ApplicationDbContext : DbContext
      public DbSet<Invoice> Invoices { get; set; }
      public DbSet<InvoiceDetail> InvoiceDetails { get; set; }
     public DbSet<Role> Roles => Set<Role>();
+    public DbSet<Permission> Permissions => Set<Permission>();
+    public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+    public DbSet<RbacAudit> RbacAudits => Set<RbacAudit>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<DoctorSchedule> DoctorSchedules => Set<DoctorSchedule>();
+    public DbSet<DoctorScheduleRequest> DoctorScheduleRequests => Set<DoctorScheduleRequest>();
+    public DbSet<TimeSlot> TimeSlots => Set<TimeSlot>();
 
     public DbSet<User> Users => Set<User>();
 
@@ -27,6 +33,9 @@ public class ApplicationDbContext : DbContext
     public DbSet<Doctor> Doctors => Set<Doctor>();
 
     public DbSet<Appointment> Appointments => Set<Appointment>();
+    public DbSet<Patient> Patients => Set<Patient>();
+    public DbSet<PatientBook> PatientBooks => Set<PatientBook>();
+    public DbSet<BookInvoice> BookInvoices => Set<BookInvoice>();
 
     public DbSet<MedicineCategory> MedicineCategories =>
         Set<MedicineCategory>();
@@ -47,6 +56,11 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<RecordDiagnosis> RecordDiagnoses =>
         Set<RecordDiagnosis>();
+
+    public DbSet<Prescription> Prescriptions => Set<Prescription>();
+
+    public DbSet<PrescriptionDetail> PrescriptionDetails =>
+        Set<PrescriptionDetail>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
@@ -77,33 +91,127 @@ public class ApplicationDbContext : DbContext
 
             entity.Property(x => x.Description)
                 .HasMaxLength(200);
+            entity.Property(x => x.Version).IsRowVersion();
 
             entity.HasData(
                 new Role
                 {
                     RoleId = 1,
                     RoleName = "Admin",
-                    Description = "System administrator"
+                    Description = "System administrator", IsSystem = true
                 },
                 new Role
                 {
                     RoleId = 2,
                     RoleName = "Doctor",
-                    Description = "Doctor"
+                    Description = "Doctor", IsSystem = true
                 },
                 new Role
                 {
                     RoleId = 3,
                     RoleName = "Receptionist",
-                    Description = "Receptionist"
+                    Description = "Receptionist", IsSystem = true
                 },
                 new Role
                 {
                     RoleId = 4,
                     RoleName = "Patient",
-                    Description = "Patient"
+                    Description = "Patient", IsSystem = true
+                },
+                new Role
+                {
+                    RoleId = 5,
+                    RoleName = "LabTechnician",
+                    Description = "Lab technician", IsSystem = true
                 }
             );
+        });
+
+        modelBuilder.Entity<Permission>(entity =>
+        {
+            entity.HasKey(x => x.Code);
+            entity.Property(x => x.Code).HasMaxLength(80);
+            entity.Property(x => x.Module).HasMaxLength(80).IsRequired();
+            entity.Property(x => x.Name).HasMaxLength(160).IsRequired();
+            entity.Property(x => x.Kind).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Scope).HasMaxLength(250);
+            entity.HasData(PermissionCatalog.All.Select(x => new Permission
+            {
+                Code = x.Code, Module = x.Module, Name = x.Name, Kind = x.Kind,
+                Scope = x.Scope, IsImplemented = x.IsImplemented
+            }));
+        });
+
+        modelBuilder.Entity<RolePermission>(entity =>
+        {
+            entity.HasKey(x => new { x.RoleId, x.PermissionCode });
+            entity.Property(x => x.PermissionCode).HasMaxLength(80);
+            entity.HasOne(x => x.Role).WithMany(x => x.RolePermissions).HasForeignKey(x => x.RoleId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Permission).WithMany(x => x.RolePermissions).HasForeignKey(x => x.PermissionCode)
+                .OnDelete(DeleteBehavior.Restrict);
+            var roleIds = new Dictionary<string, int>
+            {
+                [RoleConstants.Admin] = 1, [RoleConstants.Doctor] = 2,
+                [RoleConstants.Receptionist] = 3, [RoleConstants.Patient] = 4,
+                [RoleConstants.LabTechnician] = 5
+            };
+            entity.HasData(PermissionCatalog.DefaultRoles.Where(role => role.Key != RoleConstants.DepartmentHead)
+                .SelectMany(role => role.Value.Select(code =>
+                new RolePermission { RoleId = roleIds[role.Key], PermissionCode = code })));
+        });
+
+        modelBuilder.Entity<RbacAudit>(entity =>
+        {
+            entity.HasKey(x => x.RbacAuditId);
+            entity.Property(x => x.Action).HasMaxLength(60).IsRequired();
+            entity.Property(x => x.EntityType).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.BeforeJson).HasColumnType("nvarchar(max)");
+            entity.Property(x => x.AfterJson).HasColumnType("nvarchar(max)");
+            entity.HasIndex(x => x.CreatedAt);
+            entity.HasOne<User>().WithMany().HasForeignKey(x => x.ActorUserId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Doctor>(entity =>
+        {
+            entity.HasIndex(x => x.UserId).IsUnique().HasFilter("[UserId] IS NOT NULL");
+            entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<DoctorScheduleRequest>(entity =>
+        {
+            entity.HasKey(x => x.RequestId);
+            entity.Property(x => x.WorkDate).HasColumnType("date");
+            entity.Property(x => x.Status).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.RejectReason).HasMaxLength(200);
+            entity.Property(x => x.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+            entity.ToTable(x =>
+            {
+                x.HasCheckConstraint("CK_DoctorScheduleRequests_Time", "[StartTime] < [EndTime]");
+                x.HasCheckConstraint("CK_DoctorScheduleRequests_Status", "[Status] IN ('Pending','Approved','Rejected','Cancelled')");
+                x.HasCheckConstraint("CK_DoctorScheduleRequests_RejectReason", "[Status] <> 'Rejected' OR ([RejectReason] IS NOT NULL AND LEN(LTRIM(RTRIM([RejectReason]))) > 0)");
+            });
+
+            modelBuilder.Entity<DoctorSchedule>(entity =>
+            {
+                entity.Property(x => x.Status).HasMaxLength(20).IsRequired().HasDefaultValue("Approved");
+                entity.ToTable(x => x.HasCheckConstraint("CK_DoctorSchedules_Status",
+                    "[Status] IN ('Pending','Approved','Rejected')"));
+            });
+            entity.HasIndex(x => new { x.DoctorId, x.WorkDate, x.Status });
+            entity.HasOne(x => x.Doctor).WithMany().HasForeignKey(x => x.DoctorId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Room).WithMany().HasForeignKey(x => x.RoomId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Reviewer).WithMany().HasForeignKey(x => x.ReviewerId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Schedule).WithOne(x => x.Request).HasForeignKey<DoctorSchedule>(x => x.RequestId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<DoctorSchedule>(entity =>
+        {
+            entity.Property(x => x.WorkDate).HasColumnType("date");
+            entity.HasIndex(x => x.RequestId).IsUnique().HasFilter("[RequestId] IS NOT NULL");
+            entity.HasIndex(x => new { x.DoctorId, x.WorkDate, x.StartTime });
+            entity.HasIndex(x => new { x.RoomId, x.WorkDate, x.StartTime });
         });
 
         // =========================
@@ -148,6 +256,50 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(x => x.Role)
                 .WithMany(x => x.Users)
                 .HasForeignKey(x => x.RoleId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<PatientBook>(entity =>
+        {
+            entity.HasKey(x => x.PatientBookId);
+
+            entity.Property(x => x.BookNumber)
+                .HasMaxLength(30);
+
+            entity.Property(x => x.Status)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(x => x.CreatedAt)
+                .HasDefaultValueSql("GETDATE()");
+
+            entity.Property(x => x.UpdatedAt)
+                .HasDefaultValueSql("GETDATE()");
+
+            entity.HasIndex(x => x.BookNumber)
+                .IsUnique()
+                .HasFilter("[BookNumber] IS NOT NULL");
+
+            entity.HasIndex(x => x.PatientId)
+                .IsUnique()
+                .HasFilter("[PatientId] IS NOT NULL AND [Status] = 'Issued'");
+
+            entity.HasOne(x => x.Patient)
+                .WithMany()
+                .HasForeignKey(x => x.PatientId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(x => x.PreviousBook)
+                .WithMany()
+                .HasForeignKey(x => x.PreviousBookId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Appointment>(entity =>
+        {
+            entity.HasOne(x => x.PatientBook)
+                .WithMany()
+                .HasForeignKey(x => x.PatientBookId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
@@ -408,6 +560,11 @@ public class ApplicationDbContext : DbContext
                 .WithMany(x => x.MedicalRecords)
                 .HasForeignKey(x => x.PatientId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(x => x.PatientBook)
+                .WithMany()
+                .HasForeignKey(x => x.PatientBookId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         // =========================
@@ -435,6 +592,78 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(x => x.Disease)
                 .WithMany(x => x.RecordDiagnoses)
                 .HasForeignKey(x => x.DiseaseId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // =========================
+        // Prescription
+        // =========================
+        modelBuilder.Entity<Prescription>(entity =>
+        {
+            entity.HasKey(x => x.PrescriptionId);
+
+            entity.Property(x => x.PrescriptionDate)
+                .HasDefaultValueSql("GETDATE()");
+
+            entity.Property(x => x.Status)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(x => x.Notes)
+                .HasMaxLength(1000);
+
+            entity.Property(x => x.CreatedAt)
+                .HasDefaultValueSql("GETDATE()");
+
+            entity.Property(x => x.UpdatedAt)
+                .HasDefaultValueSql("GETDATE()");
+
+            entity.HasIndex(x => x.MedicalRecordId)
+                .IsUnique();
+
+            entity.HasOne(x => x.MedicalRecord)
+                .WithOne(x => x.Prescription)
+                .HasForeignKey<Prescription>(x => x.MedicalRecordId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // =========================
+        // Prescription Detail
+        // =========================
+        modelBuilder.Entity<PrescriptionDetail>(entity =>
+        {
+            entity.HasKey(x => x.PrescriptionDetailId);
+
+            entity.Property(x => x.Dosage)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.Property(x => x.Instructions)
+                .HasMaxLength(255)
+                .IsRequired();
+
+            entity.HasIndex(x => new
+            {
+                x.PrescriptionId,
+                x.MedicineId
+            })
+            .IsUnique();
+
+            entity.ToTable(x =>
+                x.HasCheckConstraint(
+                    "CK_PrescriptionDetails_Quantity",
+                    "[Quantity] > 0"
+                )
+            );
+
+            entity.HasOne(x => x.Prescription)
+                .WithMany(x => x.Details)
+                .HasForeignKey(x => x.PrescriptionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(x => x.Medicine)
+                .WithMany(x => x.PrescriptionDetails)
+                .HasForeignKey(x => x.MedicineId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
     }

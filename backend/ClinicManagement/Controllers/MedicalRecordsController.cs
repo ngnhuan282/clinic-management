@@ -9,7 +9,7 @@ namespace ClinicManagement.Controllers;
 
 [ApiController]
 [Route("api/medical-records")]
-[Authorize(Roles = RoleConstants.Admin + "," + RoleConstants.Doctor)]
+[Authorize]
 public class MedicalRecordsController : ControllerBase
 {
     private readonly IMedicalRecordService _medicalRecordService;
@@ -21,6 +21,7 @@ public class MedicalRecordsController : ControllerBase
     }
 
     [HttpGet("queue")]
+    [Authorize(Policy = PermissionCodes.ClinicalViewAssigned)]
     public async Task<IActionResult> GetQueue(
         [FromQuery] ExaminationQueueFilterRequest request)
     {
@@ -34,6 +35,7 @@ public class MedicalRecordsController : ControllerBase
     }
 
     [HttpGet("{medicalRecordId:int}")]
+    [Authorize(Policy = PermissionCodes.ClinicalViewAssigned)]
     public async Task<IActionResult> GetById(
         int medicalRecordId)
     {
@@ -48,6 +50,7 @@ public class MedicalRecordsController : ControllerBase
     }
 
     [HttpGet("by-appointment/{appointmentId:int}")]
+    [Authorize(Policy = PermissionCodes.ClinicalViewAssigned)]
     public async Task<IActionResult> GetByAppointment(
         int appointmentId)
     {
@@ -62,6 +65,7 @@ public class MedicalRecordsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = PermissionCodes.ClinicalWriteRecord)]
     public async Task<IActionResult> Create(
         CreateMedicalRecordRequest request)
     {
@@ -79,6 +83,7 @@ public class MedicalRecordsController : ControllerBase
     }
 
     [HttpPut("{medicalRecordId:int}")]
+    [Authorize(Policy = PermissionCodes.ClinicalEditDiagnosis)]
     public async Task<IActionResult> Update(
         int medicalRecordId,
         UpdateMedicalRecordRequest request)

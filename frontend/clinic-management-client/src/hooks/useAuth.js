@@ -27,6 +27,7 @@ function useAuth() {
         isAuthenticated,
         sessionChecked,
         role: user?.role || null,
+        permissions: user?.permissions || [],
         userId: user?.userId || null,
         logout,
     };

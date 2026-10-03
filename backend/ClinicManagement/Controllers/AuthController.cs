@@ -1,6 +1,7 @@
 using ClinicManagement.Commons;
 using ClinicManagement.DTOs.Requests;
 using ClinicManagement.DTOs.Responses;
+using ClinicManagement.Exceptions;
 using ClinicManagement.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,8 +14,14 @@ public class AuthController : ControllerBase
 {
     [Authorize]
     [HttpGet("me")]
-    public async Task<IActionResult> Me([FromServices] IUserService users, [FromServices] ICurrentUserService currentUser) =>
-        Ok(ApiResponse<UserResponse>.Success(await users.GetByIdAsync(currentUser.GetRequiredUserId())));
+    public async Task<IActionResult> Me([FromServices] IUserService users, [FromServices] ICurrentUserService currentUser,
+        [FromServices] ClinicManagement.Data.ApplicationDbContext db)
+    {
+        var user = await users.GetByIdAsync(currentUser.GetRequiredUserId());
+        var permissions = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(
+            db.RolePermissions.Where(x => x.RoleId == user.RoleId).Select(x => x.PermissionCode).OrderBy(x => x));
+        return Ok(ApiResponse<UserResponse>.Success(user with { Permissions = permissions }));
+    }
 
     private readonly IAuthService _authService;
 
@@ -42,8 +49,14 @@ public class AuthController : ControllerBase
 
     [AllowAnonymous]
     [HttpPost("refresh")]
-    public async Task<IActionResult> Refresh(RefreshTokenRequest request) =>
-        Ok(ApiResponse<AuthResponse>.Success(await _authService.RefreshAsync(request)));
+    public async Task<IActionResult> Refresh(RefreshTokenRequest request)
+    {
+        var result = await _authService.RefreshAsync(request);
+        if (result == null)
+            return Unauthorized(ApiResponse<object>.Failure(
+                ErrorCode.UNAUTHENTICATED.Code, ErrorCode.UNAUTHENTICATED.Message));
+        return Ok(ApiResponse<AuthResponse>.Success(result));
+    }
 
     [AllowAnonymous]
     [HttpPost("logout")]

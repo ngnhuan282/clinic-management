@@ -122,6 +122,35 @@ try {
     await anotherTab.goto('http://127.0.0.1:5190/booking', { waitUntil: 'domcontentloaded' });
     await anotherTab.getByRole('button', { name: 'Tài khoản', exact: true }).waitFor();
     await anotherTab.close();
+    const patientId = await page.evaluate(() => JSON.parse(localStorage.getItem('user')).userId);
+    async function apiLogin(name) {
+        const response = await page.request.post(session.baseUrl + 'api/auth/login', { data: { username: name, password: session.password } });
+        assert.equal(response.status(), 200);
+        return (await response.json()).result.accessToken;
+    }
+    const adminAccess = await apiLogin('testadmin');
+    const labTypeResponse = await page.request.post(session.baseUrl + 'api/LabTestTypes', {
+        headers: { Authorization: `Bearer ${adminAccess}` },
+        data: { name: 'Browser blood test', price: 50000 },
+    });
+    assert.equal(labTypeResponse.status(), 201);
+    const labTypeId = (await labTypeResponse.json()).id;
+    const doctorAccess = await apiLogin('testdoctor');
+    const orderResponse = await page.request.post(session.baseUrl + 'api/LabTests', {
+        headers: { Authorization: `Bearer ${doctorAccess}` },
+        data: { patientId, labTestTypeId: labTypeId, clinicalDiagnosis: 'Browser check' },
+    });
+    assert.equal(orderResponse.status(), 200);
+    const labTestId = (await orderResponse.json()).id;
+    const technicianAccess = await apiLogin('testlab');
+    const resultResponse = await page.request.post(session.baseUrl + 'api/LabTests/results', {
+        headers: { Authorization: `Bearer ${technicianAccess}` },
+        data: { labTestId, resultSummary: 'Bình thường' },
+    });
+    assert.equal(resultResponse.status(), 200);
+    await page.goto('http://127.0.0.1:5190/lab-results', { waitUntil: 'domcontentloaded' });
+    await page.getByRole('heading', { name: 'Kết quả xét nghiệm' }).waitFor();
+    await page.getByText('Kết quả: Bình thường').waitFor();
     console.log('PASS remember-me persists login across tabs');
     await page.getByRole('button', { name: 'Tài khoản', exact: true }).click();
     await page.getByRole('menuitem', { name: 'Đăng xuất', exact: true }).click();
@@ -168,14 +197,16 @@ try {
         await page.getByRole('checkbox', { name: 'Ghi nhớ đăng nhập trên thiết bị này' }).check();
         await page.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
         await page.waitForURL('**/internal/dashboard');
+        await page.getByRole('heading', { name: 'Xin chào, testadmin' }).waitFor();
     }
     await loginAdmin();
     await page.setViewportSize({ width: 390, height: 844 });
     const mobileRefresh = await page.evaluate(() => localStorage.getItem('refreshToken'));
-    await page.getByRole('button', { name: 'Đăng xuất', exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Mở menu' }).click();
+    await page.locator('.MuiDrawer-paper').getByRole('button', { name: 'Đăng xuất', exact: true }).waitFor();
     await page.screenshot({ path: '.tmp/admin-logout-mobile.png', fullPage: true });
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
-    await page.getByRole('button', { name: 'Đăng xuất', exact: true }).click();
+    await page.locator('.MuiDrawer-paper').getByRole('button', { name: 'Đăng xuất', exact: true }).click();
     await page.waitForURL('**/internal/login');
     assert(await page.evaluate(() => !localStorage.getItem('refreshToken') && !sessionStorage.getItem('refreshToken')));
     assert.equal((await page.request.post(session.baseUrl + 'api/auth/refresh', { data: { refreshToken: mobileRefresh } })).status(), 401);
@@ -184,7 +215,8 @@ try {
     await loginAdmin();
     const offlineRefresh = await page.evaluate(() => localStorage.getItem('refreshToken'));
     await page.route('**/api/auth/logout', route => route.abort('connectionfailed'));
-    await page.getByRole('button', { name: 'Đăng xuất', exact: true }).click();
+    await page.getByRole('button', { name: 'Mở menu' }).click();
+    await page.locator('.MuiDrawer-paper').getByRole('button', { name: 'Đăng xuất', exact: true }).click();
     await page.waitForURL('**/internal/login');
     assert(await page.evaluate(() => !localStorage.getItem('accessToken') && !sessionStorage.getItem('accessToken')));
     await page.unroute('**/api/auth/logout');
@@ -193,6 +225,8 @@ try {
     console.log('PASS admin logout clears local credentials when the server is unreachable');
     await loginAdmin();
     await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto('http://127.0.0.1:5190/internal/doctor-schedules');
+    await page.getByRole('heading', { name: 'Lịch làm việc bác sĩ' }).waitFor();
     await page.getByRole('link', { name: 'Tài khoản & Vai trò', exact: true }).click();
     await page.getByRole('heading', { name: 'Tài khoản & Vai trò' }).waitFor();
     const selfRow = page.getByRole('row').filter({ hasText: 'testadmin' });
@@ -223,6 +257,12 @@ try {
     assert.equal(await doctorPage.getByRole('link', { name: 'Tài khoản & Vai trò', exact: true }).count(), 0);
     assert.equal(await doctorPage.getByRole('link', { name: 'Kho dược & Vật tư', exact: true }).count(), 0);
     await doctorPage.getByRole('navigation').getByRole('link', { name: 'Xét nghiệm', exact: true }).waitFor();
+    await doctorPage.goto('http://127.0.0.1:5190/internal/examinations');
+    await doctorPage.getByRole('heading', { name: 'Khám bệnh - Lịch khám hôm nay' }).waitFor();
+    await doctorPage.goto('http://127.0.0.1:5190/internal/diseases');
+    await doctorPage.getByRole('heading', { name: 'Danh mục bệnh' }).waitFor();
+    await doctorPage.goto('http://127.0.0.1:5190/internal/doctor/lab-orders');
+    await doctorPage.getByRole('heading', { name: 'Bác sĩ: Chỉ định Xét nghiệm' }).waitFor();
     await doctorPage.goto('http://127.0.0.1:5190/internal/users');
     await doctorPage.getByRole('heading', { name: 'Không có quyền truy cập' }).waitFor();
     await doctorPage.evaluate(() => {
@@ -246,12 +286,22 @@ try {
     await loginOn(doctorPage, username, password);
     await doctorPage.getByRole('button', { name: 'Đăng xuất', exact: true }).click();
     await loginOn(doctorPage, 'testreceptionist', session.password);
-    assert.equal(await doctorPage.getByRole('navigation').getByRole('link').count(), 1);
-    await doctorPage.getByText('Tài khoản lễ tân đã sẵn sàng').waitFor();
+    await doctorPage.getByRole('navigation').getByRole('link', { name: 'Lịch hẹn', exact: true }).click();
+    await doctorPage.getByRole('heading', { name: 'Điều phối & Duyệt lịch hẹn' }).waitFor();
     await doctorPage.goto('http://127.0.0.1:5190/internal/lab-test-types');
     await doctorPage.getByRole('heading', { name: 'Không có quyền truy cập' }).waitFor();
+    await doctorPage.goto('http://127.0.0.1:5190/internal/dashboard');
+    await doctorPage.getByRole('button', { name: 'Đăng xuất', exact: true }).click();
+    await doctorPage.goto('http://127.0.0.1:5190/internal/login', { waitUntil: 'domcontentloaded' });
+    await doctorPage.getByLabel('Tên đăng nhập', { exact: true }).fill('testlab');
+    await doctorPage.getByLabel('Mật khẩu', { exact: true }).fill(session.password);
+    await doctorPage.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
+    await doctorPage.waitForURL('**/internal/technician/lab-queue');
+    await doctorPage.getByRole('heading', { name: 'Kỹ thuật viên: Hàng chờ Xét nghiệm' }).waitFor();
+    await doctorPage.goto('http://127.0.0.1:5190/internal/users');
+    await doctorPage.getByRole('heading', { name: 'Không có quyền truy cập' }).waitFor();
     await doctorContext.close();
-    console.log('PASS account lock/unlock via UI invalidates existing session; receptionist access is restricted');
+    console.log('PASS account lock/unlock, receptionist appointment access and technician route permissions');
 
     await page.setViewportSize({ width: 390, height: 844 });
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
@@ -291,7 +341,8 @@ try {
         window.pendingAuthRequest = api.get('/auth/me').catch(() => null);
     });
     await Promise.race([arrived, delay(15000).then(() => { throw new Error('Refresh request did not arrive'); })]);
-    await page.getByRole('button', { name: 'Đăng xuất', exact: true }).click();
+    await page.getByRole('button', { name: 'Mở menu' }).click();
+    await page.locator('.MuiDrawer-paper').getByRole('button', { name: 'Đăng xuất', exact: true }).click();
     await page.waitForURL('**/internal/login');
     releaseRefresh();
     await page.evaluate(() => window.pendingAuthRequest);

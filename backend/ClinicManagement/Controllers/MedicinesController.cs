@@ -9,7 +9,7 @@ namespace ClinicManagement.Controllers;
 
 [ApiController]
 [Route("api/medicines")]
-[Authorize(Roles = RoleConstants.Admin)]
+[Authorize]
 public class MedicinesController : ControllerBase
 {
     private readonly IMedicineService _medicineService;
@@ -20,6 +20,7 @@ public class MedicinesController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = PermissionCodes.PharmacyViewCatalog)]
     public async Task<IActionResult> GetPaged(
         [FromQuery] MedicineFilterRequest request)
     {
@@ -33,6 +34,7 @@ public class MedicinesController : ControllerBase
     }
 
     [HttpGet("summary")]
+    [Authorize(Policy = PermissionCodes.PharmacyViewCatalog)]
     public async Task<IActionResult> GetSummary()
     {
         var result =
@@ -45,6 +47,7 @@ public class MedicinesController : ControllerBase
     }
 
     [HttpGet("options")]
+    [Authorize(Policy = PermissionCodes.PharmacyViewCatalog)]
     public async Task<IActionResult> GetOptions()
     {
         var result =
@@ -57,6 +60,7 @@ public class MedicinesController : ControllerBase
     }
 
     [HttpGet("{medicineId:int}")]
+    [Authorize(Policy = PermissionCodes.PharmacyViewCatalog)]
     public async Task<IActionResult> GetById(
         int medicineId)
     {
@@ -72,6 +76,7 @@ public class MedicinesController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = PermissionCodes.PharmacyManageCatalog)]
     public async Task<IActionResult> Create(
         CreateMedicineRequest request)
     {
@@ -89,6 +94,7 @@ public class MedicinesController : ControllerBase
     }
 
     [HttpPut("{medicineId:int}")]
+    [Authorize(Policy = PermissionCodes.PharmacyManageCatalog)]
     public async Task<IActionResult> Update(
         int medicineId,
         UpdateMedicineRequest request)
@@ -108,6 +114,7 @@ public class MedicinesController : ControllerBase
     }
 
     [HttpDelete("{medicineId:int}")]
+    [Authorize(Policy = PermissionCodes.PharmacyManageCatalog)]
     public async Task<IActionResult> Delete(
         int medicineId)
     {

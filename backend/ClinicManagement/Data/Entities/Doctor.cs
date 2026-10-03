@@ -14,9 +14,16 @@ public class Doctor
 
     public bool IsActive { get; set; } = true;
 
+    public int? UserId { get; set; }
+    public User? User { get; set; }
+
     public int DepartmentId { get; set; }
 
     public Department Department { get; set; } = null!;
+
+    public int SpecializationId { get; set; }
+
+    public Specialization Specialization { get; set; } = null!;
 
     public ICollection<Appointment> Appointments { get; set; }
         = new List<Appointment>();

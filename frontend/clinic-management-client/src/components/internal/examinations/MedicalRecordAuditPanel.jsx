@@ -144,6 +144,17 @@ function MedicalRecordAuditPanel({ record }) {
                     />
 
                     <InfoItem
+                        label="Sổ khám giấy"
+                        value={record?.patientBookNumber}
+                        highlight
+                    />
+
+                    <InfoItem
+                        label="Ghi sổ giấy"
+                        value={formatDateTime(record?.paperBookUpdatedAt)}
+                    />
+
+                    <InfoItem
                         label="Bác sĩ phụ trách"
                         value={record?.doctorName}
                     />

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -15,7 +15,6 @@ import {
   TableRow,
   TextField,
   Typography,
-  Chip,
   Alert,
   Snackbar,
   Divider,
@@ -56,7 +55,8 @@ export default function TechnicianLabQueuePage() {
   };
 
   useEffect(() => {
-    fetchPending();
+    const timer = setTimeout(() => { void fetchPending(); }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const handleSelectTest = (item) => {

@@ -9,7 +9,7 @@ namespace ClinicManagement.Controllers;
 
 [ApiController]
 [Route("api/inventory")]
-[Authorize(Roles = RoleConstants.Admin)]
+[Authorize]
 public class InventoryController : ControllerBase
 {
     private readonly IInventoryService _inventoryService;
@@ -20,6 +20,7 @@ public class InventoryController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = PermissionCodes.PharmacyViewInventory)]
     public async Task<IActionResult> GetPaged(
         [FromQuery] InventoryFilterRequest request)
     {
@@ -33,6 +34,7 @@ public class InventoryController : ControllerBase
     }
 
     [HttpGet("summary")]
+    [Authorize(Policy = PermissionCodes.PharmacyViewInventory)]
     public async Task<IActionResult> GetSummary()
     {
         var result =
@@ -45,6 +47,7 @@ public class InventoryController : ControllerBase
     }
 
     [HttpGet("{inventoryId:int}")]
+    [Authorize(Policy = PermissionCodes.PharmacyViewInventory)]
     public async Task<IActionResult> GetById(
         int inventoryId)
     {
@@ -60,6 +63,7 @@ public class InventoryController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = PermissionCodes.PharmacyManageInventory)]
     public async Task<IActionResult> Create(
         CreateInventoryRequest request)
     {
@@ -77,6 +81,7 @@ public class InventoryController : ControllerBase
     }
 
     [HttpPut("{inventoryId:int}")]
+    [Authorize(Policy = PermissionCodes.PharmacyManageInventory)]
     public async Task<IActionResult> Update(
         int inventoryId,
         UpdateInventoryRequest request)
@@ -96,6 +101,7 @@ public class InventoryController : ControllerBase
     }
 
     [HttpDelete("{inventoryId:int}")]
+    [Authorize(Policy = PermissionCodes.PharmacyManageInventory)]
     public async Task<IActionResult> Delete(
         int inventoryId)
     {

@@ -10,6 +10,12 @@ public class ExaminationQueueResponse
 
     public int? PatientId { get; set; }
 
+    public int? PatientBookId { get; set; }
+
+    public string? PatientBookNumber { get; set; }
+
+    public DateTime? BookVerifiedAt { get; set; }
+
     public string PatientName { get; set; } = string.Empty;
 
     public string PatientPhone { get; set; } = string.Empty;

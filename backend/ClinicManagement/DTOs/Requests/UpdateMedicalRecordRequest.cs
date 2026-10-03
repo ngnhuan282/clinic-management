@@ -6,6 +6,10 @@ public class UpdateMedicalRecordRequest
 
     public string? Conclusion { get; set; }
 
+    public int? PatientBookId { get; set; }
+
+    public bool PaperBookConfirmed { get; set; }
+
     public bool MarkCompleted { get; set; }
 
     public List<SaveRecordDiagnosisRequest> Diagnoses { get; set; } = [];

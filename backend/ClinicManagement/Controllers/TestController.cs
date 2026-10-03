@@ -26,7 +26,7 @@ public class TestController(ICurrentUserService currentUser) : ControllerBase
     [HttpGet("internal")]
     public IActionResult Internal() => Ok(ApiResponse<string>.Success("Internal access granted"));
 
-    [Authorize(Roles = RoleConstants.Doctor)]
+    [Authorize(Policy = PermissionCodes.ClinicalViewAssigned)]
     [HttpGet("doctor")]
     public IActionResult DoctorOnly() => Ok(ApiResponse<string>.Success("Hello Doctor"));
 }
