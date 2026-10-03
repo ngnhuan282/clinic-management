@@ -21,6 +21,7 @@ import TechnicianLabQueuePage from '../pages/internal/technician/TechnicianLabQu
 import DoctorAppointmentsPage from "../pages/internal/doctor/DoctorAppointmentsPage";
 import MedicalRecordPage from "../pages/internal/doctor/MedicalRecordPage";
 import MedicalRecordDetailPage from "../pages/internal/doctor/MedicalRecordDetailPage";
+import CashierBillingPage from "../pages/internal/CashierBillingPage"; 
 
 export default function AppRoutes() {
     return <BrowserRouter><Routes>
@@ -64,7 +65,10 @@ export default function AppRoutes() {
                         </Route>
 
 
-
+                { /* Admin & Cashier  */}
+       <Route element={<ProtectedRoute allowedRoles={["Admin", "Cashier"]} />}> 
+              <Route path="cashier/billing" element={<CashierBillingPage />} /> 
+            </Route>
                 <Route element={<ProtectedRoute allowedRoles={["Doctor"]} />}>
                     <Route path="examinations" element={<DoctorAppointmentsPage />} />
                     <Route path="examinations/:appointmentId/record" element={<MedicalRecordDetailPage />} />
