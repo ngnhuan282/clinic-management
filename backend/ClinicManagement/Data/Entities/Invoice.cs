@@ -6,7 +6,7 @@ namespace ClinicManagement.Data.Entities
     public class Invoice
     {
         public int Id { get; set; }
-        public int AppointmentId { get; set; }
+      public int? AppointmentId { get; set; }
         public int PatientId { get; set; }
         public int CashierId { get; set; }
         public string BillingStage { get; set; } = "Pending"; // "Pending" hoặc "LabAndConsultation"

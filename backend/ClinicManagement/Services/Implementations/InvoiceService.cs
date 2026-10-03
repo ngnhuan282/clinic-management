@@ -19,26 +19,28 @@ namespace ClinicManagement.Services.Implementations
             _context = context;
         }
 
-        public async Task<List<PendingAppointmentBillingDto>> GetPendingBillingsAsync(string stage)
+       public async Task<List<PendingAppointmentBillingDto>> GetPendingBillingsAsync(string stage)
 {
     var result = new List<PendingAppointmentBillingDto>();
 
     if (stage == "Pending")
     {
-        // 1. Lấy danh sách ID Appointment đã xuất hóa đơn
+        // 1. Lấy danh sách AppointmentId đã xuất hóa đơn "Appointment"
         var paidAppointmentIds = await _context.InvoiceDetails
             .Where(d => d.SourceType == "Appointment")
             .Select(d => d.SourceId)
             .Distinct()
             .ToListAsync();
 
-        // 2. Lọc danh sách Appointment chưa thanh toán trực tiếp từ Database
-        var pendingAppointments = await _context.Set<Appointment>()
+        // 2. Lấy danh sách Appointment chưa thanh toán phí khám ban đầu
+        var pendingAppointments = await _context.Appointments
             .Where(a => !paidAppointmentIds.Contains(a.AppointmentId))
             .ToListAsync();
 
         foreach (var app in pendingAppointments)
         {
+            decimal examinationFee = 150000;
+
             result.Add(new PendingAppointmentBillingDto
             {
                 AppointmentId = app.AppointmentId,
@@ -51,9 +53,9 @@ namespace ClinicManagement.Services.Implementations
                         SourceType = "Appointment",
                         SourceId = app.AppointmentId,
                         ItemName = "Phí khám ban đầu",
-                        UnitPrice = 150000,
+                        UnitPrice = examinationFee,
                         Quantity = 1,
-                        TotalPrice = 150000
+                        TotalPrice = examinationFee
                     }
                 }
             });
@@ -61,19 +63,20 @@ namespace ClinicManagement.Services.Implementations
     }
     else if (stage == "LabAndConsultation")
     {
-        // 1. Lấy danh sách ID LabTest đã xuất hóa đơn
+        // 1. Lấy danh sách LabTest.Id đã được xuất hóa đơn "LabTest"
         var paidLabTestIds = await _context.InvoiceDetails
             .Where(d => d.SourceType == "LabTest")
             .Select(d => d.SourceId)
             .Distinct()
             .ToListAsync();
 
-        // 2. Lọc các LabTest chưa thanh toán trực tiếp từ Database
+        // 2. Lấy các LabTest có Status == "Completed" VÀ chưa nằm trong InvoiceDetails
         var pendingLabTests = await _context.LabTests
             .Include(l => l.LabTestType)
-            .Where(l => !paidLabTestIds.Contains(l.Id))
+            .Where(l => l.Status == "Completed" && !paidLabTestIds.Contains(l.Id))
             .ToListAsync();
 
+        // 3. Gom nhóm danh sách xét nghiệm theo PatientId
         var groupedByPatient = pendingLabTests.GroupBy(l => l.PatientId);
 
         foreach (var group in groupedByPatient)
@@ -90,7 +93,7 @@ namespace ClinicManagement.Services.Implementations
 
             result.Add(new PendingAppointmentBillingDto
             {
-                AppointmentId = 0, // Gom nhóm theo PatientId
+                AppointmentId = 0, // Nhóm theo bệnh nhân (chờ thu tiền các xét nghiệm đã hoàn thành)
                 PatientId = group.Key,
                 BillingStage = "LabAndConsultation",
                 Items = items
@@ -102,49 +105,50 @@ namespace ClinicManagement.Services.Implementations
 }
 
         public async Task<InvoiceResponseDto> CreateInvoiceAsync(int cashierId, CreateInvoiceDto dto)
+{
+    // Kiểm tra chống thu trùng (Duplicate Check via SourceType + SourceId)
+    foreach (var item in dto.Items)
+    {
+        bool isAlreadyPaid = await _context.InvoiceDetails
+            .AnyAsync(d => d.SourceType == item.SourceType && d.SourceId == item.SourceId);
+
+        if (isAlreadyPaid)
         {
-            // Kiểm tra chống thu trùng (Duplicate Check via SourceType + SourceId)
-            foreach (var item in dto.Items)
-            {
-                bool isAlreadyPaid = await _context.InvoiceDetails
-                    .AnyAsync(d => d.SourceType == item.SourceType && d.SourceId == item.SourceId);
-
-                if (isAlreadyPaid)
-                {
-                    throw new InvalidOperationException($"Khoản phí '{item.ItemName}' (Mã: {item.SourceId}) đã được thanh toán trước đó!");
-                }
-            }
-
-            var invoice = new Invoice
-            {
-                AppointmentId = dto.AppointmentId,
-                PatientId = dto.PatientId,
-                CashierId = cashierId,
-                BillingStage = dto.BillingStage,
-                PaymentMethod = dto.PaymentMethod,
-                Status = "Paid",
-                CreatedAt = DateTime.UtcNow,
-                TotalAmount = dto.Items.Sum(x => x.UnitPrice * x.Quantity)
-            };
-
-            foreach (var item in dto.Items)
-            {
-                invoice.InvoiceDetails.Add(new InvoiceDetail
-                {
-                    SourceType = item.SourceType,
-                    SourceId = item.SourceId,
-                    ItemName = item.ItemName,
-                    UnitPrice = item.UnitPrice,
-                    Quantity = item.Quantity,
-                    TotalPrice = item.UnitPrice * item.Quantity
-                });
-            }
-
-            _context.Invoices.Add(invoice);
-            await _context.SaveChangesAsync();
-
-            return (await GetInvoiceByIdAsync(invoice.Id))!;
+            throw new InvalidOperationException($"Khoản phí '{item.ItemName}' (Mã: {item.SourceId}) đã được thanh toán trước đó!");
         }
+    }
+
+    var invoice = new Invoice
+    {
+        // Nếu AppointmentId <= 0 (như trường hợp LabAndConsultation = 0), gán null để không vi phạm khóa ngoại SQL
+        AppointmentId = (dto.AppointmentId.HasValue && dto.AppointmentId.Value > 0) ? dto.AppointmentId.Value : null,
+        PatientId = dto.PatientId,
+        CashierId = cashierId,
+        BillingStage = dto.BillingStage,
+        PaymentMethod = dto.PaymentMethod,
+        Status = "Paid",
+        CreatedAt = DateTime.UtcNow,
+        TotalAmount = dto.Items.Sum(x => x.UnitPrice * x.Quantity)
+    };
+
+    foreach (var item in dto.Items)
+    {
+        invoice.InvoiceDetails.Add(new InvoiceDetail
+        {
+            SourceType = item.SourceType,
+            SourceId = item.SourceId,
+            ItemName = item.ItemName,
+            UnitPrice = item.UnitPrice,
+            Quantity = item.Quantity,
+            TotalPrice = item.UnitPrice * item.Quantity
+        });
+    }
+
+    _context.Invoices.Add(invoice);
+    await _context.SaveChangesAsync();
+
+    return (await GetInvoiceByIdAsync(invoice.Id))!;
+}
 
         public async Task<InvoiceResponseDto?> GetInvoiceByIdAsync(int id)
         {

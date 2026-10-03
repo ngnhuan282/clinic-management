@@ -13,7 +13,7 @@ namespace ClinicManagement.DTOs.Invoices
 
     public class CreateInvoiceDto
     {
-        public int AppointmentId { get; set; }
+      public int? AppointmentId { get; set; }
         public int PatientId { get; set; }
         public string BillingStage { get; set; } = "Pending";
         public string PaymentMethod { get; set; } = "Cash";

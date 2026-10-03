@@ -17,7 +17,7 @@ namespace ClinicManagement.DTOs.Invoices
     public class InvoiceResponseDto
     {
         public int Id { get; set; }
-        public int AppointmentId { get; set; }
+       public int? AppointmentId { get; set; }
         public int PatientId { get; set; }
         public int CashierId { get; set; }
         public string BillingStage { get; set; } = string.Empty;
