@@ -6,7 +6,8 @@ import { Provider } from "react-redux";
 
 import App from "./App";
 import { store } from "./store/store";
-import './index.css';
+import "./index.css"; // <-- THÊM DÒNG NÀY (Đường dẫn tới file chứa Tailwind directives)
+
 ReactDOM.createRoot(
     document.getElementById("root")
 ).render(

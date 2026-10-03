@@ -11,7 +11,8 @@ public class ApplicationDbContext : DbContext
         : base(options)
     {
     }
-
+     public DbSet<Invoice> Invoices { get; set; }
+     public DbSet<InvoiceDetail> InvoiceDetails { get; set; }
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<Permission> Permissions => Set<Permission>();
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();

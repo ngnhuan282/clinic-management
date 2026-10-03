@@ -100,7 +100,7 @@ namespace ClinicManagement
 
             builder.Services.AddScoped<ILabTestTypeRepository, LabTestTypeRepository>();
             builder.Services.AddScoped<ILabTestTypeService, LabTestTypeService>();
-
+            builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 
                 builder.Services.AddScoped<ILabTestService, LabTestService>();
             var app = builder.Build();
