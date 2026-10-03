@@ -12,10 +12,12 @@ namespace ClinicManagement.Controllers;
 public class AppointmentsController : ControllerBase
 {
     private readonly IBookingService _bookingService;
+    private readonly IReceptionService _receptionService;
 
-    public AppointmentsController(IBookingService bookingService)
+    public AppointmentsController(IBookingService bookingService, IReceptionService receptionService)
     {
         _bookingService = bookingService;
+        _receptionService = receptionService;
     }
 
     [HttpGet]
@@ -87,7 +89,7 @@ public class AppointmentsController : ControllerBase
     [HttpPost("direct")]
     [Authorize(Policy = PermissionCodes.AppointmentsCreateWalkIn)]
     public async Task<IActionResult> CreateDirectAppointment(
-        CreateAppointmentRequest request)
+        CreateDirectAppointmentRequest request)
     {
         var result =
             await _bookingService.CreateDirectAppointmentAsync(
@@ -174,5 +176,21 @@ public class AppointmentsController : ControllerBase
                 "Appointment examination started successfully"
             )
         );
+    }
+
+    [HttpPatch("{id:int}/patient-profile")]
+    [Authorize(Policy = PermissionCodes.AppointmentsCheckIn)]
+    public async Task<IActionResult> MatchPatient(int id, MatchAppointmentPatientRequest request)
+    {
+        var result = await _receptionService.MatchAppointmentPatientAsync(id, request.PatientProfileId);
+        return Ok(ApiResponse<AppointmentResponse>.Success(result));
+    }
+
+    [HttpPatch("{id:int}/check-in")]
+    [Authorize(Policy = PermissionCodes.AppointmentsCheckIn)]
+    public async Task<IActionResult> CheckIn(int id, CheckInAppointmentRequest request)
+    {
+        var result = await _receptionService.CheckInAsync(id, request);
+        return Ok(ApiResponse<AppointmentResponse>.Success(result, "Patient checked in successfully"));
     }
 }

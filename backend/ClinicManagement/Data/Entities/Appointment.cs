@@ -12,6 +12,15 @@ public class Appointment
 
     public User? Patient { get; set; }
 
+    public int? PatientProfileId { get; set; }
+    public Patient? PatientProfile { get; set; }
+
+    public int? PatientBookId { get; set; }
+    public PatientBook? PatientBook { get; set; }
+
+    public DateTime? BookVerifiedAt { get; set; }
+    public DateTime? CheckedInAt { get; set; }
+
     public string PatientName { get; set; } = string.Empty;
 
     public string PatientPhone { get; set; } = string.Empty;

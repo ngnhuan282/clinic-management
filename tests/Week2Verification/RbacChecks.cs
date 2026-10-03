@@ -46,7 +46,7 @@ internal static class RbacChecks
 
         var catalog = (await Send(HttpMethod.Get, "api/rbac/permissions", token: adminToken))!["result"]!.AsArray();
         check(catalog.Any(x => x!["code"]!.GetValue<string>() == "billing.recordPayment"
-            && !x["isImplemented"]!.GetValue<bool>()), "Billing permission is documented as pending API work");
+            && x["isImplemented"]!.GetValue<bool>()), "Book payment permission is implemented");
         var cashier = (await Send(HttpMethod.Post, "api/rbac/roles", new
         {
             name = "Cashier", description = "Thu ngân", permissionCodes = new[] { "billing.view", "billing.recordPayment" }

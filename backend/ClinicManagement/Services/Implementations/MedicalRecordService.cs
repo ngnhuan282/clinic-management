@@ -119,6 +119,10 @@ public class MedicalRecordService : IMedicalRecordService
             );
         }
 
+        if (!appointment.CheckedInAt.HasValue || !appointment.BookVerifiedAt.HasValue
+            || !appointment.PatientBookId.HasValue)
+            throw new AppException(ErrorCode.BOOK_NOT_VERIFIED);
+
         if (appointment.MedicalRecord != null)
         {
             throw new AppException(ErrorCode.MEDICAL_RECORD_EXISTED);
