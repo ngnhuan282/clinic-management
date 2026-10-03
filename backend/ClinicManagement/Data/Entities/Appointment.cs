@@ -23,10 +23,6 @@ public class Appointment
     public DateTime? BookVerifiedAt { get; set; }
     public DateTime? CheckedInAt { get; set; }
 
-    public int? PatientBookId { get; set; }
-
-    public PatientBook? PatientBook { get; set; }
-
     public string PatientName { get; set; } = string.Empty;
 
     public string PatientPhone { get; set; } = string.Empty;
@@ -40,8 +36,6 @@ public class Appointment
     public string Reason { get; set; } = string.Empty;
 
     public string Status { get; set; } = string.Empty;
-
-    public DateTime? BookVerifiedAt { get; set; }
 
     public DateTime CreatedAt { get; set; }
 

@@ -6,6 +6,10 @@ SET CONCAT_NULL_YIELDS_NULL ON;
 SET ARITHABORT ON;
 SET NUMERIC_ROUNDABORT OFF;
 SET NOCOUNT ON;
+SET XACT_ABORT ON;
+
+BEGIN TRY
+BEGIN TRANSACTION;
 
 DECLARE @DoctorUsername nvarchar(50) = N'demo_doctor';
 DECLARE @Today date = CAST(GETDATE() AS date);
@@ -28,9 +32,9 @@ BEGIN
     THROW 51000, N'Khong tim thay user bac si can seed. Hay doi @DoctorUsername cho dung tai khoan dang test.', 1;
 END;
 
-IF @DoctorRoleId IS NULL
+IF NOT EXISTS (SELECT 1 FROM dbo.Roles WHERE RoleId = @DoctorRoleId AND RoleName = N'Doctor')
 BEGIN
-    THROW 51001, N'User bac si chua co RoleId. Hay gan role bac si truoc khi seed.', 1;
+    THROW 51001, N'Tai khoan seed phai co role Doctor.', 1;
 END;
 
 DECLARE @RequiredPermissions table
@@ -182,6 +186,10 @@ SELECT appointment.AppointmentId
 FROM dbo.Appointments AS appointment
 INNER JOIN @Appointments AS seed
     ON seed.StartTime = appointment.StartTime
+   AND seed.PatientPhone = appointment.PatientPhone
+INNER JOIN dbo.PatientBooks AS patientBook
+    ON patientBook.PatientBookId = appointment.PatientBookId
+   AND patientBook.BookNumber = @BookPrefix + RIGHT(N'000' + CAST(seed.BookNumberSuffix AS nvarchar(10)), 3)
 WHERE appointment.DoctorId = @DoctorId
   AND appointment.AppointmentDate = CAST(@Today AS datetime2(7));
 
@@ -218,20 +226,51 @@ FROM dbo.Appointments AS appointment
 INNER JOIN @ExistingAppointmentIds AS seed
     ON seed.AppointmentId = appointment.AppointmentId;
 
-DELETE FROM dbo.PatientBooks
-WHERE BookNumber LIKE @BookPrefix + N'%';
+DELETE patientBook
+FROM dbo.PatientBooks AS patientBook
+INNER JOIN dbo.Patients AS patient
+    ON patient.PatientId = patientBook.PatientId
+INNER JOIN @Appointments AS seed
+    ON patientBook.BookNumber = @BookPrefix + RIGHT(N'000' + CAST(seed.BookNumberSuffix AS nvarchar(10)), 3)
+   AND patient.Phone = seed.PatientPhone
+   AND patient.FullName = seed.PatientName;
+
+INSERT INTO dbo.Patients
+    (FullName, Phone, CreatedAt)
+SELECT seed.PatientName, seed.PatientPhone, @Now
+FROM @Appointments AS seed
+WHERE NOT EXISTS
+(
+    SELECT 1 FROM dbo.Patients AS patient
+    WHERE patient.Phone = seed.PatientPhone AND patient.FullName = seed.PatientName
+);
+
+DECLARE @SeededPatients table
+(
+    AppointmentKey nvarchar(40) NOT NULL PRIMARY KEY,
+    PatientId int NOT NULL
+);
+
+INSERT INTO @SeededPatients (AppointmentKey, PatientId)
+SELECT seed.AppointmentKey, MIN(patient.PatientId)
+FROM @Appointments AS seed
+INNER JOIN dbo.Patients AS patient
+    ON patient.Phone = seed.PatientPhone AND patient.FullName = seed.PatientName
+GROUP BY seed.AppointmentKey;
 
 INSERT INTO dbo.PatientBooks
     (PatientId, BookNumber, Status, PreviousBookId, IssuedAt, CreatedAt, UpdatedAt)
 SELECT
-    NULL,
-    @BookPrefix + RIGHT(N'000' + CAST(BookNumberSuffix AS nvarchar(10)), 3),
+    patient.PatientId,
+    @BookPrefix + RIGHT(N'000' + CAST(appointment.BookNumberSuffix AS nvarchar(10)), 3),
     N'Issued',
     NULL,
     @Now,
     @Now,
     @Now
-FROM @Appointments;
+FROM @Appointments AS appointment
+INNER JOIN @SeededPatients AS patient
+    ON patient.AppointmentKey = appointment.AppointmentKey;
 
 DECLARE @SeededPatientBooks table
 (
@@ -252,10 +291,11 @@ INNER JOIN dbo.PatientBooks AS patientBook
         @BookPrefix + RIGHT(N'000' + CAST(appointment.BookNumberSuffix AS nvarchar(10)), 3);
 
 INSERT INTO dbo.Appointments
-    (DoctorId, PatientId, PatientBookId, PatientName, PatientPhone, AppointmentDate, StartTime, EndTime, Reason, Status, BookVerifiedAt, CreatedAt)
+    (DoctorId, PatientId, PatientProfileId, PatientBookId, PatientName, PatientPhone, AppointmentDate, StartTime, EndTime, Reason, Status, BookVerifiedAt, CheckedInAt, CreatedAt)
 SELECT
     @DoctorId,
     NULL,
+    patient.PatientId,
     patientBook.PatientBookId,
     PatientName,
     PatientPhone,
@@ -265,10 +305,13 @@ SELECT
     Reason,
     Status,
     @Now,
+    @Now,
     @Now
 FROM @Appointments AS appointment
 INNER JOIN @SeededPatientBooks AS patientBook
-    ON patientBook.AppointmentKey = appointment.AppointmentKey;
+    ON patientBook.AppointmentKey = appointment.AppointmentKey
+INNER JOIN @SeededPatients AS patient
+    ON patient.AppointmentKey = appointment.AppointmentKey;
 
 DECLARE @SeededAppointments table
 (
@@ -572,6 +615,8 @@ INNER JOIN dbo.Prescriptions AS prescription
 INNER JOIN dbo.Medicines AS medicine
     ON medicine.MedicineName = detail.MedicineName;
 
+COMMIT TRANSACTION;
+
 SELECT
     N'Done' AS Result,
     @DoctorUsername AS DoctorUsername,
@@ -581,3 +626,9 @@ SELECT
 FROM dbo.Appointments
 WHERE DoctorId = @DoctorId
   AND AppointmentDate = CAST(@Today AS datetime2(7));
+
+END TRY
+BEGIN CATCH
+    IF XACT_STATE() <> 0 ROLLBACK TRANSACTION;
+    THROW;
+END CATCH;

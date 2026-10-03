@@ -23,8 +23,6 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<User> Users => Set<User>();
 
-    public DbSet<PatientBook> PatientBooks => Set<PatientBook>();
-
     public DbSet<Department> Departments => Set<Department>();
 
     public DbSet<Specialization> Specializations => Set<Specialization>();
