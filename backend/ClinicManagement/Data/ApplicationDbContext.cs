@@ -186,6 +186,13 @@ public class ApplicationDbContext : DbContext
                 x.HasCheckConstraint("CK_DoctorScheduleRequests_Status", "[Status] IN ('Pending','Approved','Rejected','Cancelled')");
                 x.HasCheckConstraint("CK_DoctorScheduleRequests_RejectReason", "[Status] <> 'Rejected' OR ([RejectReason] IS NOT NULL AND LEN(LTRIM(RTRIM([RejectReason]))) > 0)");
             });
+
+            modelBuilder.Entity<DoctorSchedule>(entity =>
+            {
+                entity.Property(x => x.Status).HasMaxLength(20).IsRequired().HasDefaultValue("Approved");
+                entity.ToTable(x => x.HasCheckConstraint("CK_DoctorSchedules_Status",
+                    "[Status] IN ('Pending','Approved','Rejected')"));
+            });
             entity.HasIndex(x => new { x.DoctorId, x.WorkDate, x.Status });
             entity.HasOne(x => x.Doctor).WithMany().HasForeignKey(x => x.DoctorId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(x => x.Room).WithMany().HasForeignKey(x => x.RoomId).OnDelete(DeleteBehavior.Restrict);

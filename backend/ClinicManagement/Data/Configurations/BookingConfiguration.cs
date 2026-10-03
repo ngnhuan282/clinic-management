@@ -32,6 +32,8 @@ public class AppointmentConfiguration : IEntityTypeConfiguration<Appointment>
         entity.Property(x => x.CreatedAt).HasDefaultValueSql("GETDATE()");
         entity.HasOne(x => x.Doctor).WithMany(x => x.Appointments).HasForeignKey(x => x.DoctorId).OnDelete(DeleteBehavior.Restrict);
         entity.HasOne(x => x.Patient).WithMany().HasForeignKey(x => x.PatientId).OnDelete(DeleteBehavior.Restrict);
+        entity.HasOne(x => x.TimeSlot).WithMany().HasForeignKey(x => x.TimeSlotId).OnDelete(DeleteBehavior.Restrict);
+        entity.HasIndex(x => x.TimeSlotId);
         entity.HasOne(x => x.PatientProfile).WithMany().HasForeignKey(x => x.PatientProfileId).OnDelete(DeleteBehavior.Restrict);
         entity.HasOne(x => x.PatientBook).WithMany().HasForeignKey(x => x.PatientBookId).OnDelete(DeleteBehavior.Restrict);
         entity.ToTable(x => x.HasCheckConstraint("CK_Appointments_BookVerification",

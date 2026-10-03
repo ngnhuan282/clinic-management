@@ -37,6 +37,9 @@ const API_ERROR_MESSAGES = {
     7005: "Bệnh đang tạm ngưng.",
     7101: "Không tìm thấy hồ sơ bệnh án.",
     7102: "Lượt khám này đã có hồ sơ bệnh án.",
+    7301: "Bác sĩ hoặc phòng đã có lịch trong khoảng thời gian này.",
+    7302: "Không tìm thấy yêu cầu đăng ký lịch.",
+    7303: "Yêu cầu này không còn ở trạng thái chờ duyệt.",
 };
 
 const API_MESSAGE_TRANSLATIONS = {

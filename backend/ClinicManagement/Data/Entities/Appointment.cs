@@ -11,6 +11,8 @@ public class Appointment
     public int? PatientId { get; set; }
 
     public User? Patient { get; set; }
+    public Guid? TimeSlotId { get; set; }
+    public TimeSlot? TimeSlot { get; set; }
 
     public int? PatientProfileId { get; set; }
     public Patient? PatientProfile { get; set; }

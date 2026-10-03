@@ -13,6 +13,7 @@ public class DoctorScheduleResponse
     public Shift Shift { get; set; }
     public int MaxPatients { get; set; }
     public bool IsActive { get; set; }
+    public string Status { get; set; } = string.Empty;
     public int TotalSlots { get; set; }
     public int BookedSlots { get; set; }
     public List<TimeSlotResponse> TimeSlots { get; set; } = [];

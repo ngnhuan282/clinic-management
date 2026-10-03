@@ -4,7 +4,7 @@ namespace ClinicManagement.DTOs.Requests;
 
 public class CreateDoctorScheduleRequest
 {
-    public int DoctorId { get; set; }
+    public int? DoctorId { get; set; }
     public int RoomId { get; set; }
     public DateOnly WorkDate { get; set; }
     public Shift Shift { get; set; }

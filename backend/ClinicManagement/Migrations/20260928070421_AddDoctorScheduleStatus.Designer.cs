@@ -4,6 +4,7 @@ using ClinicManagement.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ClinicManagement.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260928070421_AddDoctorScheduleStatus")]
+    partial class AddDoctorScheduleStatus
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -33,12 +36,6 @@ namespace ClinicManagement.Migrations
                     b.Property<DateTime>("AppointmentDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime?>("BookVerifiedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("CheckedInAt")
-                        .HasColumnType("datetime2");
-
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
@@ -49,9 +46,6 @@ namespace ClinicManagement.Migrations
 
                     b.Property<TimeSpan>("EndTime")
                         .HasColumnType("time");
-
-                    b.Property<int?>("PatientBookId")
-                        .HasColumnType("int");
 
                     b.Property<int?>("PatientId")
                         .HasColumnType("int");
@@ -69,9 +63,6 @@ namespace ClinicManagement.Migrations
                         .HasMaxLength(15)
                         .HasColumnType("nvarchar(15)");
 
-                    b.Property<int?>("PatientProfileId")
-                        .HasColumnType("int");
-
                     b.Property<string>("Reason")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -87,8 +78,6 @@ namespace ClinicManagement.Migrations
 
                     b.HasKey("AppointmentId");
 
-                    b.HasIndex("PatientBookId");
-
                     b.HasIndex("PatientId");
 
                     b.HasIndex("TimeSlotId");
@@ -97,50 +86,7 @@ namespace ClinicManagement.Migrations
                         .IsUnique()
                         .HasFilter("[Status] <> 'Cancelled'");
 
-                    b.ToTable("Appointments", t =>
-                        {
-                            t.HasCheckConstraint("CK_Appointments_BookVerification", "([PatientBookId] IS NULL AND [BookVerifiedAt] IS NULL AND [CheckedInAt] IS NULL) OR ([PatientBookId] IS NOT NULL AND [BookVerifiedAt] IS NOT NULL AND [CheckedInAt] IS NOT NULL)");
-                        });
-                });
-
-            modelBuilder.Entity("ClinicManagement.Data.Entities.BookInvoice", b =>
-                {
-                    b.Property<int>("BookInvoiceId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BookInvoiceId"));
-
-                    b.Property<decimal>("Amount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("PaidAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("PatientId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.HasKey("BookInvoiceId");
-
-                    b.HasIndex("PatientId");
-
-                    b.ToTable("BookInvoices", t =>
-                        {
-                            t.HasCheckConstraint("CK_BookInvoices_Amount", "[Amount] > 0");
-
-                            t.HasCheckConstraint("CK_BookInvoices_PaymentTime", "([Status] = 'Unpaid' AND [PaidAt] IS NULL) OR ([Status] = 'Paid' AND [PaidAt] IS NOT NULL)");
-
-                            t.HasCheckConstraint("CK_BookInvoices_Status", "[Status] IN ('Unpaid','Paid')");
-                        });
+                    b.ToTable("Appointments");
                 });
 
             modelBuilder.Entity("ClinicManagement.Data.Entities.Department", b =>
@@ -759,93 +705,6 @@ namespace ClinicManagement.Migrations
                     b.ToTable("MedicineCategories");
                 });
 
-            modelBuilder.Entity("ClinicManagement.Data.Entities.Patient", b =>
-                {
-                    b.Property<int>("PatientId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PatientId"));
-
-                    b.Property<DateTime?>("BirthDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("FullName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("IdentityNumber")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<string>("InsuranceCode")
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
-
-                    b.Property<string>("Phone")
-                        .IsRequired()
-                        .HasMaxLength(15)
-                        .HasColumnType("nvarchar(15)");
-
-                    b.HasKey("PatientId");
-
-                    b.HasIndex("IdentityNumber")
-                        .IsUnique()
-                        .HasFilter("[IdentityNumber] IS NOT NULL");
-
-                    b.HasIndex("Phone");
-
-                    b.ToTable("Patients");
-                });
-
-            modelBuilder.Entity("ClinicManagement.Data.Entities.PatientBook", b =>
-                {
-                    b.Property<int>("PatientBookId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PatientBookId"));
-
-                    b.Property<int?>("BookInvoiceId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("BookNumber")
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("nvarchar(40)");
-
-                    b.Property<DateTime>("IssuedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("PatientId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.HasKey("PatientBookId");
-
-                    b.HasIndex("BookInvoiceId")
-                        .IsUnique()
-                        .HasFilter("[BookInvoiceId] IS NOT NULL");
-
-                    b.HasIndex("BookNumber")
-                        .IsUnique();
-
-                    b.HasIndex("PatientId");
-
-                    b.ToTable("PatientBooks", t =>
-                        {
-                            t.HasCheckConstraint("CK_PatientBooks_Status", "[Status] IN ('Issued','Voided')");
-                        });
-                });
-
             modelBuilder.Entity("ClinicManagement.Data.Entities.Permission", b =>
                 {
                     b.Property<string>("Code")
@@ -1005,7 +864,7 @@ namespace ClinicManagement.Migrations
                         new
                         {
                             Code = "appointments.checkIn",
-                            IsImplemented = true,
+                            IsImplemented = false,
                             Kind = "Nghiệp vụ",
                             Module = "Lịch hẹn",
                             Name = "Check-in bệnh nhân"
@@ -1185,27 +1044,27 @@ namespace ClinicManagement.Migrations
                         new
                         {
                             Code = "billing.view",
-                            IsImplemented = true,
+                            IsImplemented = false,
                             Kind = "Xem",
                             Module = "Hóa đơn và thanh toán",
-                            Name = "Xem hóa đơn sổ khám",
+                            Name = "Xem hóa đơn",
                             Scope = "Theo công việc được giao"
                         },
                         new
                         {
                             Code = "billing.create",
-                            IsImplemented = true,
+                            IsImplemented = false,
                             Kind = "Tạo",
                             Module = "Hóa đơn và thanh toán",
-                            Name = "Lập hóa đơn sổ khám"
+                            Name = "Lập hóa đơn"
                         },
                         new
                         {
                             Code = "billing.recordPayment",
-                            IsImplemented = true,
+                            IsImplemented = false,
                             Kind = "Nghiệp vụ",
                             Module = "Hóa đơn và thanh toán",
-                            Name = "Ghi nhận thanh toán sổ khám"
+                            Name = "Ghi nhận thanh toán"
                         },
                         new
                         {
@@ -2078,11 +1937,6 @@ namespace ClinicManagement.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("ClinicManagement.Data.Entities.PatientBook", "PatientBook")
-                        .WithMany()
-                        .HasForeignKey("PatientBookId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("ClinicManagement.Data.Entities.User", "Patient")
                         .WithMany()
                         .HasForeignKey("PatientId")
@@ -2255,24 +2109,6 @@ namespace ClinicManagement.Migrations
                     b.Navigation("Supplier");
                 });
 
-            modelBuilder.Entity("ClinicManagement.Data.Entities.PatientBook", b =>
-                {
-                    b.HasOne("ClinicManagement.Data.Entities.BookInvoice", "BookInvoice")
-                        .WithOne("PatientBook")
-                        .HasForeignKey("ClinicManagement.Data.Entities.PatientBook", "BookInvoiceId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("ClinicManagement.Data.Entities.Patient", "Patient")
-                        .WithMany()
-                        .HasForeignKey("PatientId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("BookInvoice");
-
-                    b.Navigation("Patient");
-                });
-
             modelBuilder.Entity("ClinicManagement.Data.Entities.RbacAudit", b =>
                 {
                     b.HasOne("ClinicManagement.Data.Entities.User", null)
@@ -2378,11 +2214,6 @@ namespace ClinicManagement.Migrations
             modelBuilder.Entity("ClinicManagement.Data.Entities.Appointment", b =>
                 {
                     b.Navigation("MedicalRecord");
-                });
-
-            modelBuilder.Entity("ClinicManagement.Data.Entities.BookInvoice", b =>
-                {
-                    b.Navigation("PatientBook");
                 });
 
             modelBuilder.Entity("ClinicManagement.Data.Entities.Department", b =>
