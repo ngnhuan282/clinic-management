@@ -2,7 +2,7 @@
 
 Ứng dụng quản lý phòng khám đa khoa: đặt lịch khám, khám bệnh, kê đơn thuốc, quản lý kho thuốc, xét nghiệm, hóa đơn – thanh toán và báo cáo thống kê. Hệ thống phục vụ 5 vai trò người dùng (Admin, Bác sĩ, Lễ tân, Bệnh nhân, Kỹ thuật viên xét nghiệm) qua hai giao diện: **Patient Portal** (công khai, dành cho bệnh nhân) và **Internal Portal** (dashboard nội bộ cho Admin/Bác sĩ/Lễ tân/Kỹ thuật viên xét nghiệm).
 
-> Đồ án môn học Lập trình .NET.
+> Đồ án môn học Lập trình .NET
 
 ## Tính năng chính
 
