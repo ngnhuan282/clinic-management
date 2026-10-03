@@ -20,6 +20,7 @@ public class BookingService : IBookingService
     private readonly IDepartmentRepository _departmentRepository;
     private readonly IDoctorRepository _doctorRepository;
     private readonly IAppointmentRepository _appointmentRepository;
+    private readonly IReceptionRepository _receptionRepository;
     private readonly ILogger<BookingService> _logger;
     private readonly ICurrentUserService _currentUser;
 
@@ -27,12 +28,14 @@ public class BookingService : IBookingService
         IDepartmentRepository departmentRepository,
         IDoctorRepository doctorRepository,
         IAppointmentRepository appointmentRepository,
+        IReceptionRepository receptionRepository,
         ILogger<BookingService> logger,
         ICurrentUserService currentUser)
     {
         _departmentRepository = departmentRepository;
         _doctorRepository = doctorRepository;
         _appointmentRepository = appointmentRepository;
+        _receptionRepository = receptionRepository;
         _logger = logger;
         _currentUser = currentUser;
     }
@@ -154,7 +157,7 @@ public class BookingService : IBookingService
     }
 
     public async Task<AppointmentResponse> CreateDirectAppointmentAsync(
-        CreateAppointmentRequest request)
+        CreateDirectAppointmentRequest request)
     {
         return await CreateAppointmentInternalAsync(
             request,
@@ -226,6 +229,12 @@ public class BookingService : IBookingService
             CreatedAt = DateTime.UtcNow
         };
 
+        await using var transaction = request is CreateDirectAppointmentRequest
+            ? await _receptionRepository.BeginTransactionAsync()
+            : null;
+        if (request is CreateDirectAppointmentRequest directRequest)
+            appointment.PatientProfileId = await ResolveDirectPatientAsync(directRequest);
+
         await _appointmentRepository.AddAsync(
             appointment
         );
@@ -247,8 +256,52 @@ public class BookingService : IBookingService
         }
 
         appointment.Doctor = doctor;
+        if (transaction != null) await transaction.CommitAsync();
+        _logger.LogInformation("Appointment {AppointmentId} created with status {Status}",
+            appointment.AppointmentId, appointment.Status);
 
         return MapAppointment(appointment);
+    }
+
+    private async Task<int> ResolveDirectPatientAsync(CreateDirectAppointmentRequest request)
+    {
+        if (request.PatientProfileId.HasValue)
+        {
+            var existing = await _receptionRepository.GetPatientAsync(request.PatientProfileId.Value)
+                ?? throw new AppException(ErrorCode.PATIENT_NOT_FOUND);
+            if (!string.Equals(existing.FullName.Trim(), request.PatientName.Trim(), StringComparison.OrdinalIgnoreCase)
+                || existing.Phone.Trim() != request.PatientPhone.Trim()
+                || (request.BirthDate.HasValue && existing.BirthDate?.Date != request.BirthDate.Value.Date)
+                || (!string.IsNullOrWhiteSpace(request.IdentityNumber)
+                    && existing.IdentityNumber != request.IdentityNumber.Trim()))
+                throw new AppException(ErrorCode.PATIENT_IDENTITY_MISMATCH);
+            return existing.PatientId;
+        }
+
+        var name = request.PatientName.Trim();
+        var phone = request.PatientPhone.Trim();
+        var identity = string.IsNullOrWhiteSpace(request.IdentityNumber)
+            ? null : request.IdentityNumber.Trim();
+        if (await _receptionRepository.HasMatchingPatientAsync(name, phone, identity))
+            throw new AppException(ErrorCode.PATIENT_MATCH_REQUIRED);
+
+        var patient = new Patient
+        {
+            FullName = name,
+            Phone = phone,
+            BirthDate = request.BirthDate?.Date,
+            IdentityNumber = identity,
+            InsuranceCode = string.IsNullOrWhiteSpace(request.InsuranceCode)
+                ? null : request.InsuranceCode.Trim(),
+            CreatedAt = DateTime.UtcNow
+        };
+        await _receptionRepository.AddPatientAsync(patient);
+        try { await _receptionRepository.SaveChangesAsync(); }
+        catch (DbUpdateException exception) when (exception.InnerException is SqlException { Number: 2601 or 2627 })
+        {
+            throw new AppException(ErrorCode.PATIENT_MATCH_REQUIRED);
+        }
+        return patient.PatientId;
     }
 
     public async Task<AppointmentResponse> ConfirmAppointmentAsync(
@@ -270,6 +323,7 @@ public class BookingService : IBookingService
             AppointmentStatusConstants.Confirmed;
 
         await _appointmentRepository.SaveChangesAsync();
+        _logger.LogInformation("Appointment {AppointmentId} confirmed", appointmentId);
 
         return MapAppointment(appointment);
     }
@@ -287,7 +341,7 @@ public class BookingService : IBookingService
 
         if (appointment.Status is AppointmentStatusConstants.Cancelled
             or AppointmentStatusConstants.Completed
-            or AppointmentStatusConstants.InProgress)
+            or AppointmentStatusConstants.InProgress || appointment.CheckedInAt.HasValue)
         {
             throw new AppException(
                 ErrorCode.APPOINTMENT_INVALID_STATUS
@@ -360,6 +414,7 @@ public class BookingService : IBookingService
         }
 
         appointment.Doctor = doctor;
+        _logger.LogInformation("Appointment {AppointmentId} rescheduled", appointmentId);
 
         return MapAppointment(appointment);
     }
@@ -373,7 +428,8 @@ public class BookingService : IBookingService
             );
 
         if (appointment.Status is AppointmentStatusConstants.Cancelled
-            or AppointmentStatusConstants.Completed)
+            or AppointmentStatusConstants.Completed
+            or AppointmentStatusConstants.InProgress || appointment.CheckedInAt.HasValue)
         {
             throw new AppException(
                 ErrorCode.APPOINTMENT_INVALID_STATUS
@@ -384,6 +440,7 @@ public class BookingService : IBookingService
             AppointmentStatusConstants.Cancelled;
 
         await _appointmentRepository.SaveChangesAsync();
+        _logger.LogInformation("Appointment {AppointmentId} cancelled", appointmentId);
 
         return MapAppointment(appointment);
     }
@@ -414,6 +471,10 @@ public class BookingService : IBookingService
                 ErrorCode.APPOINTMENT_INVALID_STATUS
             );
         }
+
+        if (!appointment.CheckedInAt.HasValue || !appointment.BookVerifiedAt.HasValue
+            || !appointment.PatientBookId.HasValue)
+            throw new AppException(ErrorCode.BOOK_NOT_VERIFIED);
 
         if (appointment.Status == AppointmentStatusConstants.Pending
             || appointment.Status == AppointmentStatusConstants.Confirmed)
@@ -447,7 +508,8 @@ public class BookingService : IBookingService
             || request.AppointmentDate.Date.Add(request.StartTime) <= ClinicNow
             || string.IsNullOrWhiteSpace(request.PatientName)
             || string.IsNullOrWhiteSpace(request.PatientPhone)
-            || string.IsNullOrWhiteSpace(request.Reason))
+            || string.IsNullOrWhiteSpace(request.Reason)
+            || (request is CreateDirectAppointmentRequest direct && direct.BirthDate?.Date > ClinicNow.Date))
         {
             throw new AppException(
                 ErrorCode.INVALID_REQUEST
@@ -575,7 +637,11 @@ public class BookingService : IBookingService
             StartTime = appointment.StartTime,
             EndTime = appointment.EndTime,
             Reason = appointment.Reason,
-            Status = appointment.Status
+            Status = appointment.Status,
+            PatientProfileId = appointment.PatientProfileId,
+            PatientBookId = appointment.PatientBookId,
+            BookVerifiedAt = appointment.BookVerifiedAt,
+            CheckedInAt = appointment.CheckedInAt
         };
     }
 }

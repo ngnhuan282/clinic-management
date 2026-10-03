@@ -32,6 +32,9 @@ public class ApplicationDbContext : DbContext
     public DbSet<Doctor> Doctors => Set<Doctor>();
 
     public DbSet<Appointment> Appointments => Set<Appointment>();
+    public DbSet<Patient> Patients => Set<Patient>();
+    public DbSet<PatientBook> PatientBooks => Set<PatientBook>();
+    public DbSet<BookInvoice> BookInvoices => Set<BookInvoice>();
 
     public DbSet<MedicineCategory> MedicineCategories =>
         Set<MedicineCategory>();

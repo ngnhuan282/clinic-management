@@ -222,13 +222,85 @@ try
     var cancelled = (await Send(HttpMethod.Patch, $"api/appointments/{rebookedId}/cancel"))!["result"]!;
     Check(cancelled["status"]!.GetValue<string>() == "Cancelled", "Receptionist cancels an appointment");
 
+    var walkIn = (await Send(HttpMethod.Post, "api/appointments/direct", new
+    {
+        doctorId = 1, appointmentDate = dateText, startTime = "09:00:00",
+        patientName = "Walk-in patient", patientPhone = "0912345000", reason = "Walk-in"
+    }))!["result"]!;
+    var walkInProfileId = walkIn["patientProfileId"]!.GetValue<int>();
+    Check(walkIn["status"]!.GetValue<string>() == "Confirmed" && walkInProfileId > 0,
+        "Walk-in creates a confirmed appointment and Patient profile");
+    await Send(HttpMethod.Post, "api/appointments/direct", new
+    {
+        doctorId = 1, appointmentDate = dateText, startTime = "09:30:00",
+        patientName = "Walk-in patient", patientPhone = "0912345000", reason = "Repeat walk-in"
+    }, 409);
+    var returningWalkIn = (await Send(HttpMethod.Post, "api/appointments/direct", new
+    {
+        doctorId = 1, appointmentDate = dateText, startTime = "09:30:00",
+        patientProfileId = walkInProfileId, patientName = "Walk-in patient",
+        patientPhone = "0912345000", reason = "Repeat walk-in"
+    }))!["result"]!;
+    Check(returningWalkIn["patientProfileId"]!.GetValue<int>() == walkInProfileId,
+        "Returning walk-in reuses the matched Patient profile");
+
     db.Appointments.Add(new Appointment { DoctorId = 1, PatientId = savedPatient.UserId,
         PatientName = "Examination test", PatientPhone = "0901234567", AppointmentDate = DateTime.Today,
         StartTime = new TimeSpan(16, 0, 0), EndTime = new TimeSpan(16, 30, 0),
-        Reason = "Examination", Status = "InProgress", CreatedAt = DateTime.UtcNow });
+        Reason = "Examination", Status = "Confirmed", CreatedAt = DateTime.UtcNow });
     await db.SaveChangesAsync();
     var examinationId = await db.Appointments.Where(x => x.PatientName == "Examination test").Select(x => x.AppointmentId).SingleAsync();
     client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", doctor["accessToken"]!.GetValue<string>());
+    await Send(HttpMethod.Patch, $"api/appointments/{examinationId}/start-examination", status: 400);
+    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", receptionist["accessToken"]!.GetValue<string>());
+    await Send(HttpMethod.Patch, $"api/appointments/{examinationId}/check-in",
+        new { patientProfileId = 1, patientBookId = 1, bookPresented = true }, 400);
+    var matchedPatient = (await Send(HttpMethod.Patch, $"api/appointments/{examinationId}/patient-profile",
+        new { patientProfileId = (int?)null }))!["result"]!;
+    var profileId = matchedPatient["patientProfileId"]!.GetValue<int>();
+    var otherPatientBook = (await Send(HttpMethod.Post,
+        $"api/patients/{walkInProfileId}/books/existing",
+        new { bookNumber = "TEST-OTHER-001", bookPresented = true }))!["result"]!;
+    await Send(HttpMethod.Patch, $"api/appointments/{examinationId}/check-in",
+        new { patientProfileId = profileId,
+            patientBookId = otherPatientBook["patientBookId"]!.GetValue<int>(), bookPresented = true }, 400);
+    Check((await Send(HttpMethod.Get, "api/patients/matches?search=0901234567"))!["result"]!.AsArray()
+        .Any(x => x!["patientId"]!.GetValue<int>() == profileId), "Receptionist can find the matched Patient profile");
+    var bookInvoice = (await Send(HttpMethod.Post, $"api/patients/{profileId}/book-invoices",
+        new { amount = 10000m }))!["result"]!;
+    var invoiceId = bookInvoice["bookInvoiceId"]!.GetValue<int>();
+    await Send(HttpMethod.Post, $"api/book-invoices/{invoiceId}/issue-book",
+        new { bookNumber = "TEST-NEW-001" }, 409);
+    await Send(HttpMethod.Patch, $"api/book-invoices/{invoiceId}/pay");
+    var issuedBook = (await Send(HttpMethod.Post, $"api/book-invoices/{invoiceId}/issue-book",
+        new { bookNumber = "TEST-NEW-001" }))!["result"]!;
+    var issuedBookId = issuedBook["patientBookId"]!.GetValue<int>();
+    await Send(HttpMethod.Post, $"api/book-invoices/{invoiceId}/issue-book",
+        new { bookNumber = "TEST-NEW-002" }, 409);
+    var checkedIn = (await Send(HttpMethod.Patch, $"api/appointments/{examinationId}/check-in",
+        new { patientProfileId = profileId, patientBookId = issuedBookId, bookPresented = false }))!["result"]!;
+    Check(checkedIn["patientBookId"]!.GetValue<int>() == issuedBookId
+        && checkedIn["bookVerifiedAt"] != null && checkedIn["checkedInAt"] != null,
+        "Check-in stores the issued book and verification time after Book invoice is Paid");
+    await Send(HttpMethod.Patch, $"api/appointments/{examinationId}/check-in",
+        new { patientProfileId = profileId, patientBookId = issuedBookId, bookPresented = false }, 400);
+    var existingBook = (await Send(HttpMethod.Post, $"api/patients/{profileId}/books/existing",
+        new { bookNumber = "TEST-OLD-001", bookPresented = true }))!["result"]!;
+    db.Appointments.Add(new Appointment { DoctorId = 1, PatientId = savedPatient.UserId,
+        PatientProfileId = profileId, PatientName = "Examination test", PatientPhone = "0901234567",
+        AppointmentDate = DateTime.Today, StartTime = new TimeSpan(17, 0, 0),
+        EndTime = new TimeSpan(17, 30, 0), Reason = "Existing book", Status = "Confirmed",
+        CreatedAt = DateTime.UtcNow });
+    await db.SaveChangesAsync();
+    var existingAppointmentId = await db.Appointments.Where(x => x.Reason == "Existing book")
+        .Select(x => x.AppointmentId).SingleAsync();
+    var existingBookId = existingBook["patientBookId"]!.GetValue<int>();
+    await Send(HttpMethod.Patch, $"api/appointments/{existingAppointmentId}/check-in",
+        new { patientProfileId = profileId, patientBookId = existingBookId, bookPresented = false }, 400);
+    await Send(HttpMethod.Patch, $"api/appointments/{existingAppointmentId}/check-in",
+        new { patientProfileId = profileId, patientBookId = existingBookId, bookPresented = true });
+    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", doctor["accessToken"]!.GetValue<string>());
+    await Send(HttpMethod.Patch, $"api/appointments/{examinationId}/start-examination");
     var disease = (await Send(HttpMethod.Post, "api/diseases", new { diseaseCode = "QA-D3", diseaseName = "Test diagnosis" }, 201))!["result"]!;
     var diseaseId = disease["diseaseId"]!.GetValue<int>();
     var recordRequest = new { appointmentId = examinationId, symptoms = "Fever", conclusion = "Observation", markCompleted = true,

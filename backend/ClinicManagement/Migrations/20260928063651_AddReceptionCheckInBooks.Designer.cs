@@ -4,6 +4,7 @@ using ClinicManagement.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ClinicManagement.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260928063651_AddReceptionCheckInBooks")]
+    partial class AddReceptionCheckInBooks
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -56,9 +59,6 @@ namespace ClinicManagement.Migrations
                     b.Property<int?>("PatientId")
                         .HasColumnType("int");
 
-                    b.Property<Guid?>("TimeSlotId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<string>("PatientName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -91,7 +91,7 @@ namespace ClinicManagement.Migrations
 
                     b.HasIndex("PatientId");
 
-                    b.HasIndex("TimeSlotId");
+                    b.HasIndex("PatientProfileId");
 
                     b.HasIndex("DoctorId", "AppointmentDate", "StartTime")
                         .IsUnique()
@@ -416,12 +416,6 @@ namespace ClinicManagement.Migrations
                     b.Property<TimeSpan>("StartTime")
                         .HasColumnType("time");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasDefaultValue("Approved")
-                        .HasColumnType("nvarchar(20)");
-
                     b.Property<DateOnly>("WorkDate")
                         .HasColumnType("date");
 
@@ -442,7 +436,6 @@ namespace ClinicManagement.Migrations
                     b.ToTable("DoctorSchedules", t =>
                         {
                             t.HasCheckConstraint("CK_DoctorSchedules_MaxPatients", "[MaxPatients] > 0");
-                            t.HasCheckConstraint("CK_DoctorSchedules_Status", "[Status] IN ('Pending','Approved','Rejected')");
                         });
                 });
 
@@ -2088,16 +2081,29 @@ namespace ClinicManagement.Migrations
                         .HasForeignKey("PatientId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("ClinicManagement.Data.Entities.TimeSlot", "TimeSlot")
+                    b.HasOne("ClinicManagement.Data.Entities.Patient", "PatientProfile")
                         .WithMany()
-                        .HasForeignKey("TimeSlotId")
+                        .HasForeignKey("PatientProfileId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Doctor");
 
                     b.Navigation("Patient");
 
-                    b.Navigation("TimeSlot");
+                    b.Navigation("PatientBook");
+
+                    b.Navigation("PatientProfile");
+                });
+
+            modelBuilder.Entity("ClinicManagement.Data.Entities.BookInvoice", b =>
+                {
+                    b.HasOne("ClinicManagement.Data.Entities.Patient", "Patient")
+                        .WithMany()
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Patient");
                 });
 
             modelBuilder.Entity("ClinicManagement.Data.Entities.Doctor", b =>
