@@ -44,6 +44,9 @@ const API_ERROR_MESSAGES = {
     7401: "Không tìm thấy đơn thuốc.",
     7402: "Hồ sơ bệnh án này đã có đơn thuốc.",
     7403: "Trạng thái đơn thuốc không hợp lệ.",
+    7301: "Bác sĩ hoặc phòng đã có lịch trong khoảng thời gian này.",
+    7302: "Không tìm thấy yêu cầu đăng ký lịch.",
+    7303: "Yêu cầu này không còn ở trạng thái chờ duyệt.",
 };
 
 const API_MESSAGE_TRANSLATIONS = {

@@ -9,13 +9,78 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ClinicManagement.Services.Implementations;
 
-public class DoctorScheduleService(ApplicationDbContext context) : IDoctorScheduleService
+public class DoctorScheduleService(ApplicationDbContext context, ICurrentUserService currentUser) : IDoctorScheduleService
 {
     private readonly ApplicationDbContext _context = context;
+    private readonly ICurrentUserService _currentUser = currentUser;
+
+    public async Task<ScheduleRequestResponse> CreateRequestAsync(CreateDoctorScheduleRequest request)
+    {
+        var userId = _currentUser.GetRequiredUserId();
+        var doctorId = await _context.Doctors.Where(x => x.UserId == userId && x.IsActive)
+            .Select(x => (int?)x.DoctorId).SingleOrDefaultAsync()
+            ?? throw new AppException(ErrorCode.UNAUTHORIZED);
+        var validated = await ValidateRequestAsync(request, doctorId);
+        var entity = new DoctorScheduleRequest
+        {
+            DoctorId = doctorId, RoomId = validated.RoomId, WorkDate = validated.WorkDate,
+            StartTime = validated.Start, EndTime = validated.End, Status = "Pending",
+            CreatedAt = DateTime.UtcNow
+        };
+        _context.DoctorScheduleRequests.Add(entity);
+        await _context.SaveChangesAsync();
+        return await ProjectRequest(entity.RequestId);
+    }
+
+    public async Task<List<ScheduleRequestResponse>> GetMyRequestsAsync()
+    {
+        var userId = _currentUser.GetRequiredUserId();
+        var doctorId = await _context.Doctors.Where(x => x.UserId == userId)
+            .Select(x => (int?)x.DoctorId).SingleOrDefaultAsync()
+            ?? throw new AppException(ErrorCode.UNAUTHORIZED);
+        return await _context.DoctorScheduleRequests.AsNoTracking()
+            .Where(x => x.DoctorId == doctorId).OrderByDescending(x => x.CreatedAt)
+            .Select(x => new ScheduleRequestResponse
+            {
+                RequestId = x.RequestId, DoctorId = x.DoctorId, DoctorName = x.Doctor.FullName,
+                DepartmentId = x.Doctor.DepartmentId, DepartmentName = x.Doctor.Department.Name,
+                RoomId = x.RoomId, RoomName = x.Room.Name, WorkDate = x.WorkDate,
+                StartTime = x.StartTime, EndTime = x.EndTime, Status = x.Status,
+                ReviewerId = x.ReviewerId, ReviewedAt = x.ReviewedAt, RejectReason = x.RejectReason,
+                CreatedAt = x.CreatedAt
+            }).ToListAsync();
+    }
+
+    public async Task<List<RoomResponse>> GetAvailableRoomsAsync()
+    {
+        var userId = _currentUser.GetRequiredUserId();
+        var departmentId = await _context.Doctors
+            .Where(x => x.UserId == userId && x.IsActive)
+            .Select(x => (int?)x.DepartmentId)
+            .SingleOrDefaultAsync()
+            ?? throw new AppException(ErrorCode.UNAUTHORIZED);
+
+        return await _context.Rooms.AsNoTracking()
+            .Where(x => x.IsActive && x.Department.IsActive)
+            .OrderBy(x => x.Name)
+            .Select(x => new RoomResponse
+            {
+                RoomId = x.RoomId,
+                RoomNumber = x.RoomNumber,
+                Name = x.Name,
+                RoomType = x.RoomType,
+                DepartmentId = x.DepartmentId,
+                DepartmentName = x.Department.Name,
+                Location = x.Location,
+                IsActive = x.IsActive,
+                CreatedAt = x.CreatedAt,
+                UpdatedAt = x.UpdatedAt
+            }).ToListAsync();
+    }
 
     public async Task<DoctorScheduleResponse> CreateScheduleAsync(CreateDoctorScheduleRequest request)
     {
-        if (request.DoctorId <= 0 || request.RoomId <= 0 || request.WorkDate == default
+        if (request.DoctorId is null || request.DoctorId <= 0 || request.RoomId <= 0 || request.WorkDate == default
             || !Enum.IsDefined(request.Shift) || request.SlotDurationMinutes is not (15 or 20 or 30)
             || request.MaxCapacity < 1)
             throw new AppException(ErrorCode.INVALID_REQUEST);
@@ -51,13 +116,14 @@ public class DoctorScheduleService(ApplicationDbContext context) : IDoctorSchedu
 
         var schedule = new DoctorSchedule
         {
-            DoctorId = request.DoctorId,
+            DoctorId = request.DoctorId.Value,
             RoomId = request.RoomId,
             WorkDate = request.WorkDate,
             StartTime = start,
             EndTime = end,
             Shift = request.Shift,
             MaxPatients = slots.Count * request.MaxCapacity,
+            Status = "Approved",
             TimeSlots = slots
         };
         _context.DoctorSchedules.Add(schedule);
@@ -86,8 +152,7 @@ public class DoctorScheduleService(ApplicationDbContext context) : IDoctorSchedu
     {
         return _context.TimeSlots.AsNoTracking()
             .Where(x => x.Schedule.DoctorId == doctorId && x.Schedule.WorkDate == date &&
-                        x.Schedule.IsActive && x.Schedule.RequestId != null &&
-                        x.Schedule.Request!.Status == "Approved" && x.Schedule.Doctor.IsActive &&
+                        x.Schedule.IsActive && x.Schedule.Status == "Approved" && x.Schedule.Doctor.IsActive &&
                         (!specializationId.HasValue || x.Schedule.Doctor.SpecializationId == specializationId.Value))
             .OrderBy(x => x.StartTime)
             .Select(x => new AvailableSlotResponse
@@ -118,6 +183,7 @@ public class DoctorScheduleService(ApplicationDbContext context) : IDoctorSchedu
             Shift = x.Shift,
             MaxPatients = x.MaxPatients,
             IsActive = x.IsActive,
+            Status = x.Status,
             TotalSlots = x.TimeSlots.Count,
             BookedSlots = x.TimeSlots.Count(s => s.CurrentBooked >= s.MaxCapacity),
             TimeSlots = x.TimeSlots.OrderBy(s => s.StartTime).Select(s => new TimeSlotResponse
@@ -127,4 +193,37 @@ public class DoctorScheduleService(ApplicationDbContext context) : IDoctorSchedu
                 CurrentBooked = s.CurrentBooked, IsAvailable = s.IsAvailable && s.CurrentBooked < s.MaxCapacity
             }).ToList()
         };
+
+    private async Task<(int RoomId, DateOnly WorkDate, TimeSpan Start, TimeSpan End)> ValidateRequestAsync(
+        CreateDoctorScheduleRequest request, int doctorId)
+    {
+        if (request.RoomId <= 0 || request.WorkDate == default || !TimeSpan.TryParse(request.StartTime, out var start)
+            || !TimeSpan.TryParse(request.EndTime, out var end) || start < TimeSpan.Zero || start >= end
+            || end > TimeSpan.FromDays(1) || (end - start).Ticks % TimeSpan.FromMinutes(30).Ticks != 0)
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        var valid = await _context.Doctors.AnyAsync(x => x.DoctorId == doctorId && x.IsActive)
+            && await _context.Rooms.AnyAsync(x => x.RoomId == request.RoomId && x.IsActive);
+        if (!valid) throw new AppException(ErrorCode.INVALID_REQUEST);
+        var overlaps = await _context.DoctorScheduleRequests.AnyAsync(x => x.Status == "Pending"
+            && x.WorkDate == request.WorkDate && (x.DoctorId == doctorId || x.RoomId == request.RoomId)
+            && x.StartTime < end && start < x.EndTime)
+            || await _context.DoctorSchedules.AnyAsync(x => x.Status == "Approved" && x.IsActive
+            && x.WorkDate == request.WorkDate && (x.DoctorId == doctorId || x.RoomId == request.RoomId)
+            && x.StartTime < end && start < x.EndTime);
+        if (overlaps) throw new AppException(ErrorCode.DOCTOR_SCHEDULE_CONFLICT);
+        return (request.RoomId, request.WorkDate, start, end);
+    }
+
+    private async Task<ScheduleRequestResponse> ProjectRequest(int id) =>
+        await _context.DoctorScheduleRequests.AsNoTracking()
+            .Where(x => x.RequestId == id)
+            .Select(x => new ScheduleRequestResponse
+            {
+                RequestId = x.RequestId, DoctorId = x.DoctorId, DoctorName = x.Doctor.FullName,
+                DepartmentId = x.Doctor.DepartmentId, DepartmentName = x.Doctor.Department.Name,
+                RoomId = x.RoomId, RoomName = x.Room.Name, WorkDate = x.WorkDate,
+                StartTime = x.StartTime, EndTime = x.EndTime, Status = x.Status,
+                ReviewerId = x.ReviewerId, ReviewedAt = x.ReviewedAt, RejectReason = x.RejectReason,
+                CreatedAt = x.CreatedAt
+            }).SingleAsync();
 }

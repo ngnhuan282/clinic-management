@@ -11,7 +11,7 @@ public class DoctorRepository : IDoctorRepository
         _context.DoctorSchedules.AsNoTracking()
             .Include(x => x.TimeSlots)
             .Where(x => x.DoctorId == doctorId && x.WorkDate == workDate && x.IsActive
-                && x.RequestId != null && x.Request!.Status == "Approved")
+                && x.Status == "Approved")
             .OrderBy(x => x.WorkDate).ToListAsync();
     private readonly ApplicationDbContext _context;
 

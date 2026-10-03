@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Alert, Box, Button, Checkbox, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Divider, IconButton, LinearProgress, MenuItem, Paper, Snackbar, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TextField, Typography } from "@mui/material";
-import { AccessTimeOutlined, AddCircleOutlineOutlined, AssignmentTurnedInOutlined, CalendarMonthOutlined, CancelOutlined, CheckCircleOutlineOutlined, CloseOutlined, EditCalendarOutlined, EventAvailableOutlined, HighlightOffOutlined, PeopleAltOutlined, RefreshOutlined, SearchOutlined } from "@mui/icons-material";
+import { AddCircleOutlineOutlined, AssignmentTurnedInOutlined, CalendarMonthOutlined, CancelOutlined, CheckCircleOutlineOutlined, CloseOutlined, EditCalendarOutlined, EventAvailableOutlined, HighlightOffOutlined, PeopleAltOutlined, RefreshOutlined, SearchOutlined } from "@mui/icons-material";
 import { cancelAppointment, confirmAppointment, createDirectAppointment, getAppointments, rescheduleAppointment } from "../../api/appointmentApi";
+import { findPatientMatches } from "../../api/receptionApi";
+import ReceptionCheckInDialog from "../../components/internal/ReceptionCheckInDialog";
 import { getAvailableSlots, getDepartments, getDoctorsByDepartment } from "../../api/bookingApi";
 import StatusBadge from "../../components/common/StatusBadge";
 import { getApiErrorMessage } from "../../utils/errorHandler";
@@ -90,8 +92,8 @@ function emptyDialogForm() {
         startTime: "",
         patientName: "",
         patientPhone: "",
+        patientProfileId: "",
         birthDate: "",
-        gender: "",
         identityNumber: "",
         insuranceCode: "",
         reason: "",
@@ -123,6 +125,9 @@ export default function AppointmentsPage() {
     const [slots, setSlots] = useState([]);
     const [dialogForm, setDialogForm] = useState(emptyDialogForm);
     const [toast, setToast] = useState({ open: false, status: "success", message: "" });
+    const [patientMatches, setPatientMatches] = useState([]);
+    const [matchingPatients, setMatchingPatients] = useState(false);
+    const [checkInAppointment, setCheckInAppointment] = useState(null);
 
     function changeFilter(key, value) {
         setQuery(current => ({ ...current, [key]: value, pageNumber: 1 }));
@@ -281,6 +286,7 @@ export default function AppointmentsPage() {
         setNotice("");
         setDoctors([]);
         setSlots([]);
+        setPatientMatches([]);
         setDialogForm({
             ...emptyDialogForm(),
             appointmentDate: today,
@@ -304,6 +310,10 @@ export default function AppointmentsPage() {
                     startTime: dialogForm.startTime,
                     patientName: dialogForm.patientName.trim(),
                     patientPhone: dialogForm.patientPhone.trim(),
+                    patientProfileId: dialogForm.patientProfileId ? Number(dialogForm.patientProfileId) : null,
+                    birthDate: dialogForm.birthDate || null,
+                    identityNumber: dialogForm.identityNumber.trim() || null,
+                    insuranceCode: dialogForm.insuranceCode.trim() || null,
                     reason: dialogForm.reason.trim(),
                 });
                 setToast({
@@ -350,7 +360,7 @@ export default function AppointmentsPage() {
         setToast({
             open: true,
             status: "loading",
-            message: `Đang duyệt ${selectedPendingItems.length} lịch hẹn...`,
+            message: `Đang xác nhận ${selectedPendingItems.length} lịch hẹn...`,
         });
 
         try {
@@ -363,7 +373,7 @@ export default function AppointmentsPage() {
             setToast({
                 open: true,
                 status: "success",
-                message: `Đã duyệt ${selectedPendingItems.length} lịch hẹn.`,
+                message: `Đã xác nhận ${selectedPendingItems.length} lịch hẹn.`,
             });
             await loadAppointments();
             await loadSummary();
@@ -409,7 +419,7 @@ export default function AppointmentsPage() {
             label: "Thông tin bệnh nhân",
             complete: Boolean(dialogForm.patientName.trim() && dialogForm.patientPhone.trim() && dialogForm.reason.trim()),
         },
-        { label: "Xác nhận & Cấp số", complete: !createDisabled },
+        { label: "Xác nhận lịch", complete: !createDisabled },
     ];
     const activeDirectStep = Math.max(
         directSteps.findIndex(step => !step.complete),
@@ -427,9 +437,8 @@ export default function AppointmentsPage() {
                 <Box>
                     <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 1 }}>
                         <Chip size="small" color="primary" label="Lễ tân" />
-                        <Chip size="small" icon={<AccessTimeOutlined />} variant="outlined" label="Ca sáng 07:30 - 12:00" />
                     </Stack>
-                    <Typography variant="h4" component="h1" sx={{ fontWeight: 800 }}>Điều phối & Duyệt lịch hẹn</Typography>
+                    <Typography variant="h4" component="h1" sx={{ fontWeight: 800 }}>Điều phối & Xác nhận lịch hẹn</Typography>
                     <Typography color="text.secondary" sx={{ mt: 1, maxWidth: 620 }}>Xác nhận lịch online, đổi/hủy khi cần và tiếp nhận bệnh nhân vãng lai tại quầy.</Typography>
                 </Box>
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ width: { xs: "100%", sm: "auto" } }}>
@@ -482,7 +491,7 @@ export default function AppointmentsPage() {
                     <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ alignItems: { xs: "stretch", sm: "center" } }}>
                         <Chip icon={<PeopleAltOutlined />} label={`${summary.total} lượt hẹn`} color="primary" variant="outlined" />
                         <Button variant="contained" color="success" startIcon={<CheckCircleOutlineOutlined />} disabled={!selectedPendingItems.length || bulkSaving} onClick={confirmSelectedAppointments}>
-                            {bulkSaving ? "Đang duyệt..." : `Duyệt hàng loạt${selectedPendingItems.length ? ` (${selectedPendingItems.length})` : ""}`}
+                            {bulkSaving ? "Đang xác nhận..." : `Xác nhận hàng loạt${selectedPendingItems.length ? ` (${selectedPendingItems.length})` : ""}`}
                         </Button>
                     </Stack>
                 </Stack>
@@ -549,9 +558,11 @@ export default function AppointmentsPage() {
                             <TableCell><StatusBadge status={appointment.status} /></TableCell>
                             <TableCell>
                                 <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
-                                    <Button size="small" sx={ACTION_BUTTON_SX} startIcon={<CheckCircleOutlineOutlined />} disabled={appointment.status !== "Pending" || loading} onClick={() => openConfirm(appointment)}>Duyệt</Button>
+                                    <Button size="small" sx={ACTION_BUTTON_SX} startIcon={<CheckCircleOutlineOutlined />} disabled={appointment.status !== "Pending" || loading} onClick={() => openConfirm(appointment)}>Xác nhận</Button>
                                     <Button size="small" sx={ACTION_BUTTON_SX} startIcon={<EditCalendarOutlined />} disabled={["Cancelled", "Completed", "InProgress"].includes(appointment.status) || loading} onClick={() => openReschedule(appointment)}>Đổi lịch</Button>
-                                    <Button size="small" sx={ACTION_BUTTON_SX} color="error" startIcon={<CancelOutlined />} disabled={["Cancelled", "Completed"].includes(appointment.status) || loading} onClick={() => openCancel(appointment)}>Hủy</Button>
+                                    <Button size="small" sx={ACTION_BUTTON_SX} color="error" startIcon={<CancelOutlined />} disabled={["Cancelled", "Completed", "InProgress"].includes(appointment.status) || Boolean(appointment.checkedInAt) || loading} onClick={() => openCancel(appointment)}>Hủy</Button>
+                                    <Button size="small" sx={ACTION_BUTTON_SX} startIcon={<AssignmentTurnedInOutlined />} disabled={appointment.status !== "Confirmed" || Boolean(appointment.checkedInAt) || toDateInput(appointment.appointmentDate) !== today || loading} onClick={() => setCheckInAppointment(appointment)}>Check-in</Button>
+                                    {appointment.checkedInAt && <Chip size="small" color="success" label="Đã check-in" />}
                                 </Stack>
                             </TableCell>
                         </TableRow>)}
@@ -573,9 +584,9 @@ export default function AppointmentsPage() {
                         <Box sx={{ flex: 1, minWidth: 0 }}>
                             <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap" }}>
                                 <Typography variant="h6" component="span" sx={{ fontWeight: 800 }}>Đặt Lịch Khám Trực Tiếp Tại Quầy</Typography>
-                                <Chip size="small" color="primary" variant="outlined" label="Walk-in Stepper 6 Bước" />
+                                <Chip size="small" color="primary" variant="outlined" label="Walk-in" />
                             </Stack>
-                            <Typography variant="body2" color="text.secondary">Tiếp đón bệnh nhân vãng lai & Điều phối buồng khám theo quy trình chuẩn</Typography>
+                            <Typography variant="body2" color="text.secondary">Tiếp đón bệnh nhân tại quầy và chọn lịch khám.</Typography>
                         </Box>
                         <IconButton aria-label="Đóng form đặt lịch" disabled={saving} onClick={() => setAction(null)}><CloseOutlined /></IconButton>
                     </Stack>
@@ -608,7 +619,6 @@ export default function AppointmentsPage() {
                             <Box sx={{ ...DIRECT_FORM_CARD_SX, borderTop: "3px solid #1976d2" }}>
                                 <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", mb: 1.5 }}>
                                     <Typography variant="overline" color="primary" sx={{ fontWeight: 800 }}>• Bước 1 & 2: Chuyên khoa & Bác sĩ</Typography>
-                                    <Typography variant="caption" color="text.secondary">Khu khám lầu 1 & 2</Typography>
                                 </Stack>
                                 <Stack spacing={1.5}>
                                     <TextField select size="small" label="1. Chọn Chuyên khoa khám" value={dialogForm.departmentId} disabled={saving} required onChange={event => {
@@ -628,7 +638,7 @@ export default function AppointmentsPage() {
                                     </TextField>
                                     <Box sx={{ display: "grid", gridTemplateColumns: "auto 1fr auto", gap: 1, alignItems: "center", p: 1, bgcolor: "background.paper", borderRadius: 1 }}>
                                         <Typography variant="caption" color="text.secondary">Vị trí chỉ định:</Typography>
-                                        <Typography variant="body2" sx={{ fontWeight: 700 }}>{selectedDoctor ? `Phòng khám • ${selectedDoctor.title} ${selectedDoctor.fullName}` : "Chưa chọn bác sĩ"}</Typography>
+                                        <Typography variant="body2" sx={{ fontWeight: 700 }}>{selectedDoctor ? `${selectedDoctor.title} ${selectedDoctor.fullName}` : "Chưa chọn bác sĩ"}</Typography>
                                         <Chip size="small" color={selectedDoctor ? "success" : "default"} label={selectedDoctor ? "Sẵn sàng" : "Đang chờ"} />
                                     </Box>
                                 </Stack>
@@ -656,8 +666,7 @@ export default function AppointmentsPage() {
                                         </Stack>
                                     </Box>
                                     <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-                                        <Typography variant="caption" color="text.secondary">Ca trực: Sáng 07:30 - 12:00</Typography>
-                                        <Typography variant="caption" color="primary" sx={{ fontWeight: 700 }}>Ưu tiên lượt khám trực tiếp tại quầy</Typography>
+                                        <Typography variant="caption" color="primary" sx={{ fontWeight: 700 }}>Chọn khung giờ còn trống</Typography>
                                     </Stack>
                                 </Stack>
                             </Box>
@@ -668,36 +677,58 @@ export default function AppointmentsPage() {
                                 <Typography variant="caption" color="text.secondary">Kiểm tra CCCD / Thẻ BHYT tích hợp VNeID</Typography>
                             </Stack>
                             <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1.25fr 1fr" }, gap: 1.5 }}>
-                                <TextField size="small" label="Họ và tên bệnh nhân" value={dialogForm.patientName} disabled={saving} required slotProps={{ htmlInput: { maxLength: 100 } }} onChange={event => setDialogForm(current => ({ ...current, patientName: event.target.value }))} />
-                                <TextField size="small" label="Số điện thoại liên hệ" value={dialogForm.patientPhone} disabled={saving} required slotProps={{ htmlInput: { maxLength: 15 } }} onChange={event => setDialogForm(current => ({ ...current, patientPhone: event.target.value }))} />
-                                <TextField size="small" label="Ngày sinh" type="date" value={dialogForm.birthDate} disabled={saving} slotProps={{ inputLabel: { shrink: true } }} onChange={event => setDialogForm(current => ({ ...current, birthDate: event.target.value }))} />
-                                <TextField select size="small" label="Giới tính" value={dialogForm.gender} disabled={saving} onChange={event => setDialogForm(current => ({ ...current, gender: event.target.value }))}>
-                                    <MenuItem value="">Chọn giới tính</MenuItem>
-                                    <MenuItem value="Nam">Nam</MenuItem>
-                                    <MenuItem value="Nữ">Nữ</MenuItem>
-                                    <MenuItem value="Khác">Khác</MenuItem>
-                                </TextField>
-                                <TextField size="small" label="Số CCCD / Định danh (VNeID)" value={dialogForm.identityNumber} disabled={saving} slotProps={{ htmlInput: { maxLength: 20 } }} onChange={event => setDialogForm(current => ({ ...current, identityNumber: event.target.value }))} />
-                                <TextField size="small" label="Mã thẻ BHYT" value={dialogForm.insuranceCode} disabled={saving} slotProps={{ htmlInput: { maxLength: 30 } }} onChange={event => setDialogForm(current => ({ ...current, insuranceCode: event.target.value }))} />
+                                <TextField size="small" label="Họ và tên bệnh nhân" value={dialogForm.patientName} disabled={saving || Boolean(dialogForm.patientProfileId)} required slotProps={{ htmlInput: { maxLength: 100 } }} onChange={event => setDialogForm(current => ({ ...current, patientName: event.target.value }))} />
+                                <TextField size="small" label="Số điện thoại liên hệ" value={dialogForm.patientPhone} disabled={saving || Boolean(dialogForm.patientProfileId)} required slotProps={{ htmlInput: { maxLength: 15 } }} onChange={event => setDialogForm(current => ({ ...current, patientPhone: event.target.value }))} />
+                                <Box sx={{ gridColumn: { md: "1 / -1" } }}>
+                                    <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+                                        <Button size="small" disabled={saving || matchingPatients || dialogForm.patientPhone.trim().length < 2} onClick={async () => {
+                                            setMatchingPatients(true);
+                                            setDialogError("");
+                                            try { setPatientMatches(await findPatientMatches(dialogForm.patientPhone.trim())); }
+                                            catch (err) { setDialogError(getApiErrorMessage(err)); }
+                                            finally { setMatchingPatients(false); }
+                                        }}>Đối chiếu Patient cũ</Button>
+                                        {dialogForm.patientProfileId && <Button size="small" onClick={() => {
+                                            setDialogForm(current => ({ ...current, patientProfileId: "", patientName: "", patientPhone: "", birthDate: "", identityNumber: "", insuranceCode: "" }));
+                                            setPatientMatches([]);
+                                        }}>Bỏ chọn hồ sơ</Button>}
+                                    </Stack>
+                                    {patientMatches.length > 0 && <TextField select size="small" fullWidth label="Chọn hồ sơ đã đối chiếu" value={dialogForm.patientProfileId}
+                                        onChange={event => {
+                                            const patient = patientMatches.find(item => item.patientId === Number(event.target.value));
+                                            setDialogForm(current => ({ ...current, patientProfileId: patient?.patientId || "",
+                                                patientName: patient?.fullName || current.patientName,
+                                                patientPhone: patient?.phone || current.patientPhone,
+                                                birthDate: patient?.birthDate?.slice(0, 10) || "",
+                                                identityNumber: patient?.identityNumber || "",
+                                                insuranceCode: patient?.insuranceCode || "" }));
+                                        }}>
+                                        <MenuItem value="">Tạo Patient mới</MenuItem>
+                                        {patientMatches.map(patient => <MenuItem key={patient.patientId} value={patient.patientId}>#{patient.patientId} · {patient.fullName} · {patient.phone}</MenuItem>)}
+                                    </TextField>}
+                                    {!patientMatches.length && <Typography variant="caption" color="text.secondary">Tìm theo số điện thoại; nếu có hồ sơ cũ, chọn đúng Patient trước khi đặt lịch.</Typography>}
+                                </Box>
+                                <TextField size="small" label="Ngày sinh" type="date" value={dialogForm.birthDate} disabled={saving || Boolean(dialogForm.patientProfileId)} slotProps={{ inputLabel: { shrink: true } }} onChange={event => setDialogForm(current => ({ ...current, birthDate: event.target.value }))} />
+                                <TextField size="small" label="Số CCCD / Định danh (VNeID)" value={dialogForm.identityNumber} disabled={saving || Boolean(dialogForm.patientProfileId)} slotProps={{ htmlInput: { maxLength: 20 } }} onChange={event => setDialogForm(current => ({ ...current, identityNumber: event.target.value }))} />
+                                <TextField size="small" label="Mã thẻ BHYT" value={dialogForm.insuranceCode} disabled={saving || Boolean(dialogForm.patientProfileId)} slotProps={{ htmlInput: { maxLength: 30 } }} onChange={event => setDialogForm(current => ({ ...current, insuranceCode: event.target.value }))} />
                                 <TextField sx={{ gridColumn: { md: "1 / -1" } }} size="small" label="Lý do khám / Triệu chứng ban đầu" value={dialogForm.reason} disabled={saving} required multiline minRows={3} slotProps={{ htmlInput: { maxLength: 500 } }} onChange={event => setDialogForm(current => ({ ...current, reason: event.target.value }))} />
                             </Box>
                         </Box>
                         <Box sx={{ ...DIRECT_FORM_CARD_SX, bgcolor: "#eef7ff", borderColor: "#b8d9fb", borderTop: "3px solid #0f6fbf" }}>
                             <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", mb: 1.5 }}>
-                                <Typography variant="overline" color="primary" sx={{ fontWeight: 800 }}>▣ Bước 6: Tóm tắt phiếu khám & Cấp số thứ tự</Typography>
-                                <Chip size="small" color="primary" variant="outlined" label="STT Khám: #WI-042" />
+                                <Typography variant="overline" color="primary" sx={{ fontWeight: 800 }}>▣ Bước 6: Tóm tắt lịch hẹn</Typography>
                             </Stack>
                             <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(4, 1fr)" }, gap: 1.5 }}>
                                 <Box><Typography variant="caption" color="text.secondary">Chuyên khoa:</Typography><Typography variant="body2" sx={{ fontWeight: 700 }}>{selectedDepartment?.name || "Chưa chọn"}</Typography></Box>
                                 <Box><Typography variant="caption" color="text.secondary">Bác sĩ & Phòng:</Typography><Typography variant="body2" sx={{ fontWeight: 700 }}>{selectedDoctor ? `${selectedDoctor.title} ${selectedDoctor.fullName}` : "Chưa chọn"}</Typography></Box>
                                 <Box><Typography variant="caption" color="text.secondary">Thời gian hẹn:</Typography><Typography variant="body2" color="primary" sx={{ fontWeight: 800 }}>{selectedSlot ? `${formatTime(selectedSlot.startTime)} ${formatDate(dialogForm.appointmentDate)}` : "Chưa chọn"}</Typography></Box>
-                                <Box><Typography variant="caption" color="text.secondary">Phí khám lâm sàng:</Typography><Typography variant="body2" color="error" sx={{ fontWeight: 800 }}>350.000 VNĐ</Typography></Box>
+                                <Box><Typography variant="caption" color="text.secondary">Hồ sơ Patient:</Typography><Typography variant="body2" sx={{ fontWeight: 700 }}>{dialogForm.patientProfileId ? `#${dialogForm.patientProfileId} · Patient cũ` : "Tạo Patient mới"}</Typography></Box>
                             </Box>
                         </Box>
                     </Stack>
                 </DialogContent>
                 <DialogActions sx={{ justifyContent: "space-between", bgcolor: "#f3f7fb", px: 2, py: 1.5, borderTop: "1px solid", borderColor: "divider" }}>
-                    <Typography variant="caption" color="text.secondary">Đã liên kết hồ sơ y bạ điện tử MediFlow EMR</Typography>
+                    <Typography variant="caption" color="text.secondary">Check-in thực hiện sau khi kiểm tra sổ khám.</Typography>
                     <Stack direction="row" spacing={1}>
                         <Button disabled={saving} onClick={() => setAction(null)}>Hủy</Button>
                         <Button variant="contained" startIcon={<CheckCircleOutlineOutlined />} disabled={saving || createDisabled} onClick={submitAction}>{saving ? "Đang xác nhận..." : "Xác nhận"}</Button>
@@ -750,6 +781,12 @@ export default function AppointmentsPage() {
                 </DialogActions>
             </>}
         </Dialog>
+        {checkInAppointment && <ReceptionCheckInDialog appointment={checkInAppointment}
+            onClose={() => setCheckInAppointment(null)} onCheckedIn={async () => {
+                setCheckInAppointment(null);
+                setNotice("Đã check-in sau khi kiểm tra sổ khám.");
+                await loadAppointments();
+            }} />}
         <Snackbar
             open={toast.open}
             anchorOrigin={{ vertical: "top", horizontal: "right" }}

@@ -12,6 +12,7 @@ public class DoctorSchedule
     public TimeSpan EndTime { get; set; }
     public int? RequestId { get; set; }
     public DoctorScheduleRequest? Request { get; set; }
+    public string Status { get; set; } = "Approved";
     public Shift Shift { get; set; }
     public int MaxPatients { get; set; }
     public bool IsActive { get; set; } = true;

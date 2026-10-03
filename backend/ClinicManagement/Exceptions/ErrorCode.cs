@@ -152,6 +152,21 @@ public sealed class ErrorCode
             HttpStatusCode.NotFound
         );
 
+    public static readonly ErrorCode PATIENT_MATCH_REQUIRED =
+        new(4002, "Existing patient must be matched before creating a new profile", HttpStatusCode.Conflict);
+    public static readonly ErrorCode PATIENT_IDENTITY_MISMATCH =
+        new(4003, "Patient identity does not match the appointment", HttpStatusCode.BadRequest);
+    public static readonly ErrorCode BOOK_NOT_FOUND =
+        new(4004, "Patient book not found", HttpStatusCode.NotFound);
+    public static readonly ErrorCode BOOK_NOT_VERIFIED =
+        new(4005, "An issued patient book must be verified before check-in", HttpStatusCode.BadRequest);
+    public static readonly ErrorCode BOOK_CONFLICT =
+        new(4006, "Book number or invoice has already been used", HttpStatusCode.Conflict);
+    public static readonly ErrorCode BOOK_INVOICE_NOT_FOUND =
+        new(4007, "Book invoice not found", HttpStatusCode.NotFound);
+    public static readonly ErrorCode BOOK_INVOICE_INVALID_STATUS =
+        new(4008, "Book invoice must be paid and not already used", HttpStatusCode.Conflict);
+
     // =========================
     // Appointment
     // =========================

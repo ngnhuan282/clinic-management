@@ -25,7 +25,11 @@ BEGIN TRY
        OR OBJECT_ID('dbo.RolePermissions', 'U') IS NULL
        OR COL_LENGTH('dbo.Doctors', 'UserId') IS NULL
        OR OBJECT_ID('dbo.DoctorScheduleRequests', 'U') IS NULL
+       OR OBJECT_ID('dbo.Patients', 'U') IS NULL
+       OR OBJECT_ID('dbo.PatientBooks', 'U') IS NULL
+       OR OBJECT_ID('dbo.BookInvoices', 'U') IS NULL
        OR NOT EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId = '20260926172919_AddLabTechnicianRole')
+       OR NOT EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId = '20260928063651_AddReceptionCheckInBooks')
         THROW 51000, 'Apply all EF migrations before running clinic-all-tables-demo.sql.', 1;
 
     -- Reused demo user IDs must not accept access tokens issued before this reset.
@@ -39,6 +43,9 @@ BEGIN TRY
     DELETE FROM dbo.RecordDiagnoses;
     DELETE FROM dbo.MedicalRecords;
     DELETE FROM dbo.Appointments;
+    DELETE FROM dbo.PatientBooks;
+    DELETE FROM dbo.BookInvoices;
+    DELETE FROM dbo.Patients;
     DELETE FROM dbo.TimeSlots;
     DELETE FROM dbo.DoctorSchedules;
     DELETE FROM dbo.DoctorScheduleRequests;
@@ -151,14 +158,14 @@ BEGIN TRY
            'Approved', @now FROM @n;
     SET IDENTITY_INSERT dbo.DoctorScheduleRequests OFF;
 
-    INSERT INTO dbo.DoctorSchedules (ScheduleId, DoctorId, RoomId, WorkDate, StartTime, EndTime, RequestId, Shift, MaxPatients, IsActive, CreatedAt)
+    INSERT INTO dbo.DoctorSchedules (ScheduleId, DoctorId, RoomId, WorkDate, StartTime, EndTime, RequestId, Shift, MaxPatients, IsActive, Status, CreatedAt)
     SELECT CONVERT(uniqueidentifier, CONCAT('00000000-0000-0000-0000-', RIGHT(CONCAT('000000000000', 1000+n), 12))),
            1000+n, 1000+n,
            CASE WHEN n BETWEEN 1 AND 4 OR n BETWEEN 17 AND 20 THEN @today
                 ELSE DATEADD(day, n-4, @today) END,
            CASE WHEN n <= 4 THEN CAST('09:00:00' AS time) ELSE CAST('08:00:00' AS time) END,
            CASE WHEN n <= 4 THEN CAST('09:30:00' AS time) ELSE CAST('08:30:00' AS time) END,
-           1000+n, 'Morning', 1, 1, @now FROM @n;
+           1000+n, 'Morning', 1, 1, 'Approved', @now FROM @n;
 
     INSERT INTO dbo.TimeSlots (SlotId, ScheduleId, StartTime, EndTime, MaxCapacity, CurrentBooked, IsAvailable)
     SELECT CONVERT(uniqueidentifier, CONCAT('00000000-0000-0000-0001-', RIGHT(CONCAT('000000000000', 1000+n), 12))),
@@ -344,6 +351,9 @@ BEGIN TRY
     DBCC CHECKIDENT ('dbo.Rooms', RESEED, 1020) WITH NO_INFOMSGS;
     DBCC CHECKIDENT ('dbo.Doctors', RESEED, 1020) WITH NO_INFOMSGS;
     DBCC CHECKIDENT ('dbo.Appointments', RESEED, 1024) WITH NO_INFOMSGS;
+    DBCC CHECKIDENT ('dbo.Patients', RESEED, 1020) WITH NO_INFOMSGS;
+    DBCC CHECKIDENT ('dbo.PatientBooks', RESEED, 1020) WITH NO_INFOMSGS;
+    DBCC CHECKIDENT ('dbo.BookInvoices', RESEED, 1020) WITH NO_INFOMSGS;
     DBCC CHECKIDENT ('dbo.MedicineCategories', RESEED, 1020) WITH NO_INFOMSGS;
     DBCC CHECKIDENT ('dbo.Suppliers', RESEED, 1020) WITH NO_INFOMSGS;
     DBCC CHECKIDENT ('dbo.Medicines', RESEED, 1020) WITH NO_INFOMSGS;
