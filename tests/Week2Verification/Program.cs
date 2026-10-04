@@ -43,19 +43,17 @@ async Task<JsonNode?> Send(HttpMethod method, string path, object? body = null, 
 }
 try
 {
-    if (args.Contains("--a5") || args.Contains("--a5-ui"))
-    {
-        // The merged legacy chain creates PatientBooks twice. A5 verifies against the current
-        // baseline schema and applies its own migration without rewriting team migrations.
-        await db.Database.EnsureCreatedAsync();
-        await A5Checks.VerifyNotificationMigrationAsync(db, Check);
-    }
-    else
-    {
-        await db.Database.MigrateAsync();
-        Check(!(await db.Database.GetPendingMigrationsAsync()).Any(), "All migrations apply to an empty SQL Server database");
-    }
+    await db.Database.MigrateAsync();
+    Check(!(await db.Database.GetPendingMigrationsAsync()).Any(), "All migrations apply to an empty SQL Server database");
     Check(await db.Departments.CountAsync() == 3 && await db.Rooms.CountAsync() == 3 && await db.Specializations.CountAsync() == 3, "Catalog master data seeded");
+    if (args.Contains("--migrations-only"))
+    {
+        await MigrationChecks.RunAsync(db, Check);
+        Console.WriteLine($"SUCCESS: {checks} migration checks passed.");
+        return;
+    }
+    if (args.Contains("--a5") || args.Contains("--a5-ui"))
+        await A5Checks.VerifyNotificationMigrationAsync(db, Check);
     await db.Database.ExecuteSqlRawAsync(await File.ReadAllTextAsync(Path.Combine(root, "backend/ClinicManagement/Data/Seed/pharmacy-demo-data.sql")));
     Check(await db.Medicines.AnyAsync() && await db.Inventory.AnyAsync(), "Pharmacy demo seed works");
     foreach (var (name, role) in new[] { ("testadmin", 1), ("testdoctor", 2), ("testreceptionist", 3), ("testlab", 5) })

@@ -23,7 +23,7 @@ internal static class A5Checks
         foreach (var command in generator.Generate(migration.UpOperations, db.Model))
             await db.Database.ExecuteSqlRawAsync(command.CommandText);
         check(await db.Notifications.CountAsync() == 0 && await db.PatientBooks.CountAsync() == 0,
-            "A5 Notifications migration upgrades and rolls back cleanly on current baseline schema");
+            "A5 Notifications migration upgrades and rolls back cleanly on migrated schema");
     }
     public static async Task RunAsync(HttpClient client, ApplicationDbContext db, string password, Action<bool, string> check)
     {
@@ -40,12 +40,10 @@ internal static class A5Checks
         }
         async Task<string> Login(string name) => (await Send(HttpMethod.Post, "api/auth/login", body: new { username = name, password }))!["result"]!["accessToken"]!.GetValue<string>();
         // DepartmentHead is seeded by the legacy review migration rather than the EF model.
-        var headRole = new Role { RoleName = RoleConstants.DepartmentHead, Description = "Department head", IsSystem = true };
-        db.Roles.Add(headRole);
-        await db.SaveChangesAsync();
-        db.RolePermissions.AddRange(PermissionCatalog.DefaultRoles[RoleConstants.DepartmentHead]
-            .Select(code => new RolePermission { RoleId = headRole.RoleId, PermissionCode = code }));
-        await db.SaveChangesAsync();
+        var headRole = await db.Roles.SingleAsync(x => x.RoleName == RoleConstants.DepartmentHead);
+        check(await db.RolePermissions.CountAsync(x => x.RoleId == headRole.RoleId)
+            == PermissionCatalog.DefaultRoles[RoleConstants.DepartmentHead].Length,
+            "A5 DepartmentHead permissions are supplied by the migration chain");
         var roleId = headRole.RoleId;
         var heads = new[] { "a5head", "a5otherhead" }.Select(name => new User
         {
