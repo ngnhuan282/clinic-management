@@ -23,6 +23,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<TimeSlot> TimeSlots => Set<TimeSlot>();
 
     public DbSet<User> Users => Set<User>();
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     public DbSet<Department> Departments => Set<Department>();
 
@@ -264,7 +265,7 @@ public class ApplicationDbContext : DbContext
             entity.HasKey(x => x.PatientBookId);
 
             entity.Property(x => x.BookNumber)
-                .HasMaxLength(30);
+                .HasMaxLength(40);
 
             entity.Property(x => x.Status)
                 .HasMaxLength(20)
@@ -277,8 +278,7 @@ public class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("GETDATE()");
 
             entity.HasIndex(x => x.BookNumber)
-                .IsUnique()
-                .HasFilter("[BookNumber] IS NOT NULL");
+                .IsUnique();
 
             entity.HasIndex(x => x.PatientId)
                 .IsUnique()

@@ -43,6 +43,7 @@ import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined
 import scheduleRequestApi from "../../api/scheduleRequestApi";
 import { getApiErrorMessage } from "../../utils/errorHandler";
 import useAuth from "../../hooks/useAuth";
+import useNotifications from "../../hooks/useNotifications";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 const timeText = (v) => (typeof v === "string" ? v.slice(0, 5) : "–");
@@ -286,6 +287,7 @@ function DetailDialog({ detail, onClose }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function ScheduleReviewPage() {
+    const { revision } = useNotifications();
     const { role, user } = useAuth();
     const isAdmin = role === "Admin";
     const tabsConfig = isAdmin ? ADMIN_TABS : HEAD_TABS;
@@ -351,13 +353,13 @@ export default function ScheduleReviewPage() {
                 setTabCounts(prev => ({ ...prev, [s]: d.totalItems }));
             } catch { /* ignore */ }
         });
-    }, [success]);
+    }, [success, revision]);
 
     useEffect(() => {
         let active = true;
         void load(() => active);
         return () => { active = false; };
-    }, [load]);
+    }, [load, revision]);
 
     // client-side filtering
     const filteredItems = list.items.filter(item => {

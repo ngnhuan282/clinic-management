@@ -12,21 +12,9 @@ namespace ClinicManagement.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<DateTime>(
-                name: "BookVerifiedAt",
-                table: "Appointments",
-                type: "datetime2",
-                nullable: true);
-
-            migrationBuilder.AddColumn<DateTime>(
                 name: "CheckedInAt",
                 table: "Appointments",
                 type: "datetime2",
-                nullable: true);
-
-            migrationBuilder.AddColumn<int>(
-                name: "PatientBookId",
-                table: "Appointments",
-                type: "int",
                 nullable: true);
 
             migrationBuilder.AddColumn<int>(
@@ -79,35 +67,43 @@ namespace ClinicManagement.Migrations
                         onDelete: ReferentialAction.Restrict);
                 });
 
-            migrationBuilder.CreateTable(
-                name: "PatientBooks",
-                columns: table => new
-                {
-                    PatientBookId = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    PatientId = table.Column<int>(type: "int", nullable: false),
-                    BookNumber = table.Column<string>(type: "nvarchar(40)", maxLength: 40, nullable: false),
-                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
-                    BookInvoiceId = table.Column<int>(type: "int", nullable: true),
-                    IssuedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_PatientBooks", x => x.PatientBookId);
-                    table.CheckConstraint("CK_PatientBooks_Status", "[Status] IN ('Issued','Voided')");
-                    table.ForeignKey(
-                        name: "FK_PatientBooks_BookInvoices_BookInvoiceId",
-                        column: x => x.BookInvoiceId,
-                        principalTable: "BookInvoices",
-                        principalColumn: "BookInvoiceId",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_PatientBooks_Patients_PatientId",
-                        column: x => x.PatientId,
-                        principalTable: "Patients",
-                        principalColumn: "PatientId",
-                        onDelete: ReferentialAction.Restrict);
-                });
+            // Paper-book tracking already owns PatientBooks and the shared appointment columns.
+            // Preserve book IDs and references while moving their owners from Users to Patients.
+            migrationBuilder.Sql(@"
+IF EXISTS (SELECT 1 FROM PatientBooks
+           WHERE PatientId IS NULL OR BookNumber IS NULL OR Status NOT IN ('Issued','Voided'))
+    THROW 51000, 'Resolve patient books with missing owners/numbers or unsupported statuses before upgrading.', 1;
+IF EXISTS (SELECT 1 FROM Appointments
+           WHERE (PatientBookId IS NULL AND BookVerifiedAt IS NOT NULL)
+              OR (PatientBookId IS NOT NULL AND BookVerifiedAt IS NULL))
+    THROW 51000, 'Resolve inconsistent appointment book verification before upgrading.', 1;
+
+SET IDENTITY_INSERT Patients ON;
+INSERT INTO Patients (PatientId, FullName, Phone, CreatedAt)
+SELECT u.UserId, u.FullName, COALESCE(u.Phone, ''), u.CreatedAt
+FROM Users u WHERE EXISTS (SELECT 1 FROM PatientBooks b WHERE b.PatientId = u.UserId);
+SET IDENTITY_INSERT Patients OFF;
+
+UPDATE PatientBooks SET IssuedAt = CreatedAt WHERE IssuedAt IS NULL;
+UPDATE a SET PatientProfileId = b.PatientId, CheckedInAt = a.BookVerifiedAt
+FROM Appointments a JOIN PatientBooks b ON b.PatientBookId = a.PatientBookId;
+
+ALTER TABLE PatientBooks DROP CONSTRAINT FK_PatientBooks_Users_PatientId;
+DROP INDEX IX_PatientBooks_PatientId ON PatientBooks;
+DROP INDEX IX_PatientBooks_BookNumber ON PatientBooks;
+ALTER TABLE PatientBooks ALTER COLUMN PatientId int NOT NULL;
+ALTER TABLE PatientBooks ALTER COLUMN BookNumber nvarchar(40) NOT NULL;
+ALTER TABLE PatientBooks ALTER COLUMN IssuedAt datetime2 NOT NULL;
+ALTER TABLE PatientBooks ADD BookInvoiceId int NULL;
+ALTER TABLE PatientBooks ADD CONSTRAINT FK_PatientBooks_Patients_PatientId
+    FOREIGN KEY (PatientId) REFERENCES Patients (PatientId);
+ALTER TABLE PatientBooks ADD CONSTRAINT FK_PatientBooks_BookInvoices_BookInvoiceId
+    FOREIGN KEY (BookInvoiceId) REFERENCES BookInvoices (BookInvoiceId);
+ALTER TABLE PatientBooks ADD CONSTRAINT CK_PatientBooks_Status CHECK (Status IN ('Issued','Voided'));
+
+CREATE UNIQUE INDEX IX_PatientBooks_PatientId ON PatientBooks (PatientId)
+    WHERE PatientId IS NOT NULL AND Status = 'Issued';
+");
 
             migrationBuilder.UpdateData(
                 table: "Permissions",
@@ -138,11 +134,6 @@ namespace ClinicManagement.Migrations
                 values: new object[] { true, "Xem hóa đơn sổ khám" });
 
             migrationBuilder.CreateIndex(
-                name: "IX_Appointments_PatientBookId",
-                table: "Appointments",
-                column: "PatientBookId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_Appointments_PatientProfileId",
                 table: "Appointments",
                 column: "PatientProfileId");
@@ -171,11 +162,6 @@ namespace ClinicManagement.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_PatientBooks_PatientId",
-                table: "PatientBooks",
-                column: "PatientId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_Patients_IdentityNumber",
                 table: "Patients",
                 column: "IdentityNumber",
@@ -186,14 +172,6 @@ namespace ClinicManagement.Migrations
                 name: "IX_Patients_Phone",
                 table: "Patients",
                 column: "Phone");
-
-            migrationBuilder.AddForeignKey(
-                name: "FK_Appointments_PatientBooks_PatientBookId",
-                table: "Appointments",
-                column: "PatientBookId",
-                principalTable: "PatientBooks",
-                principalColumn: "PatientBookId",
-                onDelete: ReferentialAction.Restrict);
 
             migrationBuilder.AddForeignKey(
                 name: "FK_Appointments_Patients_PatientProfileId",
@@ -208,25 +186,40 @@ namespace ClinicManagement.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropForeignKey(
-                name: "FK_Appointments_PatientBooks_PatientBookId",
-                table: "Appointments");
-
-            migrationBuilder.DropForeignKey(
                 name: "FK_Appointments_Patients_PatientProfileId",
                 table: "Appointments");
 
-            migrationBuilder.DropTable(
-                name: "PatientBooks");
+            migrationBuilder.Sql(@"
+IF EXISTS (SELECT 1 FROM PatientBooks b
+           LEFT JOIN Users u ON u.UserId = b.PatientId
+           JOIN Patients p ON p.PatientId = b.PatientId
+           WHERE u.UserId IS NULL OR u.FullName <> p.FullName OR COALESCE(u.Phone, '') <> p.Phone
+              OR DATALENGTH(b.BookNumber) > 60)
+    THROW 51000, 'Patient books cannot be safely mapped back to legacy user accounts.', 1;
+
+ALTER TABLE PatientBooks DROP CONSTRAINT FK_PatientBooks_Patients_PatientId;
+ALTER TABLE PatientBooks DROP CONSTRAINT FK_PatientBooks_BookInvoices_BookInvoiceId;
+ALTER TABLE PatientBooks DROP CONSTRAINT CK_PatientBooks_Status;
+DROP INDEX IX_PatientBooks_BookInvoiceId ON PatientBooks;
+DROP INDEX IX_PatientBooks_PatientId ON PatientBooks;
+DROP INDEX IX_PatientBooks_BookNumber ON PatientBooks;
+ALTER TABLE PatientBooks DROP COLUMN BookInvoiceId;
+ALTER TABLE PatientBooks ALTER COLUMN PatientId int NULL;
+ALTER TABLE PatientBooks ALTER COLUMN BookNumber nvarchar(30) NULL;
+ALTER TABLE PatientBooks ALTER COLUMN IssuedAt datetime2 NULL;
+ALTER TABLE PatientBooks ADD CONSTRAINT FK_PatientBooks_Users_PatientId
+    FOREIGN KEY (PatientId) REFERENCES Users (UserId);
+CREATE UNIQUE INDEX IX_PatientBooks_PatientId ON PatientBooks (PatientId)
+    WHERE PatientId IS NOT NULL AND Status = 'Issued';
+CREATE UNIQUE INDEX IX_PatientBooks_BookNumber ON PatientBooks (BookNumber)
+    WHERE BookNumber IS NOT NULL;
+");
 
             migrationBuilder.DropTable(
                 name: "BookInvoices");
 
             migrationBuilder.DropTable(
                 name: "Patients");
-
-            migrationBuilder.DropIndex(
-                name: "IX_Appointments_PatientBookId",
-                table: "Appointments");
 
             migrationBuilder.DropIndex(
                 name: "IX_Appointments_PatientProfileId",
@@ -237,15 +230,7 @@ namespace ClinicManagement.Migrations
                 table: "Appointments");
 
             migrationBuilder.DropColumn(
-                name: "BookVerifiedAt",
-                table: "Appointments");
-
-            migrationBuilder.DropColumn(
                 name: "CheckedInAt",
-                table: "Appointments");
-
-            migrationBuilder.DropColumn(
-                name: "PatientBookId",
                 table: "Appointments");
 
             migrationBuilder.DropColumn(

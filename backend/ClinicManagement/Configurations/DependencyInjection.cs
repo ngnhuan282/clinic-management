@@ -39,6 +39,8 @@ public static class DependencyInjection
             BookingService
         >();
         services.AddScoped<IDoctorScheduleService, DoctorScheduleService>();
+        services.AddScoped<IDepartmentScheduleService, DepartmentScheduleService>();
+        services.AddScoped<IDepartmentScheduleRepository, DepartmentScheduleRepository>();
         services.AddScoped<IReceptionService, ReceptionService>();
         services.AddScoped<IScheduleReviewService, ScheduleReviewService>();
 

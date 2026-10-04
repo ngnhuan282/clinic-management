@@ -31,6 +31,7 @@ import DashboardPage from "../pages/internal/DashboardPage";
 import AppointmentsPage from "../pages/internal/AppointmentsPage";
 import DoctorScheduleManagementPage from "../pages/internal/DoctorScheduleManagementPage";
 import ScheduleReviewPage from "../pages/internal/ScheduleReviewPage";
+import DepartmentSchedulesPage from "../pages/internal/DepartmentSchedulesPage";
 import CashierBillingPage from "../pages/internal/CashierBillingPage";
 
 import DoctorLabOrdersPage from "../pages/internal/doctor/DoctorLabOrdersPage";
@@ -106,6 +107,9 @@ export default function AppRoutes() {
                             element={<Navigate to="dashboard" replace />}
                         />
                         <Route path="dashboard" element={<DashboardPage />} />
+                        <Route element={<ProtectedRoute allowedRoles={["DepartmentHead"]} />}>
+                            <Route path="department-schedules" element={<DepartmentSchedulesPage />} />
+                        </Route>
 
                         <Route
                             element={

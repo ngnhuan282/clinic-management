@@ -16,6 +16,7 @@ export const ROLE_LABELS = {
 };
 
 export const INTERNAL_PAGES = [
+    { label: "Lịch làm việc của khoa", path: "/internal/department-schedules", roles: ["DepartmentHead"] },
     { label: "Tổng quan", path: "/internal/dashboard", roles: INTERNAL_ROLES },
     { label: "Lịch hẹn", path: "/internal/appointments", roles: ["Admin", "Receptionist"] },
     { label: "Tài khoản & Vai trò", path: "/internal/users", roles: ["Admin"] },
@@ -74,6 +75,7 @@ export function canSeePage(value, page) {
         const permission = PAGE_PERMISSIONS[page.path];
         if (permission?.startsWith("accounts.") && user.role !== "Admin") return false;
         if (page.path === "/internal/schedule-requests" && !page.roles.includes(user.role)) return false;
+        if (page.path === "/internal/department-schedules" && user.role !== "DepartmentHead") return false;
         return user.role !== "Patient" && (!permission || user.permissions.includes(permission));
     }
     return page.roles.includes(user.role);

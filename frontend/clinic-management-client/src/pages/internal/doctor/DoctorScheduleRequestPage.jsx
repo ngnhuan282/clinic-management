@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { Alert, Box, Button, MenuItem, Paper, Select, Stack, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography } from "@mui/material";
 import doctorScheduleApi from "../../../api/doctorScheduleApi";
+import useNotifications from "../../../hooks/useNotifications";
 
 const statusStyle = { Pending: { label: "Chờ duyệt", color: "warning.main" }, Approved: { label: "Đã duyệt", color: "success.main" }, Rejected: { label: "Từ chối", color: "error.main" } };
 
 export default function DoctorScheduleRequestPage() {
+    const { revision } = useNotifications();
     const [rooms, setRooms] = useState([]);
     const [requests, setRequests] = useState([]);
     const [error, setError] = useState("");
@@ -13,7 +15,7 @@ export default function DoctorScheduleRequestPage() {
     useEffect(() => {
         doctorScheduleApi.rooms().then((r) => setRooms((doctorScheduleApi.unwrap(r) ?? []).map((x) => ({ id: x.roomId, roomNumber: x.roomNumber, name: x.name, departmentName: x.departmentName })))).catch(() => setError("Không thể tải danh sách phòng."));
         load();
-    }, []);
+    }, [revision]);
     const submit = (event) => {
         event.preventDefault();
         setError("");
