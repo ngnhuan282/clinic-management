@@ -2,7 +2,7 @@ import { HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
 import axiosClient, { getAccessToken } from "../api/axiosClient";
 import { readSession } from "../utils/authStorage";
 
-export function connectNotifications(onNotification) {
+export function connectNotifications(onNotification, onConnected = () => {}) {
     const apiUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5212/api";
     const hubUrl = import.meta.env.VITE_SIGNALR_HUB_URL || apiUrl.replace(/\/api\/?$/, "") + "/hubs/notification";
     const connection = new HubConnectionBuilder()
@@ -17,10 +17,11 @@ export function connectNotifications(onNotification) {
     };
     async function start() {
         if (disposed || !readSession()) return;
-        try { await connection.start(); }
+        try { await connection.start(); if (!disposed) onConnected(); }
         catch { retry(); }
     }
     connection.on("NotificationReceived", notification => { if (!disposed) onNotification(notification); });
+    connection.onreconnected(() => { if (!disposed) onConnected(); });
     connection.onclose(async () => {
         if (disposed || !readSession()) return;
         try { await axiosClient.get("/auth/me"); }

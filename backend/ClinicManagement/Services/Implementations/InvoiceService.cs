@@ -13,10 +13,12 @@ namespace ClinicManagement.Services.Implementations
     public class InvoiceService : IInvoiceService
     {
         private readonly ApplicationDbContext _context;
+        private readonly INotificationService _notifications;
 
-        public InvoiceService(ApplicationDbContext context)
+        public InvoiceService(ApplicationDbContext context, INotificationService notifications)
         {
             _context = context;
+            _notifications = notifications;
         }
 
         public async Task<List<PendingAppointmentBillingDto>> GetPendingBillingsAsync(string stage)
@@ -103,6 +105,8 @@ namespace ClinicManagement.Services.Implementations
 
         public async Task<InvoiceResponseDto> CreateInvoiceAsync(int cashierId, CreateInvoiceDto dto)
         {
+            await using var transaction = dto.BillingStage == "Book"
+                ? await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable) : null;
             // Kiểm tra chống thu trùng (Duplicate Check via SourceType + SourceId)
             foreach (var item in dto.Items)
             {
@@ -142,6 +146,16 @@ namespace ClinicManagement.Services.Implementations
 
             _context.Invoices.Add(invoice);
             await _context.SaveChangesAsync();
+
+            if (invoice.BillingStage == "Book" && invoice.Status == "Paid")
+            {
+                var rows = await _notifications.StageAsync(await _notifications.ReceptionRecipientsAsync(),
+                    $"invoice:{invoice.Id}:book-paid", "Billing", "Tiền sổ đã thanh toán",
+                    $"Hóa đơn Book #{invoice.Id} đã thanh toán. Lễ tân có thể xử lý cấp sổ.");
+                await _context.SaveChangesAsync();
+                await transaction!.CommitAsync();
+                await _notifications.PublishAsync(rows);
+            }
 
             return (await GetInvoiceByIdAsync(invoice.Id))!;
         }

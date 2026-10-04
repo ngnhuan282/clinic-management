@@ -9,7 +9,6 @@ import {
     IconButton,
     InputBase,
     Stack,
-    Tooltip,
     Typography,
 } from "@mui/material";
 import AddCircleOutlineOutlinedIcon from "@mui/icons-material/AddCircleOutlineOutlined";
@@ -25,7 +24,7 @@ import LocalHospitalOutlinedIcon from "@mui/icons-material/LocalHospitalOutlined
 import LocalPharmacyOutlinedIcon from "@mui/icons-material/LocalPharmacyOutlined";
 import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
 import MenuOutlinedIcon from "@mui/icons-material/MenuOutlined";
-import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
+import NotificationBell from "../components/common/NotificationBell";
 import PaymentsOutlinedIcon from "@mui/icons-material/PaymentsOutlined";
 import PeopleAltOutlinedIcon from "@mui/icons-material/PeopleAltOutlined";
 import ScienceOutlinedIcon from "@mui/icons-material/ScienceOutlined";
@@ -487,11 +486,7 @@ function InternalLayout() {
                                 {primaryActionLabel}
                             </Button>}
 
-                            <Tooltip title="Thông báo">
-                                <IconButton aria-label="Thông báo">
-                                    <NotificationsNoneOutlinedIcon />
-                                </IconButton>
-                            </Tooltip>
+                            <NotificationBell />
 
                             <Stack
                                 direction="row"

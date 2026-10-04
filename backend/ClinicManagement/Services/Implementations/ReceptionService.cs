@@ -18,13 +18,16 @@ public class ReceptionService : IReceptionService
     private readonly IReceptionRepository _receptionRepository;
     private readonly IAppointmentRepository _appointmentRepository;
     private readonly ILogger<ReceptionService> _logger;
+    private readonly INotificationService _notifications;
 
     public ReceptionService(IReceptionRepository receptionRepository,
-        IAppointmentRepository appointmentRepository, ILogger<ReceptionService> logger)
+        IAppointmentRepository appointmentRepository, ILogger<ReceptionService> logger,
+        INotificationService notifications)
     {
         _receptionRepository = receptionRepository;
         _appointmentRepository = appointmentRepository;
         _logger = logger;
+        _notifications = notifications;
     }
 
     public async Task<List<PatientMatchResponse>> FindPatientsAsync(string search)
@@ -133,8 +136,12 @@ public class ReceptionService : IReceptionService
         if (invoice.Status != "Unpaid") throw new AppException(ErrorCode.BOOK_INVOICE_INVALID_STATUS);
         invoice.Status = "Paid";
         invoice.PaidAt = DateTime.UtcNow;
+        var rows = await _notifications.StageAsync(await _notifications.ReceptionRecipientsAsync(),
+            $"book-invoice:{invoiceId}:paid", "Billing", "Tiền sổ đã thanh toán",
+            $"Hóa đơn sổ #{invoiceId} đã thanh toán. Lễ tân có thể xử lý cấp sổ.");
         await _receptionRepository.SaveChangesAsync();
         await transaction.CommitAsync();
+        await _notifications.PublishAsync(rows);
         _logger.LogInformation("Book invoice {InvoiceId} marked paid", invoiceId);
         return MapInvoice(invoice);
     }
@@ -185,8 +192,13 @@ public class ReceptionService : IReceptionService
         appointment.PatientBookId = book.PatientBookId;
         appointment.BookVerifiedAt = now;
         appointment.CheckedInAt = now;
+        var recipients = await _notifications.DoctorRecipientsAsync(appointment.DoctorId, PermissionCodes.ClinicalViewAssigned);
+        var rows = await _notifications.StageAsync(recipients,
+            $"appointment:{appointmentId}:checked-in", "Appointment", "Lượt khám đã check-in",
+            $"Lượt khám #{appointmentId} đã check-in và sẵn sàng vào khám.");
         await _appointmentRepository.SaveChangesAsync();
         await transaction.CommitAsync();
+        await _notifications.PublishAsync(rows);
         _logger.LogInformation("Appointment {AppointmentId} checked in with book {PatientBookId}",
             appointmentId, book.PatientBookId);
         return MapAppointment(appointment);

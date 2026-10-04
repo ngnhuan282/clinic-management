@@ -43,8 +43,18 @@ async Task<JsonNode?> Send(HttpMethod method, string path, object? body = null, 
 }
 try
 {
-    await db.Database.MigrateAsync();
-    Check(!(await db.Database.GetPendingMigrationsAsync()).Any(), "All migrations apply to an empty SQL Server database");
+    if (args.Contains("--a5") || args.Contains("--a5-ui"))
+    {
+        // The merged legacy chain creates PatientBooks twice. A5 verifies against the current
+        // baseline schema and applies its own migration without rewriting team migrations.
+        await db.Database.EnsureCreatedAsync();
+        await A5Checks.VerifyNotificationMigrationAsync(db, Check);
+    }
+    else
+    {
+        await db.Database.MigrateAsync();
+        Check(!(await db.Database.GetPendingMigrationsAsync()).Any(), "All migrations apply to an empty SQL Server database");
+    }
     Check(await db.Departments.CountAsync() == 3 && await db.Rooms.CountAsync() == 3 && await db.Specializations.CountAsync() == 3, "Catalog master data seeded");
     await db.Database.ExecuteSqlRawAsync(await File.ReadAllTextAsync(Path.Combine(root, "backend/ClinicManagement/Data/Seed/pharmacy-demo-data.sql")));
     Check(await db.Medicines.AnyAsync() && await db.Inventory.AnyAsync(), "Pharmacy demo seed works");
@@ -61,7 +71,7 @@ try
     start.Environment["ASPNETCORE_ENVIRONMENT"] = "Development";
     start.Environment["ConnectionStrings__DefaultConnection"] = connection;
     start.Environment["Jwt__Key"] = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
-    if (args.Contains("--ui")) start.Environment["Cors__FrontendUrl"] = "http://127.0.0.1:5190";
+    if (args.Contains("--ui") || args.Contains("--a5-ui")) start.Environment["Cors__FrontendUrl"] = "http://127.0.0.1:5190";
     server = Process.Start(start)!;
     server.OutputDataReceived += (_, e) => { if (e.Data != null) serverLog.Enqueue(e.Data); };
     server.ErrorDataReceived += (_, e) => { if (e.Data != null) serverLog.Enqueue(e.Data); };
@@ -74,6 +84,27 @@ try
         await Task.Delay(200);
     }
     await Send(HttpMethod.Get, "swagger/v1/swagger.json");
+    if (args.Contains("--a5") || args.Contains("--a5-ui"))
+    {
+        await A5Checks.RunAsync(client, db, password, Check);
+        Console.WriteLine($"SUCCESS: {checks} A5 checks passed.");
+        if (args.Contains("--a5-ui"))
+        {
+            Console.WriteLine("AUTH_UI_SESSION:" + System.Text.Json.JsonSerializer.Serialize(new
+            {
+                baseUrl = client.BaseAddress, password, date = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(70)),
+                doctorName = await db.Doctors.Where(x => x.DoctorId == 1).Select(x => x.FullName).SingleAsync()
+            }));
+            await Console.In.ReadLineAsync();
+        }
+        return;
+    }
+    if (args.Contains("--a5"))
+    {
+        await A5Checks.RunAsync(client, db, password, Check);
+        Console.WriteLine($"SUCCESS: {checks} A5 checks passed.");
+        return;
+    }
     if (args.Contains("--a4"))
     {
         await ScheduleReviewChecks.VerifyRoleMigrationCollisionAsync(db, Check);

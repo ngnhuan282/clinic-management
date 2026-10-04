@@ -1,5 +1,4 @@
 using System;
-using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -14,10 +13,12 @@ namespace ClinicManagement.Controllers
     public class InvoicesController : ControllerBase
     {
         private readonly IInvoiceService _invoiceService;
+        private readonly ICurrentUserService _currentUser;
 
-        public InvoicesController(IInvoiceService invoiceService)
+        public InvoicesController(IInvoiceService invoiceService, ICurrentUserService currentUser)
         {
             _invoiceService = invoiceService;
+            _currentUser = currentUser;
         }
 
         // Lấy danh sách sổ chờ thu tiền theo BillingStage ("Pending" hoặc "LabAndConsultation")
@@ -34,7 +35,7 @@ namespace ClinicManagement.Controllers
         {
             try
             {
-                var cashierId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+                var cashierId = _currentUser.GetRequiredUserId();
                 var invoice = await _invoiceService.CreateInvoiceAsync(cashierId, dto);
                 return Ok(invoice);
             }

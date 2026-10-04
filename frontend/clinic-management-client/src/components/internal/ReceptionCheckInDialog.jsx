@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import { checkInAppointment, createBookInvoice, findPatientMatches, getBookInvoices, getPatientBooks, issueBook, markBookInvoicePaid, matchAppointmentPatient, registerExistingBook } from "../../api/receptionApi";
 import { getApiErrorMessage } from "../../utils/errorHandler";
+import useNotifications from "../../hooks/useNotifications";
 
 export default function ReceptionCheckInDialog({ appointment, onClose, onCheckedIn }) {
+    const { revision } = useNotifications();
     const [patientId, setPatientId] = useState(appointment?.patientProfileId || null);
     const [matches, setMatches] = useState([]);
     const [matchesSearched, setMatchesSearched] = useState(false);
@@ -33,7 +35,7 @@ export default function ReceptionCheckInDialog({ appointment, onClose, onChecked
             .catch(err => { if (active) setError(getApiErrorMessage(err)); })
             .finally(() => { if (active) setRecordsLoaded(true); });
         return () => { active = false; };
-    }, [patientId]);
+    }, [patientId, revision]);
 
     async function run(action) {
         setBusy(true);
