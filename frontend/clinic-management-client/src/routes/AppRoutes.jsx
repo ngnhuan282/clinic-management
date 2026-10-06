@@ -15,6 +15,8 @@ import ProtectedRoute from "./ProtectedRoute";
 import HomePage from "../pages/patient/HomePage";
 import BookingPage from "../pages/patient/BookingPage";
 import LabResultsPage from "../pages/patient/LabResultsPage";
+import DoctorSearchPage from "../pages/patient/DoctorSearchPage";
+import PatientProfilePage from "../pages/patient/PatientProfilePage";
 import AuthPage from "../pages/auth/AuthPage";
 
 import InventoryPage from "../pages/internal/admin/InventoryPage";
@@ -40,6 +42,8 @@ import MedicalRecordDetailPage from "../pages/internal/doctor/MedicalRecordDetai
 import MedicalRecordPage from "../pages/internal/doctor/MedicalRecordPage";
 import PrescriptionPage from "../pages/internal/doctor/PrescriptionPage";
 import DoctorScheduleRequestPage from "../pages/internal/doctor/DoctorScheduleRequestPage";
+import DoctorProfilePage from "../pages/internal/doctor/DoctorProfilePage";
+import PatientBooksPage from "../pages/internal/PatientBooksPage";
 
 import TechnicianLabQueuePage from "../pages/internal/technician/TechnicianLabQueuePage";
 
@@ -72,6 +76,7 @@ export default function AppRoutes() {
             <Routes>
                 <Route element={<PatientLayout />}>
                     <Route path="/" element={<HomePage />} />
+                    <Route path="/doctors" element={<DoctorSearchPage />} />
                     <Route path="/login" element={<AuthPage key="login" />} />
                     <Route
                         path="/internal/login"
@@ -91,6 +96,7 @@ export default function AppRoutes() {
                     >
                         <Route path="/booking" element={<BookingPage />} />
                         <Route path="/lab-results" element={<LabResultsPage />} />
+                        <Route path="/profile" element={<PatientProfilePage />} />
                     </Route>
 
                     <Route path="/403" element={<UnauthorizedPage />} />
@@ -200,6 +206,20 @@ export default function AppRoutes() {
                                 path="doctor/schedule-requests"
                                 element={<DoctorScheduleRequestPage />}
                             />
+                        </Route>
+
+                        <Route
+                            element={
+                                <ProtectedRoute
+                                    allowedPermissions={["appointments.checkIn"]}
+                                />
+                            }
+                        >
+                            <Route path="patient-books" element={<PatientBooksPage />} />
+                        </Route>
+
+                        <Route element={<ProtectedRoute allowedRoles={["Doctor"]} />}>
+                            <Route path="doctor/profile" element={<DoctorProfilePage />} />
                         </Route>
 
                         <Route

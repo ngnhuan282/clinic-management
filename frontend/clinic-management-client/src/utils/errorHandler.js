@@ -16,6 +16,8 @@ const API_ERROR_MESSAGES = {
     2006: "Email đã tồn tại.",
     3001: "Không tìm thấy bác sĩ.",
     4001: "Không tìm thấy bệnh nhân.",
+    4006: "Số sổ đã được sử dụng hoặc bệnh nhân đã có sổ đang sử dụng.",
+    4009: "Số CCCD này đã thuộc về bệnh nhân khác.",
     5001: "Không tìm thấy lịch hẹn.",
     5002: "Bác sĩ đã có lịch hẹn trong khung giờ này.",
     5003: "Trạng thái lịch hẹn không hợp lệ.",

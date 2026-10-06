@@ -9,6 +9,4 @@ public static class PatientBookStatusConstants
     public const string Lost = "Lost";
 
     public const string Replaced = "Replaced";
-
-    public const string Cancelled = "Cancelled";
 }

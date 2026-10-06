@@ -1,6 +1,6 @@
-namespace ClinicManagement.Data.Entities;
+namespace ClinicManagement.DTOs.Responses;
 
-public class Patient
+public class PatientProfileResponse
 {
     public int PatientId { get; set; }
     public string FullName { get; set; } = string.Empty;
@@ -9,7 +9,4 @@ public class Patient
     public string? IdentityNumber { get; set; }
     public string? InsuranceCode { get; set; }
     public DateTime CreatedAt { get; set; }
-
-    public int? UserId { get; set; }
-    public User? User { get; set; }
 }

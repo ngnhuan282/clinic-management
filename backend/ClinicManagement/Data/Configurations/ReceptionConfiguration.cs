@@ -15,6 +15,8 @@ public class PatientConfiguration : IEntityTypeConfiguration<Patient>
         entity.Property(x => x.InsuranceCode).HasMaxLength(30);
         entity.HasIndex(x => x.IdentityNumber).IsUnique().HasFilter("[IdentityNumber] IS NOT NULL");
         entity.HasIndex(x => x.Phone);
+        entity.HasIndex(x => x.UserId).IsUnique().HasFilter("[UserId] IS NOT NULL");
+        entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
     }
 }
 
@@ -30,7 +32,7 @@ public class PatientBookConfiguration : IEntityTypeConfiguration<PatientBook>
         entity.HasOne(x => x.Patient).WithMany().HasForeignKey(x => x.PatientId).OnDelete(DeleteBehavior.Restrict);
         entity.HasOne(x => x.BookInvoice).WithOne(x => x.PatientBook).HasForeignKey<PatientBook>(x => x.BookInvoiceId)
             .OnDelete(DeleteBehavior.Restrict);
-        entity.ToTable(x => x.HasCheckConstraint("CK_PatientBooks_Status", "[Status] IN ('Issued','Voided')"));
+        entity.ToTable(x => x.HasCheckConstraint("CK_PatientBooks_Status", "[Status] IN ('Pending','Issued','Lost','Replaced')"));
     }
 }
 

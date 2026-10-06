@@ -144,14 +144,15 @@ public class DoctorScheduleService(ApplicationDbContext context, ICurrentUserSer
 
     public async Task<List<DoctorScheduleResponse>> GetSchedulesAsync(DateOnly? date, DateOnly? weekStart, int? specializationId)
     {
-        var query = GetScheduleQuery();
+        // Only approved, active shifts are published; pending or rejected requests never reach booking or department views.
+        var query = GetScheduleQuery()
+            .Where(x => x.Status == ScheduleStatusConstants.Approved && x.IsActive);
         if (_currentUser.Role == RoleConstants.DepartmentHead)
         {
             var departmentId = await _context.Doctors.Where(x => x.UserId == _currentUser.GetRequiredUserId() && x.IsActive)
                 .Select(x => (int?)x.DepartmentId).SingleOrDefaultAsync()
                 ?? throw new AppException(ErrorCode.UNAUTHORIZED);
-            query = query.Where(x => x.Doctor.DepartmentId == departmentId && x.Room.DepartmentId == departmentId
-                && x.Status == "Approved" && x.IsActive);
+            query = query.Where(x => x.Doctor.DepartmentId == departmentId && x.Room.DepartmentId == departmentId);
         }
         if (date.HasValue) query = query.Where(x => x.WorkDate == date.Value);
         if (weekStart.HasValue)

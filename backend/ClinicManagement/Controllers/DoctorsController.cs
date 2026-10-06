@@ -1,4 +1,5 @@
 using ClinicManagement.Commons;
+using ClinicManagement.DTOs.Requests;
 using ClinicManagement.DTOs.Responses;
 using ClinicManagement.Services.Interfaces;
 using ClinicManagement.Data;
@@ -17,15 +18,42 @@ namespace ClinicManagement.Controllers;
 public class DoctorsController : ControllerBase
 {
     private readonly IBookingService _bookingService;
+    private readonly IDoctorService _doctorService;
     private readonly ApplicationDbContext _db;
     private readonly ICurrentUserService _currentUser;
 
     public DoctorsController(
-        IBookingService bookingService, ApplicationDbContext db, ICurrentUserService currentUser)
+        IBookingService bookingService, IDoctorService doctorService,
+        ApplicationDbContext db, ICurrentUserService currentUser)
     {
         _bookingService = bookingService;
+        _doctorService = doctorService;
         _db = db;
         _currentUser = currentUser;
+    }
+
+    [HttpGet("public")]
+    [AllowAnonymous]
+    public async Task<IActionResult> SearchPublicDoctors([FromQuery] PublicDoctorQuery query)
+    {
+        var result = await _doctorService.SearchPublicDoctorsAsync(query);
+        return Ok(ApiResponse<PagedResponse<PublicDoctorResponse>>.Success(result));
+    }
+
+    [HttpGet("me")]
+    [Authorize(Roles = RoleConstants.Doctor)]
+    public async Task<IActionResult> GetMyProfile()
+    {
+        var result = await _doctorService.GetMyProfileAsync();
+        return Ok(ApiResponse<DoctorProfileResponse>.Success(result));
+    }
+
+    [HttpPut("me")]
+    [Authorize(Roles = RoleConstants.Doctor)]
+    public async Task<IActionResult> UpdateMyProfile(UpdateDoctorProfileRequest request)
+    {
+        var result = await _doctorService.UpdateMyProfileAsync(request);
+        return Ok(ApiResponse<DoctorProfileResponse>.Success(result));
     }
 
     [HttpGet]
