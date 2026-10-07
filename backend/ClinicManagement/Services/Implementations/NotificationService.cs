@@ -71,6 +71,89 @@ public class NotificationService(IHubContext<NotificationHub> hub, ApplicationDb
                 : db.RolePermissions.Any(p => p.RoleId == x.User.RoleId && p.PermissionCode == requiredPermission && p.Permission.IsImplemented)))
             .Select(x => x.UserId!.Value).ToListAsync();
 
+    private async Task<List<int>> AppointmentRecipientsAsync(Appointment appointment, int? previousDoctorId = null)
+    {
+        var recipients = await ReceptionRecipientsAsync();
+        recipients.AddRange(await DoctorRecipientsAsync(appointment.DoctorId, PermissionCodes.ClinicalViewAssigned));
+        if (previousDoctorId.HasValue && previousDoctorId != appointment.DoctorId)
+            recipients.AddRange(await DoctorRecipientsAsync(previousDoctorId.Value, PermissionCodes.ClinicalViewAssigned));
+        if (appointment.PatientId.HasValue)
+            recipients.AddRange(await PatientRecipientsAsync(appointment.PatientId.Value));
+        return recipients.Distinct().ToList();
+    }
+
+    private Task<List<int>> PatientRecipientsAsync(int userId) => db.Users.Where(x => x.UserId == userId
+        && x.Status && x.Role.RoleName == RoleConstants.Patient).Select(x => x.UserId).ToListAsync();
+
+    private async Task<List<int>> BookRecipientsAsync(int patientProfileId)
+    {
+        var recipients = await ReceptionRecipientsAsync();
+        var appointments = await db.Appointments.AsNoTracking()
+            .Where(x => x.PatientProfileId == patientProfileId && x.Status != AppointmentStatusConstants.Cancelled)
+            .Select(x => new { x.PatientId, x.DoctorId }).ToListAsync();
+        foreach (var doctorId in appointments.Select(x => x.DoctorId).Distinct())
+            recipients.AddRange(await DoctorRecipientsAsync(doctorId, PermissionCodes.ClinicalViewAssigned));
+        var patientIds = appointments.Where(x => x.PatientId.HasValue).Select(x => x.PatientId!.Value).Distinct().ToArray();
+        recipients.AddRange(await db.Users.Where(x => patientIds.Contains(x.UserId) && x.Status
+            && x.Role.RoleName == RoleConstants.Patient).Select(x => x.UserId).ToListAsync());
+        return recipients.Distinct().ToList();
+    }
+
+    public async Task PublishAppointmentChangedAsync(Appointment appointment, string change,
+        int? previousDoctorId = null, DateTime? previousAppointmentDate = null)
+    {
+        var payload = new AppointmentChangedResponse(appointment.AppointmentId, appointment.DoctorId,
+            appointment.AppointmentDate, appointment.StartTime, appointment.Status, appointment.CheckedInAt,
+            appointment.BookVerifiedAt, appointment.PatientProfileId, appointment.PatientBookId, change,
+            previousDoctorId, previousAppointmentDate);
+        await PublishEventAsync(change == "CheckedIn" ? "CheckInChanged" : "AppointmentChanged",
+            () => AppointmentRecipientsAsync(appointment, previousDoctorId), payload);
+
+        if (change is "Created" or "Rescheduled" or "Cancelled")
+        {
+            await PublishEventAsync("SlotAvailabilityChanged", BookingRecipientsAsync,
+                new SlotAvailabilityChangedResponse(appointment.DoctorId, appointment.AppointmentDate));
+            if (previousDoctorId.HasValue && previousAppointmentDate.HasValue
+                && (previousDoctorId != appointment.DoctorId || previousAppointmentDate.Value.Date != appointment.AppointmentDate.Date))
+                await PublishEventAsync("SlotAvailabilityChanged", BookingRecipientsAsync,
+                    new SlotAvailabilityChangedResponse(previousDoctorId.Value, previousAppointmentDate.Value));
+        }
+    }
+
+    private Task<List<int>> BookingRecipientsAsync() => db.Users.Where(x => x.Status
+        && (x.Role.RoleName == RoleConstants.Patient || x.Role.RoleName == RoleConstants.Receptionist)
+        && db.RolePermissions.Any(p => p.RoleId == x.RoleId && p.Permission.IsImplemented
+            && (p.PermissionCode == PermissionCodes.AppointmentsBookSelf
+                || p.PermissionCode == PermissionCodes.AppointmentsCreateWalkIn
+                || p.PermissionCode == PermissionCodes.AppointmentsReschedule)))
+        .Select(x => x.UserId).ToListAsync();
+
+    public Task PublishBookInvoiceChangedAsync(BookInvoice invoice) => PublishEventAsync("BookInvoiceChanged",
+        () => BookRecipientsAsync(invoice.PatientId),
+        new BookInvoiceChangedResponse(invoice.BookInvoiceId, null, invoice.PatientId, invoice.Status, invoice.PaidAt));
+
+    public Task PublishBookPaymentAsync(Invoice invoice) => PublishEventAsync("BookInvoiceChanged",
+        ReceptionRecipientsAsync,
+        new BookInvoiceChangedResponse(null, invoice.Id, null, invoice.Status, invoice.CreatedAt));
+
+    public Task PublishPatientBookChangedAsync(PatientBook book) => PublishEventAsync("PatientBookChanged",
+        () => BookRecipientsAsync(book.PatientId),
+        new PatientBookChangedResponse(book.PatientBookId, book.PatientId, book.BookInvoiceId, book.Status));
+
+    private async Task PublishEventAsync(string eventName, Func<Task<List<int>>> resolveRecipients, object payload)
+    {
+        try
+        {
+            var recipients = await resolveRecipients();
+            await hub.Clients.Users(recipients.Select(x => x.ToString()).ToList()).SendAsync(eventName, payload);
+        }
+        catch (Exception ex)
+        {
+            // Call only after SaveChanges/commit. Delivery failures must not prompt a duplicate mutation.
+            logger.LogWarning(ex, "Realtime delivery failed for {EventName}", eventName);
+        }
+    }
+
     public async Task<PagedResponse<NotificationHistoryResponse>> ListAsync(int pageNumber, int pageSize)
     {
         var userId = currentUser.GetRequiredUserId();

@@ -11,6 +11,11 @@ public interface INotificationService
     Task<List<int>> ReviewRecipientsAsync(int doctorId);
     Task<List<int>> ReceptionRecipientsAsync();
     Task<List<int>> DoctorRecipientsAsync(int doctorId, string? requiredPermission = null);
+    Task PublishAppointmentChangedAsync(Appointment appointment, string change,
+        int? previousDoctorId = null, DateTime? previousAppointmentDate = null);
+    Task PublishBookInvoiceChangedAsync(BookInvoice invoice);
+    Task PublishBookPaymentAsync(Invoice invoice);
+    Task PublishPatientBookChangedAsync(PatientBook book);
     Task<PagedResponse<NotificationHistoryResponse>> ListAsync(int pageNumber, int pageSize);
     Task MarkReadAsync(int id);
 }

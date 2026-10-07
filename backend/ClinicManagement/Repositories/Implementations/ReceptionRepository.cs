@@ -1,4 +1,5 @@
 using System.Data;
+using ClinicManagement.Commons;
 using ClinicManagement.Data;
 using ClinicManagement.Data.Entities;
 using ClinicManagement.Repositories.Interfaces;
@@ -37,6 +38,10 @@ public class ReceptionRepository : IReceptionRepository
             .SingleOrDefaultAsync(x => x.PatientBookId == patientBookId);
 
     public Task AddBookAsync(PatientBook book) => _context.PatientBooks.AddAsync(book).AsTask();
+
+    public Task<bool> IsBookInUseAsync(int patientBookId) => _context.Appointments.AnyAsync(x =>
+        x.PatientBookId == patientBookId && x.CheckedInAt != null
+        && x.Status != AppointmentStatusConstants.Completed && x.Status != AppointmentStatusConstants.Cancelled);
 
     public Task<List<BookInvoice>> GetBookInvoicesAsync(int patientId) => _context.BookInvoices.AsNoTracking()
         .Where(x => x.PatientId == patientId).OrderByDescending(x => x.CreatedAt)

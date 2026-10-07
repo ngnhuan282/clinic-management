@@ -23,6 +23,7 @@ public class BookingService : IBookingService
     private readonly IReceptionRepository _receptionRepository;
     private readonly ILogger<BookingService> _logger;
     private readonly ICurrentUserService _currentUser;
+    private readonly INotificationService _notifications;
 
     public BookingService(
         IDepartmentRepository departmentRepository,
@@ -30,7 +31,8 @@ public class BookingService : IBookingService
         IAppointmentRepository appointmentRepository,
         IReceptionRepository receptionRepository,
         ILogger<BookingService> logger,
-        ICurrentUserService currentUser)
+        ICurrentUserService currentUser,
+        INotificationService notifications)
     {
         _departmentRepository = departmentRepository;
         _doctorRepository = doctorRepository;
@@ -38,6 +40,7 @@ public class BookingService : IBookingService
         _receptionRepository = receptionRepository;
         _logger = logger;
         _currentUser = currentUser;
+        _notifications = notifications;
     }
 
     public async Task<PagedResponse<AppointmentResponse>> GetAppointmentsAsync(
@@ -257,6 +260,7 @@ public class BookingService : IBookingService
 
         appointment.Doctor = doctor;
         if (transaction != null) await transaction.CommitAsync();
+        await _notifications.PublishAppointmentChangedAsync(appointment, "Created");
         _logger.LogInformation("Appointment {AppointmentId} created with status {Status}",
             appointment.AppointmentId, appointment.Status);
 
@@ -323,6 +327,7 @@ public class BookingService : IBookingService
             AppointmentStatusConstants.Confirmed;
 
         await _appointmentRepository.SaveChangesAsync();
+        await _notifications.PublishAppointmentChangedAsync(appointment, "Confirmed");
         _logger.LogInformation("Appointment {AppointmentId} confirmed", appointmentId);
 
         return MapAppointment(appointment);
@@ -390,7 +395,15 @@ public class BookingService : IBookingService
             );
         }
 
+        var previousDoctorId = appointment.DoctorId;
+        var previousDate = appointment.AppointmentDate;
+        if (previousDoctorId == request.DoctorId && previousDate == date && appointment.StartTime == startTime
+            && appointment.Status == AppointmentStatusConstants.Confirmed)
+            return MapAppointment(appointment);
         appointment.DoctorId = request.DoctorId;
+        appointment.TimeSlotId = schedules.SelectMany(x => x.TimeSlots)
+            .Where(x => x.StartTime == startTime && x.IsAvailable)
+            .Select(x => (Guid?)x.SlotId).FirstOrDefault();
         appointment.AppointmentDate = date;
         appointment.StartTime = startTime;
         appointment.EndTime = startTime.Add(SlotDuration);
@@ -414,6 +427,7 @@ public class BookingService : IBookingService
         }
 
         appointment.Doctor = doctor;
+        await _notifications.PublishAppointmentChangedAsync(appointment, "Rescheduled", previousDoctorId, previousDate);
         _logger.LogInformation("Appointment {AppointmentId} rescheduled", appointmentId);
 
         return MapAppointment(appointment);
@@ -440,6 +454,7 @@ public class BookingService : IBookingService
             AppointmentStatusConstants.Cancelled;
 
         await _appointmentRepository.SaveChangesAsync();
+        await _notifications.PublishAppointmentChangedAsync(appointment, "Cancelled");
         _logger.LogInformation("Appointment {AppointmentId} cancelled", appointmentId);
 
         return MapAppointment(appointment);
@@ -488,6 +503,7 @@ public class BookingService : IBookingService
 
             appointment.Status = AppointmentStatusConstants.InProgress;
             await _appointmentRepository.SaveChangesAsync();
+            await _notifications.PublishAppointmentChangedAsync(appointment, "InProgress");
         }
 
         if (appointment.Status != AppointmentStatusConstants.InProgress)
