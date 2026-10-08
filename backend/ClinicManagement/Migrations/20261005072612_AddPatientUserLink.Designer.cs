@@ -4,6 +4,7 @@ using ClinicManagement.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ClinicManagement.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261005072612_AddPatientUserLink")]
+    partial class AddPatientUserLink
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1005,7 +1008,7 @@ namespace ClinicManagement.Migrations
 
                     b.ToTable("PatientBooks", t =>
                         {
-                            t.HasCheckConstraint("CK_PatientBooks_Status", "[Status] IN ('Pending','Issued','Lost','Replaced')");
+                            t.HasCheckConstraint("CK_PatientBooks_Status", "[Status] IN ('Issued','Voided')");
                         });
                 });
 

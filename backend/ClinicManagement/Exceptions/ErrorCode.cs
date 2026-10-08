@@ -166,8 +166,8 @@ public sealed class ErrorCode
         new(4007, "Book invoice not found", HttpStatusCode.NotFound);
     public static readonly ErrorCode BOOK_INVOICE_INVALID_STATUS =
         new(4008, "Book invoice must be paid and not already used", HttpStatusCode.Conflict);
-    public static readonly ErrorCode BOOK_IN_USE =
-        new(4009, "Cannot replace a book used by an unfinished examination", HttpStatusCode.Conflict);
+    public static readonly ErrorCode PATIENT_IDENTITY_CONFLICT =
+        new(4009, "Identity number is already used by another patient", HttpStatusCode.Conflict);
 
     // =========================
     // Appointment

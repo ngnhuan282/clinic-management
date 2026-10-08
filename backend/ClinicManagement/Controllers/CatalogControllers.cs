@@ -37,6 +37,7 @@ public class SpecializationsController(ISpecializationService service) : Catalog
 public class RoomsController(IRoomService service) : CatalogControllerBase
 {
     [HttpGet] public async Task<IActionResult> Get([FromQuery] CatalogQuery query) => Ok(ApiResponse<PagedResponse<RoomResponse>>.Success(await service.GetAsync(query)));
+    [HttpGet("public")] [AllowAnonymous] public async Task<IActionResult> GetPublic() => Ok(ApiResponse<List<PublicRoomResponse>>.Success(await service.GetPublicAsync()));
     [HttpGet("{id:int}")] public async Task<IActionResult> GetById(int id) => Ok(ApiResponse<RoomResponse>.Success(await service.GetByIdAsync(id)));
     [HttpPost] public async Task<IActionResult> Create(CreateRoomRequest request) => Ok(ApiResponse<RoomResponse>.Success(await service.CreateAsync(request), "Room created"));
     [HttpPut("{id:int}")] public async Task<IActionResult> Update(int id, UpdateRoomRequest request) => Ok(ApiResponse<RoomResponse>.Success(await service.UpdateAsync(id, request), "Room updated"));

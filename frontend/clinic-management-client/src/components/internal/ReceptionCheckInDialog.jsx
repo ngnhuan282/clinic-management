@@ -144,7 +144,10 @@ export default function ReceptionCheckInDialog({ appointment, onClose, onChecked
                                     await refreshBooks();
                                     setPaymentReceived(false);
                                 })}>Ghi Paid</Button>}
-                            {invoice.status === "Paid" && !books.some(book => book.bookInvoiceId === invoice.bookInvoiceId) &&
+                            {invoice.status === "Paid" && (() => {
+                                const linkedBook = books.find(book => book.bookInvoiceId === invoice.bookInvoiceId);
+                                return !linkedBook || linkedBook.status === "Pending";
+                            })() &&
                                 <Button size="small" disabled={busy || !newBookNumber.trim()} onClick={() => run(async () => {
                                     const book = await issueBook(invoice.bookInvoiceId, newBookNumber.trim());
                                     await refreshBooks();

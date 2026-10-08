@@ -42,6 +42,9 @@ public static class DependencyInjection
         services.AddScoped<IDepartmentScheduleService, DepartmentScheduleService>();
         services.AddScoped<IDepartmentScheduleRepository, DepartmentScheduleRepository>();
         services.AddScoped<IReceptionService, ReceptionService>();
+        services.AddScoped<IPatientBookService, PatientBookService>();
+        services.AddScoped<IDoctorService, DoctorService>();
+        services.AddScoped<IPatientService, PatientService>();
         services.AddScoped<IScheduleReviewService, ScheduleReviewService>();
 
         services.AddScoped<
@@ -63,6 +66,7 @@ public static class DependencyInjection
         >();
         services.AddScoped<IDepartmentRepository, DepartmentRepository>();
         services.AddScoped<IReceptionRepository, ReceptionRepository>();
+        services.AddScoped<IPatientRepository, PatientRepository>();
         services.AddScoped<ISpecializationRepository, SpecializationRepository>();
         services.AddScoped<IRoomRepository, RoomRepository>();
 

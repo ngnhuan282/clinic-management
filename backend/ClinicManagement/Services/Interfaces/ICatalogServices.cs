@@ -24,6 +24,7 @@ public interface ISpecializationService
 public interface IRoomService
 {
     Task<PagedResponse<RoomResponse>> GetAsync(CatalogQuery query);
+    Task<List<PublicRoomResponse>> GetPublicAsync();
     Task<RoomResponse> GetByIdAsync(int id);
     Task<RoomResponse> CreateAsync(CreateRoomRequest request);
     Task<RoomResponse> UpdateAsync(int id, UpdateRoomRequest request);

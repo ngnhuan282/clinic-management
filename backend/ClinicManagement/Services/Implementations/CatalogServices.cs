@@ -91,6 +91,15 @@ public class RoomService(IRoomRepository repository) : IRoomService
         var result = await repository.GetPageAsync(query);
         return new PagedResponse<RoomResponse>(result.Items.Select(x => x.ToResponse()), page, size, result.TotalItems);
     }
+    public async Task<List<PublicRoomResponse>> GetPublicAsync() =>
+        (await repository.GetActiveAsync()).Select(x => new PublicRoomResponse
+        {
+            RoomId = x.RoomId,
+            RoomCode = x.RoomNumber,
+            RoomName = x.Name,
+            DepartmentId = x.DepartmentId,
+            DepartmentName = x.Department.Name
+        }).ToList();
     public async Task<RoomResponse> GetByIdAsync(int id) =>
         (await repository.GetByIdAsync(id))?.ToResponse() ?? throw new AppException(ErrorCode.CATALOG_NOT_FOUND);
     public async Task<RoomResponse> CreateAsync(CreateRoomRequest request)

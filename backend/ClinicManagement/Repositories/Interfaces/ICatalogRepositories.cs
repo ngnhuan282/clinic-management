@@ -26,6 +26,7 @@ public interface ISpecializationRepository
 public interface IRoomRepository
 {
     Task<(IReadOnlyList<Room> Items, int TotalItems)> GetPageAsync(CatalogQuery query);
+    Task<List<Room>> GetActiveAsync();
     Task<Room?> GetByIdAsync(int id);
     Task<bool> ExistsDuplicateAsync(string roomNumber, int? excludingId = null);
     Task<bool> DepartmentIsActiveAsync(int departmentId);

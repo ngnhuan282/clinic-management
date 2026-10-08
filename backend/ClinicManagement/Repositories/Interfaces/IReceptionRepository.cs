@@ -1,3 +1,4 @@
+using ClinicManagement.DTOs.Requests;
 using ClinicManagement.Data.Entities;
 using Microsoft.EntityFrameworkCore.Storage;
 
@@ -11,7 +12,7 @@ public interface IReceptionRepository
     Task AddPatientAsync(Patient patient);
     Task<List<PatientBook>> GetBooksAsync(int patientId);
     Task<PatientBook?> GetBookAsync(int patientBookId);
-    Task<bool> IsBookInUseAsync(int patientBookId);
+    Task<(List<PatientBook> Items, int Total)> GetBookPageAsync(PatientBookQuery query);
     Task AddBookAsync(PatientBook book);
     Task<List<BookInvoice>> GetBookInvoicesAsync(int patientId);
     Task<BookInvoice?> GetBookInvoiceAsync(int invoiceId);

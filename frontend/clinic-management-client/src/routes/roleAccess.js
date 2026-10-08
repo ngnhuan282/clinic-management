@@ -19,6 +19,7 @@ export const INTERNAL_PAGES = [
     { label: "Lịch làm việc của khoa", path: "/internal/department-schedules", roles: ["DepartmentHead"] },
     { label: "Tổng quan", path: "/internal/dashboard", roles: INTERNAL_ROLES },
     { label: "Lịch hẹn", path: "/internal/appointments", roles: ["Admin", "Receptionist"] },
+    { label: "Sổ khám bệnh", path: "/internal/patient-books", roles: ["Receptionist"] },
     { label: "Tài khoản & Vai trò", path: "/internal/users", roles: ["Admin"] },
     { label: "Vai trò & Phân quyền", path: "/internal/roles-permissions", roles: ["Admin"] },
     { label: "Khoa", path: "/internal/departments", roles: ["Admin"] },
@@ -26,6 +27,7 @@ export const INTERNAL_PAGES = [
     { label: "Phòng", path: "/internal/rooms", roles: ["Admin"] },
     { label: "Lịch bác sĩ", path: "/internal/doctor-schedules", roles: ["Admin"] },
     { label: "Đăng ký ca làm việc", path: "/internal/doctor/schedule-requests", roles: ["Doctor", "DepartmentHead"] },
+    { label: "Hồ sơ cá nhân", path: "/internal/doctor/profile", roles: ["Doctor"] },
     { label: "Duyệt ca khám", path: "/internal/schedule-requests", roles: ["Admin", "DepartmentHead"] },
     { label: "Kho dược & Vật tư", path: "/internal/medicines", roles: ["Admin"] },
     { label: "Xét nghiệm", path: "/internal/lab-test-types", roles: ["Admin", "Doctor", "DepartmentHead"] },
@@ -41,6 +43,7 @@ const ADDITIONAL_INTERNAL_ROUTES = [
 
 const PAGE_PERMISSIONS = {
     "/internal/appointments": "appointments.view",
+    "/internal/patient-books": "appointments.checkIn",
     "/internal/users": "accounts.view",
     "/internal/roles-permissions": "accounts.manageRoles",
     "/internal/departments": "catalog.manage",
@@ -52,6 +55,7 @@ const PAGE_PERMISSIONS = {
     "/internal/lab-test-types": "labs.viewTypes",
     "/internal/doctor/lab-orders": "labs.order",
     "/internal/doctor/schedule-requests": null,
+    "/internal/doctor/profile": null,
     "/internal/technician/lab-queue": "labs.viewPending",
     "/internal/diseases": "clinical.manageDiseases",
     "/internal/examinations": "clinical.viewAssigned",
