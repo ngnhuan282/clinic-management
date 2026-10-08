@@ -8,6 +8,7 @@ import { getAvailableSlots, getDepartments, getDoctorsByDepartment } from "../..
 import StatusBadge from "../../components/common/StatusBadge";
 import { getApiErrorMessage } from "../../utils/errorHandler";
 import { formatDate } from "../../utils/formatDate";
+import useNotifications from "../../hooks/useNotifications";
 
 const STATUS_OPTIONS = [
     { value: "Pending", label: "Chờ xác nhận" },
@@ -101,6 +102,7 @@ function emptyDialogForm() {
 }
 
 export default function AppointmentsPage() {
+    const { revision, availabilityRevision } = useNotifications();
     const today = toDateValue(new Date());
     const [query, setQuery] = useState({ pageNumber: 1, pageSize: 10, search: "", status: "", dateFrom: today, dateTo: "" });
     const [search, setSearch] = useState("");
@@ -123,6 +125,7 @@ export default function AppointmentsPage() {
     const [departments, setDepartments] = useState([]);
     const [doctors, setDoctors] = useState([]);
     const [slots, setSlots] = useState([]);
+    const [slotsLoading, setSlotsLoading] = useState(false);
     const [dialogForm, setDialogForm] = useState(emptyDialogForm);
     const [toast, setToast] = useState({ open: false, status: "success", message: "" });
     const [patientMatches, setPatientMatches] = useState([]);
@@ -174,6 +177,7 @@ export default function AppointmentsPage() {
                 dateFrom: query.dateFrom || undefined,
                 dateTo: query.dateTo || undefined,
             }, signal);
+            if (signal?.aborted) return;
             setItems(data.items || []);
             setTotalItems(data.totalItems || 0);
             setSelectedIds(current => current.filter(id =>
@@ -182,7 +186,7 @@ export default function AppointmentsPage() {
         } catch (err) {
             if (err.name !== "CanceledError") setError(getApiErrorMessage(err));
         } finally {
-            setLoading(false);
+            if (!signal?.aborted) setLoading(false);
         }
     }, [query]);
 
@@ -224,11 +228,11 @@ export default function AppointmentsPage() {
         const controller = new AbortController();
         Promise.resolve().then(() => loadAppointments(controller.signal));
         return () => controller.abort();
-    }, [loadAppointments]);
+    }, [loadAppointments, revision]);
 
     useEffect(() => {
         Promise.resolve().then(loadSummary);
-    }, [loadSummary]);
+    }, [loadSummary, revision]);
 
     useEffect(() => {
         getDepartments()
@@ -250,11 +254,23 @@ export default function AppointmentsPage() {
         if (!dialogForm.doctorId || !dialogForm.appointmentDate) {
             return;
         }
-
-        getAvailableSlots(dialogForm.doctorId, dialogForm.appointmentDate)
-            .then(result => setSlots(result.filter(slot => slot.isAvailable)))
-            .catch(() => setSlots([]));
-    }, [dialogForm.doctorId, dialogForm.appointmentDate]);
+        let active = true;
+        Promise.resolve().then(() => {
+            if (!active) return;
+            setSlotsLoading(true);
+            return getAvailableSlots(dialogForm.doctorId, dialogForm.appointmentDate)
+                .then(result => {
+                    if (!active) return;
+                    const available = result.filter(slot => slot.isAvailable);
+                    setSlots(available);
+                    setDialogForm(current => current.startTime && !available.some(slot => slot.startTime === current.startTime)
+                        ? { ...current, startTime: "" } : current);
+                })
+                .catch(() => { if (active) { setSlots([]); setDialogForm(current => ({ ...current, startTime: "" })); } })
+                .finally(() => { if (active) setSlotsLoading(false); });
+        });
+        return () => { active = false; };
+    }, [dialogForm.doctorId, dialogForm.appointmentDate, availabilityRevision]);
 
     function openConfirm(appointment) {
         setAction({ type: "confirm", appointment });
@@ -397,7 +413,7 @@ export default function AppointmentsPage() {
                 : "Đổi lịch hẹn";
 
     const isScheduleDialog = action?.type === "reschedule" || action?.type === "create";
-    const scheduleDisabled = !dialogForm.doctorId || !dialogForm.appointmentDate || !dialogForm.startTime;
+    const scheduleDisabled = slotsLoading || !dialogForm.doctorId || !dialogForm.appointmentDate || !dialogForm.startTime;
     const createDisabled = scheduleDisabled
         || !dialogForm.patientName.trim()
         || !dialogForm.patientPhone.trim()

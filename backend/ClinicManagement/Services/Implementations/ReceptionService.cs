@@ -83,6 +83,7 @@ public class ReceptionService : IReceptionService
         appointment.PatientProfileId = patient.PatientId;
         await _appointmentRepository.SaveChangesAsync();
         await transaction.CommitAsync();
+        await _notifications.PublishAppointmentChangedAsync(appointment, "PatientMatched");
         _logger.LogInformation("Patient profile matched for appointment {AppointmentId}", appointmentId);
         return MapAppointment(appointment);
     }
@@ -108,6 +109,7 @@ public class ReceptionService : IReceptionService
         };
         await _receptionRepository.AddBookAsync(book);
         await SaveBookAsync();
+        await _notifications.PublishPatientBookChangedAsync(book);
         _logger.LogInformation("Existing patient book registered for patient {PatientId}", patientId);
         return MapBook(book);
     }
@@ -134,6 +136,7 @@ public class ReceptionService : IReceptionService
         await _receptionRepository.SaveChangesAsync();
         _logger.LogInformation("Book invoice {InvoiceId} created for patient {PatientId}",
             invoice.BookInvoiceId, patientId);
+        await _notifications.PublishBookInvoiceChangedAsync(invoice);
         return MapInvoice(invoice);
     }
 
@@ -162,6 +165,7 @@ public class ReceptionService : IReceptionService
         await _receptionRepository.SaveChangesAsync();
         await transaction.CommitAsync();
         await _notifications.PublishAsync(rows);
+        await _notifications.PublishBookInvoiceChangedAsync(invoice);
         _logger.LogInformation("Book invoice {InvoiceId} marked paid", invoiceId);
         return MapInvoice(invoice);
     }
@@ -180,6 +184,7 @@ public class ReceptionService : IReceptionService
         var book = invoice.PatientBook ?? new PatientBook
         {
             PatientId = invoice.PatientId,
+            PreviousBookId = previousBook?.PatientBookId,
             BookInvoiceId = invoiceId,
             CreatedAt = now
         };
@@ -190,6 +195,8 @@ public class ReceptionService : IReceptionService
         if (invoice.PatientBook == null) await _receptionRepository.AddBookAsync(book);
         await SaveBookAsync();
         await transaction.CommitAsync();
+        if (previousBook != null) await _notifications.PublishPatientBookChangedAsync(previousBook);
+        await _notifications.PublishPatientBookChangedAsync(book);
         _logger.LogInformation("Book {PatientBookId} issued after invoice {InvoiceId} was paid",
             book.PatientBookId, invoiceId);
         return MapBook(book);
@@ -223,6 +230,7 @@ public class ReceptionService : IReceptionService
         await _appointmentRepository.SaveChangesAsync();
         await transaction.CommitAsync();
         await _notifications.PublishAsync(rows);
+        await _notifications.PublishAppointmentChangedAsync(appointment, "CheckedIn");
         _logger.LogInformation("Appointment {AppointmentId} checked in with book {PatientBookId}",
             appointmentId, book.PatientBookId);
         return MapAppointment(appointment);
