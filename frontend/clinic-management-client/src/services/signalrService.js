@@ -2,7 +2,7 @@ import { HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
 import axiosClient, { getAccessToken } from "../api/axiosClient";
 import { readSession } from "../utils/authStorage";
 
-export function connectNotifications(onNotification, onConnected = () => {}) {
+export function connectNotifications(onNotification, onConnected = () => {}, onClinicEvent = () => {}) {
     const apiUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5212/api";
     const hubUrl = import.meta.env.VITE_SIGNALR_HUB_URL || apiUrl.replace(/\/api\/?$/, "") + "/hubs/notification";
     const connection = new HubConnectionBuilder()
@@ -21,6 +21,10 @@ export function connectNotifications(onNotification, onConnected = () => {}) {
         catch { retry(); }
     }
     connection.on("NotificationReceived", notification => { if (!disposed) onNotification(notification); });
+    const clinicEvents = ["AppointmentChanged", "CheckInChanged", "BookInvoiceChanged", "PatientBookChanged", "SlotAvailabilityChanged"];
+    for (const eventName of clinicEvents) {
+        connection.on(eventName, payload => { if (!disposed) onClinicEvent(eventName, payload); });
+    }
     connection.onreconnected(() => { if (!disposed) onConnected(); });
     connection.onclose(async () => {
         if (disposed || !readSession()) return;
@@ -33,6 +37,7 @@ export function connectNotifications(onNotification, onConnected = () => {}) {
         disposed = true;
         clearTimeout(retryTimer);
         connection.off("NotificationReceived");
+        for (const eventName of clinicEvents) connection.off(eventName);
         void connection.stop().catch(() => {});
     };
 }

@@ -69,7 +69,7 @@ try
     start.Environment["ASPNETCORE_ENVIRONMENT"] = "Development";
     start.Environment["ConnectionStrings__DefaultConnection"] = connection;
     start.Environment["Jwt__Key"] = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
-    if (args.Contains("--ui") || args.Contains("--a5-ui")) start.Environment["Cors__FrontendUrl"] = "http://127.0.0.1:5190";
+    if (args.Contains("--ui") || args.Contains("--a5-ui") || args.Contains("--clinic-realtime-ui")) start.Environment["Cors__FrontendUrl"] = "http://127.0.0.1:5190";
     server = Process.Start(start)!;
     server.OutputDataReceived += (_, e) => { if (e.Data != null) serverLog.Enqueue(e.Data); };
     server.ErrorDataReceived += (_, e) => { if (e.Data != null) serverLog.Enqueue(e.Data); };
@@ -82,6 +82,31 @@ try
         await Task.Delay(200);
     }
     await Send(HttpMethod.Get, "swagger/v1/swagger.json");
+    if (args.Contains("--clinic-realtime") || args.Contains("--clinic-realtime-ui"))
+    {
+        await ClinicRealtimeChecks.RunAsync(client, db, password, Check);
+        Console.WriteLine($"SUCCESS: {checks} clinic realtime checks passed.");
+        if (args.Contains("--clinic-realtime-ui"))
+        {
+            var uiToday = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTime.UtcNow, "Asia/Ho_Chi_Minh").Date;
+            var profile = new Patient { FullName = "Realtime UI patient", Phone = "0900111222", CreatedAt = DateTime.UtcNow };
+            db.Patients.Add(profile);
+            await db.SaveChangesAsync();
+            var uiAppointment = new Appointment { DoctorId = 1, PatientId = await db.Users.Where(x => x.Username == "livepatient").Select(x => x.UserId).SingleAsync(),
+                PatientProfileId = profile.PatientId, PatientName = profile.FullName, PatientPhone = profile.Phone,
+                AppointmentDate = uiToday, StartTime = TimeSpan.FromHours(23), EndTime = TimeSpan.FromHours(23.5),
+                Status = "Pending", Reason = "Realtime UI verification", CreatedAt = DateTime.UtcNow };
+            db.Appointments.Add(uiAppointment);
+            await db.SaveChangesAsync();
+            Console.WriteLine("AUTH_UI_SESSION:" + System.Text.Json.JsonSerializer.Serialize(new { baseUrl = client.BaseAddress, password,
+                appointmentId = uiAppointment.AppointmentId, patientId = profile.PatientId, patientName = profile.FullName,
+                date = uiToday.AddDays(5).ToString("yyyy-MM-dd"), otherDate = uiToday.AddDays(6).ToString("yyyy-MM-dd"),
+                doctorName = await db.Doctors.Where(x => x.DoctorId == 1).Select(x => x.FullName).SingleAsync(),
+                departmentName = await db.Departments.Where(x => x.DepartmentId == 1).Select(x => x.Name).SingleAsync() }));
+            await Console.In.ReadLineAsync();
+        }
+        return;
+    }
     if (args.Contains("--a5") || args.Contains("--a5-ui"))
     {
         await A5Checks.RunAsync(client, db, password, Check);

@@ -119,6 +119,22 @@ namespace ClinicManagement.Services.Implementations
                 }
             }
 
+            // A Book source can reference the reception invoice that unlocks issuing/reissuing the book.
+            var bookSources = dto.Items.Where(x => x.SourceType == "Book").Select(x => x.SourceId).Distinct().ToArray();
+            var bookInvoices = dto.BillingStage == "Book"
+                ? await _context.BookInvoices.Where(x => bookSources.Contains(x.BookInvoiceId)).ToListAsync()
+                : new List<BookInvoice>();
+            foreach (var bookInvoice in bookInvoices)
+            {
+                if (bookInvoice.PatientId != dto.PatientId || bookInvoice.Status != "Unpaid")
+                    throw new InvalidOperationException("Hóa đơn sổ không thuộc bệnh nhân hoặc đã được thanh toán.");
+                var sourceItems = dto.Items.Where(x => x.SourceType == "Book" && x.SourceId == bookInvoice.BookInvoiceId).ToList();
+                if (sourceItems.Count != 1 || sourceItems[0].Quantity != 1 || sourceItems[0].UnitPrice != bookInvoice.Amount)
+                    throw new InvalidOperationException("Số tiền thanh toán phải khớp phí trên hóa đơn sổ.");
+                bookInvoice.Status = "Paid";
+                bookInvoice.PaidAt = DateTime.UtcNow;
+            }
+
             var invoice = new Invoice
             {
                 AppointmentId = dto.AppointmentId,
@@ -155,6 +171,9 @@ namespace ClinicManagement.Services.Implementations
                 await _context.SaveChangesAsync();
                 await transaction!.CommitAsync();
                 await _notifications.PublishAsync(rows);
+                foreach (var bookInvoice in bookInvoices)
+                    await _notifications.PublishBookInvoiceChangedAsync(bookInvoice);
+                if (bookInvoices.Count == 0) await _notifications.PublishBookPaymentAsync(invoice);
             }
 
             return (await GetInvoiceByIdAsync(invoice.Id))!;
