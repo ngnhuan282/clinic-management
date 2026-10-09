@@ -399,14 +399,14 @@ try
     Check(staleRefresh!["code"]!.GetValue<int>() == 1002,
         "Reset seed rejects old refresh tokens with the normal 401 response");
     client.DefaultRequestHeaders.Authorization = null;
-    Check(await db.Roles.CountAsync() == 20 && await db.Users.CountAsync() == 20
-        && await db.RefreshTokens.CountAsync() == 20, "Reset seed creates accounts, roles and revoked tokens");
+    Check(await db.Roles.CountAsync() == 20 && await db.Users.CountAsync() == 21
+        && await db.RefreshTokens.CountAsync() == 21, "Reset seed creates accounts, roles and revoked tokens");
     Check(await db.Departments.CountAsync() == 20 && await db.Specializations.CountAsync() == 20
         && await db.Rooms.CountAsync() == 20 && await db.Doctors.CountAsync() == 20
         && await db.DoctorSchedules.CountAsync() == 20 && await db.TimeSlots.CountAsync() == 20
         && await db.Appointments.CountAsync() == 24, "Reset seed creates catalog and booking data");
     Check(await db.MedicineCategories.CountAsync() == 20 && await db.Suppliers.CountAsync() == 20
-        && await db.Medicines.CountAsync() == 20 && await db.Inventory.CountAsync() == 20,
+        && await db.Medicines.CountAsync() == 20 && await db.Inventory.CountAsync() == 21,
         "Reset seed creates the full pharmacy catalog and inventory");
     Check(await db.LabTestTypes.CountAsync() == 20 && await db.LabTests.CountAsync() == 25
         && await db.LabTestResults.CountAsync() == 20 && await db.LabTests.CountAsync(x => x.Status == "Pending") == 5,

@@ -17,4 +17,7 @@ public class PrescriptionDetail
     public int Quantity { get; set; }
 
     public string Instructions { get; set; } = string.Empty;
+
+    public ICollection<DispenseDetail> DispenseDetails { get; set; }
+        = new List<DispenseDetail>();
 }

@@ -269,9 +269,33 @@ public sealed class ErrorCode
     public static readonly ErrorCode INVENTORY_LOT_EXISTED =
         new(
             6011,
-            "Inventory batch already exists for this medicine and expiry date",
+            "Inventory batch already exists for this medicine",
             HttpStatusCode.Conflict
         );
+
+    public static readonly ErrorCode PURCHASE_ORDER_NOT_FOUND =
+        new(6012, "Purchase order not found", HttpStatusCode.NotFound);
+
+    public static readonly ErrorCode PURCHASE_ORDER_INVALID_STATUS =
+        new(6013, "Only draft purchase orders can be changed", HttpStatusCode.Conflict);
+
+    public static readonly ErrorCode PURCHASE_ORDER_INVALID_DETAILS =
+        new(6014, "Purchase order details are invalid", HttpStatusCode.BadRequest);
+
+    public static readonly ErrorCode PURCHASE_ORDER_DUPLICATE_BATCH =
+        new(6015, "A medicine batch can appear only once in a purchase order", HttpStatusCode.Conflict);
+
+    public static readonly ErrorCode INVENTORY_BATCH_EXPIRY_CONFLICT =
+        new(6016, "The medicine batch already exists with a different expiry date", HttpStatusCode.Conflict);
+
+    public static readonly ErrorCode PURCHASE_ORDER_EXPIRED_BATCH =
+        new(6017, "Expired medicine batches cannot be received", HttpStatusCode.BadRequest);
+
+    public static readonly ErrorCode PURCHASE_ORDER_SUPPLIER_MISMATCH =
+        new(6018, "Purchase order medicines must belong to the selected supplier", HttpStatusCode.BadRequest);
+
+    public static readonly ErrorCode INVENTORY_HAS_DISPENSE_HISTORY =
+        new(6019, "Inventory batch has dispensing history and cannot be removed or reassigned", HttpStatusCode.Conflict);
 
     // =========================
     // Examination / Medical Record
@@ -359,4 +383,13 @@ public sealed class ErrorCode
 
     public static readonly ErrorCode PRESCRIPTION_INVALID_STATUS =
         new(7403, "Invalid prescription status", HttpStatusCode.BadRequest);
+
+    public static readonly ErrorCode PRESCRIPTION_PAYMENT_REQUIRED =
+        new(7404, "A paid medicine invoice is required before dispensing", HttpStatusCode.Conflict);
+
+    public static readonly ErrorCode PRESCRIPTION_INSUFFICIENT_STOCK =
+        new(7405, "Available non-expired stock is insufficient", HttpStatusCode.Conflict);
+
+    public static readonly ErrorCode PRESCRIPTION_DISPENSE_CONFLICT =
+        new(7406, "The prescription dispensing state changed; please reload and try again", HttpStatusCode.Conflict);
 }

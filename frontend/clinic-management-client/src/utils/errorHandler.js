@@ -29,7 +29,15 @@ const API_ERROR_MESSAGES = {
     6008: "Tên nhà cung cấp đã tồn tại.",
     6009: "Nhà cung cấp đã liên kết thuốc nên không thể xóa.",
     6010: "Không tìm thấy lô tồn kho.",
-    6011: "Lô tồn kho đã tồn tại cho thuốc và hạn dùng này.",
+    6011: "Số lô này đã tồn tại cho thuốc.",
+    6012: "Không tìm thấy phiếu nhập kho.",
+    6013: "Chỉ có thể thay đổi phiếu nhập đang ở trạng thái bản nháp.",
+    6014: "Chi tiết phiếu nhập kho không hợp lệ.",
+    6015: "Một thuốc và số lô không được lặp lại trong cùng phiếu.",
+    6016: "Số lô đã tồn tại nhưng có hạn dùng khác. Vui lòng đối chiếu lại.",
+    6017: "Không thể nhập lô thuốc đã hết hạn.",
+    6018: "Thuốc trong phiếu phải thuộc nhà cung cấp đã chọn.",
+    6019: "Lô thuốc đã có lịch sử cấp phát nên không thể xóa hoặc đổi thông tin nhận diện.",
     7001: "Không tìm thấy bệnh.",
     7002: "Mã bệnh đã tồn tại.",
     7003: "Tên bệnh đã tồn tại.",
@@ -44,6 +52,9 @@ const API_ERROR_MESSAGES = {
     7401: "Không tìm thấy đơn thuốc.",
     7402: "Hồ sơ bệnh án này đã có đơn thuốc.",
     7403: "Trạng thái đơn thuốc không hợp lệ.",
+    7404: "Đơn thuốc cần có hóa đơn thuốc hoặc hóa đơn cuối đã thanh toán trước khi cấp.",
+    7405: "Tồn kho còn hạn không đủ để cấp toàn bộ đơn thuốc.",
+    7406: "Trạng thái cấp thuốc vừa thay đổi. Vui lòng tải lại và thử lại.",
     7301: "Bác sĩ hoặc phòng đã có lịch trong khoảng thời gian này.",
     7302: "Không tìm thấy yêu cầu đăng ký lịch.",
     7303: "Yêu cầu này không còn ở trạng thái chờ duyệt.",
@@ -107,6 +118,14 @@ export function getApiErrorMessage(
     }
 
     const data = response.data;
+
+    if (
+        data?.code === 6016 &&
+        typeof data?.message === "string" &&
+        data.message.startsWith("Số lô")
+    ) {
+        return data.message;
+    }
 
     if (data?.code && API_ERROR_MESSAGES[data.code]) {
         return API_ERROR_MESSAGES[data.code];

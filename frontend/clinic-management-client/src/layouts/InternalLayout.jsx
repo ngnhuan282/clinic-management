@@ -15,7 +15,6 @@ import AddCircleOutlineOutlinedIcon from "@mui/icons-material/AddCircleOutlineOu
 import BadgeOutlinedIcon from "@mui/icons-material/BadgeOutlined";
 import BarChartOutlinedIcon from "@mui/icons-material/BarChartOutlined";
 import BusinessOutlinedIcon from "@mui/icons-material/BusinessOutlined";
-import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
 import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
 import FolderSharedOutlinedIcon from "@mui/icons-material/FolderSharedOutlined";
@@ -23,6 +22,7 @@ import HelpOutlineOutlinedIcon from "@mui/icons-material/HelpOutlineOutlined";
 import LocalHospitalOutlinedIcon from "@mui/icons-material/LocalHospitalOutlined";
 import LocalPharmacyOutlinedIcon from "@mui/icons-material/LocalPharmacyOutlined";
 import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
+import MedicalServicesOutlinedIcon from "@mui/icons-material/MedicalServicesOutlined";
 import MenuOutlinedIcon from "@mui/icons-material/MenuOutlined";
 import NotificationBell from "../components/common/NotificationBell";
 import PaymentsOutlinedIcon from "@mui/icons-material/PaymentsOutlined";
@@ -50,7 +50,7 @@ const TOPBAR_HEIGHT = 76;
 
 const MENU_ICONS = {
     "/internal/dashboard": DashboardOutlinedIcon,
-    "/internal/examinations": CalendarMonthOutlinedIcon,
+    "/internal/examinations": MedicalServicesOutlinedIcon,
     "/internal/diseases": FactCheckOutlinedIcon,
     "/internal/users": BadgeOutlinedIcon,
     "/internal/roles-permissions": SecurityOutlinedIcon,
@@ -59,6 +59,7 @@ const MENU_ICONS = {
     "/internal/specializations": PeopleAltOutlinedIcon,
     "/internal/rooms": FolderSharedOutlinedIcon,
     "/internal/medicines": LocalPharmacyOutlinedIcon,
+    "/internal/pharmacy/dispensing": LocalPharmacyOutlinedIcon,
     "/internal/lab-test-types": ScienceOutlinedIcon,
     "/internal/doctor/lab-orders": ScienceOutlinedIcon,
     "/internal/technician/lab-queue": ScienceOutlinedIcon,
@@ -87,6 +88,10 @@ const ROLE_BRANDS = {
     LabTechnician: {
         title: "MediFlow Lab",
         subtitle: "Xét nghiệm",
+    },
+    Pharmacist: {
+        title: "MediFlow Pharmacy",
+        subtitle: "Quầy cấp thuốc",
     },
 };
 
@@ -126,13 +131,17 @@ function InternalLayout() {
         }
     }
 
-    const primaryActionPath = role === "LabTechnician"
+    const primaryActionPath = role === "Pharmacist"
+        ? "/internal/pharmacy/dispensing"
+        : role === "LabTechnician"
         ? "/internal/technician/lab-queue"
         : role === "Doctor" || role === "DepartmentHead" ? "/internal/examinations" : "/internal/dashboard";
-    const primaryActionLabel = role === "LabTechnician"
+    const primaryActionLabel = role === "Pharmacist"
+        ? "Mở quầy cấp thuốc"
+        : role === "LabTechnician"
         ? "Xem hàng chờ xét nghiệm"
         : role === "Doctor" || role === "DepartmentHead" ? "Gọi lượt kế tiếp" : "Tiếp đón & Đặt hẹn mới";
-    const showPrimaryAction = role === "Doctor" || role === "DepartmentHead" || role === "LabTechnician" ||
+    const showPrimaryAction = role === "Doctor" || role === "DepartmentHead" || role === "LabTechnician" || role === "Pharmacist" ||
         ((role === "Admin" || role === "Receptionist") && user?.permissions?.includes("appointments.view"));
 
     const navigation = (
@@ -141,9 +150,9 @@ function InternalLayout() {
                 component={RouterLink}
                 to="/internal/dashboard"
                 direction="row"
-                alignItems="center"
                 spacing={1.5}
                 sx={{
+                    alignItems: "center",
                     height: TOPBAR_HEIGHT,
                     px: 2,
                     pt: 1,
@@ -242,7 +251,7 @@ function InternalLayout() {
                         <Button
                             key={page.path}
                             component={RouterLink}
-                            to={page.path}
+                            to={page.to || page.path}
                             startIcon={<Icon />}
                             fullWidth
                             onClick={() => setMobileOpen(false)}
@@ -274,9 +283,11 @@ function InternalLayout() {
                         >
                             <Stack
                                 direction="row"
-                                alignItems="center"
-                                justifyContent="space-between"
-                                sx={{ width: "100%" }}
+                                sx={{
+                                    width: "100%",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                }}
                             >
                                 <Box
                                     component="span"
@@ -407,9 +418,8 @@ function InternalLayout() {
                 >
                     <Stack
                         direction="row"
-                        alignItems="center"
                         gap={2}
-                        sx={{ width: "100%" }}
+                        sx={{ width: "100%", alignItems: "center" }}
                     >
                         <IconButton
                             aria-label="Mở menu"
@@ -424,9 +434,9 @@ function InternalLayout() {
 
                         <Stack
                             direction="row"
-                            alignItems="center"
                             spacing={1.5}
                             sx={{
+                                alignItems: "center",
                                 minWidth: 0,
                                 flexShrink: 0,
                             }}
@@ -463,9 +473,9 @@ function InternalLayout() {
 
                         <Stack
                             direction="row"
-                            alignItems="center"
                             spacing={1.5}
                             sx={{
+                                alignItems: "center",
                                 ml: "auto",
                                 flexShrink: 0,
                             }}
@@ -490,9 +500,8 @@ function InternalLayout() {
 
                             <Stack
                                 direction="row"
-                                alignItems="center"
                                 spacing={1}
-                                sx={{ minWidth: 0 }}
+                                sx={{ minWidth: 0, alignItems: "center" }}
                             >
                                 <Avatar
                                     sx={{

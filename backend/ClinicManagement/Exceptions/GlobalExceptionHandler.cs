@@ -19,14 +19,17 @@ public sealed class GlobalExceptionHandler: IExceptionHandler
 		CancellationToken cancellationToken)
 	{
 		ErrorCode errorCode;
+		string message;
 
 		if (exception is AppException appException)
 		{
 			errorCode = appException.ErrorCode;
+			message = appException.Message;
 		}
 		else
 		{
 			errorCode = ErrorCode.UNCATEGORIZED_EXCEPTION;
+			message = errorCode.Message;
 
 			_logger.LogError(
 				exception,
@@ -37,7 +40,7 @@ public sealed class GlobalExceptionHandler: IExceptionHandler
 
 		var response = ApiResponse<object>.Failure(
 			errorCode.Code,
-			errorCode.Message
+			message
 		);
 
 		httpContext.Response.StatusCode =

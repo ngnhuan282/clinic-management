@@ -1,14 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
-    createInventory,
-    deleteInventory,
     getInventory,
     getInventorySummary,
-    updateInventory,
 } from "../api/inventoryApi";
 import { getMedicineCategoryOptions } from "../api/medicineCategoryApi";
-import { getMedicineOptions } from "../api/medicineApi";
 import { getSupplierOptions } from "../api/supplierApi";
 import getApiErrorMessage from "../utils/errorHandler";
 
@@ -37,11 +33,9 @@ function useInventory() {
     const [filters, setFilters] = useState(DEFAULT_FILTERS);
     const [pagedData, setPagedData] = useState(null);
     const [summary, setSummary] = useState(null);
-    const [medicines, setMedicines] = useState([]);
     const [categories, setCategories] = useState([]);
     const [suppliers, setSuppliers] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
 
     const requestParams = useMemo(
@@ -51,16 +45,13 @@ function useInventory() {
 
     const loadReferenceData = useCallback(async () => {
         const [
-            medicineResult,
             categoryResult,
             supplierResult,
         ] = await Promise.all([
-            getMedicineOptions(),
             getMedicineCategoryOptions(),
             getSupplierOptions(),
         ]);
 
-        setMedicines(medicineResult || []);
         setCategories(categoryResult || []);
         setSuppliers(supplierResult || []);
     }, []);
@@ -122,69 +113,18 @@ function useInventory() {
         setFilters(DEFAULT_FILTERS);
     }, []);
 
-    const saveInventory = useCallback(
-        async (payload, inventoryId = null) => {
-            setSaving(true);
-
-            try {
-                if (inventoryId) {
-                    await updateInventory(inventoryId, payload);
-                } else {
-                    await createInventory(payload);
-                }
-
-                await loadInventory();
-            } catch (err) {
-                throw new Error(
-                    getApiErrorMessage(
-                        err,
-                        "Không lưu được lô tồn kho."
-                    ), { cause: err }
-                );
-            } finally {
-                setSaving(false);
-            }
-        },
-        [loadInventory]
-    );
-
-    const removeInventory = useCallback(
-        async (inventoryId) => {
-            setSaving(true);
-
-            try {
-                await deleteInventory(inventoryId);
-                await loadInventory();
-            } catch (err) {
-                throw new Error(
-                    getApiErrorMessage(
-                        err,
-                        "Không xóa được lô tồn kho."
-                    ), { cause: err }
-                );
-            } finally {
-                setSaving(false);
-            }
-        },
-        [loadInventory]
-    );
-
     return {
         filters,
         inventoryItems: pagedData?.items || [],
         pagination: pagedData,
         summary,
-        medicines,
         categories,
         suppliers,
         loading,
-        saving,
         error,
         updateFilters,
         resetFilters,
         loadInventory,
-        saveInventory,
-        removeInventory,
     };
 }
 
