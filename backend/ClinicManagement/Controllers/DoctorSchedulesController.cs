@@ -1,5 +1,6 @@
 using ClinicManagement.Commons;
 using ClinicManagement.DTOs.Requests;
+using ClinicManagement.DTOs.Responses;
 using ClinicManagement.Data.Entities;
 using ClinicManagement.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -9,16 +10,27 @@ namespace ClinicManagement.Controllers;
 
 [ApiController]
 [Route("api/doctor-schedules")]
-public class DoctorSchedulesController(IDoctorScheduleService service, IScheduleReviewService reviewService) : ControllerBase
+public class DoctorSchedulesController(IDoctorScheduleService service, IScheduleReviewService reviewService,
+    IDepartmentScheduleService departmentService) : ControllerBase
 {
+    [HttpGet("department")]
+    [Authorize(Roles = RoleConstants.DepartmentHead)]
+    public async Task<ActionResult<ApiResponse<List<DepartmentScheduleResponse>>>> Department([FromQuery] DepartmentScheduleQuery query) =>
+        Ok(ApiResponse<List<DepartmentScheduleResponse>>.Success(await departmentService.ListAsync(query)));
+
+    [HttpGet("department/options")]
+    [Authorize(Roles = RoleConstants.DepartmentHead)]
+    public async Task<ActionResult<ApiResponse<DepartmentScheduleOptionsResponse>>> DepartmentOptions() =>
+        Ok(ApiResponse<DepartmentScheduleOptionsResponse>.Success(await departmentService.GetOptionsAsync()));
+
     private readonly IScheduleReviewService _reviewService = reviewService;
     [HttpPost("request")]
-    [Authorize(Roles = RoleConstants.Doctor)]
+    [Authorize(Roles = RoleConstants.Doctor + "," + RoleConstants.DepartmentHead)]
     public async Task<IActionResult> SubmitRequest(CreateDoctorScheduleRequest request) =>
         Ok(ApiResponse<object>.Success(await service.CreateRequestAsync(request), "Schedule request submitted"));
 
     [HttpGet("my-requests")]
-    [Authorize(Roles = RoleConstants.Doctor)]
+    [Authorize(Roles = RoleConstants.Doctor + "," + RoleConstants.DepartmentHead)]
     public async Task<IActionResult> MyRequests() =>
         Ok(ApiResponse<object>.Success(await service.GetMyRequestsAsync()));
 

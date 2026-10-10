@@ -21,8 +21,7 @@ internal static class ScheduleReviewChecks
         await using var db = new ApplicationDbContext(options);
         try
         {
-            var migrations = db.Database.GetMigrations().ToArray();
-            await db.GetService<IMigrator>().MigrateAsync(migrations[^2]);
+            await db.GetService<IMigrator>().MigrateAsync("20260927030547_GrantDoctorPharmacyViewCatalog");
             await db.Database.ExecuteSqlRawAsync(@"
 SET IDENTITY_INSERT Roles ON;
 INSERT INTO Roles (RoleId, RoleName, Description, IsSystem)
@@ -105,7 +104,17 @@ SET IDENTITY_INSERT Roles OFF;
             new { rejectReason = "Không tự duyệt" }, status: 403, token: headToken);
         var ownDetail = (await Send(HttpMethod.Get, $"api/schedule-requests/{own.RequestId}", token: headToken))!["result"]!;
         check(!ownDetail["canReview"]!.GetValue<bool>(), "Head sees own request but cannot review it");
-        await Send(HttpMethod.Post, $"api/schedule-requests/{sameDepartment.RequestId}/approve", status: 403, token: adminToken);
+        // Admin can review any request when permitted. Test an explicit permission revocation.
+        await db.RolePermissions.Where(x => x.RoleId == 1 && x.PermissionCode == "schedules.review").ExecuteDeleteAsync();
+        try
+        {
+            await Send(HttpMethod.Post, $"api/schedule-requests/{sameDepartment.RequestId}/approve", status: 403, token: adminToken);
+        }
+        finally
+        {
+            db.RolePermissions.Add(new RolePermission { RoleId = 1, PermissionCode = "schedules.review" });
+            await db.SaveChangesAsync();
+        }
         var pendingSlots = (await Send(HttpMethod.Get,
             $"api/appointments/available-slots?doctorId=1&date={date:yyyy-MM-dd}"))!["result"]!.AsArray();
         check(pendingSlots.Count == 0, "Pending requests do not open booking slots");

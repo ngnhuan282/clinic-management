@@ -46,6 +46,14 @@ try
     await db.Database.MigrateAsync();
     Check(!(await db.Database.GetPendingMigrationsAsync()).Any(), "All migrations apply to an empty SQL Server database");
     Check(await db.Departments.CountAsync() == 3 && await db.Rooms.CountAsync() == 3 && await db.Specializations.CountAsync() == 3, "Catalog master data seeded");
+    if (args.Contains("--migrations-only"))
+    {
+        await MigrationChecks.RunAsync(db, Check);
+        Console.WriteLine($"SUCCESS: {checks} migration checks passed.");
+        return;
+    }
+    if (args.Contains("--a5") || args.Contains("--a5-ui"))
+        await A5Checks.VerifyNotificationMigrationAsync(db, Check);
     await db.Database.ExecuteSqlRawAsync(await File.ReadAllTextAsync(Path.Combine(root, "backend/ClinicManagement/Data/Seed/pharmacy-demo-data.sql")));
     Check(await db.Medicines.AnyAsync() && await db.Inventory.AnyAsync(), "Pharmacy demo seed works");
     foreach (var (name, role) in new[] { ("testadmin", 1), ("testdoctor", 2), ("testreceptionist", 3), ("testlab", 5) })
@@ -61,7 +69,7 @@ try
     start.Environment["ASPNETCORE_ENVIRONMENT"] = "Development";
     start.Environment["ConnectionStrings__DefaultConnection"] = connection;
     start.Environment["Jwt__Key"] = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
-    if (args.Contains("--ui")) start.Environment["Cors__FrontendUrl"] = "http://127.0.0.1:5190";
+    if (args.Contains("--ui") || args.Contains("--a5-ui") || args.Contains("--clinic-realtime-ui")) start.Environment["Cors__FrontendUrl"] = "http://127.0.0.1:5190";
     server = Process.Start(start)!;
     server.OutputDataReceived += (_, e) => { if (e.Data != null) serverLog.Enqueue(e.Data); };
     server.ErrorDataReceived += (_, e) => { if (e.Data != null) serverLog.Enqueue(e.Data); };
@@ -74,6 +82,52 @@ try
         await Task.Delay(200);
     }
     await Send(HttpMethod.Get, "swagger/v1/swagger.json");
+    if (args.Contains("--clinic-realtime") || args.Contains("--clinic-realtime-ui"))
+    {
+        await ClinicRealtimeChecks.RunAsync(client, db, password, Check);
+        Console.WriteLine($"SUCCESS: {checks} clinic realtime checks passed.");
+        if (args.Contains("--clinic-realtime-ui"))
+        {
+            var uiToday = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTime.UtcNow, "Asia/Ho_Chi_Minh").Date;
+            var profile = new Patient { FullName = "Realtime UI patient", Phone = "0900111222", CreatedAt = DateTime.UtcNow };
+            db.Patients.Add(profile);
+            await db.SaveChangesAsync();
+            var uiAppointment = new Appointment { DoctorId = 1, PatientId = await db.Users.Where(x => x.Username == "livepatient").Select(x => x.UserId).SingleAsync(),
+                PatientProfileId = profile.PatientId, PatientName = profile.FullName, PatientPhone = profile.Phone,
+                AppointmentDate = uiToday, StartTime = TimeSpan.FromHours(23), EndTime = TimeSpan.FromHours(23.5),
+                Status = "Pending", Reason = "Realtime UI verification", CreatedAt = DateTime.UtcNow };
+            db.Appointments.Add(uiAppointment);
+            await db.SaveChangesAsync();
+            Console.WriteLine("AUTH_UI_SESSION:" + System.Text.Json.JsonSerializer.Serialize(new { baseUrl = client.BaseAddress, password,
+                appointmentId = uiAppointment.AppointmentId, patientId = profile.PatientId, patientName = profile.FullName,
+                date = uiToday.AddDays(5).ToString("yyyy-MM-dd"), otherDate = uiToday.AddDays(6).ToString("yyyy-MM-dd"),
+                doctorName = await db.Doctors.Where(x => x.DoctorId == 1).Select(x => x.FullName).SingleAsync(),
+                departmentName = await db.Departments.Where(x => x.DepartmentId == 1).Select(x => x.Name).SingleAsync() }));
+            await Console.In.ReadLineAsync();
+        }
+        return;
+    }
+    if (args.Contains("--a5") || args.Contains("--a5-ui"))
+    {
+        await A5Checks.RunAsync(client, db, password, Check);
+        Console.WriteLine($"SUCCESS: {checks} A5 checks passed.");
+        if (args.Contains("--a5-ui"))
+        {
+            Console.WriteLine("AUTH_UI_SESSION:" + System.Text.Json.JsonSerializer.Serialize(new
+            {
+                baseUrl = client.BaseAddress, password, date = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(70)),
+                doctorName = await db.Doctors.Where(x => x.DoctorId == 1).Select(x => x.FullName).SingleAsync()
+            }));
+            await Console.In.ReadLineAsync();
+        }
+        return;
+    }
+    if (args.Contains("--a5"))
+    {
+        await A5Checks.RunAsync(client, db, password, Check);
+        Console.WriteLine($"SUCCESS: {checks} A5 checks passed.");
+        return;
+    }
     if (args.Contains("--a4"))
     {
         await ScheduleReviewChecks.VerifyRoleMigrationCollisionAsync(db, Check);
@@ -370,14 +424,14 @@ try
     Check(staleRefresh!["code"]!.GetValue<int>() == 1002,
         "Reset seed rejects old refresh tokens with the normal 401 response");
     client.DefaultRequestHeaders.Authorization = null;
-    Check(await db.Roles.CountAsync() == 20 && await db.Users.CountAsync() == 20
-        && await db.RefreshTokens.CountAsync() == 20, "Reset seed creates accounts, roles and revoked tokens");
+    Check(await db.Roles.CountAsync() == 20 && await db.Users.CountAsync() == 21
+        && await db.RefreshTokens.CountAsync() == 21, "Reset seed creates accounts, roles and revoked tokens");
     Check(await db.Departments.CountAsync() == 20 && await db.Specializations.CountAsync() == 20
         && await db.Rooms.CountAsync() == 20 && await db.Doctors.CountAsync() == 20
         && await db.DoctorSchedules.CountAsync() == 20 && await db.TimeSlots.CountAsync() == 20
         && await db.Appointments.CountAsync() == 24, "Reset seed creates catalog and booking data");
     Check(await db.MedicineCategories.CountAsync() == 20 && await db.Suppliers.CountAsync() == 20
-        && await db.Medicines.CountAsync() == 20 && await db.Inventory.CountAsync() == 20,
+        && await db.Medicines.CountAsync() == 20 && await db.Inventory.CountAsync() == 21,
         "Reset seed creates the full pharmacy catalog and inventory");
     Check(await db.LabTestTypes.CountAsync() == 20 && await db.LabTests.CountAsync() == 25
         && await db.LabTestResults.CountAsync() == 20 && await db.LabTests.CountAsync(x => x.Status == "Pending") == 5,

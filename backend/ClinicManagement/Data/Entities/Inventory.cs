@@ -13,4 +13,7 @@ public class Inventory
     public DateOnly ExpiryDate { get; set; }
 
     public Medicine Medicine { get; set; } = null!;
+
+    public ICollection<DispenseDetail> DispenseDetails { get; set; }
+        = new List<DispenseDetail>();
 }

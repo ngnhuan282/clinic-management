@@ -1,7 +1,6 @@
 import {
     Box,
     Chip,
-    IconButton,
     Paper,
     Stack,
     Table,
@@ -11,11 +10,8 @@ import {
     TableHead,
     TablePagination,
     TableRow,
-    Tooltip,
     Typography,
 } from "@mui/material";
-import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
-import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 
 import EmptyState from "../../common/EmptyState";
 import formatCurrency from "../../../utils/formatCurrency";
@@ -44,8 +40,6 @@ function InventoryTable({
     filters,
     onPageChange,
     onPageSizeChange,
-    onEdit,
-    onDelete,
 }) {
     const totalItems = pagination?.totalItems || 0;
 
@@ -60,7 +54,7 @@ function InventoryTable({
             }}
         >
             <TableContainer>
-                <Table sx={{ minWidth: 1180 }}>
+                <Table sx={{ minWidth: 1040 }}>
                     <TableHead>
                         <TableRow sx={{ backgroundColor: "#F8FAFC" }}>
                             {[
@@ -72,7 +66,6 @@ function InventoryTable({
                                 "Tồn kho",
                                 "Hạn dùng",
                                 "Trạng thái",
-                                "Thao tác",
                             ].map((header) => (
                                 <TableCell
                                     key={header}
@@ -94,8 +87,8 @@ function InventoryTable({
                     <TableBody>
                         {inventoryItems.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={9}>
-                                    <EmptyState message="Chưa có lô tồn kho phù hợp. Thêm lô tồn hoặc điều chỉnh bộ lọc để xem dữ liệu." />
+                                <TableCell colSpan={8}>
+                                    <EmptyState message="Chưa có lô tồn kho phù hợp. Hãy điều chỉnh bộ lọc hoặc tạo phiếu nhập kho." />
                                 </TableCell>
                             </TableRow>
                         ) : (
@@ -287,48 +280,6 @@ function InventoryTable({
                                             />
                                         </TableCell>
 
-                                        <TableCell>
-                                            <Stack
-                                                direction="row"
-                                                spacing={0.5}
-                                            >
-                                                <Tooltip title="Sửa lô tồn">
-                                                    <IconButton
-                                                        size="small"
-                                                        onClick={() =>
-                                                            onEdit(item)
-                                                        }
-                                                        sx={{
-                                                            color:
-                                                                "#2563EB",
-                                                            backgroundColor:
-                                                                "#EFF6FF",
-                                                        }}
-                                                    >
-                                                        <EditOutlinedIcon fontSize="small" />
-                                                    </IconButton>
-                                                </Tooltip>
-
-                                                <Tooltip title="Xóa lô tồn">
-                                                    <IconButton
-                                                        size="small"
-                                                        onClick={() =>
-                                                            onDelete(
-                                                                item
-                                                            )
-                                                        }
-                                                        sx={{
-                                                            color:
-                                                                "#E11D48",
-                                                            backgroundColor:
-                                                                "#FEF2F2",
-                                                        }}
-                                                    >
-                                                        <DeleteOutlineOutlinedIcon fontSize="small" />
-                                                    </IconButton>
-                                                </Tooltip>
-                                            </Stack>
-                                        </TableCell>
                                     </TableRow>
                                 );
                             })

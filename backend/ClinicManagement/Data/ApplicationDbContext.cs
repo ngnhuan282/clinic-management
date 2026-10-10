@@ -23,6 +23,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<TimeSlot> TimeSlots => Set<TimeSlot>();
 
     public DbSet<User> Users => Set<User>();
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     public DbSet<Department> Departments => Set<Department>();
 
@@ -46,6 +47,11 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<Inventory> Inventory => Set<Inventory>();
 
+    public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
+
+    public DbSet<PurchaseOrderDetail> PurchaseOrderDetails =>
+        Set<PurchaseOrderDetail>();
+
     public DbSet<LabTestType> LabTestTypes { get; set; }
 
     public DbSet<LabTest> LabTests { get; set; }
@@ -61,6 +67,9 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<PrescriptionDetail> PrescriptionDetails =>
         Set<PrescriptionDetail>();
+
+    public DbSet<DispenseDetail> DispenseDetails =>
+        Set<DispenseDetail>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
@@ -123,6 +132,12 @@ public class ApplicationDbContext : DbContext
                     RoleId = 5,
                     RoleName = "LabTechnician",
                     Description = "Lab technician", IsSystem = true
+                },
+                new Role
+                {
+                    RoleId = 7,
+                    RoleName = "Pharmacist",
+                    Description = "Pharmacist", IsSystem = true
                 }
             );
         });
@@ -154,7 +169,8 @@ public class ApplicationDbContext : DbContext
             {
                 [RoleConstants.Admin] = 1, [RoleConstants.Doctor] = 2,
                 [RoleConstants.Receptionist] = 3, [RoleConstants.Patient] = 4,
-                [RoleConstants.LabTechnician] = 5
+                [RoleConstants.LabTechnician] = 5,
+                [RoleConstants.Pharmacist] = 7
             };
             entity.HasData(PermissionCatalog.DefaultRoles.Where(role => role.Key != RoleConstants.DepartmentHead)
                 .SelectMany(role => role.Value.Select(code =>
@@ -264,7 +280,7 @@ public class ApplicationDbContext : DbContext
             entity.HasKey(x => x.PatientBookId);
 
             entity.Property(x => x.BookNumber)
-                .HasMaxLength(30);
+                .HasMaxLength(40);
 
             entity.Property(x => x.Status)
                 .HasMaxLength(20)
@@ -277,8 +293,7 @@ public class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("GETDATE()");
 
             entity.HasIndex(x => x.BookNumber)
-                .IsUnique()
-                .HasFilter("[BookNumber] IS NOT NULL");
+                .IsUnique();
 
             entity.HasIndex(x => x.PatientId)
                 .IsUnique()
@@ -441,8 +456,7 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(x => new
             {
                 x.MedicineId,
-                x.BatchNumber,
-                x.ExpiryDate
+                x.BatchNumber
             })
             .IsUnique();
 
@@ -455,6 +469,99 @@ public class ApplicationDbContext : DbContext
 
             entity.HasOne(x => x.Medicine)
                 .WithMany(x => x.Inventories)
+                .HasForeignKey(x => x.MedicineId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // =========================
+        // Purchase Order
+        // =========================
+        modelBuilder.Entity<PurchaseOrder>(entity =>
+        {
+            entity.HasKey(x => x.PurchaseOrderId);
+
+            entity.Property(x => x.TotalAmount)
+                .HasPrecision(18, 2);
+
+            entity.Property(x => x.Status)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(x => x.Notes)
+                .HasMaxLength(500);
+
+            entity.HasIndex(x => x.OrderDate);
+            entity.HasIndex(x => x.Status);
+
+            entity.ToTable(x =>
+            {
+                x.HasCheckConstraint(
+                    "CK_PurchaseOrders_Status",
+                    "[Status] IN ('Draft','Received','Cancelled')"
+                );
+                x.HasCheckConstraint(
+                    "CK_PurchaseOrders_TotalAmount",
+                    "[TotalAmount] >= 0"
+                );
+            });
+
+            entity.HasOne(x => x.Supplier)
+                .WithMany(x => x.PurchaseOrders)
+                .HasForeignKey(x => x.SupplierId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(x => x.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(x => x.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(x => x.ReceivedByUser)
+                .WithMany()
+                .HasForeignKey(x => x.ReceivedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<PurchaseOrderDetail>(entity =>
+        {
+            entity.HasKey(x => x.PurchaseOrderDetailId);
+
+            entity.Property(x => x.UnitPrice)
+                .HasPrecision(18, 2);
+
+            entity.Property(x => x.BatchNumber)
+                .HasMaxLength(50)
+                .IsRequired();
+
+            entity.Property(x => x.ExpiryDate)
+                .HasColumnType("date");
+
+            entity.HasIndex(x => new
+            {
+                x.PurchaseOrderId,
+                x.MedicineId,
+                x.BatchNumber
+            })
+            .IsUnique();
+
+            entity.ToTable(x =>
+            {
+                x.HasCheckConstraint(
+                    "CK_PurchaseOrderDetails_Quantity",
+                    "[Quantity] > 0"
+                );
+                x.HasCheckConstraint(
+                    "CK_PurchaseOrderDetails_UnitPrice",
+                    "[UnitPrice] > 0"
+                );
+            });
+
+            entity.HasOne(x => x.PurchaseOrder)
+                .WithMany(x => x.Details)
+                .HasForeignKey(x => x.PurchaseOrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(x => x.Medicine)
+                .WithMany(x => x.PurchaseOrderDetails)
                 .HasForeignKey(x => x.MedicineId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
@@ -625,6 +732,11 @@ public class ApplicationDbContext : DbContext
                 .WithOne(x => x.Prescription)
                 .HasForeignKey<Prescription>(x => x.MedicalRecordId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(x => x.DispensedByUser)
+                .WithMany()
+                .HasForeignKey(x => x.DispensedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         // =========================
@@ -664,6 +776,38 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(x => x.Medicine)
                 .WithMany(x => x.PrescriptionDetails)
                 .HasForeignKey(x => x.MedicineId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // =========================
+        // Dispense Detail
+        // =========================
+        modelBuilder.Entity<DispenseDetail>(entity =>
+        {
+            entity.HasKey(x => x.DispenseDetailId);
+
+            entity.HasIndex(x => new
+            {
+                x.PrescriptionDetailId,
+                x.InventoryId
+            })
+            .IsUnique();
+
+            entity.ToTable(x =>
+                x.HasCheckConstraint(
+                    "CK_DispenseDetails_QuantityDispensed",
+                    "[QuantityDispensed] > 0"
+                )
+            );
+
+            entity.HasOne(x => x.PrescriptionDetail)
+                .WithMany(x => x.DispenseDetails)
+                .HasForeignKey(x => x.PrescriptionDetailId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(x => x.Inventory)
+                .WithMany(x => x.DispenseDetails)
+                .HasForeignKey(x => x.InventoryId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
     }

@@ -18,13 +18,18 @@ public class ReceptionService : IReceptionService
     private readonly IReceptionRepository _receptionRepository;
     private readonly IAppointmentRepository _appointmentRepository;
     private readonly ILogger<ReceptionService> _logger;
+    private readonly INotificationService _notifications;
+    private readonly IPatientRepository _patientRepository;
 
     public ReceptionService(IReceptionRepository receptionRepository,
-        IAppointmentRepository appointmentRepository, ILogger<ReceptionService> logger)
+        IAppointmentRepository appointmentRepository, ILogger<ReceptionService> logger,
+        INotificationService notifications, IPatientRepository patientRepository)
     {
         _receptionRepository = receptionRepository;
         _appointmentRepository = appointmentRepository;
         _logger = logger;
+        _notifications = notifications;
+        _patientRepository = patientRepository;
     }
 
     public async Task<List<PatientMatchResponse>> FindPatientsAsync(string search)
@@ -68,9 +73,17 @@ public class ReceptionService : IReceptionService
             await _receptionRepository.SaveChangesAsync();
         }
 
+        // Online bookings carry the patient's account; link it so the patient can see this profile in their portal.
+        if (appointment.PatientId.HasValue && patient.UserId == null
+            && !await _patientRepository.HasProfileForUserAsync(appointment.PatientId.Value))
+        {
+            patient.UserId = appointment.PatientId;
+        }
+
         appointment.PatientProfileId = patient.PatientId;
         await _appointmentRepository.SaveChangesAsync();
         await transaction.CommitAsync();
+        await _notifications.PublishAppointmentChangedAsync(appointment, "PatientMatched");
         _logger.LogInformation("Patient profile matched for appointment {AppointmentId}", appointmentId);
         return MapAppointment(appointment);
     }
@@ -96,6 +109,7 @@ public class ReceptionService : IReceptionService
         };
         await _receptionRepository.AddBookAsync(book);
         await SaveBookAsync();
+        await _notifications.PublishPatientBookChangedAsync(book);
         _logger.LogInformation("Existing patient book registered for patient {PatientId}", patientId);
         return MapBook(book);
     }
@@ -122,6 +136,7 @@ public class ReceptionService : IReceptionService
         await _receptionRepository.SaveChangesAsync();
         _logger.LogInformation("Book invoice {InvoiceId} created for patient {PatientId}",
             invoice.BookInvoiceId, patientId);
+        await _notifications.PublishBookInvoiceChangedAsync(invoice);
         return MapInvoice(invoice);
     }
 
@@ -133,8 +148,24 @@ public class ReceptionService : IReceptionService
         if (invoice.Status != "Unpaid") throw new AppException(ErrorCode.BOOK_INVOICE_INVALID_STATUS);
         invoice.Status = "Paid";
         invoice.PaidAt = DateTime.UtcNow;
+        // A paid book waits as Pending until reception issues its real number.
+        await _receptionRepository.AddBookAsync(new PatientBook
+        {
+            PatientId = invoice.PatientId,
+            BookInvoiceId = invoiceId,
+            BookNumber = PendingBookNumber(invoiceId),
+            Status = PatientBookStatusConstants.Pending,
+            IssuedAt = invoice.PaidAt.Value,
+            CreatedAt = invoice.PaidAt.Value,
+            UpdatedAt = invoice.PaidAt.Value
+        });
+        var rows = await _notifications.StageAsync(await _notifications.ReceptionRecipientsAsync(),
+            $"book-invoice:{invoiceId}:paid", "Billing", "Tiền sổ đã thanh toán",
+            $"Hóa đơn sổ #{invoiceId} đã thanh toán. Lễ tân có thể xử lý cấp sổ.");
         await _receptionRepository.SaveChangesAsync();
         await transaction.CommitAsync();
+        await _notifications.PublishAsync(rows);
+        await _notifications.PublishBookInvoiceChangedAsync(invoice);
         _logger.LogInformation("Book invoice {InvoiceId} marked paid", invoiceId);
         return MapInvoice(invoice);
     }
@@ -146,19 +177,26 @@ public class ReceptionService : IReceptionService
         await using var transaction = await _receptionRepository.BeginTransactionAsync();
         var invoice = await _receptionRepository.GetBookInvoiceAsync(invoiceId)
             ?? throw new AppException(ErrorCode.BOOK_INVOICE_NOT_FOUND);
-        if (invoice.Status != "Paid" || invoice.PatientBook != null)
+        if (invoice.Status != "Paid"
+            || invoice.PatientBook is { Status: not PatientBookStatusConstants.Pending })
             throw new AppException(ErrorCode.BOOK_INVOICE_INVALID_STATUS);
-        var book = new PatientBook
+        var now = DateTime.UtcNow;
+        var book = invoice.PatientBook ?? new PatientBook
         {
             PatientId = invoice.PatientId,
+            PreviousBookId = previousBook?.PatientBookId,
             BookInvoiceId = invoiceId,
-            BookNumber = bookNumber.Trim(),
-            Status = "Issued",
-            IssuedAt = DateTime.UtcNow
+            CreatedAt = now
         };
-        await _receptionRepository.AddBookAsync(book);
+        book.BookNumber = bookNumber.Trim();
+        book.Status = PatientBookStatusConstants.Issued;
+        book.IssuedAt = now;
+        book.UpdatedAt = now;
+        if (invoice.PatientBook == null) await _receptionRepository.AddBookAsync(book);
         await SaveBookAsync();
         await transaction.CommitAsync();
+        if (previousBook != null) await _notifications.PublishPatientBookChangedAsync(previousBook);
+        await _notifications.PublishPatientBookChangedAsync(book);
         _logger.LogInformation("Book {PatientBookId} issued after invoice {InvoiceId} was paid",
             book.PatientBookId, invoiceId);
         return MapBook(book);
@@ -185,8 +223,14 @@ public class ReceptionService : IReceptionService
         appointment.PatientBookId = book.PatientBookId;
         appointment.BookVerifiedAt = now;
         appointment.CheckedInAt = now;
+        var recipients = await _notifications.DoctorRecipientsAsync(appointment.DoctorId, PermissionCodes.ClinicalViewAssigned);
+        var rows = await _notifications.StageAsync(recipients,
+            $"appointment:{appointmentId}:checked-in", "Appointment", "Lượt khám đã check-in",
+            $"Lượt khám #{appointmentId} đã check-in và sẵn sàng vào khám.");
         await _appointmentRepository.SaveChangesAsync();
         await transaction.CommitAsync();
+        await _notifications.PublishAsync(rows);
+        await _notifications.PublishAppointmentChangedAsync(appointment, "CheckedIn");
         _logger.LogInformation("Appointment {AppointmentId} checked in with book {PatientBookId}",
             appointmentId, book.PatientBookId);
         return MapAppointment(appointment);
@@ -223,9 +267,12 @@ public class ReceptionService : IReceptionService
     private static PatientBookResponse MapBook(PatientBook book) => new()
     {
         PatientBookId = book.PatientBookId, PatientId = book.PatientId,
-        BookInvoiceId = book.BookInvoiceId,
+        BookInvoiceId = book.BookInvoiceId, PreviousBookId = book.PreviousBookId,
         BookNumber = book.BookNumber, Status = book.Status, IssuedAt = book.IssuedAt
     };
+
+    // Placeholder for a paid book whose number has not been issued yet; unique per invoice.
+    private static string PendingBookNumber(int invoiceId) => $"PENDING-{invoiceId}";
 
     private static BookInvoiceResponse MapInvoice(BookInvoice invoice) => new()
     {

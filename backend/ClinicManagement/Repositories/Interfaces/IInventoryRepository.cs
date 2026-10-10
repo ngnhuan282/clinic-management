@@ -16,9 +16,10 @@ public interface IInventoryRepository
     Task<bool> ExistsLotAsync(
         int medicineId,
         string batchNumber,
-        DateOnly expiryDate,
         int? excludedInventoryId = null
     );
+
+    Task<bool> HasDispenseHistoryAsync(int inventoryId);
 
     Task AddAsync(Inventory inventory);
 

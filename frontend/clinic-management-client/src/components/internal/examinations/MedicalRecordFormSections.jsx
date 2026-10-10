@@ -13,7 +13,6 @@ import {
     IconButton,
     Paper,
     Radio,
-    Snackbar,
     Stack,
     TextField,
     Typography,
@@ -24,10 +23,8 @@ import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutli
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
 import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
-import MedicalInformationOutlinedIcon from "@mui/icons-material/MedicalInformationOutlined";
 import { useState } from "react";
 
-import DiseaseFormDialog from "../diseases/DiseaseFormDialog";
 import { getDiseaseLabel } from "./diseaseLabel";
 
 function SectionHeader({ icon, title, subtitle, sx = {} }) {
@@ -103,11 +100,7 @@ function MedicalRecordFormSections({
     updateDiagnosisRow,
     setPrimaryDiagnosis,
     removeDiagnosisRow,
-    savingDisease = false,
-    onCreateDisease,
 }) {
-    const [diseaseDialogOpen, setDiseaseDialogOpen] = useState(false);
-    const [diseaseSuccess, setDiseaseSuccess] = useState("");
     const [paperBookDialogOpen, setPaperBookDialogOpen] = useState(false);
     const hasPatientBook = Boolean(appointment?.patientBookId);
     const hasSavedPaperBookConfirmation =
@@ -115,11 +108,6 @@ function MedicalRecordFormSections({
     const paperBookConfirmed =
         hasSavedPaperBookConfirmation ||
         Boolean(form.paperBookConfirmed);
-
-    const handleCreateDisease = async (payload) => {
-        await onCreateDisease(payload);
-        setDiseaseSuccess("Đã thêm bệnh mới vào danh mục chẩn đoán.");
-    };
 
     const handleConfirmPaperBook = () => {
         updateField("paperBookConfirmed", true);
@@ -219,18 +207,6 @@ function MedicalRecordFormSections({
                             justifySelf: { xs: "stretch", sm: "end" },
                         }}
                     >
-                        {onCreateDisease && (
-                            <Button
-                                variant="outlined"
-                                startIcon={<MedicalInformationOutlinedIcon />}
-                                disabled={savingDisease}
-                                onClick={() => setDiseaseDialogOpen(true)}
-                                sx={{ whiteSpace: "nowrap" }}
-                            >
-                                Thêm bệnh mới
-                            </Button>
-                        )}
-
                         <Button
                             variant="outlined"
                             startIcon={<AddCircleOutlineOutlinedIcon />}
@@ -493,14 +469,6 @@ function MedicalRecordFormSections({
                 </Stack>
             </Paper>
         </Stack>
-        <DiseaseFormDialog
-            open={diseaseDialogOpen}
-            disease={null}
-            saving={savingDisease}
-            onClose={() => setDiseaseDialogOpen(false)}
-            onSubmit={handleCreateDisease}
-        />
-
         <Dialog
             open={paperBookDialogOpen}
             onClose={() => setPaperBookDialogOpen(false)}
@@ -528,21 +496,6 @@ function MedicalRecordFormSections({
             </DialogActions>
         </Dialog>
 
-        <Snackbar
-            open={Boolean(diseaseSuccess)}
-            autoHideDuration={3000}
-            onClose={() => setDiseaseSuccess("")}
-            anchorOrigin={{ vertical: "top", horizontal: "right" }}
-        >
-            <Alert
-                severity="success"
-                variant="filled"
-                onClose={() => setDiseaseSuccess("")}
-                sx={{ width: "100%" }}
-            >
-                {diseaseSuccess}
-            </Alert>
-        </Snackbar>
         </>
     );
 }

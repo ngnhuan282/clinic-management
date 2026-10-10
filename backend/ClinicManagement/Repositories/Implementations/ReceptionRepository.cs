@@ -1,4 +1,6 @@
+using ClinicManagement.DTOs.Requests;
 using System.Data;
+using ClinicManagement.Commons;
 using ClinicManagement.Data;
 using ClinicManagement.Data.Entities;
 using ClinicManagement.Repositories.Interfaces;
@@ -36,7 +38,46 @@ public class ReceptionRepository : IReceptionRepository
         _context.PatientBooks.Include(x => x.BookInvoice)
             .SingleOrDefaultAsync(x => x.PatientBookId == patientBookId);
 
+    public async Task<(List<PatientBook> Items, int Total)> GetBookPageAsync(PatientBookQuery query)
+    {
+        var books = _context.PatientBooks.AsNoTracking().Include(x => x.Patient).AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(query.Status))
+        {
+            var status = query.Status.Trim();
+            books = books.Where(x => x.Status == status);
+        }
+
+        if (query.PatientId.HasValue)
+        {
+            var patientId = query.PatientId.Value;
+            books = books.Where(x => x.PatientId == patientId);
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var search = query.Search.Trim();
+            books = books.Where(x => x.BookNumber.Contains(search)
+                || x.Patient.FullName.Contains(search)
+                || x.Patient.Phone.Contains(search));
+        }
+
+        var total = await books.CountAsync();
+        var items = await books
+            .OrderByDescending(x => x.IssuedAt)
+            .ThenByDescending(x => x.PatientBookId)
+            .Skip((query.PageNumber - 1) * query.PageSize)
+            .Take(query.PageSize)
+            .ToListAsync();
+
+        return (items, total);
+    }
+
     public Task AddBookAsync(PatientBook book) => _context.PatientBooks.AddAsync(book).AsTask();
+
+    public Task<bool> IsBookInUseAsync(int patientBookId) => _context.Appointments.AnyAsync(x =>
+        x.PatientBookId == patientBookId && x.CheckedInAt != null
+        && x.Status != AppointmentStatusConstants.Completed && x.Status != AppointmentStatusConstants.Cancelled);
 
     public Task<List<BookInvoice>> GetBookInvoicesAsync(int patientId) => _context.BookInvoices.AsNoTracking()
         .Where(x => x.PatientId == patientId).OrderByDescending(x => x.CreatedAt)

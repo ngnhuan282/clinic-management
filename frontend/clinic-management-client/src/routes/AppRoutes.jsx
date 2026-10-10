@@ -15,9 +15,12 @@ import ProtectedRoute from "./ProtectedRoute";
 import HomePage from "../pages/patient/HomePage";
 import BookingPage from "../pages/patient/BookingPage";
 import LabResultsPage from "../pages/patient/LabResultsPage";
+import DoctorSearchPage from "../pages/patient/DoctorSearchPage";
+import PatientProfilePage from "../pages/patient/PatientProfilePage";
 import AuthPage from "../pages/auth/AuthPage";
 
 import InventoryPage from "../pages/internal/admin/InventoryPage";
+import PurchaseOrdersPage from "../pages/internal/admin/PurchaseOrdersPage";
 import MedicineCategoriesPage from "../pages/internal/admin/MedicineCategoriesPage";
 import MedicinesPage from "../pages/internal/admin/MedicinesPage";
 import SuppliersPage from "../pages/internal/admin/SuppliersPage";
@@ -31,6 +34,7 @@ import DashboardPage from "../pages/internal/DashboardPage";
 import AppointmentsPage from "../pages/internal/AppointmentsPage";
 import DoctorScheduleManagementPage from "../pages/internal/DoctorScheduleManagementPage";
 import ScheduleReviewPage from "../pages/internal/ScheduleReviewPage";
+import DepartmentSchedulesPage from "../pages/internal/DepartmentSchedulesPage";
 import CashierBillingPage from "../pages/internal/CashierBillingPage";
 
 import DoctorLabOrdersPage from "../pages/internal/doctor/DoctorLabOrdersPage";
@@ -39,8 +43,11 @@ import MedicalRecordDetailPage from "../pages/internal/doctor/MedicalRecordDetai
 import MedicalRecordPage from "../pages/internal/doctor/MedicalRecordPage";
 import PrescriptionPage from "../pages/internal/doctor/PrescriptionPage";
 import DoctorScheduleRequestPage from "../pages/internal/doctor/DoctorScheduleRequestPage";
+import DoctorProfilePage from "../pages/internal/doctor/DoctorProfilePage";
+import PatientBooksPage from "../pages/internal/PatientBooksPage";
 
 import TechnicianLabQueuePage from "../pages/internal/technician/TechnicianLabQueuePage";
+import DispensingPage from "../pages/internal/pharmacist/DispensingPage";
 
 function UnauthorizedPage() {
     const { state } = useLocation();
@@ -71,6 +78,7 @@ export default function AppRoutes() {
             <Routes>
                 <Route element={<PatientLayout />}>
                     <Route path="/" element={<HomePage />} />
+                    <Route path="/doctors" element={<DoctorSearchPage />} />
                     <Route path="/login" element={<AuthPage key="login" />} />
                     <Route
                         path="/internal/login"
@@ -90,6 +98,7 @@ export default function AppRoutes() {
                     >
                         <Route path="/booking" element={<BookingPage />} />
                         <Route path="/lab-results" element={<LabResultsPage />} />
+                        <Route path="/profile" element={<PatientProfilePage />} />
                     </Route>
 
                     <Route path="/403" element={<UnauthorizedPage />} />
@@ -106,6 +115,9 @@ export default function AppRoutes() {
                             element={<Navigate to="dashboard" replace />}
                         />
                         <Route path="dashboard" element={<DashboardPage />} />
+                        <Route element={<ProtectedRoute allowedRoles={["DepartmentHead"]} />}>
+                            <Route path="department-schedules" element={<DepartmentSchedulesPage />} />
+                        </Route>
 
                         <Route
                             element={
@@ -201,6 +213,20 @@ export default function AppRoutes() {
                         <Route
                             element={
                                 <ProtectedRoute
+                                    allowedPermissions={["appointments.checkIn"]}
+                                />
+                            }
+                        >
+                            <Route path="patient-books" element={<PatientBooksPage />} />
+                        </Route>
+
+                        <Route element={<ProtectedRoute allowedRoles={["Doctor"]} />}>
+                            <Route path="doctor/profile" element={<DoctorProfilePage />} />
+                        </Route>
+
+                        <Route
+                            element={
+                                <ProtectedRoute
                                     allowedRoles={["Admin", "DepartmentHead"]}
                                     allowedPermissions={["schedules.review"]}
                                 />
@@ -243,11 +269,16 @@ export default function AppRoutes() {
                                 path="medicines/inventory"
                                 element={<InventoryPage />}
                             />
+                            <Route
+                                path="medicines/purchase-orders"
+                                element={<PurchaseOrdersPage />}
+                            />
                         </Route>
 
                         <Route
                             element={
                                 <ProtectedRoute
+                                    allowedRoles={["Admin", "DepartmentHead"]}
                                     allowedPermissions={["clinical.manageDiseases"]}
                                 />
                             }
@@ -317,6 +348,19 @@ export default function AppRoutes() {
                             <Route
                                 path="examinations/:appointmentId/prescription"
                                 element={<PrescriptionPage />}
+                            />
+                        </Route>
+
+                        <Route
+                            element={
+                                <ProtectedRoute
+                                    allowedPermissions={["pharmacy.dispense"]}
+                                />
+                            }
+                        >
+                            <Route
+                                path="pharmacy/dispensing"
+                                element={<DispensingPage />}
                             />
                         </Route>
 

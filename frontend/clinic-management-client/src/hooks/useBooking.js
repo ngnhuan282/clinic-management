@@ -7,8 +7,10 @@ import {
     getDoctorsByDepartment,
 } from "../api/bookingApi";
 import getApiErrorMessage from "../utils/errorHandler";
+import useNotifications from "./useNotifications";
 
 export function useBooking() {
+    const { availabilityRevision, slotEvent, appointmentEvent } = useNotifications();
     const slotRequest = useRef(0);
     const [departments, setDepartments] = useState([]);
     const [doctors, setDoctors] = useState([]);
@@ -28,6 +30,17 @@ export function useBooking() {
     });
     const [error, setError] = useState("");
     const [successAppointment, setSuccessAppointment] = useState(null);
+
+    useEffect(() => {
+        if (!appointmentEvent) return;
+        const timer = setTimeout(() => setSuccessAppointment(current =>
+            current?.appointmentId === appointmentEvent.appointmentId
+                ? { ...current, status: appointmentEvent.status,
+                    checkedInAt: appointmentEvent.checkedInAt, bookVerifiedAt: appointmentEvent.bookVerifiedAt,
+                    patientBookId: appointmentEvent.patientBookId, patientProfileId: appointmentEvent.patientProfileId }
+                : current), 0);
+        return () => clearTimeout(timer);
+    }, [appointmentEvent]);
 
     const resetForm = useCallback(() => {
         setDoctors([]);
@@ -144,10 +157,12 @@ export function useBooking() {
         };
     }, [selectedDepartmentId]);
 
-    const refreshSlots = useCallback(async () => {
+    const refreshSlots = useCallback(async (preserveSelection = false) => {
         const requestId = ++slotRequest.current;
-        setSelectedSlot(null);
-        setSlots([]);
+        if (!preserveSelection) {
+            setSelectedSlot(null);
+            setSlots([]);
+        }
         if (!selectedDoctorId || !selectedDate) {
             setLoading(prev => ({ ...prev, slots: false }));
             return;
@@ -157,7 +172,6 @@ export function useBooking() {
             ...prev,
             slots: true,
         }));
-        setSelectedSlot(null);
 
         try {
             const result = await getAvailableSlots(
@@ -165,9 +179,17 @@ export function useBooking() {
                 selectedDate
             );
 
-            if (requestId === slotRequest.current) setSlots(result || []);
+            if (requestId === slotRequest.current) {
+                setSlots(result || []);
+                if (preserveSelection) setSelectedSlot(current => current
+                    ? (result || []).find(slot => slot.startTime === current.startTime && slot.isAvailable) || null
+                    : null);
+            }
         } catch (apiError) {
-            if (requestId === slotRequest.current) setError(getApiErrorMessage(apiError));
+            if (requestId === slotRequest.current) {
+                setSelectedSlot(null);
+                setError(getApiErrorMessage(apiError));
+            }
         } finally {
             if (requestId === slotRequest.current) setLoading((prev) => ({
                 ...prev,
@@ -180,9 +202,16 @@ export function useBooking() {
         // Synchronize availability with the selected doctor/date and cancel stale results.
         // eslint-disable-next-line react-hooks/set-state-in-effect
         refreshSlots();
-        const requestId = slotRequest.current;
-        return () => { slotRequest.current = requestId + 1; };
+        return () => { slotRequest.current += 1; };
     }, [refreshSlots]);
+
+    useEffect(() => {
+        if (!availabilityRevision || !selectedDoctorId || !selectedDate) return;
+        if (slotEvent && (slotEvent.doctorId !== Number(selectedDoctorId)
+            || slotEvent.appointmentDate.slice(0, 10) !== selectedDate)) return;
+        const timer = setTimeout(() => { void refreshSlots(true); }, 0);
+        return () => clearTimeout(timer);
+    }, [availabilityRevision, slotEvent, selectedDoctorId, selectedDate, refreshSlots]);
 
     const submitBooking = useCallback(async () => {
         if (

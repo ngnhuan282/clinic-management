@@ -4,7 +4,7 @@ import {
     DialogContent, DialogTitle, LinearProgress, MenuItem, Paper, Stack,
     Table, TableBody, TableCell, TableContainer, TableHead,
     TableRow, TextField, Typography, IconButton, Tooltip,
-    InputAdornment, Select, FormControl, Divider
+    InputAdornment, Select, FormControl
 } from "@mui/material";
 import {
     SearchOutlined, RefreshOutlined, AddOutlined,

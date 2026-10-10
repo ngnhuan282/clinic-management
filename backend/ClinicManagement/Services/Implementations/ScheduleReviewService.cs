@@ -10,7 +10,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ClinicManagement.Services.Implementations;
 
-public class ScheduleReviewService(ApplicationDbContext db, ICurrentUserService currentUser) : IScheduleReviewService
+public class ScheduleReviewService(ApplicationDbContext db, ICurrentUserService currentUser,
+    INotificationService notifications) : IScheduleReviewService
 {
     private readonly ApplicationDbContext _db = db;
     private readonly ICurrentUserService _currentUser = currentUser;
@@ -129,8 +130,14 @@ public class ScheduleReviewService(ApplicationDbContext db, ICurrentUserService 
             }
             request.ReviewerId = reviewer.UserId;
             request.ReviewedAt = DateTime.UtcNow;
+            var recipients = await notifications.DoctorRecipientsAsync(request.DoctorId);
+            var rows = await notifications.StageAsync(recipients,
+                $"schedule-request:{id}:{request.Status}", "System", "Kết quả duyệt ca",
+                $"Yêu cầu ca #{id} ngày {request.WorkDate:dd/MM/yyyy} " +
+                (reason is null ? "đã được duyệt." : $"bị từ chối: {reason}"));
             await _db.SaveChangesAsync();
             await transaction.CommitAsync();
+            await notifications.PublishAsync(rows);
             return Map(request, reviewer);
         }
         catch (Exception ex) when (IsSqlConflict(ex))

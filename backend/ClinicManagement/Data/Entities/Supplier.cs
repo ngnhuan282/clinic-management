@@ -12,4 +12,7 @@ public class Supplier
 
     public ICollection<Medicine> Medicines { get; set; }
         = new List<Medicine>();
+
+    public ICollection<PurchaseOrder> PurchaseOrders { get; set; }
+        = new List<PurchaseOrder>();
 }

@@ -6,10 +6,7 @@ import {
     getMedicalRecordByAppointment,
     updateMedicalRecord,
 } from "../api/examinationApi";
-import {
-    createDisease,
-    getDiseaseOptions,
-} from "../api/diseaseApi";
+import { getDiseaseOptions } from "../api/diseaseApi";
 import { normalizeExaminationStatus } from "../components/internal/examinations/examinationStatus";
 
 let diagnosisRowSeed = 1;
@@ -137,14 +134,6 @@ function mapRecordForm(record) {
     };
 }
 
-function mapDiseaseOption(disease) {
-    return {
-        diseaseId: disease.diseaseId,
-        diseaseCode: disease.diseaseCode,
-        diseaseName: disease.diseaseName,
-    };
-}
-
 function isNotFound(error) {
     return error?.response?.status === 404;
 }
@@ -193,7 +182,6 @@ function useMedicalRecordForm({
     const [form, setForm] = useState(createEmptyForm);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [diseaseSaving, setDiseaseSaving] = useState(false);
     const [error, setError] = useState("");
     const [actionError, setActionError] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
@@ -362,83 +350,6 @@ function useMedicalRecordForm({
         });
     };
 
-    const createDiseaseOption = async (payload) => {
-        setDiseaseSaving(true);
-
-        try {
-            const createdDisease = await createDisease(payload);
-            const createdOption = mapDiseaseOption(createdDisease);
-            const reloadedOptions =
-                await getDiseaseOptions().catch(() => null);
-            const selectedOption =
-                reloadedOptions?.find(
-                    (option) =>
-                        Number(option.diseaseId) ===
-                        Number(createdOption.diseaseId)
-                ) || createdOption;
-
-            setDiseases((current) => {
-                const nextOptions = reloadedOptions || current;
-                const exists = nextOptions.some(
-                    (option) =>
-                        Number(option.diseaseId) ===
-                        Number(selectedOption.diseaseId)
-                );
-
-                return exists
-                    ? nextOptions
-                    : [
-                        ...nextOptions,
-                        selectedOption,
-                    ];
-            });
-
-            setForm((current) => {
-                const diagnoses = current.diagnoses.length
-                    ? [...current.diagnoses]
-                    : [createDiagnosisRow()];
-                let targetIndex = diagnoses.findIndex(
-                    (diagnosis) => !diagnosis.diseaseId
-                );
-
-                if (targetIndex < 0) {
-                    diagnoses.push(createDiagnosisRow());
-                    targetIndex = diagnoses.length - 1;
-                }
-
-                const hasPrimaryDiagnosis = diagnoses.some(
-                    (diagnosis, index) =>
-                        index !== targetIndex && diagnosis.isPrimary
-                );
-
-                diagnoses[targetIndex] = {
-                    ...diagnoses[targetIndex],
-                    diseaseId: selectedOption.diseaseId,
-                    isPrimary:
-                        diagnoses[targetIndex].isPrimary ||
-                        !hasPrimaryDiagnosis,
-                };
-
-                return {
-                    ...current,
-                    diagnoses,
-                };
-            });
-
-            return selectedOption;
-        } catch (createError) {
-            throw new Error(
-                getErrorMessage(
-                    createError,
-                    "Không thể thêm bệnh mới."
-                ),
-                { cause: createError }
-            );
-        } finally {
-            setDiseaseSaving(false);
-        }
-    };
-
     const validateBeforeSubmit = (markCompleted) => {
         if (!form.symptoms.trim()) {
             return "Vui lòng nhập triệu chứng trước khi lưu hồ sơ.";
@@ -544,7 +455,6 @@ function useMedicalRecordForm({
         form,
         loading,
         saving,
-        diseaseSaving,
         error,
         actionError,
         successMessage,
@@ -555,7 +465,6 @@ function useMedicalRecordForm({
         updateDiagnosisRow,
         setPrimaryDiagnosis,
         removeDiagnosisRow,
-        createDiseaseOption,
         submitRecord,
         reload: loadData,
         clearActionError: () => setActionError(""),

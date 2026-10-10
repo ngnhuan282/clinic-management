@@ -23,16 +23,18 @@ public class MedicalRecordService : IMedicalRecordService
     private readonly IDiseaseRepository _diseaseRepository;
     private readonly ApplicationDbContext _db;
     private readonly ICurrentUserService _currentUser;
+    private readonly INotificationService _notifications;
 
     public MedicalRecordService(
         IMedicalRecordRepository medicalRecordRepository,
         IDiseaseRepository diseaseRepository, ApplicationDbContext db,
-        ICurrentUserService currentUser)
+        ICurrentUserService currentUser, INotificationService notifications)
     {
         _medicalRecordRepository = medicalRecordRepository;
         _diseaseRepository = diseaseRepository;
         _db = db;
         _currentUser = currentUser;
+        _notifications = notifications;
     }
 
     public async Task<PagedResponse<ExaminationQueueResponse>> GetQueueAsync(
@@ -173,12 +175,15 @@ public class MedicalRecordService : IMedicalRecordService
             Diagnoses = diagnoses
         };
 
+        var previousStatus = appointment.Status;
         appointment.Status = request.MarkCompleted
             ? AppointmentStatusConstants.Completed
             : AppointmentStatusConstants.InProgress;
 
         await _medicalRecordRepository.AddAsync(record);
         await _medicalRecordRepository.SaveChangesAsync();
+        if (previousStatus != appointment.Status)
+            await _notifications.PublishAppointmentChangedAsync(appointment, appointment.Status);
 
         return await GetByIdAsync(record.MedicalRecordId);
     }
@@ -237,11 +242,14 @@ public class MedicalRecordService : IMedicalRecordService
             record.Diagnoses.Add(diagnosis);
         }
 
+        var previousStatus = record.Appointment.Status;
         record.Appointment.Status = request.MarkCompleted
             ? AppointmentStatusConstants.Completed
             : AppointmentStatusConstants.InProgress;
 
         await _medicalRecordRepository.SaveChangesAsync();
+        if (previousStatus != record.Appointment.Status)
+            await _notifications.PublishAppointmentChangedAsync(record.Appointment, record.Appointment.Status);
 
         return await GetByIdAsync(medicalRecordId);
     }

@@ -18,6 +18,7 @@ public class PatientBookResponse
     public string BookNumber { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public DateTime IssuedAt { get; set; }
+    public int? PreviousBookId { get; set; }
 }
 
 public class BookInvoiceResponse

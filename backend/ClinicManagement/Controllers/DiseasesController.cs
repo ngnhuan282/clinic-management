@@ -9,7 +9,7 @@ namespace ClinicManagement.Controllers;
 
 [ApiController]
 [Route("api/diseases")]
-[Authorize(Policy = PermissionCodes.ClinicalManageDiseases)]
+[Authorize]
 public class DiseasesController : ControllerBase
 {
     private readonly IDiseaseService _diseaseService;
@@ -20,6 +20,8 @@ public class DiseasesController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Roles = RoleConstants.Admin + "," + RoleConstants.DepartmentHead)]
+    [Authorize(Policy = PermissionCodes.ClinicalManageDiseases)]
     public async Task<IActionResult> GetPaged(
         [FromQuery] DiseaseFilterRequest request)
     {
@@ -46,6 +48,8 @@ public class DiseasesController : ControllerBase
     }
 
     [HttpGet("{diseaseId:int}")]
+    [Authorize(Roles = RoleConstants.Admin + "," + RoleConstants.DepartmentHead)]
+    [Authorize(Policy = PermissionCodes.ClinicalManageDiseases)]
     public async Task<IActionResult> GetById(int diseaseId)
     {
         var result =
@@ -57,6 +61,8 @@ public class DiseasesController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = RoleConstants.Admin + "," + RoleConstants.DepartmentHead)]
+    [Authorize(Policy = PermissionCodes.ClinicalManageDiseases)]
     public async Task<IActionResult> Create(
         CreateDiseaseRequest request)
     {
@@ -74,6 +80,8 @@ public class DiseasesController : ControllerBase
     }
 
     [HttpPut("{diseaseId:int}")]
+    [Authorize(Roles = RoleConstants.Admin + "," + RoleConstants.DepartmentHead)]
+    [Authorize(Policy = PermissionCodes.ClinicalManageDiseases)]
     public async Task<IActionResult> Update(
         int diseaseId,
         UpdateDiseaseRequest request)
@@ -93,6 +101,8 @@ public class DiseasesController : ControllerBase
     }
 
     [HttpDelete("{diseaseId:int}")]
+    [Authorize(Roles = RoleConstants.Admin + "," + RoleConstants.DepartmentHead)]
+    [Authorize(Policy = PermissionCodes.ClinicalManageDiseases)]
     public async Task<IActionResult> Delete(int diseaseId)
     {
         await _diseaseService.DeleteAsync(diseaseId);

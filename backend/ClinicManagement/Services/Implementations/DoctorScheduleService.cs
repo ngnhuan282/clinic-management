@@ -1,4 +1,5 @@
 using System.Data;
+using ClinicManagement.Commons;
 using ClinicManagement.Data;
 using ClinicManagement.Data.Entities;
 using ClinicManagement.DTOs.Requests;
@@ -9,7 +10,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ClinicManagement.Services.Implementations;
 
-public class DoctorScheduleService(ApplicationDbContext context, ICurrentUserService currentUser) : IDoctorScheduleService
+public class DoctorScheduleService(ApplicationDbContext context, ICurrentUserService currentUser,
+    INotificationService notifications) : IDoctorScheduleService
 {
     private readonly ApplicationDbContext _context = context;
     private readonly ICurrentUserService _currentUser = currentUser;
@@ -17,6 +19,7 @@ public class DoctorScheduleService(ApplicationDbContext context, ICurrentUserSer
     public async Task<ScheduleRequestResponse> CreateRequestAsync(CreateDoctorScheduleRequest request)
     {
         var userId = _currentUser.GetRequiredUserId();
+        await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
         var doctorId = await _context.Doctors.Where(x => x.UserId == userId && x.IsActive)
             .Select(x => (int?)x.DoctorId).SingleOrDefaultAsync()
             ?? throw new AppException(ErrorCode.UNAUTHORIZED);
@@ -29,6 +32,12 @@ public class DoctorScheduleService(ApplicationDbContext context, ICurrentUserSer
         };
         _context.DoctorScheduleRequests.Add(entity);
         await _context.SaveChangesAsync();
+        var rows = await notifications.StageAsync(await notifications.ReviewRecipientsAsync(doctorId),
+            $"schedule-request:{entity.RequestId}:submitted", "System", "Yêu cầu ca mới",
+            $"Yêu cầu ca #{entity.RequestId} ngày {entity.WorkDate:dd/MM/yyyy} đang chờ duyệt.");
+        await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
+        await notifications.PublishAsync(rows);
         return await ProjectRequest(entity.RequestId);
     }
 
@@ -135,7 +144,16 @@ public class DoctorScheduleService(ApplicationDbContext context, ICurrentUserSer
 
     public async Task<List<DoctorScheduleResponse>> GetSchedulesAsync(DateOnly? date, DateOnly? weekStart, int? specializationId)
     {
-        var query = GetScheduleQuery();
+        // Only approved, active shifts are published; pending or rejected requests never reach booking or department views.
+        var query = GetScheduleQuery()
+            .Where(x => x.Status == ScheduleStatusConstants.Approved && x.IsActive);
+        if (_currentUser.Role == RoleConstants.DepartmentHead)
+        {
+            var departmentId = await _context.Doctors.Where(x => x.UserId == _currentUser.GetRequiredUserId() && x.IsActive)
+                .Select(x => (int?)x.DepartmentId).SingleOrDefaultAsync()
+                ?? throw new AppException(ErrorCode.UNAUTHORIZED);
+            query = query.Where(x => x.Doctor.DepartmentId == departmentId && x.Room.DepartmentId == departmentId);
+        }
         if (date.HasValue) query = query.Where(x => x.WorkDate == date.Value);
         if (weekStart.HasValue)
         {

@@ -250,9 +250,10 @@ const { Title, Text } = Typography;
 const { Option } = Select;
 
 export default function CashierBillingPage() {
+  const [messageApi, contextHolder] = message.useMessage();
   const [stage, setStage] = useState('Pending');
-  const [pendingList, setPendingList] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [pendingResult, setPendingResult] = useState(null);
+  const [refreshVersion, setRefreshVersion] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState('Cash');
@@ -266,22 +267,20 @@ export default function CashierBillingPage() {
   }, [selectedRecord]);
 
   // Lấy danh sách chờ thu tiền theo BillingStage
-  const fetchPending = async () => {
-    setLoading(true);
-    try {
-      const res = await invoiceApi.getPendingBillings(stage);
-      setPendingList(res.data);
-      setSelectedRecord(null);
-    } catch (err) {
-      message.error('Lỗi khi tải danh sách chờ thu tiền!');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchPending();
-  }, [stage]);
+    let active = true;
+    invoiceApi.getPendingBillings(stage)
+      .then((res) => {
+        if (active) setPendingResult({ stage, refreshVersion, items: res.data });
+      })
+      .catch(() => {
+        if (active) {
+          setPendingResult({ stage, refreshVersion, items: [] });
+          messageApi.error('Lỗi khi tải danh sách chờ thu tiền!');
+        }
+      });
+    return () => { active = false; };
+  }, [stage, refreshVersion, messageApi]);
 
   // Tự động tính toán các khoản tiền
   const rawTotalAmount = selectedRecord?.items?.reduce((sum, item) => sum + item.totalPrice, 0) || 0;
@@ -311,10 +310,11 @@ export default function CashierBillingPage() {
         })),
       };
       await invoiceApi.createInvoice(dto);
-      message.success('Lập hóa đơn & thu tiền thành công!');
-      fetchPending();
+      messageApi.success('Lập hóa đơn & thu tiền thành công!');
+      setSelectedRecord(null);
+      setRefreshVersion((version) => version + 1);
     } catch (err) {
-      message.error(err.response?.data?.message || 'Lỗi khi lập hóa đơn!');
+      messageApi.error(err.response?.data?.message || 'Lỗi khi lập hóa đơn!');
     } finally {
       setSubmitting(false);
     }
@@ -380,6 +380,7 @@ export default function CashierBillingPage() {
 
   return (
     <div style={{ padding: 24, background: '#f5f5f5', minHeight: '100vh' }}>
+      {contextHolder}
       <Card style={{ marginBottom: 20 }}>
         <Row justify="space-between" align="middle">
           <Col>

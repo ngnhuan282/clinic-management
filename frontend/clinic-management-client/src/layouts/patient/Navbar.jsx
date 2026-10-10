@@ -400,6 +400,9 @@ function Navbar() {
                 {role === "Patient" && <MenuItem onClick={() => { setAccountAnchor(null); setMobileOpen(false); navigate("/lab-results"); }}>
                     Kết quả xét nghiệm
                 </MenuItem>}
+                {role === "Patient" && <MenuItem onClick={() => { setAccountAnchor(null); setMobileOpen(false); navigate("/profile"); }}>
+                    Hồ sơ cá nhân
+                </MenuItem>}
                 <MenuItem onClick={handleLogout}>Đăng xuất</MenuItem>
             </Menu>
         </>

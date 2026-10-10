@@ -63,6 +63,11 @@ public class RoomRepository(ApplicationDbContext context) : IRoomRepository
         var total = await items.CountAsync();
         return (await items.OrderBy(x => x.RoomNumber).Skip((page - 1) * size).Take(size).ToListAsync(), total);
     }
+    public Task<List<Room>> GetActiveAsync() => context.Rooms.AsNoTracking()
+        .Include(x => x.Department)
+        .Where(x => x.IsActive && x.Department.IsActive)
+        .OrderBy(x => x.RoomNumber).ThenBy(x => x.RoomId)
+        .ToListAsync();
     public Task<Room?> GetByIdAsync(int id) => context.Rooms.Include(x => x.Department).FirstOrDefaultAsync(x => x.RoomId == id);
     public Task<bool> ExistsDuplicateAsync(string roomNumber, int? excludingId = null) => context.Rooms.AnyAsync(x => (excludingId == null || x.RoomId != excludingId) && x.RoomNumber == roomNumber);
     public Task<bool> DepartmentIsActiveAsync(int departmentId) => context.Departments.AnyAsync(x => x.DepartmentId == departmentId && x.IsActive);

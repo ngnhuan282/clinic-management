@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import { checkInAppointment, createBookInvoice, findPatientMatches, getBookInvoices, getPatientBooks, issueBook, markBookInvoicePaid, matchAppointmentPatient, registerExistingBook } from "../../api/receptionApi";
 import { getApiErrorMessage } from "../../utils/errorHandler";
+import useNotifications from "../../hooks/useNotifications";
 
 export default function ReceptionCheckInDialog({ appointment, onClose, onCheckedIn }) {
+    const { revision } = useNotifications();
     const [patientId, setPatientId] = useState(appointment?.patientProfileId || null);
     const [matches, setMatches] = useState([]);
     const [matchesSearched, setMatchesSearched] = useState(false);
@@ -28,12 +30,14 @@ export default function ReceptionCheckInDialog({ appointment, onClose, onChecked
                 if (active) {
                     setBooks(bookList);
                     setInvoices(invoiceList);
+                    setBookId(current => current && !bookList.some(book => book.patientBookId === Number(current) && book.status === "Issued")
+                        ? "" : current);
                 }
             })
             .catch(err => { if (active) setError(getApiErrorMessage(err)); })
             .finally(() => { if (active) setRecordsLoaded(true); });
         return () => { active = false; };
-    }, [patientId]);
+    }, [patientId, revision]);
 
     async function run(action) {
         setBusy(true);
@@ -48,7 +52,9 @@ export default function ReceptionCheckInDialog({ appointment, onClose, onChecked
         setInvoices(await getBookInvoices(patientId));
     }
 
-    const selectedBook = books.find(book => book.patientBookId === Number(bookId));
+    const selectedBook = books.find(book => book.patientBookId === Number(bookId) && book.status === "Issued");
+    const readyInvoices = invoices.filter(invoice => invoice.status === "Paid"
+        && !books.some(book => book.bookInvoiceId === invoice.bookInvoiceId));
 
     return <Dialog open={Boolean(appointment)} onClose={busy ? undefined : onClose} fullWidth maxWidth="sm">
         <DialogTitle>Tiếp nhận và kiểm tra sổ khám</DialogTitle>
@@ -112,7 +118,12 @@ export default function ReceptionCheckInDialog({ appointment, onClose, onChecked
                             label="Đã kiểm tra sổ bệnh nhân mang theo" />
                     </Box>
                     <Box sx={{ borderTop: 1, borderColor: "divider", pt: 2 }}>
-                        <Typography variant="subtitle2">Cấp sổ mới sau Invoice Book Paid</Typography>
+                        <Typography variant="subtitle2">Phát hoặc cấp lại sổ sau thanh toán</Typography>
+                        {readyInvoices.length > 0 && <Alert severity="success" sx={{ mt: 1 }}>
+                            Hóa đơn {readyInvoices.map(invoice => `#${invoice.bookInvoiceId}`).join(", ")} đã thanh toán.
+                            Nhập số sổ để phát hoặc cấp lại sổ cho bệnh nhân.
+                            {books.some(book => book.status === "Issued") && " Cấp lại sẽ ngừng hiệu lực sổ cũ."}
+                        </Alert>}
                         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 1 }}>
                             <TextField size="small" label="Phí sổ khám (VNĐ)" type="number" value={amount}
                                 onChange={event => setAmount(event.target.value)} />
@@ -133,13 +144,16 @@ export default function ReceptionCheckInDialog({ appointment, onClose, onChecked
                                     await refreshBooks();
                                     setPaymentReceived(false);
                                 })}>Ghi Paid</Button>}
-                            {invoice.status === "Paid" && !books.some(book => book.bookInvoiceId === invoice.bookInvoiceId) &&
+                            {invoice.status === "Paid" && (() => {
+                                const linkedBook = books.find(book => book.bookInvoiceId === invoice.bookInvoiceId);
+                                return !linkedBook || linkedBook.status === "Pending";
+                            })() &&
                                 <Button size="small" disabled={busy || !newBookNumber.trim()} onClick={() => run(async () => {
                                     const book = await issueBook(invoice.bookInvoiceId, newBookNumber.trim());
                                     await refreshBooks();
                                     setBookId(book.patientBookId);
                                     setNewBookNumber("");
-                                })}>Cấp sổ mới</Button>}
+                                })}>Phát / cấp lại sổ</Button>}
                         </Stack>)}
                         <FormControlLabel control={<Checkbox checked={paymentReceived}
                             onChange={event => setPaymentReceived(event.target.checked)} />}
@@ -150,7 +164,7 @@ export default function ReceptionCheckInDialog({ appointment, onClose, onChecked
         </DialogContent>
         <DialogActions>
             <Button disabled={busy} onClick={onClose}>Đóng</Button>
-            <Button variant="contained" disabled={busy || !patientId || !bookId ||
+            <Button variant="contained" disabled={busy || !patientId || !selectedBook ||
                 (selectedBook && !selectedBook.bookInvoiceId && !presented)}
                 onClick={() => run(async () => {
                     await checkInAppointment(appointment.appointmentId, {

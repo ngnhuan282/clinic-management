@@ -13,6 +13,7 @@ import DoctorQueueStatCards from "../../../components/internal/examinations/Doct
 import DoctorQueueTable from "../../../components/internal/examinations/DoctorQueueTable";
 import EmptyState from "../../../components/common/EmptyState";
 import useAuth from "../../../hooks/useAuth";
+import useNotifications from "../../../hooks/useNotifications";
 import {
     getExaminationQueue,
     startExamination,
@@ -174,6 +175,7 @@ function buildSummary(appointments) {
 }
 
 function DoctorAppointmentsPage() {
+    const { revision } = useNotifications();
     const { user } = useAuth();
     const navigate = useNavigate();
     const [filters, setFilters] = useState(DEFAULT_FILTERS);
@@ -232,6 +234,7 @@ function DoctorAppointmentsPage() {
         filters.date,
         filters.search,
         filters.shift,
+        revision,
     ]);
 
     const filteredAppointments = useMemo(() => {

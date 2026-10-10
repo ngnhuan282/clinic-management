@@ -9,4 +9,7 @@ public class Patient
     public string? IdentityNumber { get; set; }
     public string? InsuranceCode { get; set; }
     public DateTime CreatedAt { get; set; }
+
+    public int? UserId { get; set; }
+    public User? User { get; set; }
 }

@@ -39,7 +39,12 @@ public static class DependencyInjection
             BookingService
         >();
         services.AddScoped<IDoctorScheduleService, DoctorScheduleService>();
+        services.AddScoped<IDepartmentScheduleService, DepartmentScheduleService>();
+        services.AddScoped<IDepartmentScheduleRepository, DepartmentScheduleRepository>();
         services.AddScoped<IReceptionService, ReceptionService>();
+        services.AddScoped<IPatientBookService, PatientBookService>();
+        services.AddScoped<IDoctorService, DoctorService>();
+        services.AddScoped<IPatientService, PatientService>();
         services.AddScoped<IScheduleReviewService, ScheduleReviewService>();
 
         services.AddScoped<
@@ -61,6 +66,7 @@ public static class DependencyInjection
         >();
         services.AddScoped<IDepartmentRepository, DepartmentRepository>();
         services.AddScoped<IReceptionRepository, ReceptionRepository>();
+        services.AddScoped<IPatientRepository, PatientRepository>();
         services.AddScoped<ISpecializationRepository, SpecializationRepository>();
         services.AddScoped<IRoomRepository, RoomRepository>();
 
@@ -92,6 +98,16 @@ public static class DependencyInjection
         services.AddScoped<
             IInventoryRepository,
             InventoryRepository
+        >();
+
+        services.AddScoped<
+            IPurchaseOrderRepository,
+            PurchaseOrderRepository
+        >();
+
+        services.AddScoped<
+            IDispensingRepository,
+            DispensingRepository
         >();
 
         services.AddScoped<
@@ -138,6 +154,16 @@ public static class DependencyInjection
         services.AddScoped<
             IInventoryService,
             InventoryService
+        >();
+
+        services.AddScoped<
+            IPurchaseOrderService,
+            PurchaseOrderService
+        >();
+
+        services.AddScoped<
+            IDispensingService,
+            DispensingService
         >();
 
         services.AddScoped<

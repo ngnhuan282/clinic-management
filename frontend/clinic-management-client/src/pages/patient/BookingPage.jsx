@@ -180,8 +180,9 @@ function BookingPage() {
         );
     };
 
+    const successAppointmentId = booking.successAppointment?.appointmentId;
     useEffect(() => {
-        if (booking.successAppointment) {
+        if (successAppointmentId) {
             // Reset the supplementary fields after the asynchronous booking completes.
             // eslint-disable-next-line react-hooks/set-state-in-effect
             setBirthDate("");
@@ -191,7 +192,7 @@ function BookingPage() {
             setUploadError("");
             setSuccessDialogOpen(true);
         }
-    }, [booking.successAppointment]);
+    }, [successAppointmentId]);
 
     return (
         <Box sx={{ backgroundColor: COLORS.canvas, minHeight: "100vh" }}>

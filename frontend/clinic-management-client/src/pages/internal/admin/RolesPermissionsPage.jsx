@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     Alert, Avatar, Box, Button, Checkbox, Chip, CircularProgress,
     Dialog, DialogActions, DialogContent, DialogTitle, Divider,
@@ -349,7 +349,9 @@ export default function RolesPermissionsPage() {
     const [edit, setEdit] = useState({ name: "", description: "" });
     const [audit, setAudit] = useState({ items: [], totalItems: 0 });
     const [auditPage, setAuditPage] = useState(0);
-    const [auditLoading, setAuditLoading] = useState(false);
+    const [loadedAuditPage, setLoadedAuditPage] = useState(null);
+    const auditRequestId = useRef(0);
+    const auditLoading = loadedAuditPage !== auditPage;
 
     const selectedRole = roles.find(r => r.roleId === selectedId);
     const comparedRole = roles.find(r => r.roleId === compareId);
@@ -395,28 +397,38 @@ export default function RolesPermissionsPage() {
             if (all.length >= page.totalItems) break;
             pageNumber += 1;
         }
-        setRoles(all);
-        setSelectedId(cur => all.some(r => r.roleId === cur) ? cur : all[0]?.roleId ?? null);
-        setDraftCodes(all[0]?.permissionCodes || []);
         return all;
     }, []);
 
     useEffect(() => {
         let active = true;
         Promise.all([loadRoles(), rbacApi.permissions()])
-            .then(([, rights]) => { if (active) setPermissions(rights); })
+            .then(([all, rights]) => {
+                if (!active) return;
+                setRoles(all);
+                setSelectedId(all[0]?.roleId ?? null);
+                setDraftCodes(all[0]?.permissionCodes || []);
+                setPermissions(rights);
+            })
             .catch(err => { if (active) setError(getApiErrorMessage(err)); })
             .finally(() => { if (active) setLoading(false); });
         return () => { active = false; };
     }, [loadRoles]);
 
-    const loadAudit = useCallback(async () => {
-        setAuditLoading(true);
-        try { setAudit(await rbacApi.audit({ pageNumber: auditPage + 1, pageSize: 10 })); }
-        catch (err) { setError(getApiErrorMessage(err)); }
-        finally { setAuditLoading(false); }
+    const loadAudit = useCallback((isActive = () => true) => {
+        const requestId = ++auditRequestId.current;
+        const isCurrent = () => isActive() && requestId === auditRequestId.current;
+        return rbacApi.audit({ pageNumber: auditPage + 1, pageSize: 10 })
+            .then(data => { if (isCurrent()) setAudit(data); })
+            .catch(err => { if (isCurrent()) setError(getApiErrorMessage(err)); })
+            .finally(() => { if (isCurrent()) setLoadedAuditPage(auditPage); });
     }, [auditPage]);
-    useEffect(() => { if (tab === 1) void loadAudit(); }, [tab, loadAudit]);
+    useEffect(() => {
+        if (tab !== 1) return;
+        let active = true;
+        void loadAudit(() => active);
+        return () => { active = false; };
+    }, [tab, loadAudit]);
 
     const clearFeedback = () => { setError(""); setNotice(""); };
     const fail = err => {
@@ -432,6 +444,7 @@ export default function RolesPermissionsPage() {
     const changeTab = value => {
         if (dirty && !window.confirm("Bỏ thay đổi quyền chưa lưu để chuyển tab?")) return;
         if (dirty) setDraftCodes(selectedRole.permissionCodes);
+        if (value === 1 && tab !== 1) setLoadedAuditPage(null);
         setTab(value); clearFeedback();
     };
     const refresh = async () => {
@@ -439,6 +452,8 @@ export default function RolesPermissionsPage() {
         clearFeedback(); setLoading(true);
         try {
             const all = await loadRoles();
+            setRoles(all);
+            setSelectedId(cur => all.some(r => r.roleId === cur) ? cur : all[0]?.roleId ?? null);
             setDraftCodes(all.find(r => r.roleId === selectedId)?.permissionCodes || all[0]?.permissionCodes || []);
             if (tab === 1) await loadAudit();
         } catch (err) { fail(err); }

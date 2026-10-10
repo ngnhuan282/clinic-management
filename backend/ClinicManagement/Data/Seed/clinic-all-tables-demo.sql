@@ -28,8 +28,13 @@ BEGIN TRY
        OR OBJECT_ID('dbo.Patients', 'U') IS NULL
        OR OBJECT_ID('dbo.PatientBooks', 'U') IS NULL
        OR OBJECT_ID('dbo.BookInvoices', 'U') IS NULL
+       OR OBJECT_ID('dbo.PurchaseOrders', 'U') IS NULL
+       OR OBJECT_ID('dbo.PurchaseOrderDetails', 'U') IS NULL
+       OR OBJECT_ID('dbo.DispenseDetails', 'U') IS NULL
        OR NOT EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId = '20260926172919_AddLabTechnicianRole')
        OR NOT EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId = '20260928063651_AddReceptionCheckInBooks')
+       OR NOT EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId = '20261006063841_AddPurchaseOrders')
+       OR NOT EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId = '20261006174653_AddPrescriptionDispensing')
         THROW 51000, 'Apply all EF migrations before running clinic-all-tables-demo.sql.', 1;
 
     -- Reused demo user IDs must not accept access tokens issued before this reset.
@@ -40,6 +45,11 @@ BEGIN TRY
     DELETE FROM dbo.RbacAudits;
     DELETE FROM dbo.LabTestResults;
     DELETE FROM dbo.LabTests;
+    DELETE FROM dbo.DispenseDetails;
+    DELETE FROM dbo.InvoiceDetails;
+    DELETE FROM dbo.Invoices;
+    DELETE FROM dbo.PrescriptionDetails;
+    DELETE FROM dbo.Prescriptions;
     DELETE FROM dbo.RecordDiagnoses;
     DELETE FROM dbo.MedicalRecords;
     DELETE FROM dbo.Appointments;
@@ -49,6 +59,8 @@ BEGIN TRY
     DELETE FROM dbo.TimeSlots;
     DELETE FROM dbo.DoctorSchedules;
     DELETE FROM dbo.DoctorScheduleRequests;
+    DELETE FROM dbo.PurchaseOrderDetails;
+    DELETE FROM dbo.PurchaseOrders;
     DELETE FROM dbo.Inventory;
     DELETE FROM dbo.Medicines;
     DELETE FROM dbo.LabTestTypes;
@@ -71,6 +83,7 @@ BEGIN TRY
     DECLARE @hash varchar(256) = '$2a$12$g1Jw42F6MdO6h0JPZruVW.xnaXwI25sZNQSsftAPx6zrXGeoVkaTC';
     DECLARE @now datetime2 = SYSUTCDATETIME();
     DECLARE @today date = CAST(SYSDATETIMEOFFSET() AT TIME ZONE 'SE Asia Standard Time' AS date);
+    DECLARE @clinicNow datetime2 = CAST(SYSDATETIMEOFFSET() AT TIME ZONE 'SE Asia Standard Time' AS datetime2);
 
     SET IDENTITY_INSERT dbo.Roles ON;
     INSERT INTO dbo.Roles (RoleId, RoleName, Description, IsSystem) VALUES
@@ -79,11 +92,12 @@ BEGIN TRY
         (3, 'Receptionist', 'Receptionist', 1),
         (4, 'Patient', 'Patient', 1),
         (5, 'LabTechnician', 'Lab technician', 1),
-        (6, 'DepartmentHead', 'Department head and doctor', 1);
+        (6, 'DepartmentHead', 'Department head and doctor', 1),
+        (7, 'Pharmacist', 'Pharmacist', 1);
     INSERT INTO dbo.Roles (RoleId, RoleName, Description)
     SELECT 1000+n, CONCAT('DemoRole', RIGHT(CONCAT('0', n), 2)),
            'Reserved demo role; not assignable through the API'
-    FROM @n WHERE n BETWEEN 7 AND 20;
+    FROM @n WHERE n BETWEEN 8 AND 20;
     SET IDENTITY_INSERT dbo.Roles OFF;
 
     INSERT INTO dbo.RolePermissions (RoleId, PermissionCode)
@@ -94,12 +108,12 @@ BEGIN TRY
     INSERT INTO dbo.RolePermissions (RoleId, PermissionCode)
     SELECT 2, Code FROM dbo.Permissions WHERE Code IN
         ('appointments.startExamination','clinical.viewAssigned','clinical.writeRecord','clinical.editDiagnosis',
-         'clinical.manageDiseases','pharmacy.viewInventory','pharmacy.viewCatalog','pharmacy.prescribe',
+         'pharmacy.viewInventory','pharmacy.viewCatalog','pharmacy.prescribe',
          'labs.viewTypes','labs.viewOrders','labs.order');
     INSERT INTO dbo.RolePermissions (RoleId, PermissionCode)
     SELECT 3, Code FROM dbo.Permissions WHERE Code IN
         ('appointments.view','appointments.createWalkIn','appointments.confirm','appointments.reschedule',
-         'appointments.checkIn','pharmacy.dispense','billing.view','billing.create','billing.recordPayment');
+         'appointments.checkIn','billing.view','billing.create','billing.recordPayment');
     INSERT INTO dbo.RolePermissions (RoleId, PermissionCode)
     SELECT 4, Code FROM dbo.Permissions WHERE Code IN
         ('appointments.viewOwn','appointments.bookSelf','appointments.cancelOwn','clinical.viewOwn',
@@ -112,6 +126,9 @@ BEGIN TRY
         ('schedules.review','appointments.startExamination','clinical.viewAssigned','clinical.writeRecord',
          'clinical.editDiagnosis','clinical.manageDiseases','pharmacy.viewInventory','pharmacy.viewCatalog',
          'pharmacy.prescribe','labs.viewTypes','labs.viewOrders','labs.order');
+    INSERT INTO dbo.RolePermissions (RoleId, PermissionCode)
+    SELECT 7, Code FROM dbo.Permissions WHERE Code IN
+        ('pharmacy.viewInventory','pharmacy.viewCatalog','pharmacy.dispense');
 
     DECLARE @departmentNames TABLE (n int PRIMARY KEY, Code varchar(30), Name nvarchar(150));
     INSERT INTO @departmentNames VALUES
@@ -191,9 +208,41 @@ BEGIN TRY
            CASE n WHEN 1 THEN 1 WHEN 2 THEN 2 WHEN 3 THEN 3 WHEN 5 THEN 5 ELSE 4 END,
            1, @securityVersion, @now
     FROM @n;
+    INSERT INTO dbo.Users
+        (UserId, Username, PasswordHash, FullName, Email, Phone,
+         RoleId, Status, SecurityVersion, CreatedAt)
+    VALUES
+        (1021, 'demo_pharmacist', @hash, N'Demo Pharmacist',
+         'demo-pharmacist@example.test', '0900001021',
+         7, 1, @securityVersion, @now);
     SET IDENTITY_INSERT dbo.Users OFF;
 
     UPDATE dbo.Doctors SET UserId = 1002 WHERE DoctorId = 1005;
+
+    SET IDENTITY_INSERT dbo.Patients ON;
+    INSERT INTO dbo.Patients
+        (PatientId, FullName, Phone, BirthDate, IdentityNumber,
+         InsuranceCode, CreatedAt)
+    SELECT UserId, FullName, Phone,
+           DATEADD(year, -(25 + UserId % 15), @today),
+           CONCAT('0792', RIGHT(CONCAT('00000000', UserId), 8)),
+           CONCAT('DN', RIGHT(CONCAT('00000000', UserId), 8)),
+           @clinicNow
+    FROM dbo.Users
+    WHERE UserId BETWEEN 1006 AND 1009;
+    SET IDENTITY_INSERT dbo.Patients OFF;
+
+    SET IDENTITY_INSERT dbo.PatientBooks ON;
+    INSERT INTO dbo.PatientBooks
+        (PatientBookId, IssuedAt, CreatedAt, UpdatedAt, PatientId,
+         BookNumber, Status)
+    SELECT PatientId, DATEADD(day, -30, @clinicNow),
+           DATEADD(day, -30, @clinicNow), @clinicNow, PatientId,
+           CONCAT('PB-', YEAR(@today), '-', RIGHT(CONCAT('0000', PatientId), 4)),
+           'Issued'
+    FROM dbo.Patients
+    WHERE PatientId BETWEEN 1006 AND 1009;
+    SET IDENTITY_INSERT dbo.PatientBooks OFF;
 
     DECLARE @appointments TABLE (n int PRIMARY KEY);
     INSERT INTO @appointments SELECT n FROM @n;
@@ -213,6 +262,36 @@ BEGIN TRY
            DATEADD(day, -7, @now)
     FROM @appointments AS a
     JOIN dbo.Users AS p ON p.UserId = CASE WHEN (a.n-1)%16=0 THEN 1004 ELSE 1005+(a.n-1)%16 END;
+
+    -- Daily examination queue for demo_doctor (DoctorId 1005).
+    -- @today is evaluated in the clinic time zone each time this seed runs.
+    INSERT INTO dbo.Appointments
+        (AppointmentId, DoctorId, PatientId, PatientName, PatientPhone,
+         PatientProfileId, PatientBookId, BookVerifiedAt, CheckedInAt,
+         AppointmentDate, StartTime, EndTime, Reason, Status, CreatedAt)
+    SELECT 1025, 1005, UserId, FullName, Phone,
+           UserId, UserId, @clinicNow, @clinicNow, @today,
+           CAST('08:30:00' AS time), CAST('08:45:00' AS time),
+           N'Kham dau dau va met moi', 'Confirmed', @clinicNow
+    FROM dbo.Users WHERE UserId = 1006
+    UNION ALL
+    SELECT 1026, 1005, UserId, FullName, Phone,
+           UserId, UserId, @clinicNow, @clinicNow, @today,
+           CAST('09:00:00' AS time), CAST('09:15:00' AS time),
+           N'Tai kham huyet ap', 'Confirmed', @clinicNow
+    FROM dbo.Users WHERE UserId = 1007
+    UNION ALL
+    SELECT 1027, 1005, UserId, FullName, Phone,
+           UserId, UserId, @clinicNow, @clinicNow, @today,
+           CAST('09:30:00' AS time), CAST('09:45:00' AS time),
+           N'Kham ho va dau hong', 'InProgress', @clinicNow
+    FROM dbo.Users WHERE UserId = 1008
+    UNION ALL
+    SELECT 1028, 1005, UserId, FullName, Phone,
+           UserId, UserId, @clinicNow, @clinicNow, @today,
+           CAST('10:00:00' AS time), CAST('10:15:00' AS time),
+           N'Kham dau bung', 'Completed', @clinicNow
+    FROM dbo.Users WHERE UserId = 1009;
     SET IDENTITY_INSERT dbo.Appointments OFF;
 
     DECLARE @medicineNames TABLE (n int PRIMARY KEY, Name nvarchar(150), Unit nvarchar(20));
@@ -262,7 +341,37 @@ BEGIN TRY
            CASE WHEN n IN (4,8) THEN DATEADD(day, 15, @today)
                 ELSE DATEADD(day, 365+n, @today) END
     FROM @n;
+    INSERT INTO dbo.Inventory
+        (InventoryId, MedicineId, BatchNumber, QuantityInStock, ExpiryDate)
+    VALUES
+        (1021, 1002, 'DEMO-FEFO-02A', 2, DATEADD(day, 60, @today));
     SET IDENTITY_INSERT dbo.Inventory OFF;
+
+    SET IDENTITY_INSERT dbo.PurchaseOrders ON;
+    INSERT INTO dbo.PurchaseOrders
+        (PurchaseOrderId, SupplierId, OrderDate, TotalAmount, Status, Notes,
+         CreatedByUserId, ReceivedByUserId, ReceivedAt, CreatedAt, UpdatedAt)
+    VALUES
+        (1001, 1001, DATEADD(day, -1, @today), 150000, 'Draft',
+         N'Phieu mau dang cho xac nhan nhap kho', 1001, NULL, NULL,
+         DATEADD(day, -1, @now), DATEADD(day, -1, @now)),
+        (1002, 1002, DATEADD(day, -3, @today), 150000, 'Received',
+         N'Phieu mau da nhap kho', 1001, 1001, DATEADD(day, -2, @now),
+         DATEADD(day, -3, @now), DATEADD(day, -2, @now)),
+        (1003, 1003, DATEADD(day, -5, @today), 100000, 'Cancelled',
+         N'Phieu mau da huy', 1001, NULL, NULL,
+         DATEADD(day, -5, @now), DATEADD(day, -4, @now));
+    SET IDENTITY_INSERT dbo.PurchaseOrders OFF;
+
+    SET IDENTITY_INSERT dbo.PurchaseOrderDetails ON;
+    INSERT INTO dbo.PurchaseOrderDetails
+        (PurchaseOrderDetailId, PurchaseOrderId, MedicineId, Quantity,
+         UnitPrice, BatchNumber, ExpiryDate)
+    VALUES
+        (1001, 1001, 1001, 20, 7500, 'PO-DEMO-01', DATEADD(day, 540, @today)),
+        (1002, 1002, 1002, 15, 10000, 'PO-DEMO-02', DATEADD(day, 600, @today)),
+        (1003, 1003, 1003, 8, 12500, 'PO-DEMO-03', DATEADD(day, 660, @today));
+    SET IDENTITY_INSERT dbo.PurchaseOrderDetails OFF;
 
     DECLARE @labNames TABLE (n int PRIMARY KEY, Name nvarchar(200));
     INSERT INTO @labNames VALUES
@@ -304,11 +413,87 @@ BEGIN TRY
            CASE WHEN n <= 16 THEN N'Da kham va huong dan theo doi' ELSE NULL END,
            @now, @now
     FROM @n JOIN dbo.Appointments AS a ON a.AppointmentId = 1000+n;
+
+    INSERT INTO dbo.MedicalRecords
+        (MedicalRecordId, AppointmentId, DoctorId, PatientId, ExaminationDate,
+         Symptoms, Conclusion, PatientBookId, PaperBookUpdatedAt,
+         CreatedAt, UpdatedAt)
+    VALUES
+        (1021, 1027, 1005, 1008, @today,
+         N'Ho, dau hong va met moi trong hai ngay', NULL, 1008, NULL,
+         @clinicNow, @clinicNow),
+        (1022, 1028, 1005, 1009, @today,
+         N'Dau bung nhe sau bua an', N'Roi loan tieu hoa nhe, theo doi tai nha',
+         1009, @clinicNow, @clinicNow, @clinicNow);
     SET IDENTITY_INSERT dbo.MedicalRecords OFF;
+
+    -- Dispensing demo scenarios: unpaid, paid/ready, paid/insufficient,
+    -- and already dispensed with recorded lot history.
+    SET IDENTITY_INSERT dbo.Prescriptions ON;
+    INSERT INTO dbo.Prescriptions
+        (PrescriptionId, MedicalRecordId, PrescriptionDate, Status,
+         DispensedAt, DispensedByUserId, Notes, CreatedAt, UpdatedAt)
+    VALUES
+        (1001, 1017, @clinicNow, 'Issued', NULL, NULL,
+         N'Don cho thanh toan de kiem tra khoa cap thuoc.', @clinicNow, @clinicNow),
+        (1002, 1018, @clinicNow, 'Issued', NULL, NULL,
+         N'Uong thuoc dung gio va dung lieu da ke.', @clinicNow, @clinicNow),
+        (1003, 1019, @clinicNow, 'Issued', NULL, NULL,
+         N'Don da thanh toan nhung ton kho chua dap ung.', @clinicNow, @clinicNow),
+        (1004, 1020, @clinicNow, 'Dispensed', @clinicNow, 1021,
+         N'Don mau da giao thuoc va ghi nhan lo xuat.', @clinicNow, @clinicNow);
+    SET IDENTITY_INSERT dbo.Prescriptions OFF;
+
+    SET IDENTITY_INSERT dbo.PrescriptionDetails ON;
+    INSERT INTO dbo.PrescriptionDetails
+        (PrescriptionDetailId, PrescriptionId, MedicineId, Dosage,
+         Quantity, Instructions)
+    VALUES
+        (1001, 1001, 1005, N'Sang 1 vien', 3, N'Uong truoc bua sang 30 phut'),
+        (1002, 1002, 1002, N'Sang 1 vien', 5, N'Uong sau an'),
+        (1003, 1002, 1003, N'Toi 1 vien', 2, N'Uong sau an toi'),
+        (1004, 1003, 1001, N'Khi dau 1 vien', 10, N'Khong qua lieu chi dinh'),
+        (1005, 1004, 1006, N'Toi 1 vien', 2, N'Uong sau an');
+    SET IDENTITY_INSERT dbo.PrescriptionDetails OFF;
+
+    SET IDENTITY_INSERT dbo.Invoices ON;
+    INSERT INTO dbo.Invoices
+        (Id, AppointmentId, PatientId, CashierId, BillingStage,
+         TotalAmount, PaymentMethod, Status, CreatedAt)
+    VALUES
+        (1001, 1018, 1006, 1001, 'Medicine', 75000, 'Cash', 'Paid', @clinicNow),
+        (1002, 1019, 1007, 1001, 'Final', 75000, 'Transfer', 'Paid', @clinicNow),
+        (1003, 1020, 1008, 1001, 'Medicine', 40000, 'Cash', 'Paid', @clinicNow);
+    SET IDENTITY_INSERT dbo.Invoices OFF;
+
+    SET IDENTITY_INSERT dbo.InvoiceDetails ON;
+    INSERT INTO dbo.InvoiceDetails
+        (Id, InvoiceId, SourceType, SourceId, ItemName,
+         UnitPrice, Quantity, TotalPrice)
+    VALUES
+        (1001, 1001, 'PrescriptionDetail', 1002, N'Amoxicillin 500mg', 10000, 5, 50000),
+        (1002, 1001, 'PrescriptionDetail', 1003, N'Amlodipine 5mg', 12500, 2, 25000),
+        (1003, 1002, 'PrescriptionDetail', 1004, N'Paracetamol 500mg', 7500, 10, 75000),
+        (1004, 1003, 'PrescriptionDetail', 1005, N'Cetirizine 10mg', 20000, 2, 40000);
+    SET IDENTITY_INSERT dbo.InvoiceDetails OFF;
+
+    UPDATE dbo.Inventory
+    SET QuantityInStock = QuantityInStock - 2
+    WHERE InventoryId = 1006;
+
+    SET IDENTITY_INSERT dbo.DispenseDetails ON;
+    INSERT INTO dbo.DispenseDetails
+        (DispenseDetailId, PrescriptionDetailId, InventoryId,
+         QuantityDispensed)
+    VALUES
+        (1001, 1005, 1006, 2);
+    SET IDENTITY_INSERT dbo.DispenseDetails OFF;
 
     SET IDENTITY_INSERT dbo.RecordDiagnoses ON;
     INSERT INTO dbo.RecordDiagnoses (RecordDiagnosisId, MedicalRecordId, DiseaseId, IsPrimary, Note)
     SELECT 1000+n, 1000+n, 1000+n, 1, N'Chan doan chinh' FROM @n;
+    INSERT INTO dbo.RecordDiagnoses (RecordDiagnosisId, MedicalRecordId, DiseaseId, IsPrimary, Note)
+    VALUES (1021, 1022, 1005, 1, N'Chan doan mau cho luot kham hoan tat hom nay');
     SET IDENTITY_INSERT dbo.RecordDiagnoses OFF;
 
     DECLARE @orders TABLE (n int PRIMARY KEY);
@@ -339,31 +524,45 @@ BEGIN TRY
            @securityVersion, CONVERT(char(64), HASHBYTES('SHA2_256', CONCAT('clinic-demo-revoked-', n)), 2),
            DATEADD(day, -1, @now), @now
     FROM @n;
+    INSERT INTO dbo.RefreshTokens
+        (RefreshTokenId, UserId, SecurityVersion, TokenHash,
+         ExpiresAt, RevokedAt)
+    VALUES
+        (1021, 1021, @securityVersion,
+         CONVERT(char(64), HASHBYTES('SHA2_256', 'clinic-demo-revoked-pharmacist'), 2),
+         DATEADD(day, -1, @now), @now);
     SET IDENTITY_INSERT dbo.RefreshTokens OFF;
 
     -- Keep the next generated IDs predictable even if old data used larger IDs.
     DBCC CHECKIDENT ('dbo.Roles', RESEED, 1020) WITH NO_INFOMSGS;
     DBCC CHECKIDENT ('dbo.DoctorScheduleRequests', RESEED, 1020) WITH NO_INFOMSGS;
-    DBCC CHECKIDENT ('dbo.Users', RESEED, 1020) WITH NO_INFOMSGS;
-    DBCC CHECKIDENT ('dbo.RefreshTokens', RESEED, 1020) WITH NO_INFOMSGS;
+    DBCC CHECKIDENT ('dbo.Users', RESEED, 1021) WITH NO_INFOMSGS;
+    DBCC CHECKIDENT ('dbo.RefreshTokens', RESEED, 1021) WITH NO_INFOMSGS;
     DBCC CHECKIDENT ('dbo.Departments', RESEED, 1020) WITH NO_INFOMSGS;
     DBCC CHECKIDENT ('dbo.Specializations', RESEED, 1020) WITH NO_INFOMSGS;
     DBCC CHECKIDENT ('dbo.Rooms', RESEED, 1020) WITH NO_INFOMSGS;
     DBCC CHECKIDENT ('dbo.Doctors', RESEED, 1020) WITH NO_INFOMSGS;
-    DBCC CHECKIDENT ('dbo.Appointments', RESEED, 1024) WITH NO_INFOMSGS;
+    DBCC CHECKIDENT ('dbo.Appointments', RESEED, 1028) WITH NO_INFOMSGS;
     DBCC CHECKIDENT ('dbo.Patients', RESEED, 1020) WITH NO_INFOMSGS;
     DBCC CHECKIDENT ('dbo.PatientBooks', RESEED, 1020) WITH NO_INFOMSGS;
     DBCC CHECKIDENT ('dbo.BookInvoices', RESEED, 1020) WITH NO_INFOMSGS;
     DBCC CHECKIDENT ('dbo.MedicineCategories', RESEED, 1020) WITH NO_INFOMSGS;
     DBCC CHECKIDENT ('dbo.Suppliers', RESEED, 1020) WITH NO_INFOMSGS;
     DBCC CHECKIDENT ('dbo.Medicines', RESEED, 1020) WITH NO_INFOMSGS;
-    DBCC CHECKIDENT ('dbo.Inventory', RESEED, 1020) WITH NO_INFOMSGS;
+    DBCC CHECKIDENT ('dbo.Inventory', RESEED, 1021) WITH NO_INFOMSGS;
+    DBCC CHECKIDENT ('dbo.Prescriptions', RESEED, 1004) WITH NO_INFOMSGS;
+    DBCC CHECKIDENT ('dbo.PrescriptionDetails', RESEED, 1005) WITH NO_INFOMSGS;
+    DBCC CHECKIDENT ('dbo.DispenseDetails', RESEED, 1001) WITH NO_INFOMSGS;
+    DBCC CHECKIDENT ('dbo.Invoices', RESEED, 1003) WITH NO_INFOMSGS;
+    DBCC CHECKIDENT ('dbo.InvoiceDetails', RESEED, 1004) WITH NO_INFOMSGS;
+    DBCC CHECKIDENT ('dbo.PurchaseOrders', RESEED, 1003) WITH NO_INFOMSGS;
+    DBCC CHECKIDENT ('dbo.PurchaseOrderDetails', RESEED, 1003) WITH NO_INFOMSGS;
     DBCC CHECKIDENT ('dbo.LabTestTypes', RESEED, 1020) WITH NO_INFOMSGS;
     DBCC CHECKIDENT ('dbo.LabTests', RESEED, 1025) WITH NO_INFOMSGS;
     DBCC CHECKIDENT ('dbo.LabTestResults', RESEED, 1020) WITH NO_INFOMSGS;
     DBCC CHECKIDENT ('dbo.Diseases', RESEED, 1020) WITH NO_INFOMSGS;
-    DBCC CHECKIDENT ('dbo.MedicalRecords', RESEED, 1020) WITH NO_INFOMSGS;
-    DBCC CHECKIDENT ('dbo.RecordDiagnoses', RESEED, 1020) WITH NO_INFOMSGS;
+    DBCC CHECKIDENT ('dbo.MedicalRecords', RESEED, 1022) WITH NO_INFOMSGS;
+    DBCC CHECKIDENT ('dbo.RecordDiagnoses', RESEED, 1021) WITH NO_INFOMSGS;
 
     COMMIT TRANSACTION;
 
@@ -381,6 +580,13 @@ BEGIN TRY
     UNION ALL SELECT 'Suppliers', COUNT(*) FROM dbo.Suppliers
     UNION ALL SELECT 'Medicines', COUNT(*) FROM dbo.Medicines
     UNION ALL SELECT 'Inventory', COUNT(*) FROM dbo.Inventory
+    UNION ALL SELECT 'Prescriptions', COUNT(*) FROM dbo.Prescriptions
+    UNION ALL SELECT 'PrescriptionDetails', COUNT(*) FROM dbo.PrescriptionDetails
+    UNION ALL SELECT 'DispenseDetails', COUNT(*) FROM dbo.DispenseDetails
+    UNION ALL SELECT 'Invoices', COUNT(*) FROM dbo.Invoices
+    UNION ALL SELECT 'InvoiceDetails', COUNT(*) FROM dbo.InvoiceDetails
+    UNION ALL SELECT 'PurchaseOrders', COUNT(*) FROM dbo.PurchaseOrders
+    UNION ALL SELECT 'PurchaseOrderDetails', COUNT(*) FROM dbo.PurchaseOrderDetails
     UNION ALL SELECT 'LabTestTypes', COUNT(*) FROM dbo.LabTestTypes
     UNION ALL SELECT 'LabTests', COUNT(*) FROM dbo.LabTests
     UNION ALL SELECT 'LabTestResults', COUNT(*) FROM dbo.LabTestResults
