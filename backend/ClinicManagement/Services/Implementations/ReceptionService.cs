@@ -184,7 +184,6 @@ public class ReceptionService : IReceptionService
         var book = invoice.PatientBook ?? new PatientBook
         {
             PatientId = invoice.PatientId,
-            PreviousBookId = previousBook?.PatientBookId,
             BookInvoiceId = invoiceId,
             CreatedAt = now
         };
@@ -195,7 +194,6 @@ public class ReceptionService : IReceptionService
         if (invoice.PatientBook == null) await _receptionRepository.AddBookAsync(book);
         await SaveBookAsync();
         await transaction.CommitAsync();
-        if (previousBook != null) await _notifications.PublishPatientBookChangedAsync(previousBook);
         await _notifications.PublishPatientBookChangedAsync(book);
         _logger.LogInformation("Book {PatientBookId} issued after invoice {InvoiceId} was paid",
             book.PatientBookId, invoiceId);

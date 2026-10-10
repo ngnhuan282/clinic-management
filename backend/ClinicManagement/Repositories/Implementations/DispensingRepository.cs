@@ -129,7 +129,7 @@ public class DispensingRepository : IDispensingRepository
             .AsNoTracking()
             .Include(x => x.InvoiceDetails)
             .Where(x =>
-                appointmentIds.Contains(x.AppointmentId) &&
+                x.AppointmentId.HasValue && appointmentIds.Contains(x.AppointmentId.Value) &&
                 x.Status == PaidStatus &&
                 (x.BillingStage == MedicineStage ||
                     x.BillingStage == FinalStage)

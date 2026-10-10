@@ -480,6 +480,8 @@ namespace ClinicManagement.Services.Implementations
 
         public async Task<InvoiceResponseDto> CreateInvoiceAsync(int cashierId, CreateInvoiceDto dto)
         {
+            await using var transaction = dto.BillingStage == "Book"
+                ? await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable) : null;
             // Kiểm tra chống thu trùng
             foreach (var item in dto.Items)
             {
@@ -489,6 +491,22 @@ namespace ClinicManagement.Services.Implementations
                 {
                     throw new InvalidOperationException($"Khoản phí '{item.ItemName}' (Mã: {item.SourceId}) đã được thanh toán trước đó!");
                 }
+            }
+
+            // Keep the reception book invoice and cashier payment in the same transaction.
+            var bookSources = dto.Items.Where(x => x.SourceType == "Book").Select(x => x.SourceId).Distinct().ToArray();
+            var bookInvoices = dto.BillingStage == "Book"
+                ? await _context.BookInvoices.Where(x => bookSources.Contains(x.BookInvoiceId)).ToListAsync()
+                : new List<BookInvoice>();
+            foreach (var bookInvoice in bookInvoices)
+            {
+                if (bookInvoice.PatientId != dto.PatientId || bookInvoice.Status != "Unpaid")
+                    throw new InvalidOperationException("Hóa đơn sổ không thuộc bệnh nhân hoặc đã được thanh toán.");
+                var sourceItems = dto.Items.Where(x => x.SourceType == "Book" && x.SourceId == bookInvoice.BookInvoiceId).ToList();
+                if (sourceItems.Count != 1 || sourceItems[0].Quantity != 1 || sourceItems[0].UnitPrice != bookInvoice.Amount)
+                    throw new InvalidOperationException("Số tiền thanh toán phải khớp phí trên hóa đơn sổ.");
+                bookInvoice.Status = "Paid";
+                bookInvoice.PaidAt = DateTime.UtcNow;
             }
 
             // Tính toán giá trị tiền
