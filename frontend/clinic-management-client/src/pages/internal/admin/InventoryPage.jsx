@@ -1,22 +1,15 @@
-import { useState } from "react";
 import {
-    Alert,
     Box,
-    Button,
     Chip,
     Paper,
-    Snackbar,
     Stack,
     Typography,
 } from "@mui/material";
-import AddCircleOutlineOutlinedIcon from "@mui/icons-material/AddCircleOutlineOutlined";
 import VerifiedOutlinedIcon from "@mui/icons-material/VerifiedOutlined";
 
-import ConfirmDialog from "../../../components/common/ConfirmDialog";
 import ErrorState from "../../../components/common/ErrorState";
 import Loading from "../../../components/common/Loading";
 import InventoryFilters from "../../../components/internal/medicines/InventoryFilters";
-import InventoryFormDialog from "../../../components/internal/medicines/InventoryFormDialog";
 import InventoryStatCards from "../../../components/internal/medicines/InventoryStatCards";
 import InventoryTable from "../../../components/internal/medicines/InventoryTable";
 import PharmacyModuleTabs from "../../../components/internal/medicines/PharmacyModuleTabs";
@@ -28,70 +21,14 @@ function InventoryPage() {
         inventoryItems,
         pagination,
         summary,
-        medicines,
         categories,
         suppliers,
         loading,
-        saving,
         error,
         updateFilters,
         resetFilters,
         loadInventory,
-        saveInventory,
-        removeInventory,
     } = useInventory();
-
-    const [formOpen, setFormOpen] = useState(false);
-    const [selectedInventory, setSelectedInventory] =
-        useState(null);
-    const [deleteTarget, setDeleteTarget] = useState(null);
-    const [actionError, setActionError] = useState("");
-    const [successMessage, setSuccessMessage] = useState("");
-
-    const handleCreate = () => {
-        setActionError("");
-        setSuccessMessage("");
-        setSelectedInventory(null);
-        setFormOpen(true);
-    };
-
-    const handleEdit = (inventoryItem) => {
-        setActionError("");
-        setSuccessMessage("");
-        setSelectedInventory(inventoryItem);
-        setFormOpen(true);
-    };
-
-    const handleSaveInventory = async (
-        payload,
-        inventoryId = null
-    ) => {
-        await saveInventory(payload, inventoryId);
-        setSuccessMessage(
-            inventoryId
-                ? "Đã cập nhật lô tồn kho thành công."
-                : "Đã thêm lô tồn kho thành công."
-        );
-    };
-
-    const handleDelete = async () => {
-        if (!deleteTarget) {
-            return;
-        }
-
-        setActionError("");
-        setSuccessMessage("");
-
-        try {
-            await removeInventory(deleteTarget.inventoryId);
-            setDeleteTarget(null);
-            setSuccessMessage(
-                "Đã xóa lô tồn kho thành công."
-            );
-        } catch (err) {
-            setActionError(err.message);
-        }
-    };
 
     return (
         <>
@@ -177,30 +114,6 @@ function InventoryPage() {
                             </Typography>
                         </Box>
 
-                        <Button
-                            variant="contained"
-                            startIcon={
-                                <AddCircleOutlineOutlinedIcon />
-                            }
-                            onClick={handleCreate}
-                            sx={{
-                                minWidth: "auto",
-                                height: 42,
-                                px: 2.25,
-                                flexShrink: 0,
-                                alignSelf: {
-                                    xs: "flex-start",
-                                    md: "center",
-                                },
-                                ml: { md: "auto" },
-                                whiteSpace: "nowrap",
-                                fontWeight: 800,
-                                boxShadow:
-                                    "0 8px 18px rgba(25, 118, 210, 0.18)",
-                            }}
-                        >
-                            Thêm lô tồn
-                        </Button>
                     </Stack>
                 </Paper>
 
@@ -215,15 +128,6 @@ function InventoryPage() {
                     onChange={updateFilters}
                     onReset={resetFilters}
                 />
-
-                {actionError && (
-                    <Alert
-                        severity="error"
-                        onClose={() => setActionError("")}
-                    >
-                        {actionError}
-                    </Alert>
-                )}
 
                 {error && (
                     <ErrorState
@@ -248,54 +152,8 @@ function InventoryPage() {
                                 pageNumber: 1,
                             })
                         }
-                        onEdit={handleEdit}
-                        onDelete={setDeleteTarget}
                     />
                 )}
-
-                <InventoryFormDialog
-                    key={`${formOpen}-${selectedInventory ? JSON.stringify(selectedInventory) : "new"}`}
-                    open={formOpen}
-                    inventoryItem={selectedInventory}
-                    medicines={medicines}
-                    saving={saving}
-                    onClose={() => setFormOpen(false)}
-                    onSubmit={handleSaveInventory}
-                />
-
-                <ConfirmDialog
-                    open={Boolean(deleteTarget)}
-                    title="Xóa lô tồn kho"
-                    message={
-                        deleteTarget
-                            ? `Bạn có chắc muốn xóa lô "${deleteTarget.batchNumber}" của thuốc "${deleteTarget.medicineName}"?`
-                            : ""
-                    }
-                    confirmText="Xóa lô tồn"
-                    cancelText="Hủy"
-                    loading={saving}
-                    onCancel={() => setDeleteTarget(null)}
-                    onConfirm={handleDelete}
-                />
-
-                <Snackbar
-                    open={Boolean(successMessage)}
-                    autoHideDuration={3000}
-                    onClose={() => setSuccessMessage("")}
-                    anchorOrigin={{
-                        vertical: "top",
-                        horizontal: "right",
-                    }}
-                >
-                    <Alert
-                        severity="success"
-                        variant="filled"
-                        onClose={() => setSuccessMessage("")}
-                        sx={{ width: "100%" }}
-                    >
-                        {successMessage}
-                    </Alert>
-                </Snackbar>
             </Stack>
         </>
     );

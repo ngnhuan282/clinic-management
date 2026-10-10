@@ -14,6 +14,10 @@ public class Prescription
 
     public DateTime? DispensedAt { get; set; }
 
+    public int? DispensedByUserId { get; set; }
+
+    public User? DispensedByUser { get; set; }
+
     public string? Notes { get; set; }
 
     public DateTime CreatedAt { get; set; }

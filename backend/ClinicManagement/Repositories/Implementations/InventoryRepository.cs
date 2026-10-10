@@ -61,7 +61,6 @@ public class InventoryRepository : IInventoryRepository
     public Task<bool> ExistsLotAsync(
         int medicineId,
         string batchNumber,
-        DateOnly expiryDate,
         int? excludedInventoryId = null)
     {
         var normalizedBatch = batchNumber.Trim();
@@ -69,9 +68,15 @@ public class InventoryRepository : IInventoryRepository
         return _context.Inventory.AnyAsync(x =>
             x.MedicineId == medicineId &&
             x.BatchNumber == normalizedBatch &&
-            x.ExpiryDate == expiryDate &&
             (!excludedInventoryId.HasValue ||
                 x.InventoryId != excludedInventoryId.Value)
+        );
+    }
+
+    public Task<bool> HasDispenseHistoryAsync(int inventoryId)
+    {
+        return _context.DispenseDetails.AnyAsync(x =>
+            x.InventoryId == inventoryId
         );
     }
 
@@ -212,27 +217,45 @@ public class InventoryRepository : IInventoryRepository
                 ? query.OrderByDescending(x =>
                         x.Medicine.MedicineName)
                     .ThenBy(x => x.ExpiryDate)
+                    .ThenBy(x => x.BatchNumber)
+                    .ThenBy(x => x.InventoryId)
                 : query.OrderBy(x => x.Medicine.MedicineName)
-                    .ThenBy(x => x.ExpiryDate),
+                    .ThenBy(x => x.ExpiryDate)
+                    .ThenBy(x => x.BatchNumber)
+                    .ThenBy(x => x.InventoryId),
 
             "quantity" => isDescending
                 ? query.OrderByDescending(x =>
                         x.QuantityInStock)
                     .ThenBy(x => x.ExpiryDate)
+                    .ThenBy(x => x.Medicine.MedicineName)
+                    .ThenBy(x => x.BatchNumber)
+                    .ThenBy(x => x.InventoryId)
                 : query.OrderBy(x => x.QuantityInStock)
-                    .ThenBy(x => x.ExpiryDate),
+                    .ThenBy(x => x.ExpiryDate)
+                    .ThenBy(x => x.Medicine.MedicineName)
+                    .ThenBy(x => x.BatchNumber)
+                    .ThenBy(x => x.InventoryId),
 
             "batch" => isDescending
                 ? query.OrderByDescending(x => x.BatchNumber)
                     .ThenBy(x => x.Medicine.MedicineName)
+                    .ThenBy(x => x.ExpiryDate)
+                    .ThenBy(x => x.InventoryId)
                 : query.OrderBy(x => x.BatchNumber)
-                    .ThenBy(x => x.Medicine.MedicineName),
+                    .ThenBy(x => x.Medicine.MedicineName)
+                    .ThenBy(x => x.ExpiryDate)
+                    .ThenBy(x => x.InventoryId),
 
             _ => isDescending
                 ? query.OrderByDescending(x => x.ExpiryDate)
                     .ThenBy(x => x.Medicine.MedicineName)
+                    .ThenBy(x => x.BatchNumber)
+                    .ThenBy(x => x.InventoryId)
                 : query.OrderBy(x => x.ExpiryDate)
                     .ThenBy(x => x.Medicine.MedicineName)
+                    .ThenBy(x => x.BatchNumber)
+                    .ThenBy(x => x.InventoryId)
         };
     }
 }

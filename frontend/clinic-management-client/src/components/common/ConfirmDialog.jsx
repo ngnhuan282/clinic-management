@@ -18,6 +18,7 @@ function ConfirmDialog({
     onConfirm,
     onCancel,
     loading = false,
+    confirmColor = "error",
 }) {
     return (
         <Dialog
@@ -45,7 +46,7 @@ function ConfirmDialog({
                 <Button
                     onClick={onConfirm}
                     variant="contained"
-                    color="error"
+                    color={confirmColor}
                     disabled={loading}
                 >
                     {loading ? "Processing..." : confirmText}

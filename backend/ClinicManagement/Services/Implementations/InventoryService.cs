@@ -95,8 +95,7 @@ public class InventoryService : IInventoryService
         await EnsureMedicineExistsAsync(request.MedicineId);
         await EnsureLotAvailableAsync(
             request.MedicineId,
-            request.BatchNumber,
-            request.ExpiryDate
+            request.BatchNumber
         );
 
         var inventory = new Inventory
@@ -129,16 +128,35 @@ public class InventoryService : IInventoryService
             );
         }
 
+        var normalizedBatchNumber = request.BatchNumber.Trim();
+        var changesLotIdentity =
+            inventory.MedicineId != request.MedicineId ||
+            !string.Equals(
+                inventory.BatchNumber,
+                normalizedBatchNumber,
+                StringComparison.OrdinalIgnoreCase
+            ) ||
+            inventory.ExpiryDate != request.ExpiryDate;
+
+        if (changesLotIdentity &&
+            await _inventoryRepository.HasDispenseHistoryAsync(
+                inventoryId
+            ))
+        {
+            throw new AppException(
+                ErrorCode.INVENTORY_HAS_DISPENSE_HISTORY
+            );
+        }
+
         await EnsureMedicineExistsAsync(request.MedicineId);
         await EnsureLotAvailableAsync(
             request.MedicineId,
             request.BatchNumber,
-            request.ExpiryDate,
             inventoryId
         );
 
         inventory.MedicineId = request.MedicineId;
-        inventory.BatchNumber = request.BatchNumber.Trim();
+        inventory.BatchNumber = normalizedBatchNumber;
         inventory.QuantityInStock = request.QuantityInStock;
         inventory.ExpiryDate = request.ExpiryDate;
 
@@ -158,6 +176,15 @@ public class InventoryService : IInventoryService
         {
             throw new AppException(
                 ErrorCode.INVENTORY_NOT_FOUND
+            );
+        }
+
+        if (await _inventoryRepository.HasDispenseHistoryAsync(
+                inventoryId
+            ))
+        {
+            throw new AppException(
+                ErrorCode.INVENTORY_HAS_DISPENSE_HISTORY
             );
         }
 
@@ -181,14 +208,12 @@ public class InventoryService : IInventoryService
     private async Task EnsureLotAvailableAsync(
         int medicineId,
         string batchNumber,
-        DateOnly expiryDate,
         int? excludedInventoryId = null)
     {
         var exists =
             await _inventoryRepository.ExistsLotAsync(
                 medicineId,
                 batchNumber,
-                expiryDate,
                 excludedInventoryId
             );
 

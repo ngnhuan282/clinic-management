@@ -20,6 +20,7 @@ import PatientProfilePage from "../pages/patient/PatientProfilePage";
 import AuthPage from "../pages/auth/AuthPage";
 
 import InventoryPage from "../pages/internal/admin/InventoryPage";
+import PurchaseOrdersPage from "../pages/internal/admin/PurchaseOrdersPage";
 import MedicineCategoriesPage from "../pages/internal/admin/MedicineCategoriesPage";
 import MedicinesPage from "../pages/internal/admin/MedicinesPage";
 import SuppliersPage from "../pages/internal/admin/SuppliersPage";
@@ -46,6 +47,7 @@ import DoctorProfilePage from "../pages/internal/doctor/DoctorProfilePage";
 import PatientBooksPage from "../pages/internal/PatientBooksPage";
 
 import TechnicianLabQueuePage from "../pages/internal/technician/TechnicianLabQueuePage";
+import DispensingPage from "../pages/internal/pharmacist/DispensingPage";
 
 function UnauthorizedPage() {
     const { state } = useLocation();
@@ -267,11 +269,16 @@ export default function AppRoutes() {
                                 path="medicines/inventory"
                                 element={<InventoryPage />}
                             />
+                            <Route
+                                path="medicines/purchase-orders"
+                                element={<PurchaseOrdersPage />}
+                            />
                         </Route>
 
                         <Route
                             element={
                                 <ProtectedRoute
+                                    allowedRoles={["Admin", "DepartmentHead"]}
                                     allowedPermissions={["clinical.manageDiseases"]}
                                 />
                             }
@@ -341,6 +348,19 @@ export default function AppRoutes() {
                             <Route
                                 path="examinations/:appointmentId/prescription"
                                 element={<PrescriptionPage />}
+                            />
+                        </Route>
+
+                        <Route
+                            element={
+                                <ProtectedRoute
+                                    allowedPermissions={["pharmacy.dispense"]}
+                                />
+                            }
+                        >
+                            <Route
+                                path="pharmacy/dispensing"
+                                element={<DispensingPage />}
                             />
                         </Route>
 

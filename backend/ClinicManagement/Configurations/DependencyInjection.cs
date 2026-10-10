@@ -101,6 +101,16 @@ public static class DependencyInjection
         >();
 
         services.AddScoped<
+            IPurchaseOrderRepository,
+            PurchaseOrderRepository
+        >();
+
+        services.AddScoped<
+            IDispensingRepository,
+            DispensingRepository
+        >();
+
+        services.AddScoped<
             IDiseaseRepository,
             DiseaseRepository
         >();
@@ -144,6 +154,16 @@ public static class DependencyInjection
         services.AddScoped<
             IInventoryService,
             InventoryService
+        >();
+
+        services.AddScoped<
+            IPurchaseOrderService,
+            PurchaseOrderService
+        >();
+
+        services.AddScoped<
+            IDispensingService,
+            DispensingService
         >();
 
         services.AddScoped<

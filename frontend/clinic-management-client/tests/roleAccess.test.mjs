@@ -10,6 +10,46 @@ test("custom role sees only pages allowed by current permissions", () => {
     assert.equal(canAccessPath(reader, "/internal/examinations/1/record"), false);
 });
 
+test("pharmacy inventory permission exposes purchase order flows", () => {
+    const pharmacist = {
+        role: "Pharmacist",
+        permissions: ["pharmacy.manageInventory"],
+    };
+
+    assert.equal(
+        canAccessPath(pharmacist, "/internal/medicines/purchase-orders"),
+        true
+    );
+    assert.equal(
+        canAccessPath(pharmacist, "/internal/medicines/inventory"),
+        true
+    );
+    assert.equal(
+        canAccessPath(
+            { role: "Doctor", permissions: ["pharmacy.viewInventory"] },
+            "/internal/medicines"
+        ),
+        false
+    );
+});
+
+test("pharmacist opens the dispensing counter with dispense permission", () => {
+    const pharmacist = {
+        role: "Pharmacist",
+        permissions: ["pharmacy.viewInventory", "pharmacy.dispense"],
+    };
+
+    assert.equal(homeForRole(pharmacist), "/internal/pharmacy/dispensing");
+    assert.equal(
+        canAccessPath(pharmacist, "/internal/pharmacy/dispensing"),
+        true
+    );
+    assert.equal(
+        canAccessPath(pharmacist, "/internal/medicines/purchase-orders"),
+        false
+    );
+});
+
 test("RBAC page requires both Admin role and management permission", () => {
     const page = INTERNAL_PAGES.find(item => item.path === "/internal/roles-permissions");
     assert.equal(canSeePage({ role: "Admin", permissions: ["accounts.manageRoles"] }, page), true);
@@ -25,12 +65,22 @@ test("patient remains in patient portal", () => {
 });
 
 test("DepartmentHead keeps doctor pages and sees review queue with permission", () => {
-    const head = { role: "DepartmentHead", permissions: ["schedules.review", "clinical.viewAssigned", "labs.order"] };
+    const head = { role: "DepartmentHead", permissions: ["schedules.review", "clinical.viewAssigned", "clinical.manageDiseases", "labs.order"] };
     assert.equal(canAccessPath(head, "/internal/schedule-requests"), true);
     assert.equal(canAccessPath(head, "/internal/examinations/12"), true);
+    assert.equal(canAccessPath(head, "/internal/diseases"), true);
     assert.equal(canAccessPath(head, "/internal/doctor/lab-orders"), true);
     assert.equal(canAccessPath(head, "/internal/users"), false);
     assert.equal(homeForRole(head), "/internal/dashboard");
+});
+
+test("disease catalog management is hidden from regular doctors", () => {
+    const diseasePage = INTERNAL_PAGES.find(item => item.path === "/internal/diseases");
+    assert.equal(canSeePage({ role: "Admin", permissions: ["clinical.manageDiseases"] }, diseasePage), true);
+    assert.equal(canSeePage({ role: "DepartmentHead", permissions: ["clinical.manageDiseases"] }, diseasePage), true);
+    assert.equal(canSeePage({ role: "Doctor", permissions: ["clinical.viewAssigned", "clinical.editDiagnosis"] }, diseasePage), false);
+    assert.equal(canSeePage({ role: "Doctor", permissions: ["clinical.manageDiseases"] }, diseasePage), false);
+    assert.equal(canAccessPath({ role: "Doctor", permissions: ["clinical.viewAssigned", "clinical.editDiagnosis"] }, "/internal/diseases"), false);
 });
 
 test("review page is absent for Doctor and unrelated custom roles", () => {

@@ -294,6 +294,36 @@ namespace ClinicManagement.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ClinicManagement.Data.Entities.DispenseDetail", b =>
+                {
+                    b.Property<int>("DispenseDetailId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("DispenseDetailId"));
+
+                    b.Property<int>("InventoryId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PrescriptionDetailId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("QuantityDispensed")
+                        .HasColumnType("int");
+
+                    b.HasKey("DispenseDetailId");
+
+                    b.HasIndex("InventoryId");
+
+                    b.HasIndex("PrescriptionDetailId", "InventoryId")
+                        .IsUnique();
+
+                    b.ToTable("DispenseDetails", t =>
+                        {
+                            t.HasCheckConstraint("CK_DispenseDetails_QuantityDispensed", "[QuantityDispensed] > 0");
+                        });
+                });
+
             modelBuilder.Entity("ClinicManagement.Data.Entities.Doctor", b =>
                 {
                     b.Property<int>("DoctorId")
@@ -535,7 +565,7 @@ namespace ClinicManagement.Migrations
 
                     b.HasKey("InventoryId");
 
-                    b.HasIndex("MedicineId", "BatchNumber", "ExpiryDate")
+                    b.HasIndex("MedicineId", "BatchNumber")
                         .IsUnique();
 
                     b.ToTable("Inventory", t =>
@@ -1266,7 +1296,7 @@ namespace ClinicManagement.Migrations
                         new
                         {
                             Code = "pharmacy.dispense",
-                            IsImplemented = false,
+                            IsImplemented = true,
                             Kind = "Nghiệp vụ",
                             Module = "Đơn thuốc và kho",
                             Name = "Xác nhận cấp thuốc"
@@ -1413,6 +1443,9 @@ namespace ClinicManagement.Migrations
                     b.Property<DateTime?>("DispensedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<int?>("DispensedByUserId")
+                        .HasColumnType("int");
+
                     b.Property<int>("MedicalRecordId")
                         .HasColumnType("int");
 
@@ -1436,6 +1469,8 @@ namespace ClinicManagement.Migrations
                         .HasDefaultValueSql("GETDATE()");
 
                     b.HasKey("PrescriptionId");
+
+                    b.HasIndex("DispensedByUserId");
 
                     b.HasIndex("MedicalRecordId")
                         .IsUnique();
@@ -1480,6 +1515,112 @@ namespace ClinicManagement.Migrations
                     b.ToTable("PrescriptionDetails", t =>
                         {
                             t.HasCheckConstraint("CK_PrescriptionDetails_Quantity", "[Quantity] > 0");
+                        });
+                });
+
+            modelBuilder.Entity("ClinicManagement.Data.Entities.PurchaseOrder", b =>
+                {
+                    b.Property<int>("PurchaseOrderId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PurchaseOrderId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("OrderDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ReceivedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("ReceivedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("SupplierId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("PurchaseOrderId");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("OrderDate");
+
+                    b.HasIndex("ReceivedByUserId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("SupplierId");
+
+                    b.ToTable("PurchaseOrders", t =>
+                        {
+                            t.HasCheckConstraint("CK_PurchaseOrders_Status", "[Status] IN ('Draft','Received','Cancelled')");
+
+                            t.HasCheckConstraint("CK_PurchaseOrders_TotalAmount", "[TotalAmount] >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("ClinicManagement.Data.Entities.PurchaseOrderDetail", b =>
+                {
+                    b.Property<int>("PurchaseOrderDetailId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PurchaseOrderDetailId"));
+
+                    b.Property<string>("BatchNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateOnly>("ExpiryDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("MedicineId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PurchaseOrderId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("PurchaseOrderDetailId");
+
+                    b.HasIndex("MedicineId");
+
+                    b.HasIndex("PurchaseOrderId", "MedicineId", "BatchNumber")
+                        .IsUnique();
+
+                    b.ToTable("PurchaseOrderDetails", t =>
+                        {
+                            t.HasCheckConstraint("CK_PurchaseOrderDetails_Quantity", "[Quantity] > 0");
+
+                            t.HasCheckConstraint("CK_PurchaseOrderDetails_UnitPrice", "[UnitPrice] > 0");
                         });
                 });
 
@@ -1672,6 +1813,14 @@ namespace ClinicManagement.Migrations
                             Description = "Lab technician",
                             IsSystem = true,
                             RoleName = "LabTechnician",
+                            Version = new byte[0]
+                        },
+                        new
+                        {
+                            RoleId = 7,
+                            Description = "Pharmacist",
+                            IsSystem = true,
+                            RoleName = "Pharmacist",
                             Version = new byte[0]
                         });
                 });
@@ -1880,11 +2029,6 @@ namespace ClinicManagement.Migrations
                         new
                         {
                             RoleId = 2,
-                            PermissionCode = "clinical.manageDiseases"
-                        },
-                        new
-                        {
-                            RoleId = 2,
                             PermissionCode = "pharmacy.viewInventory"
                         },
                         new
@@ -1940,11 +2084,6 @@ namespace ClinicManagement.Migrations
                         new
                         {
                             RoleId = 3,
-                            PermissionCode = "pharmacy.dispense"
-                        },
-                        new
-                        {
-                            RoleId = 3,
                             PermissionCode = "billing.view"
                         },
                         new
@@ -1956,6 +2095,21 @@ namespace ClinicManagement.Migrations
                         {
                             RoleId = 3,
                             PermissionCode = "billing.recordPayment"
+                        },
+                        new
+                        {
+                            RoleId = 7,
+                            PermissionCode = "pharmacy.viewInventory"
+                        },
+                        new
+                        {
+                            RoleId = 7,
+                            PermissionCode = "pharmacy.viewCatalog"
+                        },
+                        new
+                        {
+                            RoleId = 7,
+                            PermissionCode = "pharmacy.dispense"
                         },
                         new
                         {
@@ -2369,6 +2523,25 @@ namespace ClinicManagement.Migrations
                     b.Navigation("Patient");
                 });
 
+            modelBuilder.Entity("ClinicManagement.Data.Entities.DispenseDetail", b =>
+                {
+                    b.HasOne("ClinicManagement.Data.Entities.Inventory", "Inventory")
+                        .WithMany("DispenseDetails")
+                        .HasForeignKey("InventoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ClinicManagement.Data.Entities.PrescriptionDetail", "PrescriptionDetail")
+                        .WithMany("DispenseDetails")
+                        .HasForeignKey("PrescriptionDetailId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Inventory");
+
+                    b.Navigation("PrescriptionDetail");
+                });
+
             modelBuilder.Entity("ClinicManagement.Data.Entities.Doctor", b =>
                 {
                     b.HasOne("ClinicManagement.Data.Entities.Department", "Department")
@@ -2590,11 +2763,18 @@ namespace ClinicManagement.Migrations
 
             modelBuilder.Entity("ClinicManagement.Data.Entities.Prescription", b =>
                 {
+                    b.HasOne("ClinicManagement.Data.Entities.User", "DispensedByUser")
+                        .WithMany()
+                        .HasForeignKey("DispensedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("ClinicManagement.Data.Entities.MedicalRecord", "MedicalRecord")
                         .WithOne("Prescription")
                         .HasForeignKey("ClinicManagement.Data.Entities.Prescription", "MedicalRecordId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("DispensedByUser");
 
                     b.Navigation("MedicalRecord");
                 });
@@ -2616,6 +2796,51 @@ namespace ClinicManagement.Migrations
                     b.Navigation("Medicine");
 
                     b.Navigation("Prescription");
+                });
+
+            modelBuilder.Entity("ClinicManagement.Data.Entities.PurchaseOrder", b =>
+                {
+                    b.HasOne("ClinicManagement.Data.Entities.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ClinicManagement.Data.Entities.User", "ReceivedByUser")
+                        .WithMany()
+                        .HasForeignKey("ReceivedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ClinicManagement.Data.Entities.Supplier", "Supplier")
+                        .WithMany("PurchaseOrders")
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("ReceivedByUser");
+
+                    b.Navigation("Supplier");
+                });
+
+            modelBuilder.Entity("ClinicManagement.Data.Entities.PurchaseOrderDetail", b =>
+                {
+                    b.HasOne("ClinicManagement.Data.Entities.Medicine", "Medicine")
+                        .WithMany("PurchaseOrderDetails")
+                        .HasForeignKey("MedicineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ClinicManagement.Data.Entities.PurchaseOrder", "PurchaseOrder")
+                        .WithMany("Details")
+                        .HasForeignKey("PurchaseOrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Medicine");
+
+                    b.Navigation("PurchaseOrder");
                 });
 
             modelBuilder.Entity("ClinicManagement.Data.Entities.RbacAudit", b =>
@@ -2759,6 +2984,11 @@ namespace ClinicManagement.Migrations
                     b.Navigation("Schedule");
                 });
 
+            modelBuilder.Entity("ClinicManagement.Data.Entities.Inventory", b =>
+                {
+                    b.Navigation("DispenseDetails");
+                });
+
             modelBuilder.Entity("ClinicManagement.Data.Entities.Invoice", b =>
                 {
                     b.Navigation("InvoiceDetails");
@@ -2781,6 +3011,8 @@ namespace ClinicManagement.Migrations
                     b.Navigation("Inventories");
 
                     b.Navigation("PrescriptionDetails");
+
+                    b.Navigation("PurchaseOrderDetails");
                 });
 
             modelBuilder.Entity("ClinicManagement.Data.Entities.MedicineCategory", b =>
@@ -2798,6 +3030,16 @@ namespace ClinicManagement.Migrations
                     b.Navigation("Details");
                 });
 
+            modelBuilder.Entity("ClinicManagement.Data.Entities.PrescriptionDetail", b =>
+                {
+                    b.Navigation("DispenseDetails");
+                });
+
+            modelBuilder.Entity("ClinicManagement.Data.Entities.PurchaseOrder", b =>
+                {
+                    b.Navigation("Details");
+                });
+
             modelBuilder.Entity("ClinicManagement.Data.Entities.Role", b =>
                 {
                     b.Navigation("RolePermissions");
@@ -2808,6 +3050,8 @@ namespace ClinicManagement.Migrations
             modelBuilder.Entity("ClinicManagement.Data.Entities.Supplier", b =>
                 {
                     b.Navigation("Medicines");
+
+                    b.Navigation("PurchaseOrders");
                 });
 
             modelBuilder.Entity("ClinicManagement.Data.Entities.User", b =>

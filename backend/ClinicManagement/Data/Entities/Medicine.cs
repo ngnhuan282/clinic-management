@@ -25,4 +25,7 @@ public class Medicine
 
     public ICollection<PrescriptionDetail> PrescriptionDetails { get; set; }
         = new List<PrescriptionDetail>();
+
+    public ICollection<PurchaseOrderDetail> PurchaseOrderDetails { get; set; }
+        = new List<PurchaseOrderDetail>();
 }

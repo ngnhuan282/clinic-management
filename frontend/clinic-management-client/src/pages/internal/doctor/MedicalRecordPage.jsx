@@ -39,7 +39,6 @@ function MedicalRecordPage() {
         form,
         loading,
         saving,
-        diseaseSaving,
         error,
         actionError,
         successMessage,
@@ -50,7 +49,6 @@ function MedicalRecordPage() {
         updateDiagnosisRow,
         setPrimaryDiagnosis,
         removeDiagnosisRow,
-        createDiseaseOption,
         submitRecord,
         reload,
         clearActionError,
@@ -326,8 +324,6 @@ function MedicalRecordPage() {
                         updateDiagnosisRow={updateDiagnosisRow}
                         setPrimaryDiagnosis={setPrimaryDiagnosis}
                         removeDiagnosisRow={removeDiagnosisRow}
-                        savingDisease={diseaseSaving}
-                        onCreateDisease={createDiseaseOption}
                     />
 
                     <MedicalRecordStatusPanel
