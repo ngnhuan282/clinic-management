@@ -1,250 +1,8 @@
-// import React, { useState, useEffect } from 'react';
-// import { 
-//   Table, 
-//   Button, 
-//   Card, 
-//   Select, 
-//   Tag, 
-//   Space, 
-//   Typography, 
-//   message, 
-//   Row, 
-//   Col, 
-//   Divider,
-//   Statistic
-// } from 'antd';
-// import { DollarOutlined, CreditCardOutlined, SolutionOutlined } from '@ant-design/icons';
-// import invoiceApi from '../../api/invoiceApi';
-
-// const { Title, Text } = Typography;
-// const { Option } = Select;
-
-// export default function CashierBillingPage() {
-//   const [stage, setStage] = useState('Pending');
-//   const [pendingList, setPendingList] = useState([]);
-//   const [loading, setLoading] = useState(false);
-//   const [submitting, setSubmitting] = useState(false);
-//   const [selectedRecord, setSelectedRecord] = useState(null);
-//   const [paymentMethod, setPaymentMethod] = useState('Cash');
-
-//   // Lấy danh sách chờ thu tiền theo BillingStage
-//   const fetchPending = async () => {
-//     setLoading(true);
-//     try {
-//       const res = await invoiceApi.getPendingBillings(stage);
-//       setPendingList(res.data);
-//       setSelectedRecord(null);
-//     } catch (err) {
-//       message.error('Lỗi khi tải danh sách chờ thu tiền!');
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   useEffect(() => {
-//     fetchPending();
-//   }, [stage]);
-
-//   // Xử lý tạo Hóa đơn & Thu tiền
-//   const handleCreateInvoice = async () => {
-//     if (!selectedRecord) return;
-
-//     setSubmitting(true);
-//     try {
-//       const dto = {
-//         appointmentId: selectedRecord.appointmentId,
-//         patientId: selectedRecord.patientId,
-//         billingStage: stage,
-//         paymentMethod: paymentMethod,
-//         items: selectedRecord.items.map((item) => ({
-//           sourceType: item.sourceType,
-//           sourceId: item.sourceId,
-//           itemName: item.itemName,
-//           unitPrice: item.unitPrice,
-//           quantity: item.quantity,
-//         })),
-//       };
-
-//       await invoiceApi.createInvoice(dto);
-//       message.success('Lập hóa đơn & thu tiền thành công!');
-//       fetchPending();
-//     } catch (err) {
-//       message.error(err.response?.data?.message || 'Lỗi khi lập hóa đơn!');
-//     } finally {
-//       setSubmitting(false);
-//     }
-//   };
-
-//   // Cấu hình cột cho Bảng danh sách chờ thu
-//   const pendingColumns = [
-//     {
-//       title: 'Mã Lịch Hẹn',
-//       dataIndex: 'appointmentId',
-//       key: 'appointmentId',
-//       render: (id) => <Tag color="blue">#{id}</Tag>,
-//     },
-//     {
-//       title: 'Mã Bệnh Nhân',
-//       dataIndex: 'patientId',
-//       key: 'patientId',
-//     },
-//     {
-//       title: 'Số khoản thu',
-//       key: 'itemCount',
-//       render: (_, record) => record.items?.length || 0,
-//     },
-//     {
-//       title: 'Hành động',
-//       key: 'action',
-//       render: (_, record) => (
-//         <Button 
-//           type={selectedRecord?.appointmentId === record.appointmentId ? 'primary' : 'default'}
-//           onClick={() => setSelectedRecord(record)}
-//         >
-//           Chọn thu tiền
-//         </Button>
-//       ),
-//     },
-//   ];
-
-//   // Cấu hình cột cho Bảng chi tiết hóa đơn
-//   const detailColumns = [
-//     {
-//       title: 'Nội dung khoản phí',
-//       dataIndex: 'itemName',
-//       key: 'itemName',
-//     },
-//     {
-//       title: 'Đơn giá',
-//       dataIndex: 'unitPrice',
-//       key: 'unitPrice',
-//       render: (val) => `${val.toLocaleString()} đ`,
-//     },
-//     {
-//       title: 'SL',
-//       dataIndex: 'quantity',
-//       key: 'quantity',
-//     },
-//     {
-//       title: 'Thành tiền',
-//       dataIndex: 'totalPrice',
-//       key: 'totalPrice',
-//       render: (val) => <strong>{val.toLocaleString()} đ</strong>,
-//     },
-//   ];
-
-//   const totalAmount = selectedRecord?.items?.reduce((sum, item) => sum + item.totalPrice, 0) || 0;
-
-//   return (
-//     <div style={{ padding: 24, background: '#f5f5f5', minHeight: '100vh' }}>
-//       <Card style={{ marginBottom: 20 }}>
-//         <Row justify="space-between" align="middle">
-//           <Col>
-//             <Title level={3} style={{ margin: 0 }}>
-//               <DollarOutlined /> Thu Ngân: Quản Lý Hóa Đơn & Thanh Toán
-//             </Title>
-//           </Col>
-//           <Col>
-//             <Space>
-//               <Text strong>Chọn Sổ thu tiền (Billing Stage):</Text>
-//               <Select 
-//                 value={stage} 
-//                 onChange={(val) => setStage(val)} 
-//                 style={{ width: 280 }}
-//                 size="large"
-//               >
-//                 <Option value="Pending">1. Sổ Pending (Phí khám ban đầu)</Option>
-//                 <Option value="LabAndConsultation">2. Sổ LabAndConsultation (Xét nghiệm)</Option>
-//               </Select>
-//             </Space>
-//           </Col>
-//         </Row>
-//       </Card>
-
-//       <Row gutter={20}>
-//         {/* Cột trái: Danh sách hàng chờ */}
-//         <Col span={11}>
-//           <Card title={`Danh sách chờ thu tiền - Sổ ${stage}`} loading={loading}>
-//             <Table 
-//               dataSource={pendingList} 
-//               columns={pendingColumns} 
-//               rowKey="appointmentId"
-//               pagination={{ pageSize: 6 }}
-//             />
-//           </Card>
-//         </Col>
-
-//         {/* Cột phải: Chi tiết thanh toán */}
-//         <Col span={13}>
-//           <Card title="Chi tiết Hóa đơn Thanh toán">
-//             {selectedRecord ? (
-//               <>
-//                 <Space direction="vertical" style={{ width: '100%' }} size="middle">
-//                   <div>
-//                     <Text type="secondary">Mã Lịch hẹn:</Text> <Tag color="volcano">#{selectedRecord.appointmentId}</Tag>
-//                     <Text type="secondary" style={{ marginLeft: 16 }}>Mã Bệnh nhân:</Text> <Tag color="green">#{selectedRecord.patientId}</Tag>
-//                   </div>
-
-//                   <Table 
-//                     dataSource={selectedRecord.items} 
-//                     columns={detailColumns} 
-//                     rowKey="sourceId" 
-//                     pagination={false}
-//                     size="small"
-//                   />
-
-//                   <Divider style={{ margin: '12px 0' }} />
-
-//                   <Row justify="space-between" align="middle">
-//                     <Col>
-//                       <Statistic title="Tổng tiền thanh toán" value={totalAmount} precision={0} suffix="VNĐ" />
-//                     </Col>
-//                     <Col>
-//                       <Space direction="vertical">
-//                         <Text strong>Phương thức thanh toán:</Text>
-//                         <Select 
-//                           value={paymentMethod} 
-//                           onChange={(val) => setPaymentMethod(val)} 
-//                           style={{ width: 180 }}
-//                         >
-//                           <Option value="Cash">Tiền mặt</Option>
-//                           <Option value="Transfer">Chuyển khoản</Option>
-//                           <Option value="CreditCard">Thẻ ngân hàng</Option>
-//                         </Select>
-//                       </Space>
-//                     </Col>
-//                   </Row>
-
-//                   <Button 
-//                     type="primary" 
-//                     icon={<CreditCardOutlined />} 
-//                     size="large" 
-//                     block 
-//                     loading={submitting}
-//                     onClick={handleCreateInvoice}
-//                     style={{ marginTop: 16, backgroundColor: '#52c41a', borderColor: '#52c41a' }}
-//                   >
-//                     Xác Nhận Thu Tiền & Xuất Hóa Đơn
-//                   </Button>
-//                 </Space>
-//               </>
-//             ) : (
-//               <div style={{ textAlign: 'center', padding: '40px 0', color: '#999' }}>
-//                 <SolutionOutlined style={{ fontSize: 48, marginBottom: 12 }} />
-//                 <p>Vui lòng chọn một bản ghi từ danh sách bên trái để xem chi tiết và lập hóa đơn.</p>
-//               </div>
-//             )}
-//           </Card>
-//         </Col>
-//       </Row>
-//     </div>
-//   );
-// }
-
-import React, { useState, useEffect } from 'react';
-import { Table, Button, Card, Select, Tag, Space, Typography, message, Row, Col, Divider, Statistic, InputNumber } from 'antd';
+import { useState, useEffect } from 'react';
+import { Table, Button, Card, Select, Tag, Space, Typography, message, Row, Col, Divider, Statistic, InputNumber, Alert } from 'antd';
 import { DollarOutlined, CreditCardOutlined, SolutionOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import invoiceApi from '../../api/invoiceApi';
+import getApiErrorMessage from '../../utils/errorHandler';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -261,10 +19,12 @@ export default function CashierBillingPage() {
   // Tỷ lệ % BHYT chi trả
   const [insuranceDiscountPercent, setInsuranceDiscountPercent] = useState(0);
 
-  // Reset tỷ lệ BHYT khi đổi bản ghi chọn thu tiền
-  useEffect(() => {
-    setInsuranceDiscountPercent(0);
-  }, [selectedRecord]);
+  const currentPending = pendingResult?.stage === stage && pendingResult?.refreshVersion === refreshVersion ? pendingResult : null;
+  const loading = !currentPending;
+  const pendingList = currentPending?.items || [];
+  const selectRecord = record => { setSelectedRecord(record); setInsuranceDiscountPercent(0); };
+  const changeStage = value => { setStage(value); selectRecord(null); };
+  const refresh = () => { selectRecord(null); setRefreshVersion(version => version + 1); };
 
   // Lấy danh sách chờ thu tiền theo BillingStage
   useEffect(() => {
@@ -273,10 +33,9 @@ export default function CashierBillingPage() {
       .then((res) => {
         if (active) setPendingResult({ stage, refreshVersion, items: res.data });
       })
-      .catch(() => {
+      .catch((error) => {
         if (active) {
-          setPendingResult({ stage, refreshVersion, items: [] });
-          messageApi.error('Lỗi khi tải danh sách chờ thu tiền!');
+          setPendingResult({ stage, refreshVersion, items: [], error: getApiErrorMessage(error) });
         }
       });
     return () => { active = false; };
@@ -289,7 +48,7 @@ export default function CashierBillingPage() {
 
   // Xử lý tạo Hóa đơn & Thu tiền
   const handleCreateInvoice = async () => {
-    if (!selectedRecord) return;
+    if (!selectedRecord || submitting || loading) return;
     setSubmitting(true);
     try {
       const dto = {
@@ -311,10 +70,9 @@ export default function CashierBillingPage() {
       };
       await invoiceApi.createInvoice(dto);
       messageApi.success('Lập hóa đơn & thu tiền thành công!');
-      setSelectedRecord(null);
-      setRefreshVersion((version) => version + 1);
+      refresh();
     } catch (err) {
-      messageApi.error(err.response?.data?.message || 'Lỗi khi lập hóa đơn!');
+      messageApi.error(getApiErrorMessage(err, 'Lỗi khi lập hóa đơn!'));
     } finally {
       setSubmitting(false);
     }
@@ -343,8 +101,9 @@ export default function CashierBillingPage() {
       key: 'action',
       render: (_, record) => (
         <Button
-          type={selectedRecord?.appointmentId === record.appointmentId ? 'primary' : 'default'}
-          onClick={() => setSelectedRecord(record)}
+          type={selectedRecord?.appointmentId === record.appointmentId && selectedRecord?.patientId === record.patientId ? 'primary' : 'default'}
+          disabled={submitting || loading}
+          onClick={() => selectRecord(record)}
         >
           Chọn thu tiền
         </Button>
@@ -389,37 +148,42 @@ export default function CashierBillingPage() {
             </Title>
           </Col>
           <Col>
-            <Space>
+            <Space wrap style={{ maxWidth: '100%' }}>
               <Text strong>Chọn Sổ thu tiền (Billing Stage):</Text>
               <Select
+                aria-label="Sổ thu tiền"
                 value={stage}
-                onChange={(val) => setStage(val)}
-                style={{ width: 280 }}
+                disabled={submitting}
+                onChange={changeStage}
+                style={{ width: 260, maxWidth: '100%' }}
                 size="large"
               >
                 <Option value="Pending">1. Sổ Pending (Phí khám ban đầu)</Option>
                 <Option value="LabAndConsultation">2. Sổ LabAndConsultation (Xét nghiệm)</Option>
               </Select>
+              <Button disabled={loading || submitting} onClick={refresh}>Làm mới dữ liệu</Button>
             </Space>
           </Col>
         </Row>
       </Card>
 
-      <Row gutter={20}>
+      {currentPending?.error && <Alert type="error" showIcon title={currentPending.error} style={{ marginBottom: 16 }} action={<Button onClick={refresh} disabled={loading || submitting}>Thử lại</Button>} />}
+      <Row gutter={[20, 20]}>
         {/* Cột trái: Danh sách hàng chờ */}
-        <Col span={10}>
+        <Col xs={24} lg={10}>
           <Card title={`Danh sách chờ thu tiền - Sổ ${stage}`} loading={loading}>
             <Table
               dataSource={pendingList}
+              scroll={{ x: 380 }}
               columns={pendingColumns}
-              rowKey="appointmentId"
+              rowKey={record => `${record.appointmentId}-${record.patientId}`}
               pagination={{ pageSize: 6 }}
             />
           </Card>
         </Col>
 
         {/* Cột phải: Chi tiết thanh toán */}
-        <Col span={14}>
+        <Col xs={24} lg={14}>
           <Card title="Chi tiết Hóa đơn Thanh toán">
             {selectedRecord ? (
               <Space direction="vertical" style={{ width: '100%' }} size="middle">
@@ -432,6 +196,7 @@ export default function CashierBillingPage() {
 
                 <Table
                   dataSource={selectedRecord.items}
+                  scroll={{ x: 440 }}
                   columns={detailColumns}
                   rowKey="sourceId"
                   pagination={false}
@@ -444,7 +209,7 @@ export default function CashierBillingPage() {
                 <Card size="small" style={{ background: '#e6f7ff', borderColor: '#91d5ff' }}>
                   <Row align="middle" justify="space-between">
                     <Col>
-                      <Space>
+                      <Space wrap>
                         <SafetyCertificateOutlined style={{ color: '#1890ff', fontSize: 20 }} />
                         <Text strong>Tỷ lệ BHYT Chi Trả (%):</Text>
                       </Space>
@@ -457,12 +222,13 @@ export default function CashierBillingPage() {
                           value={insuranceDiscountPercent}
                           onChange={(val) => setInsuranceDiscountPercent(val || 0)}
                           formatter={(value) => `${value}%`}
-                          parser={(value) => value.replace('%', '')}
+                          parser={(value) => (value || '').replace('%', '')}
+                          disabled={submitting}
                           style={{ width: 100 }}
                         />
-                        <Button size="small" onClick={() => setInsuranceDiscountPercent(0)}>0%</Button>
-                        <Button size="small" onClick={() => setInsuranceDiscountPercent(80)}>80%</Button>
-                        <Button size="small" onClick={() => setInsuranceDiscountPercent(100)}>100%</Button>
+                        <Button size="small" disabled={submitting} onClick={() => setInsuranceDiscountPercent(0)}>0%</Button>
+                        <Button size="small" disabled={submitting} onClick={() => setInsuranceDiscountPercent(80)}>80%</Button>
+                        <Button size="small" disabled={submitting} onClick={() => setInsuranceDiscountPercent(100)}>100%</Button>
                       </Space>
                     </Col>
                   </Row>
@@ -503,7 +269,9 @@ export default function CashierBillingPage() {
                     <Space direction="vertical">
                       <Text strong>Phương thức thanh toán:</Text>
                       <Select
+                        aria-label="Phương thức thanh toán"
                         value={paymentMethod}
+                        disabled={submitting}
                         onChange={(val) => setPaymentMethod(val)}
                         style={{ width: 180 }}
                       >
@@ -521,6 +289,7 @@ export default function CashierBillingPage() {
                   size="large"
                   block
                   loading={submitting}
+                  disabled={loading}
                   onClick={handleCreateInvoice}
                   style={{ marginTop: 16, backgroundColor: '#52c41a', borderColor: '#52c41a' }}
                 >
