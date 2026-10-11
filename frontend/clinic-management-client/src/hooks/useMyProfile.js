@@ -11,6 +11,8 @@ export function useMyProfile(load, save) {
     const [profile, setProfile] = useState(null);
     const [status, setStatus] = useState("loading");
     const [error, setError] = useState("");
+    const [errorStatus, setErrorStatus] = useState(null);
+    const [errorCode, setErrorCode] = useState(null);
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
@@ -24,6 +26,8 @@ export function useMyProfile(load, save) {
             .catch(loadError => {
                 if (!active) return;
                 setError(getApiErrorMessage(loadError));
+                setErrorStatus(loadError.response?.status ?? null);
+                setErrorCode(loadError.response?.data?.code ?? null);
                 setStatus("error");
             });
         return () => { active = false; };
@@ -44,5 +48,5 @@ export function useMyProfile(load, save) {
         }
     }, [save]);
 
-    return { profile, status, error, saving, submit };
+    return { profile, status, error, errorStatus, errorCode, saving, submit };
 }

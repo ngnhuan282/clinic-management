@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
     createDisease,
@@ -44,6 +44,8 @@ function useDiseases() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
+    const requestSequence = useRef(0);
+    const invalidateRequests = useCallback(() => { requestSequence.current++; }, []);
 
     const requestParams = useMemo(
         () => normalizeFilters(filters),
@@ -51,13 +53,15 @@ function useDiseases() {
     );
 
     const loadDiseases = useCallback(async () => {
+        const requestId = ++requestSequence.current;
         setLoading(true);
         setError("");
 
         try {
             const result = await getDiseases(requestParams);
-            setPagedData(result);
+            if (requestId === requestSequence.current) setPagedData(result);
         } catch (err) {
+            if (requestId !== requestSequence.current) return;
             setError(
                 getApiErrorMessage(
                     err,
@@ -65,14 +69,14 @@ function useDiseases() {
                 )
             );
         } finally {
-            setLoading(false);
+            if (requestId === requestSequence.current) setLoading(false);
         }
     }, [requestParams]);
 
     useEffect(() => {
         const timer = setTimeout(() => { void loadDiseases(); }, 0);
-        return () => clearTimeout(timer);
-    }, [loadDiseases]);
+        return () => { clearTimeout(timer); invalidateRequests(); };
+    }, [loadDiseases, invalidateRequests]);
 
     const updateFilters = useCallback((nextFilters) => {
         setFilters((current) => ({
