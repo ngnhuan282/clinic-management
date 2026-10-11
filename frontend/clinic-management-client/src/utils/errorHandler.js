@@ -53,6 +53,8 @@ const API_ERROR_MESSAGES = {
     7106: "Trạng thái sổ khám giấy không hợp lệ.",
     7401: "Không tìm thấy đơn thuốc.",
     7402: "Hồ sơ bệnh án này đã có đơn thuốc.",
+    7501: "Lịch hẹn này đã có đánh giá.",
+    7502: "Không tìm thấy đánh giá.",
     7403: "Trạng thái đơn thuốc không hợp lệ.",
     7404: "Đơn thuốc cần có hóa đơn thuốc hoặc hóa đơn cuối đã thanh toán trước khi cấp.",
     7405: "Tồn kho còn hạn không đủ để cấp toàn bộ đơn thuốc.",

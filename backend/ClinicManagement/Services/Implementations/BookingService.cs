@@ -24,6 +24,7 @@ public class BookingService : IBookingService
     private readonly ILogger<BookingService> _logger;
     private readonly ICurrentUserService _currentUser;
     private readonly INotificationService _notifications;
+    private readonly DepartmentScope _scope;
 
     public BookingService(
         IDepartmentRepository departmentRepository,
@@ -32,7 +33,7 @@ public class BookingService : IBookingService
         IReceptionRepository receptionRepository,
         ILogger<BookingService> logger,
         ICurrentUserService currentUser,
-        INotificationService notifications)
+        INotificationService notifications, DepartmentScope scope)
     {
         _departmentRepository = departmentRepository;
         _doctorRepository = doctorRepository;
@@ -41,6 +42,7 @@ public class BookingService : IBookingService
         _logger = logger;
         _currentUser = currentUser;
         _notifications = notifications;
+        _scope = scope;
     }
 
     public async Task<PagedResponse<AppointmentResponse>> GetAppointmentsAsync(
@@ -106,6 +108,8 @@ public class BookingService : IBookingService
         int doctorId,
         DateTime appointmentDate)
     {
+        var departmentId = await _scope.ForHeadAsync();
+        await _scope.ValidateFiltersAsync(departmentId, doctorId, null);
         if (appointmentDate.Date < ClinicNow.Date)
         {
             throw new AppException(
@@ -137,6 +141,7 @@ public class BookingService : IBookingService
                 .ToHashSet();
 
         var schedules = await _doctorRepository.GetSchedulesAsync(doctorId, DateOnly.FromDateTime(appointmentDate.Date));
+        if (departmentId.HasValue) schedules = schedules.Where(x => x.Room.DepartmentId == departmentId).ToList();
         return BuildDailySlots(schedules)
             .Select(x => new AvailableSlotResponse
             {

@@ -24,7 +24,7 @@ var listener = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
 listener.Start();
 var port = ((IPEndPoint)listener.LocalEndpoint).Port;
 listener.Stop();
-using var client = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{port}/"), Timeout = TimeSpan.FromSeconds(30) };
+using var client = new HttpClient(new HttpClientHandler { UseCookies = false }) { BaseAddress = new Uri($"http://127.0.0.1:{port}/"), Timeout = TimeSpan.FromSeconds(30) };
 var serverLog = new System.Collections.Concurrent.ConcurrentQueue<string>();
 void Check(bool ok, string description)
 {
@@ -35,11 +35,14 @@ void Check(bool ok, string description)
 async Task<JsonNode?> Send(HttpMethod method, string path, object? body = null, int status = 200)
 {
     using var request = new HttpRequestMessage(method, path);
+    body = TestAuthCookies.Apply(request, body);
     if (body != null) request.Content = JsonContent.Create(body);
     using var response = await client.SendAsync(request);
     var text = await response.Content.ReadAsStringAsync();
     Check((int)response.StatusCode == status, $"{method} {path}: expected {status}, got {(int)response.StatusCode}");
-    return string.IsNullOrWhiteSpace(text) ? null : JsonNode.Parse(text);
+    var envelope = string.IsNullOrWhiteSpace(text) ? null : JsonNode.Parse(text);
+    TestAuthCookies.Capture(response, envelope);
+    return envelope;
 }
 try
 {
@@ -69,7 +72,8 @@ try
     start.Environment["ASPNETCORE_ENVIRONMENT"] = "Development";
     start.Environment["ConnectionStrings__DefaultConnection"] = connection;
     start.Environment["Jwt__Key"] = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
-    if (args.Contains("--ui") || args.Contains("--a5-ui") || args.Contains("--clinic-realtime-ui")) start.Environment["Cors__FrontendUrl"] = "http://127.0.0.1:5190";
+    if (args.Contains("--a6")) start.Environment["AuthCookie__Secure"] = "true";
+    if (args.Contains("--ui") || args.Contains("--a5-ui") || args.Contains("--a6-ui") || args.Contains("--clinic-realtime-ui")) start.Environment["Cors__FrontendUrl"] = "http://127.0.0.1:5190";
     server = Process.Start(start)!;
     server.OutputDataReceived += (_, e) => { if (e.Data != null) serverLog.Enqueue(e.Data); };
     server.ErrorDataReceived += (_, e) => { if (e.Data != null) serverLog.Enqueue(e.Data); };
@@ -82,6 +86,17 @@ try
         await Task.Delay(200);
     }
     await Send(HttpMethod.Get, "swagger/v1/swagger.json");
+    if (args.Contains("--a6") || args.Contains("--a6-ui"))
+    {
+        await A6Checks.RunAsync(client, db, password, Check, args.Contains("--a6"));
+        Console.WriteLine($"SUCCESS: {checks} A6 checks passed on a database created by the complete migration chain.");
+        if (args.Contains("--a6-ui"))
+        {
+            Console.WriteLine("AUTH_UI_SESSION:" + System.Text.Json.JsonSerializer.Serialize(new { baseUrl = client.BaseAddress, password }));
+            await Console.In.ReadLineAsync();
+        }
+        return;
+    }
     if (args.Contains("--clinic-realtime") || args.Contains("--clinic-realtime-ui"))
     {
         await ClinicRealtimeChecks.RunAsync(client, db, password, Check);
@@ -128,9 +143,9 @@ try
         Console.WriteLine($"SUCCESS: {checks} A5 checks passed.");
         return;
     }
-    if (args.Contains("--a4"))
+    if (args.Contains("--a4") || args.Contains("--a4-api"))
     {
-        await ScheduleReviewChecks.VerifyRoleMigrationCollisionAsync(db, Check);
+        if (args.Contains("--a4")) await ScheduleReviewChecks.VerifyRoleMigrationCollisionAsync(db, Check);
         await ScheduleReviewChecks.RunAsync(client, db, password, Check);
         Console.WriteLine($"SUCCESS: {checks} A4 checks passed.");
         return;
@@ -158,13 +173,13 @@ try
     Check(patient["role"]!.GetValue<string>() == "Patient", "Registration assigns Patient");
     var savedPatient = await db.Users.SingleAsync(x => x.Username == "testpatient");
     Check(savedPatient.PasswordHash != password && BCrypt.Net.BCrypt.Verify(password, savedPatient.PasswordHash), "Passwords use BCrypt");
-    var rawRefresh = patient["refreshToken"]!.GetValue<string>();
+    var rawRefresh = TestAuthCookies.RawFor(patient);
     Check(await db.RefreshTokens.AnyAsync(x => x.UserId == savedPatient.UserId && x.TokenHash != rawRefresh && x.TokenHash.Length == 64), "Refresh token stored as hash");
     await Send(HttpMethod.Post, "api/auth/login", new { username = "testpatient", password = "wrong" }, 401);
     var refreshed = (await Send(HttpMethod.Post, "api/auth/refresh", new { refreshToken = rawRefresh }))!["result"]!;
     await Send(HttpMethod.Post, "api/auth/refresh", new { refreshToken = rawRefresh }, 401);
-    await Send(HttpMethod.Post, "api/auth/logout", new { refreshToken = refreshed["refreshToken"]!.GetValue<string>() }, 204);
-    await Send(HttpMethod.Post, "api/auth/refresh", new { refreshToken = refreshed["refreshToken"]!.GetValue<string>() }, 401);
+    await Send(HttpMethod.Post, "api/auth/logout", new { refreshToken = TestAuthCookies.RawFor(refreshed) }, 204);
+    await Send(HttpMethod.Post, "api/auth/refresh", new { refreshToken = TestAuthCookies.RawFor(refreshed) }, 401);
     await Send(HttpMethod.Get, "api/departments", status: 401);
     await Send(HttpMethod.Get, "api/LabTestTypes", status: 401);
     client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", patient["accessToken"]!.GetValue<string>());
@@ -420,7 +435,7 @@ try
         "Bearer", firstSeedAdmin["accessToken"]!.GetValue<string>());
     await Send(HttpMethod.Get, "api/auth/me", status: 401);
     var staleRefresh = await Send(HttpMethod.Post, "api/auth/refresh",
-        new { refreshToken = firstSeedAdmin["refreshToken"]!.GetValue<string>() }, 401);
+        new { refreshToken = TestAuthCookies.RawFor(firstSeedAdmin) }, 401);
     Check(staleRefresh!["code"]!.GetValue<int>() == 1002,
         "Reset seed rejects old refresh tokens with the normal 401 response");
     client.DefaultRequestHeaders.Authorization = null;

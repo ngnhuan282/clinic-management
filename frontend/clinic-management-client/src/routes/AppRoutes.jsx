@@ -16,7 +16,10 @@ import HomePage from "../pages/patient/HomePage";
 import BookingPage from "../pages/patient/BookingPage";
 import LabResultsPage from "../pages/patient/LabResultsPage";
 import DoctorSearchPage from "../pages/patient/DoctorSearchPage";
-import PatientProfilePage from "../pages/patient/PatientProfilePage";
+import ProfilePage from "../pages/ProfilePage";
+import ReviewsPage from "../pages/patient/ReviewsPage";
+import AccountProfilePage from "../pages/internal/AccountProfilePage";
+import ReviewsManagementPage from "../pages/internal/admin/ReviewsManagementPage";
 import AuthPage from "../pages/auth/AuthPage";
 
 import InventoryPage from "../pages/internal/admin/InventoryPage";
@@ -79,6 +82,7 @@ export default function AppRoutes() {
                 <Route element={<PatientLayout />}>
                     <Route path="/" element={<HomePage />} />
                     <Route path="/doctors" element={<DoctorSearchPage />} />
+                    <Route path="/reviews" element={<ReviewsPage />} />
                     <Route path="/login" element={<AuthPage key="login" />} />
                     <Route
                         path="/internal/login"
@@ -98,7 +102,11 @@ export default function AppRoutes() {
                     >
                         <Route path="/booking" element={<BookingPage />} />
                         <Route path="/lab-results" element={<LabResultsPage />} />
-                        <Route path="/profile" element={<PatientProfilePage />} />
+                        <Route path="/my-reviews" element={<ReviewsPage own />} />
+                    </Route>
+
+                    <Route element={<ProtectedRoute />}>
+                        <Route path="/profile" element={<ProfilePage />} />
                     </Route>
 
                     <Route path="/403" element={<UnauthorizedPage />} />
@@ -115,6 +123,10 @@ export default function AppRoutes() {
                             element={<Navigate to="dashboard" replace />}
                         />
                         <Route path="dashboard" element={<DashboardPage />} />
+                        <Route path="profile" element={<AccountProfilePage />} />
+                        <Route element={<ProtectedRoute allowedRoles={["Admin"]} />}>
+                            <Route path="reviews" element={<ReviewsManagementPage />} />
+                        </Route>
                         <Route element={<ProtectedRoute allowedRoles={["DepartmentHead"]} />}>
                             <Route path="department-schedules" element={<DepartmentSchedulesPage />} />
                         </Route>

@@ -17,6 +17,32 @@ namespace ClinicManagement.Services.Implementations;
 public class UserService(IUserRepository users, IRoleRepository roles, ICurrentUserService currentUser,
     NotificationConnections connections, ApplicationDbContext db) : IUserService
 {
+    public async Task<UserResponse> GetMyProfileAsync()
+    {
+        var user = await GetByIdAsync(currentUser.GetRequiredUserId());
+        var permissions = await db.RolePermissions.AsNoTracking().Where(x => x.RoleId == user.RoleId)
+            .Select(x => x.PermissionCode).OrderBy(x => x).ToListAsync();
+        return user with { Permissions = permissions };
+    }
+
+    public async Task<UserResponse> UpdateMyProfileAsync(UpdateMyProfileRequest request)
+    {
+        ClinicManagement.Validators.MyProfileValidator.Validate(request);
+        var userId = currentUser.GetRequiredUserId();
+        var user = await users.GetByIdAsync(userId) ?? throw new AppException(ErrorCode.USER_NOT_FOUND);
+        var email = string.IsNullOrWhiteSpace(request.Email) ? null : request.Email.Trim();
+        if (email is not null && await users.GetByEmailAsync(email) is { } existing && existing.UserId != userId)
+            throw new AppException(ErrorCode.EMAIL_EXISTED);
+        user.FullName = request.FullName.Trim();
+        user.Email = email;
+        user.Phone = string.IsNullOrWhiteSpace(request.Phone) ? null : request.Phone.Trim();
+        try { await users.SaveChangesAsync(); }
+        catch (DbUpdateException error) when (error.InnerException is SqlException { Number: 2601 or 2627 })
+        { throw new AppException(ErrorCode.EMAIL_EXISTED); }
+        catch (DbUpdateConcurrencyException) { throw new AppException(ErrorCode.USER_ACCESS_CONFLICT); }
+        return await GetMyProfileAsync();
+    }
+
     public async Task<PagedResponse<UserResponse>> GetPageAsync(UserQuery query)
     {
         var (items, total) = await users.GetPageAsync(query);
