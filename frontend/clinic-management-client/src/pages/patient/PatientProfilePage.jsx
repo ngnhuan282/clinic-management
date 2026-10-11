@@ -3,6 +3,7 @@ import { Alert, Box, Button, CircularProgress, Paper, Stack, TextField, Typograp
 
 import { getMyPatientProfile, updateMyPatientProfile } from "../../api/patientApi";
 import { useMyProfile } from "../../hooks/useMyProfile";
+import AccountProfile from "../../components/common/AccountProfile";
 
 const toForm = profile => ({
     fullName: profile.fullName ?? "",
@@ -62,6 +63,8 @@ export default function PatientProfilePage() {
                 Thông tin này được dùng khi đặt lịch và check-in tại quầy lễ tân.
             </Typography>
 
+            <Box sx={{ mb: 3 }}><AccountProfile /></Box>
+            <Typography variant="h6" sx={{ mb: 2 }}>Hồ sơ khám bệnh</Typography>
             {status === "loading" && <CircularProgress />}
             {status === "error" && <Alert severity="error">{error}</Alert>}
 

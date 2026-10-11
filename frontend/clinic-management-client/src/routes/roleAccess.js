@@ -5,6 +5,7 @@ export const INTERNAL_ROLES = [
     "Receptionist",
     "LabTechnician",
     "Pharmacist",
+    "Cashier",
 ];
 
 export const ROLE_LABELS = {
@@ -15,9 +16,13 @@ export const ROLE_LABELS = {
     Patient: "Bệnh nhân",
     LabTechnician: "Kỹ thuật viên xét nghiệm",
     Pharmacist: "Dược sĩ",
+    Cashier: "Thu ngân",
 };
 
 export const INTERNAL_PAGES = [
+    { label: "Hồ sơ cá nhân", path: "/internal/profile", roles: INTERNAL_ROLES },
+    { label: "Quản lý đánh giá", path: "/internal/reviews", roles: ["Admin"] },
+    { label: "Thu ngân", path: "/internal/cashier/billing", roles: ["Admin", "Cashier"] },
     { label: "Lịch làm việc của khoa", path: "/internal/department-schedules", roles: ["DepartmentHead"] },
     { label: "Tổng quan", path: "/internal/dashboard", roles: INTERNAL_ROLES },
     { label: "Khám bệnh", path: "/internal/examinations", roles: ["Doctor", "DepartmentHead"] },
@@ -31,7 +36,7 @@ export const INTERNAL_PAGES = [
     { label: "Phòng", path: "/internal/rooms", roles: ["Admin"] },
     { label: "Lịch bác sĩ", path: "/internal/doctor-schedules", roles: ["Admin"] },
     { label: "Đăng ký ca làm việc", path: "/internal/doctor/schedule-requests", roles: ["Doctor", "DepartmentHead"] },
-    { label: "Hồ sơ cá nhân", path: "/internal/doctor/profile", roles: ["Doctor"] },
+    { label: "Hồ sơ bác sĩ", path: "/internal/doctor/profile", roles: ["Doctor"] },
     { label: "Duyệt ca khám", path: "/internal/schedule-requests", roles: ["Admin", "DepartmentHead"] },
     {
         label: "Kho dược & Vật tư",
@@ -100,6 +105,8 @@ export function canSeePage(value, page) {
         if (page.path === "/internal/schedule-requests" && !page.roles.includes(user.role)) return false;
         if (page.path === "/internal/department-schedules" && user.role !== "DepartmentHead") return false;
         if (page.path === "/internal/diseases" && !page.roles.includes(user.role)) return false;
+        if (["/internal/reviews", "/internal/cashier/billing", "/internal/doctor/profile", "/internal/doctor/schedule-requests"].includes(page.path)
+            && !page.roles.includes(user.role)) return false;
         return user.role !== "Patient" && (
             requiredPermissions.length === 0 ||
             requiredPermissions.some(code => user.permissions.includes(code))
@@ -121,7 +128,7 @@ export const homeForRole = (value) =>
 
 export function canAccessPath(value, path) {
     const user = asUser(value);
-    if (path === "/booking" || path === "/lab-results") {
+    if (["/booking", "/lab-results", "/my-reviews"].includes(path)) {
         return user.role === "Patient";
     }
 

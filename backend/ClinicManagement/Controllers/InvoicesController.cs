@@ -4,13 +4,14 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ClinicManagement.DTOs.Invoices;
+using ClinicManagement.Commons;
 using ClinicManagement.Services.Interfaces;
 
 namespace ClinicManagement.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "Cashier,Admin")]
+    [Authorize(Roles = RoleConstants.Cashier + "," + RoleConstants.Admin)]
     public class InvoicesController : ControllerBase
     {
         private readonly IInvoiceService _invoiceService;
@@ -35,16 +36,7 @@ namespace ClinicManagement.Controllers
 public async Task<IActionResult> CreateInvoice([FromBody] CreateInvoiceDto dto)
 {
     // 1. Lấy claim UserId/NameIdentifier từ JWT Token an toàn
-    var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
-                   ?? User.FindFirst("sub")?.Value 
-                   ?? User.FindFirst("UserId")?.Value;
-
-    // 2. Chống crash null bằng int.TryParse
-    if (!int.TryParse(userIdClaim, out int cashierId))
-    {
-        // Hoặc fallback về ID mặc định (ví dụ: 1) nếu chưa đăng nhập qua Token
-        cashierId = 1; 
-    }
+    var cashierId = _currentUser.GetRequiredUserId();
 
     // 3. Gọi Service tạo hóa đơn
     var result = await _invoiceService.CreateInvoiceAsync(cashierId, dto);

@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore;
 namespace ClinicManagement.Services.Implementations;
 
 public class DoctorScheduleService(ApplicationDbContext context, ICurrentUserService currentUser,
-    INotificationService notifications) : IDoctorScheduleService
+    INotificationService notifications, DepartmentScope scope) : IDoctorScheduleService
 {
     private readonly ApplicationDbContext _context = context;
     private readonly ICurrentUserService _currentUser = currentUser;
@@ -44,11 +44,14 @@ public class DoctorScheduleService(ApplicationDbContext context, ICurrentUserSer
     public async Task<List<ScheduleRequestResponse>> GetMyRequestsAsync()
     {
         var userId = _currentUser.GetRequiredUserId();
-        var doctorId = await _context.Doctors.Where(x => x.UserId == userId)
+        var doctorId = await _context.Doctors.Where(x => x.UserId == userId && x.IsActive && x.Department.IsActive)
             .Select(x => (int?)x.DoctorId).SingleOrDefaultAsync()
             ?? throw new AppException(ErrorCode.UNAUTHORIZED);
+        var departmentId = await scope.ForHeadAsync();
         return await _context.DoctorScheduleRequests.AsNoTracking()
-            .Where(x => x.DoctorId == doctorId).OrderByDescending(x => x.CreatedAt)
+            .Where(x => x.DoctorId == doctorId && (departmentId == null ||
+                (x.Doctor.DepartmentId == departmentId && x.Room.DepartmentId == departmentId)))
+            .OrderByDescending(x => x.CreatedAt)
             .Select(x => new ScheduleRequestResponse
             {
                 RequestId = x.RequestId, DoctorId = x.DoctorId, DoctorName = x.Doctor.FullName,
@@ -70,7 +73,7 @@ public class DoctorScheduleService(ApplicationDbContext context, ICurrentUserSer
             ?? throw new AppException(ErrorCode.UNAUTHORIZED);
 
         return await _context.Rooms.AsNoTracking()
-            .Where(x => x.IsActive && x.Department.IsActive)
+            .Where(x => x.DepartmentId == departmentId && x.IsActive && x.Department.IsActive)
             .OrderBy(x => x.Name)
             .Select(x => new RoomResponse
             {
@@ -142,18 +145,20 @@ public class DoctorScheduleService(ApplicationDbContext context, ICurrentUserSer
         return MapSchedule(created);
     }
 
-    public async Task<List<DoctorScheduleResponse>> GetSchedulesAsync(DateOnly? date, DateOnly? weekStart, int? specializationId)
+    public async Task<List<DoctorScheduleResponse>> GetSchedulesAsync(DateOnly? date, DateOnly? weekStart, int? specializationId,
+        int? doctorId = null, int? roomId = null)
     {
         // Only approved, active shifts are published; pending or rejected requests never reach booking or department views.
         var query = GetScheduleQuery()
             .Where(x => x.Status == ScheduleStatusConstants.Approved && x.IsActive);
-        if (_currentUser.Role == RoleConstants.DepartmentHead)
+        var departmentId = await scope.ForHeadAsync();
+        await scope.ValidateFiltersAsync(departmentId, doctorId, roomId);
+        if (departmentId.HasValue)
         {
-            var departmentId = await _context.Doctors.Where(x => x.UserId == _currentUser.GetRequiredUserId() && x.IsActive)
-                .Select(x => (int?)x.DepartmentId).SingleOrDefaultAsync()
-                ?? throw new AppException(ErrorCode.UNAUTHORIZED);
             query = query.Where(x => x.Doctor.DepartmentId == departmentId && x.Room.DepartmentId == departmentId);
         }
+        if (doctorId.HasValue) query = query.Where(x => x.DoctorId == doctorId);
+        if (roomId.HasValue) query = query.Where(x => x.RoomId == roomId);
         if (date.HasValue) query = query.Where(x => x.WorkDate == date.Value);
         if (weekStart.HasValue)
         {
@@ -166,10 +171,24 @@ public class DoctorScheduleService(ApplicationDbContext context, ICurrentUserSer
         return schedules.Select(MapSchedule).ToList();
     }
 
-    public Task<List<AvailableSlotResponse>> GetAvailableSlotsAsync(int doctorId, int? specializationId, DateOnly date)
+    public async Task<DoctorScheduleResponse> GetByIdAsync(Guid id)
     {
-        return _context.TimeSlots.AsNoTracking()
+        var departmentId = await scope.ForHeadAsync();
+        var query = GetScheduleQuery().Where(x => x.ScheduleId == id);
+        if (departmentId.HasValue)
+            query = query.Where(x => x.Doctor.DepartmentId == departmentId && x.Room.DepartmentId == departmentId
+                && x.IsActive && x.Status == ScheduleStatusConstants.Approved);
+        var schedule = await query.SingleOrDefaultAsync() ?? throw new AppException(ErrorCode.DOCTOR_SCHEDULE_NOT_FOUND);
+        return MapSchedule(schedule);
+    }
+
+    public async Task<List<AvailableSlotResponse>> GetAvailableSlotsAsync(int doctorId, int? specializationId, DateOnly date)
+    {
+        var departmentId = await scope.ForHeadAsync();
+        await scope.ValidateFiltersAsync(departmentId, doctorId, null);
+        return await _context.TimeSlots.AsNoTracking()
             .Where(x => x.Schedule.DoctorId == doctorId && x.Schedule.WorkDate == date &&
+                        (departmentId == null || (x.Schedule.Doctor.DepartmentId == departmentId && x.Schedule.Room.DepartmentId == departmentId)) &&
                         x.Schedule.IsActive && x.Schedule.Status == "Approved" && x.Schedule.Doctor.IsActive &&
                         (!specializationId.HasValue || x.Schedule.Doctor.SpecializationId == specializationId.Value))
             .OrderBy(x => x.StartTime)
@@ -219,9 +238,13 @@ public class DoctorScheduleService(ApplicationDbContext context, ICurrentUserSer
             || !TimeSpan.TryParse(request.EndTime, out var end) || start < TimeSpan.Zero || start >= end
             || end > TimeSpan.FromDays(1) || (end - start).Ticks % TimeSpan.FromMinutes(30).Ticks != 0)
             throw new AppException(ErrorCode.INVALID_REQUEST);
-        var valid = await _context.Doctors.AnyAsync(x => x.DoctorId == doctorId && x.IsActive)
-            && await _context.Rooms.AnyAsync(x => x.RoomId == request.RoomId && x.IsActive);
+        var departmentId = await _context.Doctors.Where(x => x.DoctorId == doctorId && x.IsActive && x.Department.IsActive)
+            .Select(x => (int?)x.DepartmentId).SingleOrDefaultAsync();
+        var valid = departmentId.HasValue
+            && await _context.Rooms.AnyAsync(x => x.RoomId == request.RoomId && x.IsActive && x.Department.IsActive);
         if (!valid) throw new AppException(ErrorCode.INVALID_REQUEST);
+        if (!await _context.Rooms.AnyAsync(x => x.RoomId == request.RoomId && x.DepartmentId == departmentId))
+            throw new AppException(ErrorCode.UNAUTHORIZED);
         var overlaps = await _context.DoctorScheduleRequests.AnyAsync(x => x.Status == "Pending"
             && x.WorkDate == request.WorkDate && (x.DoctorId == doctorId || x.RoomId == request.RoomId)
             && x.StartTime < end && start < x.EndTime)

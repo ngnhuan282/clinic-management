@@ -52,7 +52,6 @@ try {
         await context.addInitScript(session => {
             const user = { userId: session.userId, username: session.username, fullName: session.fullName, role: session.role, permissions: session.permissions };
             sessionStorage.setItem("accessToken", session.accessToken);
-            sessionStorage.setItem("refreshToken", session.refreshToken);
             sessionStorage.setItem("user", JSON.stringify(user));
         }, session);
         const page = await context.newPage();

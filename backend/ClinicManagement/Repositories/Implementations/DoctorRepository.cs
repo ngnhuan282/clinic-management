@@ -20,6 +20,7 @@ public class DoctorRepository : IDoctorRepository
 
     public Task<List<DoctorSchedule>> GetSchedulesAsync(int doctorId, DateOnly workDate) =>
         _context.DoctorSchedules.AsNoTracking()
+            .Include(x => x.Room)
             .Include(x => x.TimeSlots)
             .Where(x => x.DoctorId == doctorId && x.WorkDate == workDate && x.IsActive
                 && x.Status == ApprovedScheduleStatus)

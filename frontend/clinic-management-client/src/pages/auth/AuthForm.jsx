@@ -84,9 +84,9 @@ export default function AuthForm({ register }) {
         const payload = { username: values.username.trim(), password: values.password };
         if (register) Object.assign(payload, { fullName: values.fullName.trim(), email: values.email.trim(), phone: values.phone.trim() });
         try {
-            const { accessToken, refreshToken, ...user } = await (register ? authApi.register(payload, signal) : authApi.login(payload, signal));
+            const { accessToken, ...user } = await (register ? authApi.register(payload, signal) : authApi.login(payload, signal));
             if (signal.aborted) return;
-            dispatch(setCredentials({ accessToken, refreshToken, user, remember: !register && remember }));
+            dispatch(setCredentials({ accessToken, user, remember: !register && remember }));
             const from = location.state?.from;
             const fallback = homeForRole(user);
             const destination = from?.pathname?.startsWith("/") && !from.pathname.startsWith("//")

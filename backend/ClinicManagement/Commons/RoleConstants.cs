@@ -9,4 +9,5 @@ public static class RoleConstants
     public const string Patient = "Patient";
     public const string LabTechnician = "LabTechnician";
     public const string Pharmacist = "Pharmacist";
+    public const string Cashier = "Cashier";
 }

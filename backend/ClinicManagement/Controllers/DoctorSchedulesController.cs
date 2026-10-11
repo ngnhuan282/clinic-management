@@ -57,11 +57,14 @@ public class DoctorSchedulesController(IDoctorScheduleService service, ISchedule
         Ok(ApiResponse<object>.Success(await service.CreateScheduleAsync(request), "Doctor schedule created"));
 
     [HttpGet]
-    public async Task<IActionResult> Get(
-        [FromQuery] DateOnly? date,
-        [FromQuery] DateOnly? weekStart,
-        [FromQuery] int? specializationId) =>
-        Ok(ApiResponse<object>.Success(await service.GetSchedulesAsync(date, weekStart, specializationId)));
+    public async Task<IActionResult> Get([FromQuery] DoctorScheduleQuery query) =>
+        Ok(ApiResponse<object>.Success(await service.GetSchedulesAsync(query.Date, query.WeekStart,
+            query.SpecializationId, query.DoctorId, query.RoomId)));
+
+    [HttpGet("{id:guid}")]
+    [Authorize(Roles = RoleConstants.Admin + "," + RoleConstants.DepartmentHead)]
+    public async Task<IActionResult> GetById(Guid id) =>
+        Ok(ApiResponse<DoctorScheduleResponse>.Success(await service.GetByIdAsync(id)));
 
     [HttpGet("available-slots")]
     [AllowAnonymous]

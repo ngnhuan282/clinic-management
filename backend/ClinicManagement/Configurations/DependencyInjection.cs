@@ -11,6 +11,10 @@ public static class DependencyInjection
         this IServiceCollection services)
     {
         services.AddHttpContextAccessor();
+        services.AddScoped<RefreshCookie>();
+        services.AddScoped<ReviewRepository>();
+        services.AddScoped<DepartmentScope>();
+        services.AddScoped<IReviewService, ReviewService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<RbacService>();
         services.AddScoped<INotificationService, NotificationService>();

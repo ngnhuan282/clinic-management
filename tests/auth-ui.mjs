@@ -37,6 +37,10 @@ try {
     }
     browser = await chromium.launch({ channel: process.env.BROWSER_CHANNEL || 'msedge', headless: true });
     const context = await browser.newContext({ viewport: { width: 1440, height: 1100 } });
+    const refreshCookie = async () => {
+        const value = (await context.cookies(session.baseUrl + 'api/auth/refresh')).find(cookie => cookie.name === 'clinic_refresh');
+        return value ? `${value.name}=${value.value}` : '';
+    };
     page = await context.newPage();
     page.setDefaultNavigationTimeout(30000);
     const pageErrors = [];
@@ -91,12 +95,12 @@ try {
     assert(await page.evaluate(() => Boolean(sessionStorage.getItem('accessToken')) && !localStorage.getItem('accessToken')));
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.getByRole('button', { name: 'Tài khoản', exact: true }).waitFor();
-    const patientRefresh = await page.evaluate(() => sessionStorage.getItem('refreshToken'));
+    const patientRefresh = await refreshCookie();
     await page.getByRole('button', { name: 'Tài khoản', exact: true }).click();
     await page.getByRole('menuitem', { name: 'Đăng xuất', exact: true }).click();
     await page.waitForURL('**/login');
     assert(await page.evaluate(() => !sessionStorage.getItem('accessToken') && !localStorage.getItem('accessToken')));
-    const revoked = await page.request.post(session.baseUrl + 'api/auth/refresh', { data: { refreshToken: patientRefresh } });
+    const revoked = await page.request.post(session.baseUrl + 'api/auth/refresh', { headers: { Cookie: patientRefresh } });
     assert.equal(revoked.status(), 401);
     console.log('PASS real API registration, session restoration, logout and refresh revocation');
     await page.getByRole('tab', { name: 'Đăng ký tài khoản', exact: true }).click();
@@ -159,7 +163,7 @@ try {
     await page.getByLabel('Mật khẩu', { exact: true }).fill(session.password);
     await page.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
     await page.waitForURL('**/internal/dashboard');
-    const previousRefresh = await page.evaluate(() => sessionStorage.getItem('refreshToken'));
+    const previousRefresh = await refreshCookie();
     // Seed expiration before app startup. Expiring a live token then navigating can
     // cancel a background SignalR refresh after the server has already rotated it.
     await page.addInitScript(() => {
@@ -171,8 +175,8 @@ try {
     await page.evaluate(() => sessionStorage.setItem('simulateExpiredSession', 'true'));
     await page.goto('http://127.0.0.1:5190/internal/departments', { waitUntil: 'domcontentloaded' });
     await page.getByRole('cell', { name: 'Noi tong quat', exact: true }).waitFor();
-    const currentRefresh = await page.evaluate(() => sessionStorage.getItem('refreshToken'));
-    assert.notEqual(previousRefresh, currentRefresh);
+    const currentRefresh = await refreshCookie();
+    assert(previousRefresh !== currentRefresh, 'Refresh rotates the cookie value');
     assert(await page.evaluate(() => !localStorage.getItem('accessToken')));
     assert.deepEqual(pageErrors, []);
     console.log('PASS admin redirect and real JWT refresh preserves session-only storage');
@@ -184,7 +188,7 @@ try {
     await sidebarLogout.click();
     await page.waitForURL('**/internal/login');
     assert(await page.evaluate(() => !sessionStorage.getItem('accessToken') && !localStorage.getItem('accessToken')));
-    const adminRevoked = await page.request.post(session.baseUrl + 'api/auth/refresh', { data: { refreshToken: currentRefresh } });
+    const adminRevoked = await page.request.post(session.baseUrl + 'api/auth/refresh', { headers: { Cookie: currentRefresh } });
     assert.equal(adminRevoked.status(), 401);
     await page.goto('http://127.0.0.1:5190/internal/dashboard', { waitUntil: 'domcontentloaded' });
     await page.waitForURL('**/login');
@@ -201,7 +205,7 @@ try {
     }
     await loginAdmin();
     await page.setViewportSize({ width: 390, height: 844 });
-    const mobileRefresh = await page.evaluate(() => localStorage.getItem('refreshToken'));
+    const mobileRefresh = await refreshCookie();
     await page.getByRole('button', { name: 'Mở menu' }).click();
     await page.locator('.MuiDrawer-paper').getByRole('button', { name: 'Đăng xuất', exact: true }).waitFor();
     await page.screenshot({ path: '.tmp/admin-logout-mobile.png', fullPage: true });
@@ -209,18 +213,18 @@ try {
     await page.locator('.MuiDrawer-paper').getByRole('button', { name: 'Đăng xuất', exact: true }).click();
     await page.waitForURL('**/internal/login');
     assert(await page.evaluate(() => !localStorage.getItem('refreshToken') && !sessionStorage.getItem('refreshToken')));
-    assert.equal((await page.request.post(session.baseUrl + 'api/auth/refresh', { data: { refreshToken: mobileRefresh } })).status(), 401);
+    assert.equal((await page.request.post(session.baseUrl + 'api/auth/refresh', { headers: { Cookie: mobileRefresh } })).status(), 401);
     console.log('PASS mobile admin account menu logs out remembered sessions');
 
     await loginAdmin();
-    const offlineRefresh = await page.evaluate(() => localStorage.getItem('refreshToken'));
+    const offlineRefresh = await refreshCookie();
     await page.route('**/api/auth/logout', route => route.abort('connectionfailed'));
     await page.getByRole('button', { name: 'Mở menu' }).click();
     await page.locator('.MuiDrawer-paper').getByRole('button', { name: 'Đăng xuất', exact: true }).click();
     await page.waitForURL('**/internal/login');
     assert(await page.evaluate(() => !localStorage.getItem('accessToken') && !sessionStorage.getItem('accessToken')));
     await page.unroute('**/api/auth/logout');
-    await page.request.post(session.baseUrl + 'api/auth/logout', { data: { refreshToken: offlineRefresh } });
+    await page.request.post(session.baseUrl + 'api/auth/logout', { headers: { Cookie: offlineRefresh } });
     assert.deepEqual(pageErrors, []);
     console.log('PASS admin logout clears local credentials when the server is unreachable');
     await loginAdmin();
@@ -329,7 +333,7 @@ try {
     let rotatedToken;
     await page.route('**/api/auth/refresh', async route => {
         const response = await route.fetch();
-        rotatedToken = (await response.json()).result.refreshToken;
+        rotatedToken = response.headers()['set-cookie'].split(';')[0];
         refreshArrived();
         await release;
         await route.fulfill({ response });
@@ -341,13 +345,15 @@ try {
         window.pendingAuthRequest = api.get('/auth/me').catch(() => null);
     });
     await Promise.race([arrived, delay(15000).then(() => { throw new Error('Refresh request did not arrive'); })]);
+    const logoutFinished = page.waitForResponse(response => response.url() === session.baseUrl + 'api/auth/logout' && response.status() === 204);
     await page.getByRole('button', { name: 'Mở menu' }).click();
     await page.locator('.MuiDrawer-paper').getByRole('button', { name: 'Đăng xuất', exact: true }).click();
-    await page.waitForURL('**/internal/login');
     releaseRefresh();
+    await logoutFinished;
+    await page.waitForURL('**/internal/login');
     await page.evaluate(() => window.pendingAuthRequest);
     assert(await page.evaluate(() => !localStorage.getItem('accessToken') && !sessionStorage.getItem('accessToken')));
-    assert.equal((await page.request.post(session.baseUrl + 'api/auth/refresh', { data: { refreshToken: rotatedToken } })).status(), 401);
+    assert.equal((await page.request.post(session.baseUrl + 'api/auth/refresh', { headers: { Cookie: rotatedToken } })).status(), 401);
     await page.unroute('**/api/auth/refresh');
     console.log('PASS concurrent refresh is single-flight and late refresh cannot restore a logged-out session');
     console.log('SUCCESS weeks 3–4 UI: Auth/User/Role, protected routes, responsive internal layout passed');
