@@ -12,6 +12,8 @@ public interface IReceptionRepository
     Task AddPatientAsync(Patient patient);
     Task<List<PatientBook>> GetBooksAsync(int patientId);
     Task<PatientBook?> GetBookAsync(int patientBookId);
+    Task<PatientBook?> GetIssuedBookAsync(int patientId);
+    Task<bool> IsBookInUseAsync(int patientBookId);
     Task<(List<PatientBook> Items, int Total)> GetBookPageAsync(PatientBookQuery query);
     Task AddBookAsync(PatientBook book);
     Task<List<BookInvoice>> GetBookInvoicesAsync(int patientId);

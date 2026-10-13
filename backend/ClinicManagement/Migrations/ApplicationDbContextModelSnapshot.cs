@@ -1157,7 +1157,7 @@ namespace ClinicManagement.Migrations
                         new
                         {
                             Code = "appointments.viewOwn",
-                            IsImplemented = false,
+                            IsImplemented = true,
                             Kind = "Xem",
                             Module = "Lịch hẹn",
                             Name = "Xem lịch của bản thân",

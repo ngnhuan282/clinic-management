@@ -18,6 +18,7 @@ const API_ERROR_MESSAGES = {
     4001: "Không tìm thấy bệnh nhân.",
     4006: "Số sổ đã được sử dụng hoặc bệnh nhân đã có sổ đang sử dụng.",
     4009: "Số CCCD này đã thuộc về bệnh nhân khác.",
+    4010: "Sổ đang dùng cho lượt khám chưa hoàn tất. Hãy hoàn tất lượt khám trước khi cấp lại sổ.",
     5001: "Không tìm thấy lịch hẹn.",
     5002: "Bác sĩ đã có lịch hẹn trong khung giờ này.",
     5003: "Trạng thái lịch hẹn không hợp lệ.",

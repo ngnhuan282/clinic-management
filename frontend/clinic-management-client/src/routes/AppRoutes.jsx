@@ -14,6 +14,7 @@ import ProtectedRoute from "./ProtectedRoute";
 
 import HomePage from "../pages/patient/HomePage";
 import BookingPage from "../pages/patient/BookingPage";
+import MyAppointmentsPage from "../pages/patient/MyAppointmentsPage";
 import LabResultsPage from "../pages/patient/LabResultsPage";
 import DoctorSearchPage from "../pages/patient/DoctorSearchPage";
 import ProfilePage from "../pages/ProfilePage";
@@ -101,6 +102,9 @@ export default function AppRoutes() {
                         element={<ProtectedRoute allowedRoles={["Patient"]} />}
                     >
                         <Route path="/booking" element={<BookingPage />} />
+                        <Route element={<ProtectedRoute allowedPermissions={["appointments.viewOwn"]} />}>
+                            <Route path="/my-appointments" element={<MyAppointmentsPage />} />
+                        </Route>
                         <Route path="/lab-results" element={<LabResultsPage />} />
                         <Route path="/my-reviews" element={<ReviewsPage own />} />
                     </Route>

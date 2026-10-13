@@ -8,6 +8,9 @@ public interface IBookingService
     Task<PagedResponse<AppointmentResponse>> GetAppointmentsAsync(
         AppointmentQuery query);
 
+    Task<PagedResponse<AppointmentResponse>> GetMyAppointmentsAsync(
+        AppointmentQuery query);
+
     Task<List<DepartmentResponse>> GetDepartmentsAsync();
 
     Task<List<DoctorResponse>> GetDoctorsByDepartmentAsync(
