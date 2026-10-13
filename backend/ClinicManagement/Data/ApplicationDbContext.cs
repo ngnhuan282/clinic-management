@@ -136,6 +136,12 @@ public class ApplicationDbContext : DbContext
                 },
                 new Role
                 {
+                    RoleId = 6,
+                    RoleName = "DepartmentHead",
+                    Description = "Department head and doctor", IsSystem = true
+                },
+                new Role
+                {
                     RoleId = 7,
                     RoleName = "Pharmacist",
                     Description = "Pharmacist", IsSystem = true
@@ -170,10 +176,10 @@ public class ApplicationDbContext : DbContext
             {
                 [RoleConstants.Admin] = 1, [RoleConstants.Doctor] = 2,
                 [RoleConstants.Receptionist] = 3, [RoleConstants.Patient] = 4,
-                [RoleConstants.LabTechnician] = 5,
+                [RoleConstants.LabTechnician] = 5, [RoleConstants.DepartmentHead] = 6,
                 [RoleConstants.Pharmacist] = 7
             };
-            entity.HasData(PermissionCatalog.DefaultRoles.Where(role => role.Key != RoleConstants.DepartmentHead)
+            entity.HasData(PermissionCatalog.DefaultRoles
                 .SelectMany(role => role.Value.Select(code =>
                 new RolePermission { RoleId = roleIds[role.Key], PermissionCode = code })));
         });
