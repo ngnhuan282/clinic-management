@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Data;
 using ClinicManagement.Commons;
 using ClinicManagement.Data;
@@ -126,13 +127,14 @@ public class DispensingRepository : IDispensingRepository
         }
 
         return await _context.Invoices
-            .AsNoTracking()
+            .AsNoTracking() 
             .Include(x => x.InvoiceDetails)
             .Where(x =>
-                appointmentIds.Contains(x.AppointmentId) &&
-                x.Status == PaidStatus &&
-                (x.BillingStage == MedicineStage ||
-                    x.BillingStage == FinalStage)
+                x.AppointmentId.HasValue &&
+    appointmentIds.Contains(x.AppointmentId.Value) &&
+    x.Status == PaidStatus &&
+    (x.BillingStage == MedicineStage ||
+     x.BillingStage == FinalStage)
             )
             .OrderByDescending(x => x.CreatedAt)
             .ThenByDescending(x => x.Id)
@@ -301,25 +303,34 @@ public class DispensingRepository : IDispensingRepository
     }
 
     private static bool IsInvoiceForPrescription(
-        Invoice invoice,
-        int prescriptionId,
-        IReadOnlyCollection<int> prescriptionDetailIds)
+    Invoice invoice, int prescriptionId, IReadOnlyCollection<int> prescriptionDetailIds)
+{
+    if (invoice.InvoiceDetails.Any(x => x.SourceType == "Prescription" && x.SourceId == prescriptionId))
     {
-        if (invoice.InvoiceDetails.Any(x =>
-                x.SourceType == "Prescription" &&
-                x.SourceId == prescriptionId))
-        {
-            return true;
-        }
-
-        var billedDetailIds = invoice.InvoiceDetails
-            .Where(x => x.SourceType == "PrescriptionDetail")
-            .Select(x => x.SourceId)
-            .ToHashSet();
-
-        return prescriptionDetailIds.Count > 0 &&
-            prescriptionDetailIds.All(billedDetailIds.Contains);
+        return true;
     }
+
+    if (prescriptionDetailIds == null || prescriptionDetailIds.Count == 0)
+    {
+        return false;
+    }
+
+    var billedDetailIds = invoice.InvoiceDetails
+        .Where(x => x.SourceType == "PrescriptionDetail")
+        .Select(x => x.SourceId)
+        .ToHashSet();
+
+    // Dùng foreach thuần túy để triệt tiêu hoàn toàn lỗi xung đột extension method của C#
+    foreach (var id in prescriptionDetailIds)
+    {
+        if (!billedDetailIds.Contains(id))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
 
     private static IQueryable<Prescription> IncludeDetailRelations(
         IQueryable<Prescription> query)
