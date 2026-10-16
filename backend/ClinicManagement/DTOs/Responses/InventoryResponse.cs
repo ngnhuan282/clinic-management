@@ -28,6 +28,12 @@ public class InventoryResponse
 
     public int QuantityInStock { get; set; }
 
+    public int AvailableQuantity { get; set; }
+
+    public string StockLevel { get; set; } = string.Empty;
+
+    public string ExpiryStatus { get; set; } = string.Empty;
+
     public DateOnly ExpiryDate { get; set; }
 
     public int DaysUntilExpiry { get; set; }

@@ -11,7 +11,7 @@ import {
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import ConfirmDialog from "../../../components/common/ConfirmDialog";
 import Loading from "../../../components/common/Loading";
@@ -70,7 +70,7 @@ function mapRecordToAppointment(record, appointmentId) {
         initials: getInitials(record.patientName),
         avatarColor: "#005DAC",
         patientCode: buildPatientCode(
-            record.patientId,
+            record.patientProfileId,
             record.appointmentId
         ),
         phone: record.patientPhone,
@@ -81,6 +81,7 @@ function mapRecordToAppointment(record, appointmentId) {
 function PrescriptionPage() {
     const { appointmentId } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
     const {
         medicalRecord,
@@ -118,11 +119,15 @@ function PrescriptionPage() {
         const recordStatus = normalizeExaminationStatus(
             medicalRecord?.status
         );
-        const targetPath = recordStatus === "completed"
+        const examinationReturn = location.state?.examinationReturn;
+        const targetPath = recordStatus === "completed" && examinationReturn?.screen !== "edit"
             ? `/internal/examinations/${appointmentId}/record`
             : `/internal/examinations/${appointmentId}`;
 
-        navigate(targetPath, { state: { appointment } });
+        navigate(targetPath, { state: {
+            appointment,
+            medicalRecordDraft: examinationReturn?.draft,
+        } });
     };
 
     const handleCancelPrescription = async () => {
@@ -215,6 +220,7 @@ function PrescriptionPage() {
                             <Button
                                 variant="outlined"
                                 startIcon={<ArrowBackRoundedIcon />}
+                                disabled={saving || loading}
                                 onClick={handleBackToRecord}
                                 sx={{ minHeight: 42 }}
                             >

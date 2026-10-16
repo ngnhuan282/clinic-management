@@ -1,11 +1,18 @@
 export const DISPENSING_STATUS_OPTIONS = [
     { value: "", label: "Tất cả" },
     { value: "Ready", label: "Sẵn sàng cấp" },
+    { value: "NeedsReview", label: "Cần rà soát" },
     { value: "AwaitingPayment", label: "Chờ thanh toán" },
     { value: "Dispensed", label: "Đã cấp" },
 ];
 
 const STATUS_CONFIG = {
+    NeedsReview: {
+        label: "Cần rà soát",
+        color: "#B91C1C",
+        backgroundColor: "#FEF2F2",
+        borderColor: "#FECACA",
+    },
     Ready: {
         label: "Sẵn sàng cấp",
         color: "#047857",
@@ -25,6 +32,16 @@ const STATUS_CONFIG = {
         borderColor: "#BFDBFE",
     },
 };
+
+export const REVIEW_STATUS_OPTIONS = [
+    { value: "NotRequested", label: "Chưa gửi yêu cầu" },
+    { value: "Pending", label: "Đã gửi · Chờ xử lý" },
+    { value: "Resolved", label: "Đã đóng yêu cầu" },
+];
+
+export function getReviewStatusLabel(status) {
+    return REVIEW_STATUS_OPTIONS.find((x) => x.value === status)?.label || "Chưa gửi yêu cầu";
+}
 
 export function getDispensingStatusConfig(status) {
     return STATUS_CONFIG[status] || {

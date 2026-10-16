@@ -5,6 +5,9 @@ namespace ClinicManagement.Services.Interfaces;
 
 public interface IPrescriptionService
 {
+    Task<PagedResponse<DoctorStockReviewListItem>> GetStockReviewsAsync(DoctorStockReviewFilterRequest request);
+    Task<DoctorStockReviewResponse> GetStockReviewAsync(int reviewId);
+    Task<DoctorStockReviewResponse> RespondToStockReviewAsync(int reviewId, RespondStockReviewRequest request);
     Task<PrescriptionResponse> GetByIdAsync(int prescriptionId);
 
     Task<PrescriptionResponse?> GetByMedicalRecordIdAsync(

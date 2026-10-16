@@ -14,8 +14,10 @@ import InventoryStatCards from "../../../components/internal/medicines/Inventory
 import InventoryTable from "../../../components/internal/medicines/InventoryTable";
 import PharmacyModuleTabs from "../../../components/internal/medicines/PharmacyModuleTabs";
 import useInventory from "../../../hooks/useInventory";
+import useAuth from "../../../hooks/useAuth";
 
 function InventoryPage() {
+    const { role } = useAuth();
     const {
         filters,
         inventoryItems,
@@ -23,6 +25,7 @@ function InventoryPage() {
         summary,
         categories,
         suppliers,
+        canFilterCatalog,
         loading,
         error,
         updateFilters,
@@ -67,7 +70,7 @@ function InventoryPage() {
                                         fontWeight: 700,
                                     }}
                                 >
-                                    Quản trị / Kho dược & Vật tư
+                                    {role === "Pharmacist" ? "Dược sĩ / Kho thuốc" : "Quản trị / Kho dược & Vật tư"}
                                 </Typography>
 
                                 <Chip
@@ -125,6 +128,7 @@ function InventoryPage() {
                     filters={filters}
                     categories={categories}
                     suppliers={suppliers}
+                    canFilterCatalog={canFilterCatalog}
                     onChange={updateFilters}
                     onReset={resetFilters}
                 />
@@ -138,11 +142,12 @@ function InventoryPage() {
 
                 {loading ? (
                     <Loading />
-                ) : (
+                ) : !error && (
                     <InventoryTable
                         inventoryItems={inventoryItems}
                         pagination={pagination}
                         filters={filters}
+                        onSortChange={updateFilters}
                         onPageChange={(pageNumber) =>
                             updateFilters({ pageNumber })
                         }

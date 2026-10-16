@@ -43,9 +43,15 @@ BEGIN TRY
 
     -- Delete children before parents. Constraints and migration metadata stay intact.
     DELETE FROM dbo.RbacAudits;
+    IF OBJECT_ID(N'dbo.Notifications', N'U') IS NOT NULL
+        DELETE FROM dbo.Notifications;
     DELETE FROM dbo.LabTestResults;
     DELETE FROM dbo.LabTests;
     DELETE FROM dbo.DispenseDetails;
+    IF OBJECT_ID(N'dbo.PrescriptionStockReviewDecisions', N'U') IS NOT NULL
+        DELETE FROM dbo.PrescriptionStockReviewDecisions;
+    IF OBJECT_ID(N'dbo.PrescriptionStockReviews', N'U') IS NOT NULL
+        DELETE FROM dbo.PrescriptionStockReviews;
     DELETE FROM dbo.InvoiceDetails;
     DELETE FROM dbo.Invoices;
     DELETE FROM dbo.PrescriptionDetails;
@@ -222,14 +228,14 @@ BEGIN TRY
     SET IDENTITY_INSERT dbo.Patients ON;
     INSERT INTO dbo.Patients
         (PatientId, FullName, Phone, BirthDate, IdentityNumber,
-         InsuranceCode, CreatedAt)
+         InsuranceCode, CreatedAt, UserId)
     SELECT UserId, FullName, Phone,
            DATEADD(year, -(25 + UserId % 15), @today),
            CONCAT('0792', RIGHT(CONCAT('00000000', UserId), 8)),
            CONCAT('DN', RIGHT(CONCAT('00000000', UserId), 8)),
-           @clinicNow
+           @clinicNow, UserId
     FROM dbo.Users
-    WHERE UserId BETWEEN 1006 AND 1009;
+    WHERE RoleId = 4;
     SET IDENTITY_INSERT dbo.Patients OFF;
 
     SET IDENTITY_INSERT dbo.PatientBooks ON;

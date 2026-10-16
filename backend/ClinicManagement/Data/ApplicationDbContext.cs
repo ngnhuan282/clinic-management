@@ -71,6 +71,9 @@ public class ApplicationDbContext : DbContext
     public DbSet<DispenseDetail> DispenseDetails =>
         Set<DispenseDetail>();
 
+    public DbSet<PrescriptionStockReview> PrescriptionStockReviews => Set<PrescriptionStockReview>();
+    public DbSet<PrescriptionStockReviewDecision> PrescriptionStockReviewDecisions => Set<PrescriptionStockReviewDecision>();
+
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {

@@ -17,9 +17,10 @@ public class InventoryRepository : IInventoryRepository
     }
 
     public async Task<(IEnumerable<Inventory> Items, int TotalItems)> GetPagedAsync(
-        InventoryFilterRequest request)
+        InventoryFilterRequest request,
+        DateOnly today)
     {
-        var query = BuildFilteredQuery(request);
+        var query = BuildFilteredQuery(request, today);
 
         var totalItems = await query.CountAsync();
 
@@ -96,9 +97,9 @@ public class InventoryRepository : IInventoryRepository
     }
 
     private IQueryable<Inventory> BuildFilteredQuery(
-        InventoryFilterRequest request)
+        InventoryFilterRequest request,
+        DateOnly today)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var expiringUntil = today.AddDays(
             MedicineMapping.ExpiringSoonDays
         );
@@ -133,6 +134,29 @@ public class InventoryRepository : IInventoryRepository
                 x.MedicineId == request.MedicineId.Value
             );
         }
+
+        if (!string.IsNullOrWhiteSpace(request.BatchNumber))
+        {
+            var batchNumber = request.BatchNumber.Trim();
+            query = query.Where(x => x.BatchNumber.Contains(batchNumber));
+        }
+
+        query = request.StockLevel switch
+        {
+            "OutOfStock" => query.Where(x => x.QuantityInStock <= 0),
+            "LowStock" => query.Where(x => x.QuantityInStock > 0
+                && x.QuantityInStock <= MedicineMapping.LowStockThreshold),
+            "InStock" => query.Where(x => x.QuantityInStock > MedicineMapping.LowStockThreshold),
+            _ => query
+        };
+
+        query = request.ExpiryStatus switch
+        {
+            "Expired" => query.Where(x => x.ExpiryDate < today),
+            "ExpiringSoon" => query.Where(x => x.ExpiryDate >= today && x.ExpiryDate <= expiringUntil),
+            "Valid" => query.Where(x => x.ExpiryDate > expiringUntil),
+            _ => query
+        };
 
         if (request.CategoryId.HasValue)
         {

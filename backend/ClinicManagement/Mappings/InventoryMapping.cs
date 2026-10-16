@@ -27,6 +27,11 @@ public static class InventoryMapping
             Description = inventory.Medicine.Description,
             BatchNumber = inventory.BatchNumber,
             QuantityInStock = inventory.QuantityInStock,
+            AvailableQuantity = inventory.ExpiryDate >= today
+                ? Math.Max(0, inventory.QuantityInStock)
+                : 0,
+            StockLevel = GetStockLevel(inventory.QuantityInStock),
+            ExpiryStatus = GetExpiryStatus(inventory.ExpiryDate, today),
             ExpiryDate = inventory.ExpiryDate,
             DaysUntilExpiry = daysUntilExpiry,
             StockStatus = GetStockStatus(
@@ -36,6 +41,16 @@ public static class InventoryMapping
             )
         };
     }
+
+    public static string GetStockLevel(int quantityInStock) =>
+        quantityInStock <= 0 ? "OutOfStock"
+        : quantityInStock <= MedicineMapping.LowStockThreshold ? "LowStock"
+        : "InStock";
+
+    public static string GetExpiryStatus(DateOnly expiryDate, DateOnly today) =>
+        expiryDate < today ? "Expired"
+        : expiryDate <= today.AddDays(MedicineMapping.ExpiringSoonDays) ? "ExpiringSoon"
+        : "Valid";
 
     public static string GetStockStatus(
         int quantityInStock,

@@ -1,11 +1,11 @@
-export const INVENTORY_STATUS_OPTIONS = [
+export const INVENTORY_STOCK_LEVEL_OPTIONS = [
     {
         value: "",
-        label: "Tất cả trạng thái",
+        label: "Tất cả lượng tồn",
     },
     {
         value: "InStock",
-        label: "Còn hàng",
+        label: "Tồn bình thường",
     },
     {
         value: "LowStock",
@@ -15,14 +15,13 @@ export const INVENTORY_STATUS_OPTIONS = [
         value: "OutOfStock",
         label: "Hết hàng",
     },
-    {
-        value: "ExpiringSoon",
-        label: "Sắp hết hạn",
-    },
-    {
-        value: "Expired",
-        label: "Đã hết hạn",
-    },
+];
+
+export const INVENTORY_EXPIRY_OPTIONS = [
+    { value: "", label: "Tất cả hạn dùng" },
+    { value: "Valid", label: "Trên 30 ngày" },
+    { value: "ExpiringSoon", label: "Sắp hết hạn (0-30 ngày)" },
+    { value: "Expired", label: "Đã hết hạn" },
 ];
 
 export const INVENTORY_STATUS_CONFIG = {
@@ -71,4 +70,21 @@ export function getInventoryStatusConfig(status) {
         borderColor: "#E5E7EB",
         rowBackground: "#FFFFFF",
     };
+}
+
+export function getInventoryStatuses(item) {
+    const stockLevel = item.stockLevel || (item.quantityInStock <= 0
+        ? "OutOfStock" : item.quantityInStock <= 10 ? "LowStock" : "InStock");
+    const expiryStatus = item.expiryStatus || (item.daysUntilExpiry < 0
+        ? "Expired" : item.daysUntilExpiry <= 30 ? "ExpiringSoon" : "Valid");
+    const statuses = [];
+    if (expiryStatus !== "Valid") statuses.push(expiryStatus);
+    if (stockLevel !== "InStock") statuses.push(stockLevel);
+    return statuses.length ? statuses : ["InStock"];
+}
+
+export function getInventoryExpiryText(item) {
+    if (item.daysUntilExpiry < 0) return `Quá hạn ${Math.abs(item.daysUntilExpiry)} ngày`;
+    if (item.daysUntilExpiry === 0) return "Hết hạn hôm nay";
+    return `Còn ${item.daysUntilExpiry} ngày`;
 }

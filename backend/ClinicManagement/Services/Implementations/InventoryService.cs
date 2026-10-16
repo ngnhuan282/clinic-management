@@ -2,6 +2,7 @@ using ClinicManagement.Data.Entities;
 using ClinicManagement.DTOs.Requests;
 using ClinicManagement.DTOs.Responses;
 using ClinicManagement.Exceptions;
+using ClinicManagement.Helpers;
 using ClinicManagement.Mappings;
 using ClinicManagement.Repositories.Interfaces;
 using ClinicManagement.Services.Interfaces;
@@ -24,10 +25,10 @@ public class InventoryService : IInventoryService
     public async Task<PagedResponse<InventoryResponse>> GetPagedAsync(
         InventoryFilterRequest request)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = ClinicClock.Today;
 
         var (items, totalItems) =
-            await _inventoryRepository.GetPagedAsync(request);
+            await _inventoryRepository.GetPagedAsync(request, today);
 
         var responses = items
             .Select(x => x.ToResponse(today))
@@ -43,7 +44,7 @@ public class InventoryService : IInventoryService
 
     public async Task<InventorySummaryResponse> GetSummaryAsync()
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = ClinicClock.Today;
         var inventoryItems =
             await _inventoryRepository.GetAllAsync();
 
@@ -56,16 +57,17 @@ public class InventoryService : IInventoryService
             TotalBatches = responses.Count,
             TotalQuantity = responses.Sum(x =>
                 x.QuantityInStock),
+            AvailableQuantity = responses.Sum(x => x.AvailableQuantity),
             InStockBatches = responses.Count(x =>
-                x.StockStatus == "InStock"),
+                x.StockLevel == "InStock"),
             LowStockBatches = responses.Count(x =>
-                x.StockStatus == "LowStock"),
+                x.StockLevel == "LowStock"),
             OutOfStockBatches = responses.Count(x =>
-                x.StockStatus == "OutOfStock"),
+                x.StockLevel == "OutOfStock"),
             ExpiringSoonBatches = responses.Count(x =>
-                x.StockStatus == "ExpiringSoon"),
+                x.ExpiryStatus == "ExpiringSoon"),
             ExpiredBatches = responses.Count(x =>
-                x.StockStatus == "Expired")
+                x.ExpiryStatus == "Expired")
         };
     }
 
@@ -84,7 +86,7 @@ public class InventoryService : IInventoryService
             );
         }
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = ClinicClock.Today;
 
         return inventory.ToResponse(today);
     }

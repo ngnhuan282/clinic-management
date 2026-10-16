@@ -65,6 +65,25 @@ public class MedicalRecordRepository : IMedicalRecordRepository
         await _context.SaveChangesAsync();
     }
 
+    public async Task<bool> TryAdvanceVersionAsync(MedicalRecord record, DateTime expectedUpdatedAt)
+    {
+        if (_context.Database.CurrentTransaction == null)
+            throw new InvalidOperationException("Advancing a medical record version requires a transaction.");
+        var expected = expectedUpdatedAt.Kind == DateTimeKind.Local
+            ? expectedUpdatedAt.ToUniversalTime() : expectedUpdatedAt;
+        if (record.UpdatedAt != expected) return false;
+        var updatedAt = DateTime.UtcNow;
+        if (updatedAt <= expected) updatedAt = expected.AddTicks(1);
+
+        // The caller's transaction holds this row lock until its record/prescription changes commit.
+        var affected = await _context.MedicalRecords
+            .Where(x => x.MedicalRecordId == record.MedicalRecordId && x.UpdatedAt == expected)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.UpdatedAt, updatedAt));
+        if (affected == 0) return false;
+        record.UpdatedAt = updatedAt;
+        return true;
+    }
+
     private IQueryable<Appointment> BuildQueueQuery(
         ExaminationQueueFilterRequest request)
     {

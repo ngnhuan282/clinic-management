@@ -2,8 +2,13 @@ import { Box, Paper, Typography } from "@mui/material";
 import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
 import HourglassEmptyOutlinedIcon from "@mui/icons-material/HourglassEmptyOutlined";
 import PaymentsOutlinedIcon from "@mui/icons-material/PaymentsOutlined";
+import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
 
 const cards = [
+    {
+        key: "needsReview", label: "Cần rà soát", suffix: "đơn",
+        icon: FactCheckOutlinedIcon, color: "#B91C1C", backgroundColor: "#FEF2F2",
+    },
     {
         key: "readyToDispense",
         label: "Sẵn sàng cấp",
@@ -37,7 +42,8 @@ function DispensingStatCards({ summary }) {
                 display: "grid",
                 gridTemplateColumns: {
                     xs: "1fr",
-                    sm: "repeat(3, minmax(0, 1fr))",
+                    sm: "repeat(2, minmax(0, 1fr))",
+                    lg: "repeat(4, minmax(0, 1fr))",
                 },
                 gap: 2,
             }}

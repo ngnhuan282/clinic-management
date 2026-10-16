@@ -14,4 +14,7 @@ public interface IDispensingService
     Task<DispensingResponse> GetByIdAsync(int prescriptionId);
 
     Task<DispensingResponse> ConfirmAsync(int prescriptionId);
+
+    Task<DispensingResponse> RequestReviewAsync(int prescriptionId, CreateStockReviewRequest request);
+    Task<DispensingResponse> RecheckReviewAsync(int prescriptionId, RecheckStockReviewRequest request);
 }

@@ -192,6 +192,8 @@ public class MedicalRecordService : IMedicalRecordService
         int medicalRecordId,
         UpdateMedicalRecordRequest request)
     {
+        if (!request.ExpectedUpdatedAt.HasValue)
+            throw new AppException(ErrorCode.INVALID_REQUEST);
         ValidateMedicalRecord(
             medicalRecordId,
             request.Symptoms,
@@ -222,19 +224,29 @@ public class MedicalRecordService : IMedicalRecordService
                 request.MarkCompleted || request.PaperBookConfirmed
             );
 
+        var patientBookId = patientBook?.PatientBookId ?? record.PatientBookId;
+        var contentChanged = record.Symptoms.Trim() != request.Symptoms.Trim()
+            || NormalizeOptionalText(record.Conclusion) != NormalizeOptionalText(request.Conclusion)
+            || record.PatientBookId != patientBookId
+            || !record.Diagnoses.OrderBy(x => x.DiseaseId)
+                .Select(x => (x.DiseaseId, x.IsPrimary, NormalizeOptionalText(x.Note)))
+                .SequenceEqual(diagnoses.OrderBy(x => x.DiseaseId)
+                    .Select(x => (x.DiseaseId, x.IsPrimary, x.Note)));
         var paperBookUpdatedAt = ResolvePaperBookUpdatedAt(
-            record.PaperBookUpdatedAt,
+            contentChanged ? null : record.PaperBookUpdatedAt,
             request.PaperBookConfirmed,
             request.MarkCompleted,
-            patientBook?.PatientBookId ?? record.PatientBookId
+            patientBookId
         );
+
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+        if (!await _medicalRecordRepository.TryAdvanceVersionAsync(record, request.ExpectedUpdatedAt.Value))
+            throw new AppException(ErrorCode.MEDICAL_RECORD_CONFLICT);
 
         record.Symptoms = request.Symptoms.Trim();
         record.Conclusion = NormalizeOptionalText(request.Conclusion);
-        record.PatientBookId =
-            patientBook?.PatientBookId ?? record.PatientBookId;
+        record.PatientBookId = patientBookId;
         record.PaperBookUpdatedAt = paperBookUpdatedAt;
-        record.UpdatedAt = DateTime.UtcNow;
 
         record.Diagnoses.Clear();
         foreach (var diagnosis in diagnoses)
@@ -248,6 +260,7 @@ public class MedicalRecordService : IMedicalRecordService
             : AppointmentStatusConstants.InProgress;
 
         await _medicalRecordRepository.SaveChangesAsync();
+        await transaction.CommitAsync();
         if (previousStatus != record.Appointment.Status)
             await _notifications.PublishAppointmentChangedAsync(record.Appointment, record.Appointment.Status);
 

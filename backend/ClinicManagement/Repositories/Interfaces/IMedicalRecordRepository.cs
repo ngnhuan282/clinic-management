@@ -16,5 +16,7 @@ public interface IMedicalRecordRepository
 
     Task AddAsync(MedicalRecord medicalRecord);
 
+    Task<bool> TryAdvanceVersionAsync(MedicalRecord record, DateTime expectedUpdatedAt);
+
     Task SaveChangesAsync();
 }

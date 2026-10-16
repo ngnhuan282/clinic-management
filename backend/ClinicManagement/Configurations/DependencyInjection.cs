@@ -119,6 +119,7 @@ public static class DependencyInjection
             IMedicalRecordRepository,
             MedicalRecordRepository
         >();
+        services.AddScoped<IMedicalHistoryRepository, MedicalHistoryRepository>();
 
         services.AddScoped<
             IPrescriptionRepository,
@@ -175,6 +176,7 @@ public static class DependencyInjection
             IMedicalRecordService,
             MedicalRecordService
         >();
+        services.AddScoped<IMedicalHistoryService, MedicalHistoryService>();
 
         services.AddScoped<
             IPrescriptionService,

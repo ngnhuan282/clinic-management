@@ -12,6 +12,7 @@ import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 
 import formatCurrency from "../../../utils/formatCurrency";
+import { getPrescriptionTextError, PRESCRIPTION_TEXT_LIMITS } from "../../../validators/prescriptionValidator";
 
 function SummaryRow({ label, value, color = "#1F2937" }) {
     return (
@@ -159,6 +160,10 @@ function PrescriptionSummaryPanel({
                     fullWidth
                     multiline
                     minRows={5}
+                    maxRows={10}
+                    error={Boolean(getPrescriptionTextError("notes", notes))}
+                    helperText={getPrescriptionTextError("notes", notes) || `${notes.length}/${PRESCRIPTION_TEXT_LIMITS.notes} ký tự`}
+                    slotProps={{ htmlInput: { maxLength: PRESCRIPTION_TEXT_LIMITS.notes, "aria-label": "Lời dặn bác sĩ" } }}
                     placeholder="Nhập lời dặn hoặc ghi chú cho đơn thuốc"
                 />
             </Paper>
