@@ -385,23 +385,6 @@ function Navbar() {
                     </Box>
                 </Box>
             </Drawer>
-            <Menu anchorEl={accountAnchor} open={Boolean(accountAnchor)} onClose={() => setAccountAnchor(null)}>
-                <Box sx={{ px: 2, py: 1, maxWidth: 280 }}><Typography fontWeight={600}>{user?.fullName}</Typography></Box>
-                <Divider />
-                <MenuItem onClick={() => { setAccountAnchor(null); setMobileOpen(false); navigate(role === "Patient" ? "/booking" : "/internal/dashboard"); }}>
-                    {role === "Patient" ? "Đặt lịch khám" : "Trang quản lý"}
-                </MenuItem>
-                {role === "Patient" && <MenuItem onClick={() => { setAccountAnchor(null); setMobileOpen(false); navigate("/medical-records"); }}>
-                    Lịch sử khám
-                </MenuItem>}
-                {role === "Patient" && <MenuItem onClick={() => { setAccountAnchor(null); setMobileOpen(false); navigate("/lab-results"); }}>
-                    Kết quả xét nghiệm
-                </MenuItem>}
-                {role === "Patient" && <MenuItem onClick={() => { setAccountAnchor(null); setMobileOpen(false); navigate("/profile"); }}>
-                    Hồ sơ cá nhân
-                </MenuItem>}
-                <MenuItem onClick={handleLogout}>Đăng xuất</MenuItem>
-            </Menu>
         </>
     );
 }

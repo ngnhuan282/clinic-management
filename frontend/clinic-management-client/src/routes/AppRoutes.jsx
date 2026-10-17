@@ -20,6 +20,7 @@ import DoctorSearchPage from "../pages/patient/DoctorSearchPage";
 import PatientProfilePage from "../pages/patient/PatientProfilePage";
 import PatientMedicalHistoryPage from "../pages/patient/PatientMedicalHistoryPage";
 import PatientMedicalHistoryDetailPage from "../pages/patient/PatientMedicalHistoryDetailPage";
+import ReviewsPage from "../pages/patient/ReviewsPage";
 import AuthPage from "../pages/auth/AuthPage";
 
 import InventoryPage from "../pages/internal/admin/InventoryPage";
@@ -39,6 +40,8 @@ import DoctorScheduleManagementPage from "../pages/internal/DoctorScheduleManage
 import ScheduleReviewPage from "../pages/internal/ScheduleReviewPage";
 import DepartmentSchedulesPage from "../pages/internal/DepartmentSchedulesPage";
 import CashierBillingPage from "../pages/internal/CashierBillingPage";
+import AccountProfilePage from "../pages/internal/AccountProfilePage";
+import ReviewsManagementPage from "../pages/internal/admin/ReviewsManagementPage";
 
 import DoctorLabOrdersPage from "../pages/internal/doctor/DoctorLabOrdersPage";
 import DoctorAppointmentsPage from "../pages/internal/doctor/DoctorAppointmentsPage";
