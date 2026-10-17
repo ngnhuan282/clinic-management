@@ -203,12 +203,14 @@ internal static class ClinicRealtimeChecks
         await Send(HttpMethod.Post, $"api/book-invoices/{inUseInvoice}/issue-book", receptionToken, new { bookNumber = "LIVE-IN-USE" }, 409);
         check(await db.PatientBooks.AsNoTracking().AnyAsync(x => x.PatientBookId == bookId && x.Status == "Issued"),
             "A book used by an unfinished examination remains active when replacement is refused");
-        var recordId = (await Send(HttpMethod.Post, "api/medical-records", doctorToken,
-            new { appointmentId = clinical.AppointmentId, symptoms = "Realtime symptoms" }, 201))!["result"]!["medicalRecordId"]!.GetValue<int>();
+        var clinicalRecord = (await Send(HttpMethod.Post, "api/medical-records", doctorToken,
+            new { appointmentId = clinical.AppointmentId, symptoms = "Realtime symptoms" }, 201))!["result"]!;
+        var recordId = clinicalRecord["medicalRecordId"]!.GetValue<int>();
         var disease = new Disease { DiseaseCode = "LIVE", DiseaseName = "Realtime diagnosis", CreatedAt = DateTime.UtcNow };
         db.Diseases.Add(disease);
         await db.SaveChangesAsync();
         await Send(HttpMethod.Put, $"api/medical-records/{recordId}", doctorToken, new { symptoms = "Realtime symptoms", conclusion = "Done",
+            expectedUpdatedAt = clinicalRecord["updatedAt"]!.GetValue<string>(),
             markCompleted = true, paperBookConfirmed = true, diagnoses = new[] { new { diseaseId = disease.DiseaseId, isPrimary = true } } });
         await Task.WhenAll(patient.WaitAsync("AppointmentChanged", "status", "Completed"), otherReception.WaitAsync("AppointmentChanged", "status", "Completed"));
         check(await db.Appointments.AsNoTracking().AnyAsync(x => x.AppointmentId == clinical.AppointmentId && x.Status == "Completed"),

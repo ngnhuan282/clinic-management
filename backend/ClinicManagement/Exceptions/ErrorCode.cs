@@ -364,6 +364,9 @@ public sealed class ErrorCode
     public static readonly ErrorCode PATIENT_BOOK_INVALID_STATUS =
         new(7106, "Patient book status is invalid", HttpStatusCode.BadRequest);
 
+    public static readonly ErrorCode MEDICAL_RECORD_CONFLICT =
+        new(7107, "Medical record or prescription changed. Reload and confirm the paper book again", HttpStatusCode.Conflict);
+
     public static readonly ErrorCode LAB_TEST_NOT_FOUND =
         new(7201, "Lab test not found", HttpStatusCode.NotFound);
     public static readonly ErrorCode LAB_TEST_TYPE_NOT_FOUND =
@@ -399,6 +402,27 @@ public sealed class ErrorCode
     public static readonly ErrorCode PRESCRIPTION_INSUFFICIENT_STOCK =
         new(7405, "Available non-expired stock is insufficient", HttpStatusCode.Conflict);
 
+    public static readonly ErrorCode STOCK_REVIEW_CONFLICT =
+        new(7408, "Stock review state changed; reload and try again", HttpStatusCode.Conflict);
+
+    public static readonly ErrorCode STOCK_REVIEW_RECIPIENT_UNAVAILABLE =
+        new(7409, "An active prescribing doctor or required billing recipient is unavailable", HttpStatusCode.Conflict);
+
+    public static readonly ErrorCode STOCK_REVIEW_PENDING =
+        new(7410, "Recheck and close the pending stock review before dispensing", HttpStatusCode.Conflict);
+
+    public static readonly ErrorCode STOCK_REVIEW_BILLING_REQUIRED =
+        new(7411, "A clinical adjustment is awaiting billing reconciliation", HttpStatusCode.Conflict);
+
+    public static readonly ErrorCode STOCK_REVIEW_NOT_FOUND =
+        new(7412, "Stock review not found", HttpStatusCode.NotFound);
+
+    public static readonly ErrorCode STOCK_REVIEW_RESPONSE_REPEATED =
+        new(7413, "This stock review has already received a doctor response", HttpStatusCode.Conflict);
+
     public static readonly ErrorCode PRESCRIPTION_DISPENSE_CONFLICT =
         new(7406, "The prescription dispensing state changed; please reload and try again", HttpStatusCode.Conflict);
+
+    public static readonly ErrorCode PRESCRIPTION_BILLING_CONFLICT =
+        new(7407, "A billed prescription cannot change medicines or quantities, be cancelled or reissued. Resolve its invoice first", HttpStatusCode.Conflict);
 }

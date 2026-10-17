@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
     getInventory,
@@ -7,12 +7,15 @@ import {
 import { getMedicineCategoryOptions } from "../api/medicineCategoryApi";
 import { getSupplierOptions } from "../api/supplierApi";
 import getApiErrorMessage from "../utils/errorHandler";
+import useAuth from "./useAuth";
 
 const DEFAULT_FILTERS = {
     search: "",
     categoryId: "",
     supplierId: "",
-    stockStatus: "",
+    batchNumber: "",
+    stockLevel: "",
+    expiryStatus: "",
     pageNumber: 1,
     pageSize: 10,
     sortBy: "expiry",
@@ -24,12 +27,16 @@ function normalizeFilters(filters) {
         ...filters,
         categoryId: filters.categoryId || undefined,
         supplierId: filters.supplierId || undefined,
-        stockStatus: filters.stockStatus || undefined,
+        batchNumber: filters.batchNumber.trim() || undefined,
+        stockLevel: filters.stockLevel || undefined,
+        expiryStatus: filters.expiryStatus || undefined,
         search: filters.search || undefined,
     };
 }
 
 function useInventory() {
+    const { permissions } = useAuth();
+    const canFilterCatalog = permissions.includes("pharmacy.viewCatalog");
     const [filters, setFilters] = useState(DEFAULT_FILTERS);
     const [pagedData, setPagedData] = useState(null);
     const [summary, setSummary] = useState(null);
@@ -37,39 +44,42 @@ function useInventory() {
     const [suppliers, setSuppliers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const requestSequence = useRef(0);
+    const referenceRequest = useRef(null);
 
     const requestParams = useMemo(
         () => normalizeFilters(filters),
         [filters]
     );
 
-    const loadReferenceData = useCallback(async () => {
-        const [
-            categoryResult,
-            supplierResult,
-        ] = await Promise.all([
-            getMedicineCategoryOptions(),
-            getSupplierOptions(),
-        ]);
-
-        setCategories(categoryResult || []);
-        setSuppliers(supplierResult || []);
-    }, []);
-
     const loadInventory = useCallback(async () => {
+        const sequence = ++requestSequence.current;
         setLoading(true);
         setError("");
 
         try {
-            const [inventoryResult, summaryResult] =
+            if (canFilterCatalog) {
+                referenceRequest.current ??= Promise.all([
+                    getMedicineCategoryOptions(), getSupplierOptions(),
+                ]).catch((err) => {
+                    referenceRequest.current = null;
+                    throw err;
+                });
+            }
+            const [inventoryResult, summaryResult, [categoryResult, supplierResult]] =
                 await Promise.all([
                     getInventory(requestParams),
                     getInventorySummary(),
+                    canFilterCatalog ? referenceRequest.current : Promise.resolve([[], []]),
                 ]);
 
+            if (sequence !== requestSequence.current) return;
             setPagedData(inventoryResult);
             setSummary(summaryResult);
+            setCategories(categoryResult || []);
+            setSuppliers(supplierResult || []);
         } catch (err) {
+            if (sequence !== requestSequence.current) return;
             setError(
                 getApiErrorMessage(
                     err,
@@ -77,27 +87,16 @@ function useInventory() {
                 )
             );
         } finally {
-            setLoading(false);
+            if (sequence === requestSequence.current) setLoading(false);
         }
-    }, [requestParams]);
-
-    useEffect(() => {
-        // Fetch remote data when query inputs change.
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        loadReferenceData().catch((err) => {
-            setError(
-                getApiErrorMessage(
-                    err,
-                    "Không tải được dữ liệu thuốc."
-                )
-            );
-        });
-    }, [loadReferenceData]);
+    }, [requestParams, canFilterCatalog]);
 
     useEffect(() => {
         // Fetch remote data when query inputs change.
         // eslint-disable-next-line react-hooks/set-state-in-effect
         loadInventory();
+        const requests = requestSequence;
+        return () => { requests.current++; };
     }, [loadInventory]);
 
     const updateFilters = useCallback((nextFilters) => {
@@ -120,6 +119,7 @@ function useInventory() {
         summary,
         categories,
         suppliers,
+        canFilterCatalog,
         loading,
         error,
         updateFilters,

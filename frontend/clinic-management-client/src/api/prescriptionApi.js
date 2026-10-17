@@ -24,6 +24,7 @@ export async function getPrescriptionMedicineOptions() {
     return response.data.result;
 }
 
+/** Reissuing a billed order returns code 7407/409; writes may return version conflict 7107/409. */
 export async function createPrescription(payload) {
     const response = await axiosClient.post(
         "/prescriptions",
@@ -33,6 +34,7 @@ export async function createPrescription(payload) {
     return response.data.result;
 }
 
+/** Retained medicines keep detail IDs. Active invoices block medicine/quantity changes (7407/409). */
 export async function updatePrescription(prescriptionId, payload) {
     const response = await axiosClient.put(
         `/prescriptions/${prescriptionId}`,
@@ -42,6 +44,7 @@ export async function updatePrescription(prescriptionId, payload) {
     return response.data.result;
 }
 
+/** Active medicine/final invoices must be resolved before cancellation (7407/409). */
 export async function cancelPrescription(prescriptionId) {
     const response = await axiosClient.patch(
         `/prescriptions/${prescriptionId}/cancel`

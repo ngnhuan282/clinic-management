@@ -72,8 +72,8 @@ try
     start.Environment["ASPNETCORE_ENVIRONMENT"] = "Development";
     start.Environment["ConnectionStrings__DefaultConnection"] = connection;
     start.Environment["Jwt__Key"] = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
-    if (args.Contains("--a6")) start.Environment["AuthCookie__Secure"] = "true";
-    if (args.Contains("--ui") || args.Contains("--a5-ui") || args.Contains("--a6-ui") || args.Contains("--clinic-realtime-ui")) start.Environment["Cors__FrontendUrl"] = "http://127.0.0.1:5190";
+    if (args.Contains("--d7-ui") || args.Contains("--d7-review-ui") || args.Contains("--d7-doctor-ui")) start.Environment["Cors__FrontendUrl"] = "http://127.0.0.1:5273";
+    if (args.Contains("--ui") || args.Contains("--a5-ui") || args.Contains("--clinic-realtime-ui") || args.Contains("--d6-ui")) start.Environment["Cors__FrontendUrl"] = "http://127.0.0.1:5190";
     server = Process.Start(start)!;
     server.OutputDataReceived += (_, e) => { if (e.Data != null) serverLog.Enqueue(e.Data); };
     server.ErrorDataReceived += (_, e) => { if (e.Data != null) serverLog.Enqueue(e.Data); };
@@ -86,13 +86,55 @@ try
         await Task.Delay(200);
     }
     await Send(HttpMethod.Get, "swagger/v1/swagger.json");
-    if (args.Contains("--a6") || args.Contains("--a6-ui"))
+    if (args.Contains("--d7-review") || args.Contains("--d7-review-ui") || args.Contains("--d7-doctor") || args.Contains("--d7-doctor-ui"))
     {
-        await A6Checks.RunAsync(client, db, password, Check, args.Contains("--a6"));
-        Console.WriteLine($"SUCCESS: {checks} A6 checks passed on a database created by the complete migration chain.");
-        if (args.Contains("--a6-ui"))
+        var fixture = await StockReviewChecks.RunAsync(client, db, password, Check,
+            verifyDoctor: args.Contains("--d7-doctor") || args.Contains("--d7-doctor-ui"));
+        Console.WriteLine($"SUCCESS: {checks} D7 stock review checks passed.");
+        if (args.Contains("--d7-review-ui") || args.Contains("--d7-doctor-ui"))
         {
-            Console.WriteLine("AUTH_UI_SESSION:" + System.Text.Json.JsonSerializer.Serialize(new { baseUrl = client.BaseAddress, password }));
+            Console.WriteLine("AUTH_UI_SESSION:" + System.Text.Json.JsonSerializer.Serialize(new
+            {
+                baseUrl = client.BaseAddress, password, prescriptionId = fixture.PaidId,
+                unpaidId = fixture.UnpaidId, readyId = fixture.ReadyId, unbilledId = fixture.UnbilledId
+            }));
+            await Console.In.ReadLineAsync();
+        }
+        return;
+    }
+    if (args.Contains("--d7") || args.Contains("--d7-ui"))
+    {
+        var fixture = await InventoryWarningChecks.RunAsync(client, db, password, Check);
+        Console.WriteLine($"SUCCESS: {checks} D7 inventory checks passed.");
+        if (args.Contains("--d7-ui"))
+        {
+            Console.WriteLine("AUTH_UI_SESSION:" + System.Text.Json.JsonSerializer.Serialize(new
+            {
+                baseUrl = client.BaseAddress, password, categoryId = fixture.CategoryId,
+                medicineId = fixture.MedicineId
+            }));
+            await Console.In.ReadLineAsync();
+        }
+        return;
+    }
+    if (args.Contains("--d6-seed"))
+    {
+        await MedicalHistoryChecks.VerifyDemoSeedProfilesAsync(client, db, root, Check);
+        Console.WriteLine($"SUCCESS: {checks} D6 demo seed checks passed.");
+        return;
+    }
+    if (args.Contains("--d6") || args.Contains("--d6-ui"))
+    {
+        var historyFixture = await MedicalHistoryChecks.RunAsync(client, db, password, Check);
+        Console.WriteLine($"SUCCESS: {checks} D6 history checks passed.");
+        if (args.Contains("--d6-ui"))
+        {
+            Console.WriteLine("AUTH_UI_SESSION:" + System.Text.Json.JsonSerializer.Serialize(new
+            {
+                baseUrl = client.BaseAddress, password,
+                appointmentId = historyFixture.AppointmentId,
+                medicalRecordId = historyFixture.HistoricalRecordId
+            }));
             await Console.In.ReadLineAsync();
         }
         return;
@@ -379,6 +421,7 @@ try
     await Send(HttpMethod.Get, $"api/medical-records/by-appointment/{examinationId}");
     await Send(HttpMethod.Post, "api/medical-records", recordRequest, 409);
     await Send(HttpMethod.Put, $"api/medical-records/{recordId}", new { symptoms = "Improving", conclusion = "Stable", markCompleted = true,
+        expectedUpdatedAt = record["updatedAt"]!.GetValue<string>(),
         diagnoses = new[] { new { diseaseId, isPrimary = true } } });
     client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", patient["accessToken"]!.GetValue<string>());
     await Send(HttpMethod.Get, $"api/medical-records/{recordId}", status: 403);
@@ -509,6 +552,12 @@ try
 }
 catch
 {
+    if (args.Contains("--d7-review") || args.Contains("--d7-review-ui") || args.Contains("--d7-doctor") || args.Contains("--d7-doctor-ui"))
+    {
+        var lines = serverLog.ToArray();
+        var index = Array.FindLastIndex(lines, line => line.Contains("Unhandled exception occurred"));
+        if (index >= 0) Console.Error.WriteLine(string.Join('\n', lines.Skip(index).Take(25)));
+    }
     Console.Error.WriteLine(string.Join('\n', serverLog.TakeLast(35)));
     throw;
 }

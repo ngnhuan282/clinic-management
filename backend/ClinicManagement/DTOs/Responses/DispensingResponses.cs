@@ -2,6 +2,8 @@ namespace ClinicManagement.DTOs.Responses;
 
 public class DispensingListItemResponse
 {
+    public int ShortageItems { get; set; }
+    public string ReviewStatus { get; set; } = "NotRequested";
     public int PrescriptionId { get; set; }
 
     public string PrescriptionCode { get; set; } = string.Empty;
@@ -74,6 +76,11 @@ public class DispensingMedicineResponse
 
 public class DispensingResponse
 {
+    public DateTime UpdatedAt { get; set; }
+    public string ReviewStatus { get; set; } = "NotRequested";
+    public bool CanRequestReview { get; set; }
+    public IReadOnlyList<StockReviewResponse> Reviews { get; set; } = [];
+    public IReadOnlyList<StockReviewRecipientResponse> ReviewRecipients { get; set; } = [];
     public int PrescriptionId { get; set; }
 
     public string PrescriptionCode { get; set; } = string.Empty;
@@ -118,6 +125,7 @@ public class DispensingResponse
 
 public class DispensingSummaryResponse
 {
+    public int NeedsReview { get; set; }
     public int AwaitingPayment { get; set; }
 
     public int ReadyToDispense { get; set; }

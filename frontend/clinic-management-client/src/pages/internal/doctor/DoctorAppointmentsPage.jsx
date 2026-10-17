@@ -123,7 +123,7 @@ function mapQueueAppointment(item) {
         initials: getInitials(item.patientName),
         avatarColor: "#005DAC",
         patientCode: buildPatientCode(
-            item.patientId,
+            item.patientProfileId,
             item.appointmentId
         ),
         patientBookId: item.patientBookId || null,

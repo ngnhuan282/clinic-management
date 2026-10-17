@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
     createMedicalRecord,
@@ -8,6 +8,13 @@ import {
 } from "../api/examinationApi";
 import { getDiseaseOptions } from "../api/diseaseApi";
 import { normalizeExaminationStatus } from "../components/internal/examinations/examinationStatus";
+import getApiErrorMessage from "../utils/errorHandler";
+import {
+    getMedicalRecordContentKey,
+    normalizePayloadDiagnoses,
+    restoreMedicalRecordDraft,
+    updateMedicalRecordForm,
+} from "../utils/medicalRecordConfirmation";
 
 let diagnosisRowSeed = 1;
 
@@ -25,6 +32,7 @@ function createEmptyForm() {
         symptoms: "",
         conclusion: "",
         paperBookConfirmed: false,
+        paperBookConfirmationPending: false,
         diagnoses: [createDiagnosisRow()],
     };
 }
@@ -88,7 +96,7 @@ function mapQueueAppointment(item) {
         initials: getInitials(item.patientName),
         avatarColor: "#005DAC",
         patientCode: buildPatientCode(
-            item.patientId,
+            item.patientProfileId,
             item.appointmentId
         ),
         patientBookId: item.patientBookId || null,
@@ -110,7 +118,7 @@ function mapRecordAppointment(record) {
         initials: getInitials(record.patientName),
         avatarColor: "#005DAC",
         patientCode: buildPatientCode(
-            record.patientId,
+            record.patientProfileId,
             record.appointmentId
         ),
         patientBookId: record.patientBookId || null,
@@ -130,6 +138,7 @@ function mapRecordForm(record) {
         symptoms: record.symptoms || "",
         conclusion: record.conclusion || "",
         paperBookConfirmed: Boolean(record.paperBookUpdatedAt),
+        paperBookConfirmationPending: false,
         diagnoses,
     };
 }
@@ -139,6 +148,7 @@ function isNotFound(error) {
 }
 
 function getErrorMessage(error, fallback) {
+    if (error?.response?.data?.code === 7107) return getApiErrorMessage(error, fallback);
     const message = error?.response?.data?.message ||
         error?.message ||
         fallback;
@@ -150,40 +160,23 @@ function getErrorMessage(error, fallback) {
     return message;
 }
 
-function normalizePayloadDiagnoses(diagnoses) {
-    const selectedDiagnoses = diagnoses
-        .filter((diagnosis) => diagnosis.diseaseId)
-        .map((diagnosis) => ({
-            diseaseId: Number(diagnosis.diseaseId),
-            isPrimary: diagnosis.isPrimary,
-            note: diagnosis.note?.trim() || null,
-        }));
-
-    const hasPrimary = selectedDiagnoses.some(
-        (diagnosis) => diagnosis.isPrimary
-    );
-
-    if (selectedDiagnoses.length > 0 && !hasPrimary) {
-        selectedDiagnoses[0].isPrimary = true;
-    }
-
-    return selectedDiagnoses;
-}
-
 function useMedicalRecordForm({
     appointmentId,
     initialAppointment,
+    initialDraft,
 }) {
     const [appointment, setAppointment] = useState(
         initialAppointment || null
     );
     const [diseases, setDiseases] = useState([]);
     const [medicalRecord, setMedicalRecord] = useState(null);
-    const [form, setForm] = useState(createEmptyForm);
+    const [form, setForm] = useState(() => initialDraft?.form || createEmptyForm());
+    const restoredDraft = useRef(initialDraft);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
     const [actionError, setActionError] = useState("");
+    const [recordConflict, setRecordConflict] = useState(false);
     const [successMessage, setSuccessMessage] = useState("");
 
     const selectedDiagnoses = useMemo(
@@ -192,6 +185,7 @@ function useMedicalRecordForm({
     );
 
     const completionReady = Boolean(
+        !recordConflict && !loading &&
         form.symptoms.trim() &&
         form.conclusion.trim() &&
         selectedDiagnoses.length > 0 &&
@@ -221,7 +215,10 @@ function useMedicalRecordForm({
             loadedRecord =
                 await getMedicalRecordByAppointment(appointmentId);
             setMedicalRecord(loadedRecord);
-            setForm(mapRecordForm(loadedRecord));
+            setRecordConflict(false);
+            setActionError("");
+            const draft = restoredDraft.current;
+            setForm(restoreMedicalRecordDraft(draft, loadedRecord) || mapRecordForm(loadedRecord));
             setAppointment((current) => {
                 const apiAppointment =
                     mapRecordAppointment(loadedRecord);
@@ -236,7 +233,7 @@ function useMedicalRecordForm({
                 };
             });
         } catch (recordError) {
-            if (!isNotFound(recordError) && !initialAppointment) {
+            if (!isNotFound(recordError)) {
                 setError(
                     getErrorMessage(
                         recordError,
@@ -274,6 +271,7 @@ function useMedicalRecordForm({
             }
         }
 
+        restoredDraft.current = null;
         setLoading(false);
     }, [appointmentId, initialAppointment]);
 
@@ -283,15 +281,13 @@ function useMedicalRecordForm({
     }, [loadData]);
 
     const updateField = (field, value) => {
-        setForm((current) => ({
-            ...current,
+        setForm((current) => updateMedicalRecordForm(current, {
             [field]: value,
         }));
     };
 
     const addDiagnosisRow = () => {
-        setForm((current) => ({
-            ...current,
+        setForm((current) => updateMedicalRecordForm(current, {
             diagnoses: [
                 ...current.diagnoses,
                 createDiagnosisRow(),
@@ -300,8 +296,7 @@ function useMedicalRecordForm({
     };
 
     const updateDiagnosisRow = (localId, field, value) => {
-        setForm((current) => ({
-            ...current,
+        setForm((current) => updateMedicalRecordForm(current, {
             diagnoses: current.diagnoses.map((diagnosis) =>
                 diagnosis.localId === localId
                     ? {
@@ -314,8 +309,7 @@ function useMedicalRecordForm({
     };
 
     const setPrimaryDiagnosis = (localId) => {
-        setForm((current) => ({
-            ...current,
+        setForm((current) => updateMedicalRecordForm(current, {
             diagnoses: current.diagnoses.map((diagnosis) => ({
                 ...diagnosis,
                 isPrimary: diagnosis.localId === localId,
@@ -326,15 +320,14 @@ function useMedicalRecordForm({
     const removeDiagnosisRow = (localId) => {
         setForm((current) => {
             if (current.diagnoses.length === 1) {
-                return {
-                    ...current,
+                return updateMedicalRecordForm(current, {
                     diagnoses: [createDiagnosisRow()],
-                };
+                });
             }
 
             const diagnoses = current.diagnoses.filter(
                 (diagnosis) => diagnosis.localId !== localId
-            );
+            ).map((diagnosis) => ({ ...diagnosis }));
 
             if (
                 diagnoses.length > 0 &&
@@ -343,10 +336,9 @@ function useMedicalRecordForm({
                 diagnoses[0].isPrimary = true;
             }
 
-            return {
-                ...current,
+            return updateMedicalRecordForm(current, {
                 diagnoses,
-            };
+            });
         });
     };
 
@@ -388,6 +380,7 @@ function useMedicalRecordForm({
     };
 
     const submitRecord = async (markCompleted) => {
+        if (recordConflict || loading) return null;
         const validationMessage =
             validateBeforeSubmit(markCompleted);
 
@@ -407,6 +400,7 @@ function useMedicalRecordForm({
             paperBookConfirmed: form.paperBookConfirmed,
             markCompleted,
             diagnoses: selectedDiagnoses,
+            expectedUpdatedAt: medicalRecord?.updatedAt,
         };
 
         setSaving(true);
@@ -436,6 +430,10 @@ function useMedicalRecordForm({
 
             return savedRecord;
         } catch (submitError) {
+            if (submitError?.response?.data?.code === 7107) {
+                setRecordConflict(true);
+                setForm((current) => updateMedicalRecordForm(current, { paperBookConfirmed: false }));
+            }
             setActionError(
                 getErrorMessage(
                     submitError,
@@ -457,9 +455,16 @@ function useMedicalRecordForm({
         saving,
         error,
         actionError,
+        recordConflict,
         successMessage,
         selectedDiagnoses,
         completionReady,
+        createDraft: () => ({
+            form,
+            updatedAt: medicalRecord?.updatedAt,
+            patientBookId: medicalRecord?.patientBookId,
+            recordContentKey: medicalRecord ? getMedicalRecordContentKey(medicalRecord) : null,
+        }),
         updateField,
         addDiagnosisRow,
         updateDiagnosisRow,

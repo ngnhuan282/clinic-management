@@ -26,6 +26,7 @@ export const INTERNAL_PAGES = [
     { label: "Lịch làm việc của khoa", path: "/internal/department-schedules", roles: ["DepartmentHead"] },
     { label: "Tổng quan", path: "/internal/dashboard", roles: INTERNAL_ROLES },
     { label: "Khám bệnh", path: "/internal/examinations", roles: ["Doctor", "DepartmentHead"] },
+    { label: "Rà soát thuốc thiếu", path: "/internal/doctor/stock-reviews", roles: ["Doctor", "DepartmentHead"] },
     { label: "Danh mục bệnh", path: "/internal/diseases", roles: ["Admin", "DepartmentHead"] },
     { label: "Lịch hẹn", path: "/internal/appointments", roles: ["Admin", "Receptionist"] },
     { label: "Sổ khám bệnh", path: "/internal/patient-books", roles: ["Receptionist"] },
@@ -49,6 +50,11 @@ export const INTERNAL_PAGES = [
         path: "/internal/pharmacy/dispensing",
         roles: ["Admin", "Pharmacist"],
     },
+    {
+        label: "Tồn kho",
+        path: "/internal/pharmacy/inventory",
+        roles: ["Pharmacist"],
+    },
     { label: "Xét nghiệm", path: "/internal/lab-test-types", roles: ["Admin", "Doctor", "DepartmentHead"] },
     { label: "Chỉ định xét nghiệm", path: "/internal/doctor/lab-orders", roles: ["Doctor", "DepartmentHead"] },
     { label: "Hàng chờ xét nghiệm", path: "/internal/technician/lab-queue", roles: ["LabTechnician"] },
@@ -71,6 +77,7 @@ const PAGE_PERMISSIONS = {
         "pharmacy.manageInventory",
     ],
     "/internal/pharmacy/dispensing": "pharmacy.dispense",
+    "/internal/pharmacy/inventory": "pharmacy.viewInventory",
     "/internal/lab-test-types": "labs.viewTypes",
     "/internal/doctor/lab-orders": "labs.order",
     "/internal/doctor/schedule-requests": null,
@@ -78,6 +85,7 @@ const PAGE_PERMISSIONS = {
     "/internal/technician/lab-queue": "labs.viewPending",
     "/internal/diseases": "clinical.manageDiseases",
     "/internal/examinations": "clinical.viewAssigned",
+    "/internal/doctor/stock-reviews": "pharmacy.prescribe",
 };
 
 const asUser = value => typeof value === "string" ? { role: value } : value || {};
@@ -105,8 +113,8 @@ export function canSeePage(value, page) {
         if (page.path === "/internal/schedule-requests" && !page.roles.includes(user.role)) return false;
         if (page.path === "/internal/department-schedules" && user.role !== "DepartmentHead") return false;
         if (page.path === "/internal/diseases" && !page.roles.includes(user.role)) return false;
-        if (["/internal/reviews", "/internal/cashier/billing", "/internal/doctor/profile", "/internal/doctor/schedule-requests"].includes(page.path)
-            && !page.roles.includes(user.role)) return false;
+        if (page.path === "/internal/pharmacy/inventory" && !page.roles.includes(user.role)) return false;
+        if (page.path === "/internal/doctor/stock-reviews" && !page.roles.includes(user.role)) return false;
         return user.role !== "Patient" && (
             requiredPermissions.length === 0 ||
             requiredPermissions.some(code => user.permissions.includes(code))
@@ -128,7 +136,8 @@ export const homeForRole = (value) =>
 
 export function canAccessPath(value, path) {
     const user = asUser(value);
-    if (["/booking", "/lab-results", "/my-reviews"].includes(path)) {
+    if (["/booking", "/lab-results", "/profile", "/medical-records"].includes(path)
+        || path.startsWith("/medical-records/")) {
         return user.role === "Patient";
     }
 
