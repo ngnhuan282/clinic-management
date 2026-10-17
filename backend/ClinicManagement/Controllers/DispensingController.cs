@@ -55,4 +55,18 @@ public class DispensingController : ControllerBase
             "Prescription dispensed successfully"
         ));
     }
+
+    [HttpPost("{prescriptionId:int}/stock-reviews")]
+    public async Task<IActionResult> RequestReview(int prescriptionId, CreateStockReviewRequest request)
+    {
+        var result = await _dispensingService.RequestReviewAsync(prescriptionId, request);
+        return Ok(ApiResponse<DispensingResponse>.Success(result));
+    }
+
+    [HttpPost("{prescriptionId:int}/stock-reviews/recheck")]
+    public async Task<IActionResult> RecheckReview(int prescriptionId, RecheckStockReviewRequest request)
+    {
+        var result = await _dispensingService.RecheckReviewAsync(prescriptionId, request);
+        return Ok(ApiResponse<DispensingResponse>.Success(result));
+    }
 }

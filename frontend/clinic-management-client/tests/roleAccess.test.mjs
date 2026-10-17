@@ -2,6 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { canAccessPath, canSeePage, homeForRole, INTERNAL_PAGES, redirectForProtectedRoute } from "../src/routes/roleAccess.js";
 
+test("doctor stock review queue and detail require clinical role and prescribing permission", () => {
+    for (const role of ["Doctor", "DepartmentHead"])
+        assert.equal(canAccessPath({ role, permissions: ["pharmacy.prescribe"] }, "/internal/doctor/stock-reviews/1"), true);
+    for (const role of ["Admin", "Receptionist", "Pharmacist", "Patient"])
+        assert.equal(canAccessPath({ role, permissions: ["pharmacy.prescribe"] }, "/internal/doctor/stock-reviews/1"), false);
+    assert.equal(canAccessPath({ role: "Doctor", permissions: [] }, "/internal/doctor/stock-reviews"), false);
+});
+
 test("custom role sees only pages allowed by current permissions", () => {
     const reader = { role: "LabReader", permissions: ["labs.viewTypes"] };
     assert.equal(homeForRole(reader), "/internal/dashboard");
@@ -50,6 +58,32 @@ test("pharmacist opens the dispensing counter with dispense permission", () => {
     );
 });
 
+test("dispensing detail inherits dispense permission without exposing it to patients or receptionists", () => {
+    const path = "/internal/pharmacy/dispensing/1006";
+    assert.equal(canAccessPath({ role: "Pharmacist", permissions: ["pharmacy.dispense"] }, path), true);
+    assert.equal(canAccessPath({ role: "Admin", permissions: ["pharmacy.dispense"] }, path), true);
+    assert.equal(canAccessPath({ role: "Receptionist", permissions: ["billing.create"] }, path), false);
+    assert.equal(canAccessPath({ role: "Patient", permissions: [] }, path), false);
+    assert.equal(redirectForProtectedRoute({ role: "Receptionist", permissions: ["billing.create"], isAuthenticated: true }, path,
+        { allowedPermissions: ["pharmacy.dispense"] }), "/403");
+});
+
+test("pharmacist can read stock without gaining catalog or receipt management", () => {
+    const pharmacist = { role: "Pharmacist", permissions: ["pharmacy.viewInventory", "pharmacy.viewCatalog", "pharmacy.dispense"] };
+    const path = "/internal/pharmacy/inventory";
+    const options = { allowedRoles: ["Pharmacist"], allowedPermissions: ["pharmacy.viewInventory"] };
+    assert.equal(canAccessPath(pharmacist, path), true);
+    assert.equal(redirectForProtectedRoute({ ...pharmacist, isAuthenticated: true }, path, options), null);
+    assert.equal(canAccessPath(pharmacist, "/internal/medicines/purchase-orders"), false);
+    assert.equal(canAccessPath(pharmacist, "/internal/medicines/categories"), false);
+    assert.equal(canAccessPath({ role: "Doctor", permissions: ["pharmacy.viewInventory"] }, path), false);
+    assert.equal(canAccessPath({ role: "Patient", permissions: ["pharmacy.viewInventory"] }, path), false);
+    assert.equal(canAccessPath({ role: "Pharmacist", permissions: [] }, path), false);
+    assert.equal(redirectForProtectedRoute({ isAuthenticated: false }, path, options), "/internal/login");
+    assert.equal(redirectForProtectedRoute({ role: "Doctor", permissions: ["pharmacy.viewInventory"], isAuthenticated: true }, path, options), "/403");
+    assert.equal(canAccessPath({ role: "Admin", permissions: ["pharmacy.manageInventory"] }, "/internal/medicines/inventory"), true);
+});
+
 test("RBAC page requires both Admin role and management permission", () => {
     const page = INTERNAL_PAGES.find(item => item.path === "/internal/roles-permissions");
     assert.equal(canSeePage({ role: "Admin", permissions: ["accounts.manageRoles"] }, page), true);
@@ -62,6 +96,25 @@ test("patient remains in patient portal", () => {
     assert.equal(homeForRole(patient), "/booking");
     assert.equal(canAccessPath(patient, "/booking"), true);
     assert.equal(canAccessPath(patient, "/internal/dashboard"), false);
+});
+
+test("medical history is a patient-only portal route", () => {
+    const path = "/medical-records";
+    const options = { allowedRoles: ["Patient"] };
+    assert.equal(canAccessPath({ role: "Patient" }, path), true);
+    assert.equal(canAccessPath({ role: "Doctor" }, path), false);
+    assert.equal(redirectForProtectedRoute({ isAuthenticated: false }, path, options), "/login");
+    assert.equal(redirectForProtectedRoute({ isAuthenticated: true, role: "Doctor" }, path, options), "/403");
+    assert.equal(redirectForProtectedRoute({ isAuthenticated: true, role: "Patient" }, path, options), null);
+});
+
+test("medical history detail URLs keep the patient-only guard", () => {
+    const path = "/medical-records/1023";
+    const options = { allowedRoles: ["Patient"] };
+    assert.equal(canAccessPath({ role: "Patient" }, path), true);
+    assert.equal(canAccessPath({ role: "Doctor" }, path), false);
+    assert.equal(redirectForProtectedRoute({ isAuthenticated: false }, path, options), "/login");
+    assert.equal(redirectForProtectedRoute({ isAuthenticated: true, role: "Doctor" }, path, options), "/403");
 });
 
 test("DepartmentHead keeps doctor pages and sees review queue with permission", () => {

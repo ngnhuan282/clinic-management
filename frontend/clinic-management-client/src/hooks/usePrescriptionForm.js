@@ -9,6 +9,7 @@ import {
     updatePrescription,
 } from "../api/prescriptionApi";
 import getApiErrorMessage from "../utils/errorHandler";
+import { getPrescriptionTextError } from "../validators/prescriptionValidator";
 
 function createLocalId() {
     return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -158,6 +159,7 @@ function usePrescriptionForm({ appointmentId }) {
     }, [loadData]);
 
     const updateNotes = useCallback((notes) => {
+        setActionError("");
         setForm((current) => ({
             ...current,
             notes,
@@ -204,6 +206,7 @@ function usePrescriptionForm({ appointmentId }) {
     }, []);
 
     const updateDetail = useCallback((localId, field, value) => {
+        setActionError("");
         setForm((current) => ({
             ...current,
             details: current.details.map((detail) =>
@@ -243,6 +246,15 @@ function usePrescriptionForm({ appointmentId }) {
             return "Vui lòng nhập đủ thuốc, số lượng, liều dùng và hướng dẫn.";
         }
 
+        const notesError = getPrescriptionTextError("notes", form.notes);
+        if (notesError) return notesError;
+
+        for (const [index, detail] of form.details.entries()) {
+            const textError = getPrescriptionTextError("dosage", detail.dosage)
+                || getPrescriptionTextError("instructions", detail.instructions);
+            if (textError) return `Thuốc ${index + 1}: ${textError}`;
+        }
+
         const hasDuplicateMedicine =
             new Set(form.details.map((detail) => Number(detail.medicineId)))
                 .size !== form.details.length;
@@ -252,7 +264,16 @@ function usePrescriptionForm({ appointmentId }) {
         }
 
         return "";
-    }, [form.details, medicalRecord]);
+    }, [form.details, form.notes, medicalRecord]);
+
+    const refreshMedicalRecord = useCallback(async () => {
+        try {
+            setMedicalRecord(await getMedicalRecordByAppointment(appointmentId));
+        } catch {
+            setMedicalRecord(null);
+            setError("Đơn thuốc đã được cập nhật nhưng chưa tải được hồ sơ mới. Vui lòng thử lại.");
+        }
+    }, [appointmentId]);
 
     const savePrescription = useCallback(async () => {
         const validationMessage = validateForm();
@@ -289,6 +310,7 @@ function usePrescriptionForm({ appointmentId }) {
                 details: toLocalDetails(saved.details || []),
             });
             setSuccessMessage("Đã lưu đơn thuốc.");
+            await refreshMedicalRecord();
 
             return saved;
         } catch (err) {
@@ -308,6 +330,7 @@ function usePrescriptionForm({ appointmentId }) {
         form.notes,
         medicalRecord,
         prescription,
+        refreshMedicalRecord,
         validateForm,
     ]);
 
@@ -331,6 +354,7 @@ function usePrescriptionForm({ appointmentId }) {
                 details: [],
             });
             setSuccessMessage("Đã hủy đơn thuốc.");
+            await refreshMedicalRecord();
 
             return cancelled;
         } catch (err) {
@@ -345,7 +369,7 @@ function usePrescriptionForm({ appointmentId }) {
         } finally {
             setSaving(false);
         }
-    }, [prescription]);
+    }, [prescription, refreshMedicalRecord]);
 
     return {
         medicalRecord,

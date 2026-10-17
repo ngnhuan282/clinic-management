@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ClinicManagement.Services.Implementations;
 
-public class PrescriptionService : IPrescriptionService
+public partial class PrescriptionService : IPrescriptionService
 {
     private static DateTime ClinicNow =>
         TimeZoneInfo.ConvertTimeBySystemTimeZoneId(
@@ -20,17 +20,23 @@ public class PrescriptionService : IPrescriptionService
         );
 
     private readonly IPrescriptionRepository _prescriptionRepository;
+    private readonly IMedicalRecordRepository _medicalRecordRepository;
     private readonly ApplicationDbContext _db;
     private readonly ICurrentUserService _currentUser;
+    private readonly INotificationService _notifications;
 
     public PrescriptionService(
         IPrescriptionRepository prescriptionRepository,
+        IMedicalRecordRepository medicalRecordRepository,
         ApplicationDbContext db,
-        ICurrentUserService currentUser)
+        ICurrentUserService currentUser,
+        INotificationService notifications)
     {
         _prescriptionRepository = prescriptionRepository;
+        _medicalRecordRepository = medicalRecordRepository;
         _db = db;
         _currentUser = currentUser;
+        _notifications = notifications;
     }
 
     public async Task<PrescriptionResponse> GetByIdAsync(
@@ -127,6 +133,10 @@ public class PrescriptionService : IPrescriptionService
         }
 
         var details = await BuildDetailsAsync(request.Details);
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+        if (!await _medicalRecordRepository.TryAdvanceVersionAsync(record, record.UpdatedAt))
+            throw new AppException(ErrorCode.MEDICAL_RECORD_CONFLICT);
+        var reopened = InvalidatePaperBookConfirmation(record);
 
         if (record.Prescription != null)
         {
@@ -141,6 +151,9 @@ public class PrescriptionService : IPrescriptionService
                     ErrorCode.PRESCRIPTION_NOT_FOUND
                 );
             }
+
+            if (await _prescriptionRepository.HasMedicineInvoiceAsync(cancelledPrescription))
+                throw new AppException(ErrorCode.PRESCRIPTION_BILLING_CONFLICT);
 
             cancelledPrescription.PrescriptionDate = ClinicNow;
             cancelledPrescription.Status =
@@ -157,6 +170,9 @@ public class PrescriptionService : IPrescriptionService
             }
 
             await _prescriptionRepository.SaveChangesAsync();
+            await transaction.CommitAsync();
+            if (reopened)
+                await _notifications.PublishAppointmentChangedAsync(record.Appointment, record.Appointment.Status);
 
             return await GetByIdAsync(
                 cancelledPrescription.PrescriptionId
@@ -176,6 +192,9 @@ public class PrescriptionService : IPrescriptionService
 
         await _prescriptionRepository.AddAsync(prescription);
         await _prescriptionRepository.SaveChangesAsync();
+        await transaction.CommitAsync();
+        if (reopened)
+            await _notifications.PublishAppointmentChangedAsync(record.Appointment, record.Appointment.Status);
 
         return await GetByIdAsync(prescription.PrescriptionId);
     }
@@ -214,16 +233,37 @@ public class PrescriptionService : IPrescriptionService
 
         var details = await BuildDetailsAsync(request.Details);
 
+        var contentChanged = NormalizeOptionalText(prescription.Notes) != NormalizeOptionalText(request.Notes)
+            || !prescription.Details.OrderBy(x => x.MedicineId)
+                .Select(x => (x.MedicineId, x.Quantity, x.Dosage.Trim(), x.Instructions.Trim()))
+                .SequenceEqual(details.OrderBy(x => x.MedicineId)
+                    .Select(x => (x.MedicineId, x.Quantity, x.Dosage, x.Instructions)));
+        if (!contentChanged)
+            return prescription.ToResponse(GetClinicToday());
+
+        await using var transaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+        if (await _prescriptionRepository.HasPendingReviewAsync(prescriptionId))
+            throw new AppException(ErrorCode.STOCK_REVIEW_PENDING);
+        if (!await _medicalRecordRepository.TryAdvanceVersionAsync(prescription.MedicalRecord, prescription.MedicalRecord.UpdatedAt))
+            throw new AppException(ErrorCode.MEDICAL_RECORD_CONFLICT);
+
+        var medicinesOrQuantitiesChanged = !prescription.Details.OrderBy(x => x.MedicineId)
+            .Select(x => (x.MedicineId, x.Quantity))
+            .SequenceEqual(details.OrderBy(x => x.MedicineId).Select(x => (x.MedicineId, x.Quantity)));
+        if (medicinesOrQuantitiesChanged && await _prescriptionRepository.HasMedicineInvoiceAsync(prescription))
+            throw new AppException(ErrorCode.PRESCRIPTION_BILLING_CONFLICT);
+
+        var reopened = InvalidatePaperBookConfirmation(prescription.MedicalRecord);
+
         prescription.Notes = NormalizeOptionalText(request.Notes);
         prescription.UpdatedAt = DateTime.UtcNow;
-        prescription.Details.Clear();
-
-        foreach (var detail in details)
-        {
-            prescription.Details.Add(detail);
-        }
+        UpdateDetails(prescription, details);
 
         await _prescriptionRepository.SaveChangesAsync();
+        await transaction.CommitAsync();
+        if (reopened)
+            await _notifications.PublishAppointmentChangedAsync(
+                prescription.MedicalRecord.Appointment, prescription.MedicalRecord.Appointment.Status);
 
         return await GetByIdAsync(prescriptionId);
     }
@@ -252,12 +292,55 @@ public class PrescriptionService : IPrescriptionService
             );
         }
 
+        await using var transaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+        if (await _prescriptionRepository.HasPendingReviewAsync(prescriptionId))
+            throw new AppException(ErrorCode.STOCK_REVIEW_PENDING);
+        if (!await _medicalRecordRepository.TryAdvanceVersionAsync(prescription.MedicalRecord, prescription.MedicalRecord.UpdatedAt))
+            throw new AppException(ErrorCode.MEDICAL_RECORD_CONFLICT);
+        if (await _prescriptionRepository.HasMedicineInvoiceAsync(prescription))
+            throw new AppException(ErrorCode.PRESCRIPTION_BILLING_CONFLICT);
+
         prescription.Status = PrescriptionStatusConstants.Cancelled;
         prescription.UpdatedAt = DateTime.UtcNow;
+        var reopened = InvalidatePaperBookConfirmation(prescription.MedicalRecord);
 
         await _prescriptionRepository.SaveChangesAsync();
+        await transaction.CommitAsync();
+        if (reopened)
+            await _notifications.PublishAppointmentChangedAsync(
+                prescription.MedicalRecord.Appointment, prescription.MedicalRecord.Appointment.Status);
 
         return prescription.ToResponse(GetClinicToday());
+    }
+
+    private static bool InvalidatePaperBookConfirmation(MedicalRecord record)
+    {
+        // A written-book declaration must cover the current prescription, even after a visit was closed.
+        record.PaperBookUpdatedAt = null;
+        var reopened = record.Appointment.Status == AppointmentStatusConstants.Completed;
+        if (reopened)
+            record.Appointment.Status = AppointmentStatusConstants.InProgress;
+        return reopened;
+    }
+
+    private static void UpdateDetails(Prescription prescription, IReadOnlyCollection<PrescriptionDetail> details)
+    {
+        var requested = details.ToDictionary(x => x.MedicineId);
+        var existing = prescription.Details.ToDictionary(x => x.MedicineId);
+        foreach (var detail in prescription.Details.ToList())
+            if (!requested.ContainsKey(detail.MedicineId)) prescription.Details.Remove(detail);
+
+        // Keep source IDs referenced by invoice snapshots when editing a retained medicine.
+        foreach (var detail in details)
+        {
+            if (existing.TryGetValue(detail.MedicineId, out var saved))
+            {
+                saved.Quantity = detail.Quantity;
+                saved.Dosage = detail.Dosage;
+                saved.Instructions = detail.Instructions;
+            }
+            else prescription.Details.Add(detail);
+        }
     }
 
     private static void ValidatePrescription(
@@ -331,6 +414,7 @@ public class PrescriptionService : IPrescriptionService
             .Select(request => new PrescriptionDetail
             {
                 MedicineId = request.MedicineId,
+                Medicine = medicines.Single(x => x.MedicineId == request.MedicineId),
                 Dosage = request.Dosage.Trim(),
                 Quantity = request.Quantity,
                 Instructions = request.Instructions.Trim()

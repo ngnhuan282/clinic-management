@@ -23,3 +23,13 @@ export async function confirmDispensing(prescriptionId) {
     );
     return response.data.result;
 }
+
+export async function requestStockReview(prescriptionId, request) {
+    const response = await axiosClient.post(`/dispensing/${prescriptionId}/stock-reviews`, request);
+    return response.data.result;
+}
+
+export async function recheckStockReview(prescriptionId, request) {
+    const response = await axiosClient.post(`/dispensing/${prescriptionId}/stock-reviews/recheck`, request);
+    return response.data.result;
+}

@@ -21,6 +21,7 @@ import RemoveRoundedIcon from "@mui/icons-material/RemoveRounded";
 import EmptyState from "../../common/EmptyState";
 import formatCurrency from "../../../utils/formatCurrency";
 import { getPrescriptionStockStatusConfig } from "./prescriptionStockStatus";
+import { getPrescriptionTextError, PRESCRIPTION_TEXT_LIMITS } from "../../../validators/prescriptionValidator";
 
 const headerCells = [
     { label: "STT", width: 52 },
@@ -48,6 +49,7 @@ function QuantityStepper({ value, onChange, disabled }) {
             }}
         >
             <IconButton
+                aria-label="Giảm số lượng"
                 size="small"
                 disabled={disabled || numericValue <= 1}
                 onClick={() => onChange(Math.max(1, numericValue - 1))}
@@ -57,18 +59,21 @@ function QuantityStepper({ value, onChange, disabled }) {
             </IconButton>
 
             <TextField
+                type="number"
                 value={value}
                 disabled={disabled}
                 onChange={(event) => onChange(event.target.value)}
-                inputProps={{
+                slotProps={{ htmlInput: {
                     min: 1,
-                    type: "number",
+                    max: 2147483647,
+                    step: 1,
+                    "aria-label": "Số lượng kê đơn",
                     style: {
                         textAlign: "center",
                         fontWeight: 800,
                         padding: "8px 4px",
                     },
-                }}
+                } }}
                 sx={{
                     width: 48,
                     "& fieldset": { border: 0 },
@@ -80,6 +85,7 @@ function QuantityStepper({ value, onChange, disabled }) {
             />
 
             <IconButton
+                aria-label="Tăng số lượng"
                 size="small"
                 disabled={disabled}
                 onClick={() => onChange(numericValue + 1)}
@@ -96,22 +102,24 @@ function PrescriptionMedicineTable({
     onUpdateDetail,
     onRemoveDetail,
     disabled = false,
+    embedded = false,
 }) {
     return (
         <Paper
             elevation={0}
             sx={{
-                borderRadius: 2,
-                border: "1px solid #E5E9F0",
+                borderRadius: embedded ? 0 : 2,
+                border: embedded ? 0 : "1px solid #E5E9F0",
                 overflow: "hidden",
                 bgcolor: "#FFFFFF",
             }}
         >
             <Box
                 sx={{
-                    px: { xs: 2, md: 2.5 },
-                    py: 2,
-                    borderBottom: "1px solid #E5E9F0",
+                    px: embedded ? 0 : { xs: 2, md: 2.5 },
+                    py: embedded ? 0 : 2,
+                    pb: embedded ? 1 : 2,
+                    borderBottom: embedded ? 0 : "1px solid #E5E9F0",
                 }}
             >
                 <Typography
@@ -125,8 +133,8 @@ function PrescriptionMedicineTable({
                 </Typography>
             </Box>
 
-            <TableContainer>
-                <Table sx={{ width: "100%", tableLayout: "fixed" }}>
+            <TableContainer sx={embedded ? { border: "1px solid #D9E2EF", borderRadius: 1 } : undefined}>
+                <Table sx={{ width: "100%", minWidth: 1080, tableLayout: "fixed" }}>
                     <TableHead>
                         <TableRow sx={{ bgcolor: "#F8FAFC" }}>
                             {headerCells.map((header) => (
@@ -275,6 +283,12 @@ function PrescriptionMedicineTable({
                                                 }
                                                 size="small"
                                                 fullWidth
+                                                multiline
+                                                minRows={2}
+                                                maxRows={4}
+                                                error={Boolean(getPrescriptionTextError("dosage", detail.dosage))}
+                                                helperText={getPrescriptionTextError("dosage", detail.dosage) || `${detail.dosage.length}/${PRESCRIPTION_TEXT_LIMITS.dosage} ký tự`}
+                                                slotProps={{ htmlInput: { maxLength: PRESCRIPTION_TEXT_LIMITS.dosage, "aria-label": `Liều dùng ${medicine?.medicineName || index + 1}` } }}
                                                 placeholder="Sáng 1 viên"
                                             />
                                         </TableCell>
@@ -292,6 +306,12 @@ function PrescriptionMedicineTable({
                                                 }
                                                 size="small"
                                                 fullWidth
+                                                multiline
+                                                minRows={2}
+                                                maxRows={4}
+                                                error={Boolean(getPrescriptionTextError("instructions", detail.instructions))}
+                                                helperText={getPrescriptionTextError("instructions", detail.instructions) || `${detail.instructions.length}/${PRESCRIPTION_TEXT_LIMITS.instructions} ký tự`}
+                                                slotProps={{ htmlInput: { maxLength: PRESCRIPTION_TEXT_LIMITS.instructions, "aria-label": `Hướng dẫn ${medicine?.medicineName || index + 1}` } }}
                                                 placeholder="Uống sau ăn"
                                             />
                                         </TableCell>

@@ -26,4 +26,7 @@ public class Prescription
 
     public ICollection<PrescriptionDetail> Details { get; set; }
         = new List<PrescriptionDetail>();
+
+    public ICollection<PrescriptionStockReview> StockReviews { get; set; }
+        = new List<PrescriptionStockReview>();
 }

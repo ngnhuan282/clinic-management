@@ -1,6 +1,7 @@
 using System.Data;
 using ClinicManagement.Data.Entities;
 using ClinicManagement.DTOs.Requests;
+using ClinicManagement.DTOs.Responses;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace ClinicManagement.Repositories.Interfaces;
@@ -8,10 +9,10 @@ namespace ClinicManagement.Repositories.Interfaces;
 public interface IDispensingRepository
 {
     Task<(IEnumerable<Prescription> Items, int TotalItems)> GetPagedAsync(
-        DispensingFilterRequest request
+        DispensingFilterRequest request, DateOnly today
     );
 
-    Task<(int AwaitingPayment, int ReadyToDispense, int DispensedToday)>
+    Task<(int AwaitingPayment, int ReadyToDispense, int DispensedToday, int NeedsReview)>
         GetSummaryAsync(DateTime todayStart, DateTime tomorrowStart);
 
     Task<Prescription?> GetByIdAsync(
@@ -20,13 +21,13 @@ public interface IDispensingRepository
     );
 
     Task<IReadOnlyList<Invoice>> GetPaidMedicineInvoicesAsync(
-        IReadOnlyCollection<int> appointmentIds
+        IReadOnlyCollection<int> appointmentIds, bool onlyPaid = true
     );
 
     Task<Invoice?> GetPaidMedicineInvoiceAsync(
         int appointmentId,
         int prescriptionId,
-        IReadOnlyCollection<int> prescriptionDetailIds
+        IReadOnlyCollection<int> prescriptionDetailIds, bool onlyPaid = true
     );
 
     Task AddDispenseDetailsAsync(
@@ -34,6 +35,9 @@ public interface IDispensingRepository
     );
 
     Task SaveChangesAsync();
+
+    Task AddStockReviewAsync(PrescriptionStockReview review);
+    Task<IReadOnlyList<StockReviewRecipientResponse>> GetReviewRecipientsAsync(int doctorId, int? cashierId);
 
     Task<IDbContextTransaction> BeginTransactionAsync(
         IsolationLevel isolationLevel

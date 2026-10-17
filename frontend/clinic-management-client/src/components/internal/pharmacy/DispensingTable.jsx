@@ -14,11 +14,12 @@ import {
     Typography,
 } from "@mui/material";
 import MedicationOutlinedIcon from "@mui/icons-material/MedicationOutlined";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 
 import EmptyState from "../../common/EmptyState";
 import formatCurrency from "../../../utils/formatCurrency";
 import formatDate from "../../../utils/formatDate";
-import { getDispensingStatusConfig } from "./dispensingStatus";
+import { getDispensingStatusConfig, getReviewStatusLabel } from "./dispensingStatus";
 
 function StatusChip({ status }) {
     const config = getDispensingStatusConfig(status);
@@ -41,11 +42,11 @@ function DispensingTable({
     items,
     pagination,
     filters,
-    selectedId,
     onSelect,
     onPageChange,
     onPageSizeChange,
 }) {
+    const isReview = filters.workflowStatus === "NeedsReview";
     return (
         <Paper
             elevation={0}
@@ -56,16 +57,16 @@ function DispensingTable({
             }}
         >
             <TableContainer>
-                <Table sx={{ minWidth: 900 }}>
+                <Table sx={{ minWidth: isReview ? 660 : 900, "& .MuiTableCell-root": { px: isReview ? 1.5 : 2 } }}>
                     <TableHead>
                         <TableRow sx={{ backgroundColor: "#F8FAFC" }}>
                             {[
                                 "Mã đơn & bệnh nhân",
                                 "Ngày kê",
-                                "Quy cách",
+                                isReview ? "Thuốc thiếu" : "Quy cách",
                                 "Hóa đơn",
-                                "Dự tính",
-                                "Trạng thái",
+                                isReview ? "Rà soát" : "Dự tính",
+                                ...(!isReview ? ["Trạng thái"] : []),
                                 "Thao tác",
                             ].map((header) => (
                                 <TableCell
@@ -88,7 +89,7 @@ function DispensingTable({
                     <TableBody>
                         {items.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={7}>
+                                <TableCell colSpan={isReview ? 6 : 7}>
                                     <EmptyState message="Không có đơn thuốc phù hợp với bộ lọc hiện tại." />
                                 </TableCell>
                             </TableRow>
@@ -96,13 +97,10 @@ function DispensingTable({
                             <TableRow
                                 hover
                                 key={item.prescriptionId}
-                                selected={selectedId === item.prescriptionId}
                                 onClick={() => onSelect(item)}
                                 sx={{
                                     cursor: "pointer",
                                     "& td": { borderColor: "#EEF2F7" },
-                                    "&.Mui-selected": { backgroundColor: "#EFF6FF" },
-                                    "&.Mui-selected:hover": { backgroundColor: "#E6F1FD" },
                                 }}
                             >
                                 <TableCell>
@@ -146,10 +144,11 @@ function DispensingTable({
 
                                 <TableCell>
                                     <Typography variant="body2" sx={{ fontWeight: 800 }}>
-                                        {item.totalItems} loại
+                                        {isReview ? `Thiếu ${item.shortageItems} loại` : `${item.totalItems} loại`}
                                     </Typography>
                                     <Typography variant="caption" color="text.secondary">
-                                        {Number(item.totalQuantity || 0).toLocaleString("vi-VN")} đơn vị
+                                        {isReview ? (item.shortageItems === 0 ? "Đã đủ tồn · Chờ đối chiếu" : "Tồn còn hạn chưa đủ")
+                                            : `${Number(item.totalQuantity || 0).toLocaleString("vi-VN")} đơn vị`}
                                     </Typography>
                                 </TableCell>
 
@@ -159,8 +158,8 @@ function DispensingTable({
                                             <Typography variant="body2" sx={{ fontWeight: 800 }}>
                                                 HD-{String(item.invoiceId).padStart(5, "0")}
                                             </Typography>
-                                            <Typography variant="caption" sx={{ color: "#047857", fontWeight: 700 }}>
-                                                Đã thanh toán
+                                            <Typography variant="caption" sx={{ color: item.paymentStatus === "Paid" ? "#047857" : "#B45309", fontWeight: 700 }}>
+                                                {item.paymentStatus === "Paid" ? "Đã thanh toán" : "Chưa thanh toán"}
                                             </Typography>
                                         </>
                                     ) : (
@@ -172,18 +171,19 @@ function DispensingTable({
 
                                 <TableCell>
                                     <Typography variant="body2" sx={{ fontWeight: 800 }}>
-                                        {formatCurrency(item.estimatedTotalAmount)}
+                                        {isReview ? getReviewStatusLabel(item.reviewStatus) : formatCurrency(item.estimatedTotalAmount)}
                                     </Typography>
                                 </TableCell>
 
-                                <TableCell>
+                                {!isReview && <TableCell>
                                     <StatusChip status={item.workflowStatus} />
-                                </TableCell>
+                                </TableCell>}
 
                                 <TableCell align="center">
                                     <Button
                                         size="small"
-                                        variant={selectedId === item.prescriptionId ? "contained" : "outlined"}
+                                        variant="outlined"
+                                        startIcon={<VisibilityOutlinedIcon />}
                                         onClick={(event) => {
                                             event.stopPropagation();
                                             onSelect(item);

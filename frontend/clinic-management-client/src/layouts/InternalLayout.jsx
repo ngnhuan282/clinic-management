@@ -19,6 +19,7 @@ import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
 import FolderSharedOutlinedIcon from "@mui/icons-material/FolderSharedOutlined";
 import HelpOutlineOutlinedIcon from "@mui/icons-material/HelpOutlineOutlined";
+import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
 import LocalHospitalOutlinedIcon from "@mui/icons-material/LocalHospitalOutlined";
 import LocalPharmacyOutlinedIcon from "@mui/icons-material/LocalPharmacyOutlined";
 import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
@@ -51,6 +52,7 @@ const TOPBAR_HEIGHT = 76;
 const MENU_ICONS = {
     "/internal/dashboard": DashboardOutlinedIcon,
     "/internal/examinations": MedicalServicesOutlinedIcon,
+    "/internal/doctor/stock-reviews": FactCheckOutlinedIcon,
     "/internal/diseases": FactCheckOutlinedIcon,
     "/internal/users": BadgeOutlinedIcon,
     "/internal/roles-permissions": SecurityOutlinedIcon,
@@ -60,6 +62,7 @@ const MENU_ICONS = {
     "/internal/rooms": FolderSharedOutlinedIcon,
     "/internal/medicines": LocalPharmacyOutlinedIcon,
     "/internal/pharmacy/dispensing": LocalPharmacyOutlinedIcon,
+    "/internal/pharmacy/inventory": Inventory2OutlinedIcon,
     "/internal/lab-test-types": ScienceOutlinedIcon,
     "/internal/doctor/lab-orders": ScienceOutlinedIcon,
     "/internal/technician/lab-queue": ScienceOutlinedIcon,

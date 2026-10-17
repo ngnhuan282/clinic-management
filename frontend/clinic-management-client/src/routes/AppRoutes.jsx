@@ -16,10 +16,9 @@ import HomePage from "../pages/patient/HomePage";
 import BookingPage from "../pages/patient/BookingPage";
 import LabResultsPage from "../pages/patient/LabResultsPage";
 import DoctorSearchPage from "../pages/patient/DoctorSearchPage";
-import ProfilePage from "../pages/ProfilePage";
-import ReviewsPage from "../pages/patient/ReviewsPage";
-import AccountProfilePage from "../pages/internal/AccountProfilePage";
-import ReviewsManagementPage from "../pages/internal/admin/ReviewsManagementPage";
+import PatientProfilePage from "../pages/patient/PatientProfilePage";
+import PatientMedicalHistoryPage from "../pages/patient/PatientMedicalHistoryPage";
+import PatientMedicalHistoryDetailPage from "../pages/patient/PatientMedicalHistoryDetailPage";
 import AuthPage from "../pages/auth/AuthPage";
 
 import InventoryPage from "../pages/internal/admin/InventoryPage";
@@ -43,14 +42,18 @@ import CashierBillingPage from "../pages/internal/CashierBillingPage";
 import DoctorLabOrdersPage from "../pages/internal/doctor/DoctorLabOrdersPage";
 import DoctorAppointmentsPage from "../pages/internal/doctor/DoctorAppointmentsPage";
 import MedicalRecordDetailPage from "../pages/internal/doctor/MedicalRecordDetailPage";
+import MedicalHistoryPage from "../pages/internal/doctor/MedicalHistoryPage";
 import MedicalRecordPage from "../pages/internal/doctor/MedicalRecordPage";
 import PrescriptionPage from "../pages/internal/doctor/PrescriptionPage";
+import DoctorStockReviewsPage from "../pages/internal/doctor/DoctorStockReviewsPage";
+import DoctorStockReviewDetailPage from "../pages/internal/doctor/DoctorStockReviewDetailPage";
 import DoctorScheduleRequestPage from "../pages/internal/doctor/DoctorScheduleRequestPage";
 import DoctorProfilePage from "../pages/internal/doctor/DoctorProfilePage";
 import PatientBooksPage from "../pages/internal/PatientBooksPage";
 
 import TechnicianLabQueuePage from "../pages/internal/technician/TechnicianLabQueuePage";
 import DispensingPage from "../pages/internal/pharmacist/DispensingPage";
+import DispensingDetailPage from "../pages/internal/pharmacist/DispensingDetailPage";
 
 function UnauthorizedPage() {
     const { state } = useLocation();
@@ -102,11 +105,9 @@ export default function AppRoutes() {
                     >
                         <Route path="/booking" element={<BookingPage />} />
                         <Route path="/lab-results" element={<LabResultsPage />} />
-                        <Route path="/my-reviews" element={<ReviewsPage own />} />
-                    </Route>
-
-                    <Route element={<ProtectedRoute />}>
-                        <Route path="/profile" element={<ProfilePage />} />
+                        <Route path="/profile" element={<PatientProfilePage />} />
+                        <Route path="/medical-records" element={<PatientMedicalHistoryPage />} />
+                        <Route path="/medical-records/:medicalRecordId" element={<PatientMedicalHistoryDetailPage />} />
                     </Route>
 
                     <Route path="/403" element={<UnauthorizedPage />} />
@@ -363,6 +364,11 @@ export default function AppRoutes() {
                             />
                         </Route>
 
+                        <Route element={<ProtectedRoute allowedRoles={["Doctor", "DepartmentHead"]} allowedPermissions={["pharmacy.prescribe"]} />}>
+                            <Route path="doctor/stock-reviews" element={<DoctorStockReviewsPage />} />
+                            <Route path="doctor/stock-reviews/:reviewId" element={<DoctorStockReviewDetailPage />} />
+                        </Route>
+
                         <Route
                             element={
                                 <ProtectedRoute
@@ -374,6 +380,11 @@ export default function AppRoutes() {
                                 path="pharmacy/dispensing"
                                 element={<DispensingPage />}
                             />
+                            <Route path="pharmacy/dispensing/:prescriptionId" element={<DispensingDetailPage />} />
+                        </Route>
+
+                        <Route element={<ProtectedRoute allowedRoles={["Pharmacist"]} allowedPermissions={["pharmacy.viewInventory"]} />}>
+                            <Route path="pharmacy/inventory" element={<InventoryPage />} />
                         </Route>
 
                         <Route
@@ -389,6 +400,14 @@ export default function AppRoutes() {
                             />
                             <Route
                                 path="examinations/:appointmentId/record"
+                                element={<MedicalRecordDetailPage />}
+                            />
+                            <Route
+                                path="examinations/:appointmentId/history"
+                                element={<MedicalHistoryPage />}
+                            />
+                            <Route
+                                path="examinations/:appointmentId/history/:medicalRecordId"
                                 element={<MedicalRecordDetailPage />}
                             />
                             <Route

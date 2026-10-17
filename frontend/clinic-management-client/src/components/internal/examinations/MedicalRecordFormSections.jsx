@@ -1,14 +1,7 @@
 import {
     Autocomplete,
-    Alert,
     Box,
     Button,
-    Chip,
-    Dialog,
-    DialogActions,
-    DialogContent,
-    DialogContentText,
-    DialogTitle,
     FormControlLabel,
     IconButton,
     Paper,
@@ -22,8 +15,6 @@ import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
 import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
-import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
-import { useState } from "react";
 
 import { getDiseaseLabel } from "./diseaseLabel";
 
@@ -76,23 +67,8 @@ function SectionHeader({ icon, title, subtitle, sx = {} }) {
     );
 }
 
-function formatDateTime(value) {
-    if (!value) {
-        return "";
-    }
-
-    return new Intl.DateTimeFormat("vi-VN", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-    }).format(new Date(value));
-}
-
 function MedicalRecordFormSections({
     appointment,
-    medicalRecord,
     form,
     diseases,
     updateField,
@@ -101,21 +77,7 @@ function MedicalRecordFormSections({
     setPrimaryDiagnosis,
     removeDiagnosisRow,
 }) {
-    const [paperBookDialogOpen, setPaperBookDialogOpen] = useState(false);
-    const hasPatientBook = Boolean(appointment?.patientBookId);
-    const hasSavedPaperBookConfirmation =
-        Boolean(medicalRecord?.paperBookUpdatedAt);
-    const paperBookConfirmed =
-        hasSavedPaperBookConfirmation ||
-        Boolean(form.paperBookConfirmed);
-
-    const handleConfirmPaperBook = () => {
-        updateField("paperBookConfirmed", true);
-        setPaperBookDialogOpen(false);
-    };
-
     return (
-        <>
         <Stack spacing={3}>
             <Paper
                 elevation={0}
@@ -358,145 +320,7 @@ function MedicalRecordFormSections({
                 />
             </Paper>
 
-            <Paper
-                elevation={0}
-                sx={{
-                    p: { xs: 2, md: 2.5 },
-                    border: "1px solid #E5E9F0",
-                    borderRadius: 2,
-                    bgcolor: "#FFFFFF",
-                }}
-            >
-                <SectionHeader
-                    icon={MenuBookOutlinedIcon}
-                    title="5. Sổ khám giấy"
-                    subtitle="Xác nhận đã ghi lượt khám vào sổ giấy trước khi hoàn tất khám"
-                />
-
-                <Stack spacing={1.5}>
-                    <Box
-                        sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            gap: 1.5,
-                            px: 1.5,
-                            py: 1.25,
-                            borderRadius: 1.5,
-                            border: "1px solid #E5E9F0",
-                            bgcolor: "#F8FAFC",
-                        }}
-                    >
-                        <Box sx={{ minWidth: 0 }}>
-                            <Typography
-                                variant="caption"
-                                sx={{
-                                    color: "#6B7280",
-                                    fontWeight: 800,
-                                    textTransform: "uppercase",
-                                }}
-                            >
-                                Mã sổ
-                            </Typography>
-
-                            <Typography
-                                variant="body2"
-                                sx={{
-                                    mt: 0.25,
-                                    color: "#1F2937",
-                                    fontWeight: 800,
-                                }}
-                            >
-                                {appointment?.patientBookNumber ||
-                                    "Chưa đối chiếu"}
-                            </Typography>
-                        </Box>
-
-                        <Chip
-                            size="small"
-                            label={
-                                hasPatientBook
-                                    ? "Đã đối chiếu"
-                                    : "Chưa có sổ"
-                            }
-                            sx={{
-                                color: hasPatientBook
-                                    ? "#047857"
-                                    : "#B45309",
-                                bgcolor: hasPatientBook
-                                    ? "#ECFDF5"
-                                    : "#FFFBEB",
-                                border: `1px solid ${
-                                    hasPatientBook
-                                        ? "#A7F3D0"
-                                        : "#FDE68A"
-                                }`,
-                                fontWeight: 800,
-                            }}
-                        />
-                    </Box>
-
-                    {!hasPatientBook && (
-                        <Alert severity="warning">
-                            Lượt khám này chưa có sổ khám giấy được đối chiếu
-                            nên chưa thể hoàn tất khám.
-                        </Alert>
-                    )}
-
-                    {paperBookConfirmed ? (
-                        <Alert severity="success">
-                            {hasSavedPaperBookConfirmation
-                                ? `Đã ghi lượt khám vào sổ giấy lúc ${formatDateTime(medicalRecord?.paperBookUpdatedAt)}.`
-                                : "Đã xác nhận ghi lượt khám vào sổ giấy, hãy lưu hồ sơ để ghi nhận."}
-                        </Alert>
-                    ) : (
-                        <Button
-                            variant="outlined"
-                            startIcon={<CheckCircleOutlineOutlinedIcon />}
-                            disabled={!hasPatientBook}
-                            onClick={() => setPaperBookDialogOpen(true)}
-                            sx={{
-                                alignSelf: {
-                                    xs: "stretch",
-                                    sm: "flex-start",
-                                },
-                                minHeight: 42,
-                            }}
-                        >
-                            Xác nhận đã ghi lượt khám vào sổ giấy
-                        </Button>
-                    )}
-                </Stack>
-            </Paper>
         </Stack>
-        <Dialog
-            open={paperBookDialogOpen}
-            onClose={() => setPaperBookDialogOpen(false)}
-            fullWidth
-            maxWidth="xs"
-        >
-            <DialogTitle>Xác nhận đã ghi sổ giấy?</DialogTitle>
-            <DialogContent>
-                <DialogContentText>
-                    Hệ thống sẽ ghi nhận rằng bác sĩ đã ghi lượt khám này
-                    vào sổ giấy của bệnh nhân. Sau khi lưu hồ sơ, xác nhận
-                    này sẽ không hủy trên màn bác sĩ.
-                </DialogContentText>
-            </DialogContent>
-            <DialogActions>
-                <Button onClick={() => setPaperBookDialogOpen(false)}>
-                    Hủy
-                </Button>
-                <Button
-                    variant="contained"
-                    onClick={handleConfirmPaperBook}
-                >
-                    Xác nhận
-                </Button>
-            </DialogActions>
-        </Dialog>
-
-        </>
     );
 }
 

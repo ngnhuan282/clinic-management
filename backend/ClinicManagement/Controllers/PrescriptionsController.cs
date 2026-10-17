@@ -63,6 +63,8 @@ public class PrescriptionsController : ControllerBase
     }
 
     [HttpPost]
+    [ProducesResponseType(typeof(ApiResponse<PrescriptionResponse>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status409Conflict)]
     [Authorize(Policy = PermissionCodes.PharmacyPrescribe)]
     public async Task<IActionResult> Create(
         CreatePrescriptionRequest request)
@@ -81,6 +83,8 @@ public class PrescriptionsController : ControllerBase
     }
 
     [HttpPut("{prescriptionId:int}")]
+    [ProducesResponseType(typeof(ApiResponse<PrescriptionResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status409Conflict)]
     [Authorize(Policy = PermissionCodes.PharmacyPrescribe)]
     public async Task<IActionResult> Update(
         int prescriptionId,
@@ -101,6 +105,8 @@ public class PrescriptionsController : ControllerBase
     }
 
     [HttpPatch("{prescriptionId:int}/cancel")]
+    [ProducesResponseType(typeof(ApiResponse<PrescriptionResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status409Conflict)]
     [Authorize(Policy = PermissionCodes.PharmacyPrescribe)]
     public async Task<IActionResult> Cancel(int prescriptionId)
     {

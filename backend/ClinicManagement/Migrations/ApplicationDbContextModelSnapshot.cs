@@ -1527,6 +1527,123 @@ namespace ClinicManagement.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ClinicManagement.Data.Entities.PrescriptionStockReview", b =>
+                {
+                    b.Property<int>("PrescriptionStockReviewId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PrescriptionStockReviewId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("InvoiceId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Note")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("PaymentStatus")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("PrescriptionId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RecipientsJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("ResolvedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ShortagesJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .IsConcurrencyToken()
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("PrescriptionStockReviewId");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("InvoiceId");
+
+                    b.HasIndex("PrescriptionId")
+                        .IsUnique()
+                        .HasFilter("[Status] = 'Pending'");
+
+                    b.HasIndex("ResolvedByUserId");
+
+                    b.ToTable("PrescriptionStockReviews");
+                });
+
+            modelBuilder.Entity("ClinicManagement.Data.Entities.PrescriptionStockReviewDecision", b =>
+                {
+                    b.Property<int>("PrescriptionStockReviewDecisionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PrescriptionStockReviewDecisionId"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("AfterJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BeforeJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DoctorUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<int>("PrescriptionStockReviewId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.HasKey("PrescriptionStockReviewDecisionId");
+
+                    b.HasIndex("DoctorUserId");
+
+                    b.HasIndex("PrescriptionStockReviewId");
+
+                    b.ToTable("PrescriptionStockReviewDecisions");
+                });
+
             modelBuilder.Entity("ClinicManagement.Data.Entities.PurchaseOrder", b =>
                 {
                     b.Property<int>("PurchaseOrderId")
@@ -2854,6 +2971,56 @@ namespace ClinicManagement.Migrations
                     b.Navigation("Prescription");
                 });
 
+            modelBuilder.Entity("ClinicManagement.Data.Entities.PrescriptionStockReview", b =>
+                {
+                    b.HasOne("ClinicManagement.Data.Entities.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ClinicManagement.Data.Entities.Invoice", null)
+                        .WithMany()
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ClinicManagement.Data.Entities.Prescription", "Prescription")
+                        .WithMany("StockReviews")
+                        .HasForeignKey("PrescriptionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ClinicManagement.Data.Entities.User", "ResolvedByUser")
+                        .WithMany()
+                        .HasForeignKey("ResolvedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("Prescription");
+
+                    b.Navigation("ResolvedByUser");
+                });
+
+            modelBuilder.Entity("ClinicManagement.Data.Entities.PrescriptionStockReviewDecision", b =>
+                {
+                    b.HasOne("ClinicManagement.Data.Entities.User", "DoctorUser")
+                        .WithMany()
+                        .HasForeignKey("DoctorUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ClinicManagement.Data.Entities.PrescriptionStockReview", "Review")
+                        .WithMany("Decisions")
+                        .HasForeignKey("PrescriptionStockReviewId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("DoctorUser");
+
+                    b.Navigation("Review");
+                });
+
             modelBuilder.Entity("ClinicManagement.Data.Entities.PurchaseOrder", b =>
                 {
                     b.HasOne("ClinicManagement.Data.Entities.User", "CreatedByUser")
@@ -3111,11 +3278,18 @@ namespace ClinicManagement.Migrations
             modelBuilder.Entity("ClinicManagement.Data.Entities.Prescription", b =>
                 {
                     b.Navigation("Details");
+
+                    b.Navigation("StockReviews");
                 });
 
             modelBuilder.Entity("ClinicManagement.Data.Entities.PrescriptionDetail", b =>
                 {
                     b.Navigation("DispenseDetails");
+                });
+
+            modelBuilder.Entity("ClinicManagement.Data.Entities.PrescriptionStockReview", b =>
+                {
+                    b.Navigation("Decisions");
                 });
 
             modelBuilder.Entity("ClinicManagement.Data.Entities.PurchaseOrder", b =>

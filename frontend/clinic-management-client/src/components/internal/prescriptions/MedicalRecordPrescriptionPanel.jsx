@@ -38,6 +38,7 @@ function MedicalRecordPrescriptionPanel({
     prescription,
     loading = false,
     error = "",
+    disabled = false,
     onOpen,
 }) {
     const hasPrescription = Boolean(prescription);
@@ -46,6 +47,8 @@ function MedicalRecordPrescriptionPanel({
 
     return (
         <Paper
+            component="section"
+            aria-label="Đơn thuốc của lượt khám"
             elevation={0}
             sx={{
                 p: 2.5,
@@ -187,6 +190,8 @@ function MedicalRecordPrescriptionPanel({
                                                         <Typography
                                                             variant="body2"
                                                             sx={{
+                                                                overflowWrap:
+                                                                    "anywhere",
                                                                 color:
                                                                     "#111827",
                                                                 fontWeight: 900,
@@ -201,11 +206,21 @@ function MedicalRecordPrescriptionPanel({
                                                         <Typography
                                                             variant="caption"
                                                             color="text.secondary"
+                                                            sx={{ display: "block", overflowWrap: "anywhere" }}
                                                         >
                                                             {detail.quantity}{" "}
                                                             {detail.unit} ·{" "}
                                                             {detail.dosage}
                                                         </Typography>
+                                                        {detail.instructions && (
+                                                            <Typography
+                                                                variant="caption"
+                                                                color="text.secondary"
+                                                                sx={{ display: "block", overflowWrap: "anywhere" }}
+                                                            >
+                                                                Cách dùng: {detail.instructions}
+                                                            </Typography>
+                                                        )}
                                                     </Box>
 
                                                     {detail.stockStatus !==
@@ -231,6 +246,7 @@ function MedicalRecordPrescriptionPanel({
                 <Button
                     variant={hasPrescription ? "outlined" : "contained"}
                     startIcon={<LocalPharmacyOutlinedIcon />}
+                    disabled={disabled || loading}
                     onClick={onOpen}
                     sx={{ minHeight: 42, fontWeight: 800 }}
                 >

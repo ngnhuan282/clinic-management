@@ -1,14 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     Alert,
     Box,
     Button,
+    Chip,
     Paper,
     Stack,
     Typography,
 } from "@mui/material";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import EditNoteOutlinedIcon from "@mui/icons-material/EditNoteOutlined";
+import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
 import LocalPharmacyOutlinedIcon from "@mui/icons-material/LocalPharmacyOutlined";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
@@ -17,6 +19,8 @@ import MedicalRecordAuditPanel from "../../../components/internal/examinations/M
 import MedicalRecordPatientSummary from "../../../components/internal/examinations/MedicalRecordPatientSummary";
 import MedicalRecordReadOnlySections from "../../../components/internal/examinations/MedicalRecordReadOnlySections";
 import MedicalRecordPrescriptionPanel from "../../../components/internal/prescriptions/MedicalRecordPrescriptionPanel";
+import MedicalHistoryPrescriptionSection from "../../../components/internal/examinations/MedicalHistoryPrescriptionSection";
+import { getMedicalHistoryDetail } from "../../../api/medicalHistoryApi";
 import { getMedicalRecordByAppointment } from "../../../api/examinationApi";
 import { getPrescriptionByMedicalRecord } from "../../../api/prescriptionApi";
 import getApiErrorMessage from "../../../utils/errorHandler";
@@ -69,7 +73,7 @@ function mapRecordToAppointment(record, fallbackAppointment = null) {
         avatarColor: fallbackAppointment?.avatarColor || "#005DAC",
         avatarTextColor: fallbackAppointment?.avatarTextColor,
         patientCode: buildPatientCode(
-            record.patientId,
+            record.patientProfileId,
             record.appointmentId
         ),
         phone: record.patientPhone,
@@ -78,7 +82,8 @@ function mapRecordToAppointment(record, fallbackAppointment = null) {
 }
 
 function MedicalRecordDetailPage() {
-    const { appointmentId } = useParams();
+    const { appointmentId, medicalRecordId: historyRecordId } = useParams();
+    const isHistory = Boolean(historyRecordId);
     const navigate = useNavigate();
     const location = useLocation();
     const initialAppointment = useMemo(
@@ -92,14 +97,31 @@ function MedicalRecordDetailPage() {
     const [prescriptionError, setPrescriptionError] = useState("");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const loadSequence = useRef(0);
+    const invalidateLoad = useCallback(() => { loadSequence.current++; }, []);
 
     const loadRecord = useCallback(async () => {
+        const sequence = ++loadSequence.current;
         setLoading(true);
         setError("");
+        setRecord(null);
+        setPrescription(null);
 
         try {
+            if (historyRecordId) {
+                const result = await getMedicalHistoryDetail(appointmentId, historyRecordId);
+                if (sequence !== loadSequence.current) return;
+                setRecord(result.record);
+                setAppointment({
+                    ...mapRecordToAppointment(result.record),
+                    patientCode: result.patientCode,
+                });
+                setPrescription(result.prescription);
+                return;
+            }
             const result =
                 await getMedicalRecordByAppointment(appointmentId);
+            if (sequence !== loadSequence.current) return;
             setRecord(result);
             setAppointment(
                 mapRecordToAppointment(result, initialAppointment)
@@ -114,8 +136,10 @@ function MedicalRecordDetailPage() {
                     await getPrescriptionByMedicalRecord(
                         result.medicalRecordId
                     );
+                if (sequence !== loadSequence.current) return;
                 setPrescription(loadedPrescription || null);
             } catch (prescriptionErr) {
+                if (sequence !== loadSequence.current) return;
                 setPrescriptionError(
                     getApiErrorMessage(
                         prescriptionErr,
@@ -123,9 +147,10 @@ function MedicalRecordDetailPage() {
                     )
                 );
             } finally {
-                setPrescriptionLoading(false);
+                if (sequence === loadSequence.current) setPrescriptionLoading(false);
             }
         } catch (err) {
+            if (sequence !== loadSequence.current) return;
             setError(
                 getApiErrorMessage(
                     err,
@@ -133,14 +158,17 @@ function MedicalRecordDetailPage() {
                 )
             );
         } finally {
-            setLoading(false);
+            if (sequence === loadSequence.current) setLoading(false);
         }
-    }, [appointmentId, initialAppointment]);
+    }, [appointmentId, historyRecordId, initialAppointment]);
 
     useEffect(() => {
         const timer = setTimeout(() => { void loadRecord(); }, 0);
-        return () => clearTimeout(timer);
-    }, [loadRecord]);
+        return () => {
+            clearTimeout(timer);
+            invalidateLoad();
+        };
+    }, [loadRecord, invalidateLoad]);
 
     if (loading && !record) {
         return <Loading />;
@@ -177,7 +205,7 @@ function MedicalRecordDetailPage() {
                                 fontWeight: 800,
                             }}
                         >
-                            Khám bệnh / Hồ sơ bệnh án
+                            {isHistory ? "Khám bệnh / Lịch sử khám / Hồ sơ bệnh án" : "Khám bệnh / Hồ sơ bệnh án"}
                         </Typography>
 
                         <Typography
@@ -192,6 +220,8 @@ function MedicalRecordDetailPage() {
                         >
                             Chi tiết hồ sơ bệnh án
                         </Typography>
+
+                        {isHistory && <Chip size="small" label="Chỉ đọc" sx={{ mt: 1.25, borderRadius: 1, color: "#005DAC", bgcolor: "#EFF6FF", fontWeight: 700 }} />}
 
                         <Typography
                             variant="body2"
@@ -216,13 +246,27 @@ function MedicalRecordDetailPage() {
                         <Button
                             variant="outlined"
                             startIcon={<ArrowBackRoundedIcon />}
-                            onClick={() => navigate("/internal/examinations")}
+                            onClick={() => isHistory
+                                ? navigate(`/internal/examinations/${appointmentId}/history${location.search}`, { state: location.state })
+                                : navigate("/internal/examinations")}
                             sx={{ minHeight: 42 }}
                         >
-                            Quay lại
+                            {isHistory ? "Quay lại lịch sử" : "Quay lại"}
                         </Button>
 
-                        <Button
+                        {!isHistory && <Button
+                            variant="outlined"
+                            startIcon={<HistoryOutlinedIcon />}
+                            disabled={!record?.patientBookId}
+                            onClick={() => navigate(`/internal/examinations/${appointmentId}/history`, {
+                                state: { examinationReturn: { screen: "record", appointment } },
+                            })}
+                            sx={{ minHeight: 42 }}
+                        >
+                            Lịch sử khám
+                        </Button>}
+
+                        {!isHistory && <Button
                             variant="contained"
                             startIcon={<EditNoteOutlinedIcon />}
                             onClick={() =>
@@ -234,8 +278,8 @@ function MedicalRecordDetailPage() {
                             sx={{ minHeight: 42 }}
                         >
                             Chỉnh sửa
-                        </Button>
-                        <Button
+                        </Button>}
+                        {!isHistory && <Button
                             variant="outlined"
                             startIcon={<LocalPharmacyOutlinedIcon />}
                             disabled={!record}
@@ -247,7 +291,7 @@ function MedicalRecordDetailPage() {
                             sx={{ minHeight: 42 }}
                         >
                             Kê đơn thuốc
-                        </Button>
+                        </Button>}
                     </Stack>
                 </Box>
             </Paper>
@@ -273,7 +317,7 @@ function MedicalRecordDetailPage() {
                 <>
                     <MedicalRecordPatientSummary
                         appointment={appointment}
-                        appointmentId={appointmentId}
+                        appointmentId={record.appointmentId}
                         medicalRecord={record}
                     />
 
@@ -288,12 +332,15 @@ function MedicalRecordDetailPage() {
                             alignItems: "start",
                         }}
                     >
-                        <MedicalRecordReadOnlySections record={record} />
+                        <Stack spacing={3} sx={{ minWidth: 0 }}>
+                            <MedicalRecordReadOnlySections record={record} />
+                            {isHistory && <MedicalHistoryPrescriptionSection prescription={prescription} />}
+                        </Stack>
 
                         <Stack spacing={3}>
                             <MedicalRecordAuditPanel record={record} />
 
-                            <MedicalRecordPrescriptionPanel
+                            {!isHistory && <MedicalRecordPrescriptionPanel
                                 prescription={prescription}
                                 loading={prescriptionLoading}
                                 error={prescriptionError}
@@ -302,7 +349,7 @@ function MedicalRecordDetailPage() {
                                         `/internal/examinations/${appointmentId}/prescription`
                                     )
                                 }
-                            />
+                            />}
                         </Stack>
                     </Box>
                 </>

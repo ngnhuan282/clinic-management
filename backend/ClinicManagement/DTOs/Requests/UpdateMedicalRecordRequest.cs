@@ -1,7 +1,12 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace ClinicManagement.DTOs.Requests;
 
 public class UpdateMedicalRecordRequest
 {
+    [Required]
+    public DateTime? ExpectedUpdatedAt { get; set; }
+
     public string Symptoms { get; set; } = string.Empty;
 
     public string? Conclusion { get; set; }

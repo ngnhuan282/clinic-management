@@ -27,6 +27,7 @@ function PrescriptionEditorToolbar({
     selectedMedicineIds,
     onAddMedicine,
     disabled = false,
+    embedded = false,
 }) {
     const [selectedMedicine, setSelectedMedicine] = useState(null);
 
@@ -47,10 +48,10 @@ function PrescriptionEditorToolbar({
         <Paper
             elevation={0}
             sx={{
-                p: { xs: 2, md: 2.5 },
-                borderRadius: 2,
-                border: "1px solid #E5E9F0",
-                bgcolor: "#FFFFFF",
+                p: embedded ? 0 : { xs: 2, md: 2.5 },
+                borderRadius: embedded ? 0 : 2,
+                border: embedded ? 0 : "1px solid #E5E9F0",
+                bgcolor: embedded ? "transparent" : "#FFFFFF",
             }}
         >
             <Box

@@ -10,6 +10,8 @@ public class ExaminationQueueResponse
 
     public int? PatientId { get; set; }
 
+    public int? PatientProfileId { get; set; }
+
     public int? PatientBookId { get; set; }
 
     public string? PatientBookNumber { get; set; }

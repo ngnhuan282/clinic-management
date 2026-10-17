@@ -43,6 +43,8 @@ function MedicalRecordStatusPanel({
     selectedDiagnoses,
     form,
     saving,
+    disabled = false,
+    completingDisabled = false,
     completionReady,
     submitRecord,
 }) {
@@ -108,7 +110,7 @@ function MedicalRecordStatusPanel({
                         fullWidth
                         variant="outlined"
                         startIcon={<SaveOutlinedIcon />}
-                        disabled={saving}
+                        disabled={saving || disabled}
                         onClick={() => submitRecord(false)}
                         sx={{ minHeight: 42 }}
                     >
@@ -120,7 +122,7 @@ function MedicalRecordStatusPanel({
                         variant="contained"
                         color="success"
                         startIcon={<CheckCircleOutlineOutlinedIcon />}
-                        disabled={saving || !completionReady}
+                        disabled={saving || disabled || completingDisabled || !completionReady}
                         onClick={() => submitRecord(true)}
                         sx={{ minHeight: 42 }}
                     >

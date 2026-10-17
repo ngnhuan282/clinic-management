@@ -3,14 +3,24 @@ import { Alert, Badge, Box, Button, CircularProgress, IconButton, List, ListItem
 import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
 import useNotifications from "../../hooks/useNotifications";
 import getApiErrorMessage from "../../utils/errorHandler";
+import { useNavigate } from "react-router-dom";
+import useAuth from "../../hooks/useAuth";
 
 export default function NotificationBell() {
+    const navigate = useNavigate();
+    const user = useAuth();
     const [anchor, setAnchor] = useState(null);
     const [readError, setReadError] = useState("");
     const { items, loading, error, refresh, pageNumber, setPageNumber, hasNextPage, markRead } = useNotifications();
-    async function read(id) {
+    async function read(item) {
         setReadError("");
-        try { await markRead(id); } catch (failure) { setReadError(getApiErrorMessage(failure)); }
+        try {
+            await markRead(item.notificationId);
+            if (item.stockReviewId && ["Doctor", "DepartmentHead"].includes(user.role) && user.permissions?.includes("pharmacy.prescribe")) {
+                setAnchor(null);
+                navigate(`/internal/doctor/stock-reviews/${item.stockReviewId}`);
+            }
+        } catch (failure) { setReadError(getApiErrorMessage(failure)); }
     }
     return <>
         <IconButton aria-label="Thông báo" onClick={event => { setAnchor(event.currentTarget); refresh(); }}>
@@ -21,7 +31,7 @@ export default function NotificationBell() {
                 <Typography variant="h6">Thông báo</Typography>
                 {(error || readError) && <Alert severity="error" action={<Button onClick={refresh}>Thử lại</Button>}>{error || readError}</Alert>}
                 {loading ? <CircularProgress size={24} aria-label="Đang tải thông báo" /> : !error && !items.length ? <Typography sx={{ py: 2 }}>Chưa có thông báo.</Typography> :
-                    <List sx={{ maxHeight: 450, overflow: "auto" }}>{items.map(item => <ListItemButton key={item.notificationId} onClick={() => read(item.notificationId)} sx={{ bgcolor: item.isRead ? "transparent" : "#EFF6FF", mb: 1 }}>
+                    <List sx={{ maxHeight: 450, overflow: "auto" }}>{items.map(item => <ListItemButton key={item.notificationId} onClick={() => read(item)} sx={{ bgcolor: item.isRead ? "transparent" : "#EFF6FF", mb: 1, overflowWrap: "anywhere" }}>
                         <ListItemText primary={item.title} secondary={<>{item.message}<br />{new Date(item.createdAt + (item.createdAt.endsWith("Z") ? "" : "Z")).toLocaleString("vi-VN")}</>} />
                     </ListItemButton>)}</List>}
                 <Stack direction="row" justifyContent="space-between">
