@@ -181,6 +181,17 @@ public class ReceptionService : IReceptionService
             || invoice.PatientBook is { Status: not PatientBookStatusConstants.Pending })
             throw new AppException(ErrorCode.BOOK_INVOICE_INVALID_STATUS);
         var now = DateTime.UtcNow;
+        var previousBook = await _receptionRepository.GetIssuedBookAsync(invoice.PatientId);
+        if (previousBook != null)
+        {
+            if (await _receptionRepository.IsBookInUseAsync(previousBook.PatientBookId))
+                throw new AppException(ErrorCode.BOOK_IN_USE);
+            previousBook.Status = PatientBookStatusConstants.Replaced;
+            previousBook.UpdatedAt = now;
+            // Persist retirement before issuing the replacement to respect the one-Issued-book index.
+            // Both saves belong to this transaction, so a conflicting new number restores the old book.
+            await SaveBookAsync();
+        }
         var book = invoice.PatientBook ?? new PatientBook
         {
             PatientId = invoice.PatientId,
@@ -191,9 +202,11 @@ public class ReceptionService : IReceptionService
         book.Status = PatientBookStatusConstants.Issued;
         book.IssuedAt = now;
         book.UpdatedAt = now;
+        if (previousBook != null) book.PreviousBookId = previousBook.PatientBookId;
         if (invoice.PatientBook == null) await _receptionRepository.AddBookAsync(book);
         await SaveBookAsync();
         await transaction.CommitAsync();
+        if (previousBook != null) await _notifications.PublishPatientBookChangedAsync(previousBook);
         await _notifications.PublishPatientBookChangedAsync(book);
         _logger.LogInformation("Book {PatientBookId} issued after invoice {InvoiceId} was paid",
             book.PatientBookId, invoiceId);
@@ -212,9 +225,9 @@ public class ReceptionService : IReceptionService
 
         var book = await _receptionRepository.GetBookAsync(request.PatientBookId)
             ?? throw new AppException(ErrorCode.BOOK_NOT_FOUND);
-        if (book.PatientId != request.PatientProfileId || book.Status != "Issued" ||
+        if (book.PatientId != request.PatientProfileId || book.Status != PatientBookStatusConstants.Issued ||
             (book.BookInvoiceId.HasValue && book.BookInvoice?.Status != "Paid") ||
-            (!book.BookInvoiceId.HasValue && !request.BookPresented))
+            !request.BookPresented)
             throw new AppException(ErrorCode.BOOK_NOT_VERIFIED);
 
         var now = DateTime.UtcNow;

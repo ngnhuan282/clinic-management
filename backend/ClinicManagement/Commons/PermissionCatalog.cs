@@ -63,7 +63,7 @@ public static class PermissionCatalog
         new(PermissionCodes.CatalogManage, "Danh mục", "Quản lý khoa, chuyên khoa và phòng", "Sửa"),
         new(PermissionCodes.SchedulesManage, "Lịch bác sĩ", "Tạo lịch bác sĩ", "Tạo"),
         new(PermissionCodes.AppointmentsView, "Lịch hẹn", "Xem lịch tiếp nhận", "Xem"),
-        new(PermissionCodes.AppointmentsViewOwn, "Lịch hẹn", "Xem lịch của bản thân", "Xem", "Chỉ lịch của bệnh nhân đăng nhập", false),
+        new(PermissionCodes.AppointmentsViewOwn, "Lịch hẹn", "Xem lịch của bản thân", "Xem", "Chỉ lịch của bệnh nhân đăng nhập"),
         new(PermissionCodes.AppointmentsBookSelf, "Lịch hẹn", "Đặt lịch cho bản thân", "Tạo", "Chỉ tạo lịch của bệnh nhân đăng nhập"),
         new(PermissionCodes.AppointmentsCreateWalkIn, "Lịch hẹn", "Tiếp nhận walk-in", "Tạo"),
         new(PermissionCodes.AppointmentsCancelOwn, "Lịch hẹn", "Hủy lịch của bản thân", "Nghiệp vụ", IsImplemented: false),

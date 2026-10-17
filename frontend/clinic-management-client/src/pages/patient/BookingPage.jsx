@@ -36,8 +36,11 @@ import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
 import PersonIcon from "@mui/icons-material/Person";
 import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
+import { Link } from "react-router-dom";
 
 import useBooking from "../../hooks/useBooking";
+import AppointmentArrivalGuide from "../../components/patient/AppointmentArrivalGuide";
+import StatusBadge from "../../components/common/StatusBadge";
 
 const COLORS = {
     canvas: "#f5f9fd",
@@ -221,6 +224,13 @@ function BookingPage() {
                         currentStep={currentStep}
                         completedSteps={completedSteps}
                     />
+
+                    <AppointmentArrivalGuide />
+                    <Box>
+                        <Button component={Link} to="/my-appointments" startIcon={<CalendarMonthIcon />}>
+                            Xem lịch hẹn của tôi
+                        </Button>
+                    </Box>
 
                     {booking.error ? (
                         <Alert severity="error">{booking.error}</Alert>
@@ -1596,12 +1606,15 @@ function BookingSuccessDialog({
                         />
                         <PopupRow
                             label="Trạng thái"
-                            value={appointment?.status || "Pending"}
+                            value={<StatusBadge status={appointment?.status || "Pending"} />}
                         />
                     </Stack>
                 </Box>
             </DialogContent>
-            <DialogActions sx={{ px: 3, pb: 3 }}>
+            <DialogActions sx={{ px: 3, pb: 3, flexWrap: "wrap", gap: 1 }}>
+                <Button component={Link} to="/my-appointments" variant="outlined" onClick={onClose}>
+                    Lịch hẹn của tôi
+                </Button>
                 <Button
                     variant="contained"
                     onClick={onClose}
@@ -1631,6 +1644,7 @@ function PopupRow({
                 {label}
             </Typography>
             <Typography
+                component="div"
                 sx={{
                     color: COLORS.heading,
                     fontSize: 14,

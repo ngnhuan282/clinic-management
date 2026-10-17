@@ -48,16 +48,7 @@ public class BookingService : IBookingService
     public async Task<PagedResponse<AppointmentResponse>> GetAppointmentsAsync(
         AppointmentQuery query)
     {
-        ValidateStatusFilter(query.Status);
-
-        if (query.DateFrom.HasValue
-            && query.DateTo.HasValue
-            && query.DateFrom.Value.Date > query.DateTo.Value.Date)
-        {
-            throw new AppException(
-                ErrorCode.INVALID_REQUEST
-            );
-        }
+        ValidateAppointmentQuery(query);
 
         var (items, total) =
             await _appointmentRepository.GetPageAsync(
@@ -70,6 +61,23 @@ public class BookingService : IBookingService
             query.PageSize,
             total
         );
+    }
+
+    public async Task<PagedResponse<AppointmentResponse>> GetMyAppointmentsAsync(AppointmentQuery query)
+    {
+        ValidateAppointmentQuery(query);
+        var userId = _currentUser.GetRequiredUserId();
+        var (items, total) = await _appointmentRepository.GetOwnPageAsync(query, userId);
+        return new PagedResponse<AppointmentResponse>(items.Select(MapAppointment),
+            query.PageNumber, query.PageSize, total);
+    }
+
+    private static void ValidateAppointmentQuery(AppointmentQuery query)
+    {
+        ValidateStatusFilter(query.Status);
+        if (query.DateFrom.HasValue && query.DateTo.HasValue
+            && query.DateFrom.Value.Date > query.DateTo.Value.Date)
+            throw new AppException(ErrorCode.INVALID_REQUEST);
     }
 
     public async Task<List<DepartmentResponse>> GetDepartmentsAsync()

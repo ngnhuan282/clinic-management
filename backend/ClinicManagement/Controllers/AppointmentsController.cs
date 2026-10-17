@@ -50,6 +50,14 @@ public class AppointmentsController : ControllerBase
         );
     }
 
+    [HttpGet("mine")]
+    [Authorize(Policy = PermissionCodes.AppointmentsViewOwn)]
+    public async Task<IActionResult> GetMyAppointments([FromQuery] AppointmentQuery query)
+    {
+        var result = await _bookingService.GetMyAppointmentsAsync(query);
+        return Ok(ApiResponse<PagedResponse<AppointmentResponse>>.Success(result));
+    }
+
     [HttpGet("available-slots")]
     public async Task<IActionResult> GetAvailableSlots(
         [FromQuery] int doctorId,

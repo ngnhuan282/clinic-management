@@ -38,6 +38,9 @@ public class ReceptionRepository : IReceptionRepository
         _context.PatientBooks.Include(x => x.BookInvoice)
             .SingleOrDefaultAsync(x => x.PatientBookId == patientBookId);
 
+    public Task<PatientBook?> GetIssuedBookAsync(int patientId) => _context.PatientBooks
+        .SingleOrDefaultAsync(x => x.PatientId == patientId && x.Status == PatientBookStatusConstants.Issued);
+
     public async Task<(List<PatientBook> Items, int Total)> GetBookPageAsync(PatientBookQuery query)
     {
         var books = _context.PatientBooks.AsNoTracking().Include(x => x.Patient).AsQueryable();

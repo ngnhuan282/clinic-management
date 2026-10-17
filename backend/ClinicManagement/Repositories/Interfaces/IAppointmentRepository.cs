@@ -7,6 +7,9 @@ public interface IAppointmentRepository
     Task<(List<Appointment> Items, int Total)> GetPageAsync(
         ClinicManagement.DTOs.Requests.AppointmentQuery request);
 
+    Task<(List<Appointment> Items, int Total)> GetOwnPageAsync(
+        ClinicManagement.DTOs.Requests.AppointmentQuery request, int patientUserId);
+
     Task<Appointment?> GetByIdAsync(int appointmentId);
 
     Task<List<Appointment>> GetBookedSlotsAsync(

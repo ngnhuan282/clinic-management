@@ -77,8 +77,12 @@ public class NotificationService(IHubContext<NotificationHub> hub, ApplicationDb
         recipients.AddRange(await DoctorRecipientsAsync(appointment.DoctorId, PermissionCodes.ClinicalViewAssigned));
         if (previousDoctorId.HasValue && previousDoctorId != appointment.DoctorId)
             recipients.AddRange(await DoctorRecipientsAsync(previousDoctorId.Value, PermissionCodes.ClinicalViewAssigned));
-        if (appointment.PatientId.HasValue)
-            recipients.AddRange(await PatientRecipientsAsync(appointment.PatientId.Value));
+        var patientUserId = appointment.PatientId;
+        if (!patientUserId.HasValue && appointment.PatientProfileId.HasValue)
+            patientUserId = await db.Patients.Where(x => x.PatientId == appointment.PatientProfileId.Value)
+                .Select(x => x.UserId).SingleOrDefaultAsync();
+        if (patientUserId.HasValue)
+            recipients.AddRange(await PatientRecipientsAsync(patientUserId.Value));
         return recipients.Distinct().ToList();
     }
 
@@ -93,7 +97,10 @@ public class NotificationService(IHubContext<NotificationHub> hub, ApplicationDb
             .Select(x => new { x.PatientId, x.DoctorId }).ToListAsync();
         foreach (var doctorId in appointments.Select(x => x.DoctorId).Distinct())
             recipients.AddRange(await DoctorRecipientsAsync(doctorId, PermissionCodes.ClinicalViewAssigned));
-        var patientIds = appointments.Where(x => x.PatientId.HasValue).Select(x => x.PatientId!.Value).Distinct().ToArray();
+        var patientIds = appointments.Where(x => x.PatientId.HasValue).Select(x => x.PatientId!.Value).ToList();
+        var profileOwnerId = await db.Patients.Where(x => x.PatientId == patientProfileId)
+            .Select(x => x.UserId).SingleOrDefaultAsync();
+        if (profileOwnerId.HasValue) patientIds.Add(profileOwnerId.Value);
         recipients.AddRange(await db.Users.Where(x => patientIds.Contains(x.UserId) && x.Status
             && x.Role.RoleName == RoleConstants.Patient).Select(x => x.UserId).ToListAsync());
         return recipients.Distinct().ToList();

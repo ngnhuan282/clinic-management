@@ -17,14 +17,27 @@ public class AppointmentRepository : IAppointmentRepository
         _context = context;
     }
 
-    public async Task<(List<Appointment> Items, int Total)> GetPageAsync(
-        AppointmentQuery request)
+    public Task<(List<Appointment> Items, int Total)> GetPageAsync(AppointmentQuery request) =>
+        GetPageInternalAsync(request, null);
+
+    public Task<(List<Appointment> Items, int Total)> GetOwnPageAsync(
+        AppointmentQuery request, int patientUserId) => GetPageInternalAsync(request, patientUserId);
+
+    private async Task<(List<Appointment> Items, int Total)> GetPageInternalAsync(
+        AppointmentQuery request, int? patientUserId)
     {
         var query = _context.Appointments
             .AsNoTracking()
             .Include(x => x.Doctor)
                 .ThenInclude(x => x.Department)
             .AsQueryable();
+
+        if (patientUserId.HasValue)
+        {
+            var userId = patientUserId.Value;
+            query = query.Where(x => x.PatientId == userId
+                || (x.PatientId == null && x.PatientProfile != null && x.PatientProfile.UserId == userId));
+        }
 
         if (!string.IsNullOrWhiteSpace(request.Search))
         {
@@ -63,6 +76,7 @@ public class AppointmentRepository : IAppointmentRepository
         var items = await query
             .OrderByDescending(x => x.AppointmentDate)
             .ThenBy(x => x.StartTime)
+            .ThenBy(x => x.AppointmentId)
             .Skip((request.PageNumber - 1) * request.PageSize)
             .Take(request.PageSize)
             .ToListAsync();
