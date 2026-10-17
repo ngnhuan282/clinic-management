@@ -13,8 +13,8 @@ namespace ClinicManagement.Controllers;
 public class ScheduleRequestsController(IScheduleReviewService service) : ControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> List([FromQuery] string? status, [FromQuery] PaginationRequest pagination) =>
-        Ok(ApiResponse<object>.Success(await service.ListAsync(status, pagination.PageNumber, pagination.PageSize)));
+    public async Task<IActionResult> List([FromQuery] ScheduleRequestQuery query) =>
+        Ok(ApiResponse<object>.Success(await service.ListAsync(query.Status, query.PageNumber, query.PageSize, query.DoctorId, query.RoomId)));
 
     [HttpGet("{id:int}")]
     public async Task<IActionResult> Get(int id) =>

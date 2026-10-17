@@ -1,791 +1,182 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-    Alert,
-    Avatar,
-    Box,
-    Button,
-    Chip,
-    CircularProgress,
-    Dialog,
-    DialogActions,
-    DialogContent,
-    DialogTitle,
-    Divider,
-    IconButton,
-    InputAdornment,
-    MenuItem,
-    Paper,
-    Skeleton,
-    Stack,
-    Tab,
-    Tabs,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
-    TextField,
-    Tooltip,
-    Typography,
-} from "@mui/material";
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
-import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
-import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
-import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
-import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
-import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
-import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
-import BlockOutlinedIcon from "@mui/icons-material/BlockOutlined";
-import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
+import { Alert, Avatar, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, InputAdornment, LinearProgress, MenuItem, Pagination, Paper, Skeleton, Stack, Tab, Tabs, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Tooltip, Typography } from "@mui/material";
+import { CheckCircleOutlineOutlined, CancelOutlined, FactCheckOutlined, FilterListOutlined, RefreshOutlined, RestartAltOutlined, SearchOutlined, VisibilityOutlined, WarningAmberOutlined } from "@mui/icons-material";
 import scheduleRequestApi from "../../api/scheduleRequestApi";
 import { getApiErrorMessage } from "../../utils/errorHandler";
 import useAuth from "../../hooks/useAuth";
 import useNotifications from "../../hooks/useNotifications";
+import ClinicPageHeader from "../../components/common/ClinicPageHeader";
+import EmptyState from "../../components/common/EmptyState";
+import { clinicButtonSx, clinicColors, clinicDialogActionsSx, clinicDialogPaperSx, clinicDialogTitleSx, clinicFieldSx, clinicPrimaryButtonSx, clinicSecondaryButtonSx, clinicSurfaceSx, clinicTableSx } from "../../components/common/clinicUi";
 
-// ── helpers ──────────────────────────────────────────────────────────────────
-const timeText = (v) => (typeof v === "string" ? v.slice(0, 5) : "–");
-const dateText = (v) =>
-    v ? new Date(`${v}T00:00:00`).toLocaleDateString("vi-VN") : "–";
-const dayOfWeek = (v) => {
-    if (!v) return "";
-    const d = new Date(`${v}T00:00:00`).getDay();
-    return ["Chủ Nhật","Thứ Hai","Thứ Ba","Thứ Tư","Thứ Năm","Thứ Sáu","Thứ Bảy"][d] || "";
+const statusConfig = {
+    Pending: { label: "Chờ duyệt", bg: "#FFFBEB", color: "#92400E" },
+    Approved: { label: "Đã duyệt", bg: "#ECFDF5", color: "#047857" },
+    Rejected: { label: "Từ chối", bg: "#FEF2F2", color: "#B91C1C" },
+    Cancelled: { label: "Đã hủy", bg: "#F1F5F9", color: "#64748B" },
 };
-const durationHours = (start, end) => {
-    if (!start || !end) return null;
-    const [sh, sm] = start.split(":").map(Number);
-    const [eh, em] = end.split(":").map(Number);
-    const mins = (eh * 60 + em) - (sh * 60 + sm);
-    if (mins <= 0) return null;
-    return (mins / 60).toFixed(1).replace(/\.0$/, "");
-};
+const timeText = value => typeof value === "string" ? value.slice(0, 5) : "–";
+const dateText = value => value ? new Date(`${value}T00:00:00`).toLocaleDateString("vi-VN") : "–";
+const pageSize = 10;
 
-// ── status config ─────────────────────────────────────────────────────────────
-const STATUS_CONFIG = {
-    Pending:  { label: "Chờ duyệt",  bgColor: "#FEF3C7", textColor: "#92400E" },
-    Approved: { label: "Đã duyệt",   bgColor: "#D1FAE5", textColor: "#065F46" },
-    Rejected: { label: "Từ chối",    bgColor: "#FEE2E2", textColor: "#991B1B" },
-    Cancelled:{ label: "Đã hủy",     bgColor: "#F3F4F6", textColor: "#374151" },
-};
-
-const HEAD_TABS = [
-    { value: "Pending",   label: "Chờ duyệt" },
-    { value: "Approved",  label: "Đã duyệt" },
-    { value: "Rejected",  label: "Đã từ chối" },
-    { value: "Cancelled", label: "Đã hủy" },
-    { value: "Mine",      label: "Yêu cầu cá nhân của tôi" },
-];
-const ADMIN_TABS = [
-    { value: "Pending",   label: "Chờ Admin duyệt" },
-    { value: "Approved",  label: "Đã phê duyệt" },
-    { value: "Rejected",  label: "Từ chối" },
-    { value: "All",       label: "Tất cả các khoa" },
-];
-
-// ── StatusBadge ───────────────────────────────────────────────────────────────
 function StatusBadge({ status }) {
-    const cfg = STATUS_CONFIG[status] || { label: status, bgColor: "#F3F4F6", textColor: "#374151" };
-    return (
-        <Box sx={{ display:"inline-flex", px:1.5, py:0.4, borderRadius:10, backgroundColor: cfg.bgColor }}>
-            <Typography sx={{ fontSize:12, fontWeight:700, color: cfg.textColor, whiteSpace:"nowrap" }}>
-                {cfg.label}
-            </Typography>
-        </Box>
-    );
+    const config = statusConfig[status] || { label: status, bg: "#F1F5F9", color: "#64748B" };
+    return <Chip label={config.label} size="small" sx={{ bgcolor: config.bg, color: config.color, fontWeight: 500 }} />;
 }
 
-// ── InfoPanel ─────────────────────────────────────────────────────────────────
-function InfoPanel({ role }) {
-    const isAdmin = role === "Admin";
-    return (
-        <Paper variant="outlined" sx={{ p:2, mb:2.5, borderColor:"#BFDBFE", backgroundColor:"#EFF6FF", borderRadius:2 }}>
-            <Stack direction="row" spacing={1.5} alignItems="flex-start">
-                <InfoOutlinedIcon sx={{ color:"#2563EB", mt:0.2, flexShrink:0 }} />
-                <Box>
-                    <Typography sx={{ fontWeight:800, color:"#1D4ED8", mb:0.5, fontSize:14 }}>
-                        {isAdmin
-                            ? "Quy tắc phê duyệt ca khám Trưởng khoa"
-                            : "Quy tắc nghiệp vụ & Chính sách phân quyền Trưởng Khoa"}
-                    </Typography>
-                    {isAdmin ? (
-                        <Typography variant="body2" color="text.secondary" sx={{ lineHeight:1.6 }}>
-                            Nhằm đảm bảo tính minh bạch và tuân thủ quy chế phòng khám,{" "}
-                            <strong>Trưởng khoa không được tự duyệt yêu cầu ca khám của chính mình</strong>.
-                            Chỉ Super Admin / Ban Giám đốc mới có thẩm quyền phê duyệt các yêu cầu đăng ký ca làm việc và phân bổ phòng chuyên môn này.
-                        </Typography>
-                    ) : (
-                        <Typography variant="body2" color="text.secondary" sx={{ lineHeight:1.6 }}>
-                            <strong>Quy tắc duyệt:</strong> Hệ thống tự động kiểm tra trùng giờ bác sĩ và trùng phòng khám theo thời gian thực
-                            (Pre-flight Conflict Validation).{" "}
-                            <strong>Trưởng khoa không tự duyệt yêu cầu của chính mình</strong> (yêu cầu sẽ tự động chuyển lên Ban Giám Đốc/Admin
-                            xử lý theo chuẩn RBAC). Yêu cầu sau khi duyệt thành công sẽ lập tức{" "}
-                            <strong>kích hoạt lịch sinh slot</strong> cho bệnh nhân đặt lịch trên ứng dụng và Cổng Bệnh nhân.
-                        </Typography>
-                    )}
-                </Box>
-            </Stack>
-        </Paper>
-    );
+function RequestSummary({ item }) {
+    return <Stack spacing={1.5}>
+        {[["Bác sĩ", item.doctorName], ["Khoa", item.departmentName], ["Ngày làm việc", dateText(item.workDate)], ["Khung giờ", `${timeText(item.startTime)} – ${timeText(item.endTime)}`], ["Phòng khám", item.roomName]].map(([label, value]) => <Box key={label} sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "140px 1fr" }, gap: 0.5 }}><Typography sx={{ fontSize: 14, color: clinicColors.muted }}>{label}</Typography><Typography sx={{ fontSize: 14, fontWeight: 500, overflowWrap: "anywhere" }}>{value || "–"}</Typography></Box>)}
+    </Stack>;
 }
 
-// ── DoctorAvatar ──────────────────────────────────────────────────────────────
-function DoctorAvatar({ name }) {
-    const initials = name?.trim()?.split(" ").pop()?.slice(0, 2).toUpperCase() || "BS";
-    const colors = ["#005DAC","#0284C7","#0D9488","#7C3AED","#B45309"];
-    const colorIdx = (name?.charCodeAt(0) || 0) % colors.length;
-    return (
-        <Avatar sx={{ width:34, height:34, bgcolor: colors[colorIdx], fontSize:13, fontWeight:800, flexShrink:0 }}>
-            {initials}
-        </Avatar>
-    );
-}
-
-// ── InfoRow ───────────────────────────────────────────────────────────────────
-function InfoRow({ label, value }) {
-    return (
-        <Stack direction="row" spacing={1} alignItems="flex-start">
-            <Typography variant="body2" sx={{ minWidth:140, color:"#6B7280", fontWeight:600, flexShrink:0 }}>{label}:</Typography>
-            {typeof value === "string" || typeof value === "number"
-                ? <Typography variant="body2" sx={{ fontWeight:700, color:"#111827" }}>{value}</Typography>
-                : value}
-        </Stack>
-    );
-}
-
-// ── ApproveDialog ─────────────────────────────────────────────────────────────
-function ApproveDialog({ detail, working, onClose, onConfirm }) {
-    if (!detail) return null;
-    const dur = durationHours(detail.startTime, detail.endTime);
-    return (
-        <Dialog open onClose={() => !working && onClose()} maxWidth="sm" fullWidth>
-            <DialogTitle sx={{ fontWeight:800, fontSize:17, pb:1 }}>
-                <Stack direction="row" spacing={1} alignItems="center">
-                    <CheckCircleOutlineIcon color="success" />
-                    <span>Xác nhận Phê duyệt Ca khám</span>
-                </Stack>
-            </DialogTitle>
-            <Divider />
-            <DialogContent sx={{ pt:2 }}>
-                <Stack spacing={1.5}>
-                    <InfoRow label="Bác sĩ đề xuất"  value={detail.doctorName} />
-                    <InfoRow label="Thời gian khám"   value={`${dateText(detail.workDate)} (${timeText(detail.startTime)}–${timeText(detail.endTime)}${dur ? `, ${dur} giờ` : ""})`} />
-                    <InfoRow label="Phòng lâm sàng"   value={detail.roomName || "–"} />
-                    <Paper variant="outlined" sx={{ p:1.5, borderRadius:1.5, backgroundColor:"#F0FDF4", borderColor:"#86EFAC" }}>
-                        <Typography variant="body2" sx={{ color:"#15803D", lineHeight:1.6 }}>
-                            <strong>Ca thể tự động hóa:</strong> Hệ thống sẽ cập nhật trạng thái lịch là <strong>Approved</strong> và
-                            mở {dur || "?"} tiếng khám bệnh nhân trên Cổng Bệnh nhân.
-                        </Typography>
-                    </Paper>
-                </Stack>
-            </DialogContent>
-            <DialogActions sx={{ px:3, pb:2 }}>
-                <Button variant="outlined" onClick={onClose} disabled={working}>Hủy bỏ</Button>
-                <Button variant="contained" color="success"
-                    startIcon={working ? <CircularProgress size={16} color="inherit" /> : <CheckCircleOutlineIcon />}
-                    disabled={working} onClick={onConfirm} sx={{ fontWeight:800 }}>
-                    Xác nhận Phê duyệt
-                </Button>
-            </DialogActions>
-        </Dialog>
-    );
-}
-
-// ── RejectDialog ──────────────────────────────────────────────────────────────
-function RejectDialog({ detail, working, onClose, onConfirm }) {
+function ActionDialog({ target, working, error, onClose, onConfirm }) {
     const [reason, setReason] = useState("");
-    if (!detail) return null;
-    return (
-        <Dialog open onClose={() => !working && onClose()} maxWidth="sm" fullWidth>
-            <DialogTitle sx={{ fontWeight:800, fontSize:17, pb:0.5, color:"#DC2626" }}>
-                <Stack direction="row" spacing={1} alignItems="center">
-                    <CancelOutlinedIcon color="error" />
-                    <span>Từ chối yêu cầu ca khám</span>
-                </Stack>
-                <Typography variant="caption" color="text.secondary" display="block" sx={{ fontWeight:400, mt:0.25 }}>
-                    Gửi lý do từ chối rõ ràng
-                </Typography>
-            </DialogTitle>
-            <Divider />
-            <DialogContent sx={{ pt:2 }}>
-                <Stack spacing={1.5}>
-                    <InfoRow label="Bác sĩ đề xuất"  value={detail.doctorName} />
-                    <InfoRow label="Ca ngày"          value={`${dateText(detail.workDate)} (${timeText(detail.startTime)}–${timeText(detail.endTime)})`} />
-                    <Typography variant="body2" color="text.secondary" sx={{ lineHeight:1.5 }}>
-                        Thông báo từ chối sẽ được gửi tới bác sĩ qua hệ thống thông báo nội bộ.
-                    </Typography>
-                    <TextField
-                        multiline minRows={3} maxRows={6}
-                        label="Lý do từ chối duyệt *"
-                        placeholder="Nhập chi tiết lý do từ chối..."
-                        inputProps={{ maxLength:200 }}
-                        value={reason}
-                        onChange={(e) => setReason(e.target.value)}
-                        helperText={`${reason.length}/200 ký tự`}
-                        fullWidth
-                    />
-                </Stack>
-            </DialogContent>
-            <DialogActions sx={{ px:3, pb:2 }}>
-                <Button variant="outlined" onClick={onClose} disabled={working}>Hủy bỏ</Button>
-                <Button variant="contained" color="error"
-                    startIcon={working ? <CircularProgress size={16} color="inherit" /> : <CancelOutlinedIcon />}
-                    disabled={working || reason.trim().length === 0}
-                    onClick={() => onConfirm(reason.trim())}
-                    sx={{ fontWeight:800 }}>
-                    Gửi thông báo Từ chối
-                </Button>
-            </DialogActions>
-        </Dialog>
-    );
+    const isReject = target.action === "reject";
+    return <Dialog open onClose={working ? undefined : onClose} fullWidth maxWidth="sm" aria-labelledby="request-action-title" slotProps={{ paper: { sx: clinicDialogPaperSx } }}>
+        <DialogTitle id="request-action-title" sx={clinicDialogTitleSx}>{isReject ? "Từ chối yêu cầu ca khám" : "Phê duyệt yêu cầu ca khám"}</DialogTitle>
+        <DialogContent sx={{ px: 3, pb: 3 }}><Stack spacing={2.5}>
+            {error && <Alert severity="error">{error}</Alert>}
+            <Paper variant="outlined" sx={{ ...clinicSurfaceSx, p: 2, bgcolor: "#F8FAFC" }}><RequestSummary item={target.item} /></Paper>
+            {isReject ? <TextField multiline minRows={3} fullWidth label="Lý do từ chối" value={reason} onChange={event => setReason(event.target.value)} helperText={`${reason.length}/200 ký tự`} disabled={working} slotProps={{ htmlInput: { maxLength: 200 } }} sx={clinicFieldSx} /> : <Typography sx={{ fontSize: 14, color: clinicColors.muted, lineHeight: 1.7 }}>Sau khi duyệt, hệ thống tạo lịch làm việc và các khung giờ đặt khám cho ca này.</Typography>}
+        </Stack></DialogContent>
+        <DialogActions sx={clinicDialogActionsSx}><Button disabled={working} onClick={onClose} sx={clinicSecondaryButtonSx}>Hủy</Button><Button disabled={working || (isReject && !reason.trim())} variant="contained" color={isReject ? "error" : "primary"} onClick={() => onConfirm(reason.trim())} startIcon={isReject ? <CancelOutlined /> : <CheckCircleOutlineOutlined />} sx={isReject ? clinicButtonSx : clinicPrimaryButtonSx}>{working ? "Đang xử lý..." : isReject ? "Xác nhận từ chối" : "Xác nhận phê duyệt"}</Button></DialogActions>
+    </Dialog>;
 }
 
-// ── DetailDialog ──────────────────────────────────────────────────────────────
-function DetailDialog({ detail, onClose }) {
-    if (!detail) return null;
-    const cfg = STATUS_CONFIG[detail.status] || { label: detail.status, bgColor:"#F3F4F6", textColor:"#374151" };
-    const dur = durationHours(detail.startTime, detail.endTime);
-    return (
-        <Dialog open onClose={onClose} maxWidth="sm" fullWidth>
-            <DialogTitle sx={{ fontWeight:800, pb:1 }}>
-                <Stack direction="row" spacing={1} alignItems="center">
-                    <FactCheckOutlinedIcon color="primary" />
-                    <span>Chi tiết yêu cầu #{detail.requestId}</span>
-                </Stack>
-            </DialogTitle>
-            <Divider />
-            <DialogContent sx={{ pt:2 }}>
-                <Stack spacing={1.5}>
-                    <InfoRow label="Bác sĩ đề xuất"  value={detail.doctorName} />
-                    {detail.departmentName && <InfoRow label="Khoa" value={detail.departmentName} />}
-                    <InfoRow label="Ngày khám"        value={`${dayOfWeek(detail.workDate)}, ${dateText(detail.workDate)}`} />
-                    <InfoRow label="Khung giờ"        value={`${timeText(detail.startTime)} – ${timeText(detail.endTime)}${dur ? ` (${dur} giờ)` : ""}`} />
-                    {detail.roomName && <InfoRow label="Phòng khám" value={detail.roomName} />}
-                    <InfoRow label="Trạng thái"
-                        value={
-                            <Box sx={{ display:"inline-flex", px:1.5, py:0.3, borderRadius:10, backgroundColor: cfg.bgColor }}>
-                                <Typography sx={{ fontSize:12, fontWeight:700, color: cfg.textColor }}>{cfg.label}</Typography>
-                            </Box>
-                        }
-                    />
-                    {detail.rejectReason && (
-                        <Paper variant="outlined" sx={{ p:1.5, borderRadius:1.5, borderColor:"#FCA5A5", backgroundColor:"#FEF2F2" }}>
-                            <Typography variant="caption" sx={{ fontWeight:700, color:"#991B1B" }}>Lý do từ chối:</Typography>
-                            <Typography variant="body2" sx={{ mt:0.5, color:"#991B1B" }}>{detail.rejectReason}</Typography>
-                        </Paper>
-                    )}
-                </Stack>
-            </DialogContent>
-            <DialogActions sx={{ px:3, pb:2 }}>
-                <Button variant="outlined" onClick={onClose}>Đóng</Button>
-            </DialogActions>
-        </Dialog>
-    );
-}
-
-// ── Main Page ─────────────────────────────────────────────────────────────────
 export default function ScheduleReviewPage() {
     const { revision } = useNotifications();
     const { role, user } = useAuth();
     const isAdmin = role === "Admin";
-    const tabsConfig = isAdmin ? ADMIN_TABS : HEAD_TABS;
-
-    const [activeTab,   setActiveTab]   = useState(0);
-    const [tabCounts,   setTabCounts]   = useState({});
-    const [search,      setSearch]      = useState("");
-    const [workDate,    setWorkDate]    = useState("");
-    const [roomFilter,  setRoomFilter]  = useState("all");
-    const [pageNumber,  setPageNumber]  = useState(1);
-    const PAGE_SIZE = 10;
-
+    const tabs = ["Pending", "Approved", "Rejected", ...(!isAdmin ? ["Cancelled"] : []), "All"];
+    const [activeTab, setActiveTab] = useState("Pending");
+    const [tabCounts, setTabCounts] = useState({});
+    const [search, setSearch] = useState("");
+    const [workDate, setWorkDate] = useState("");
+    const [roomFilter, setRoomFilter] = useState("");
+    const [pageNumber, setPageNumber] = useState(1);
     const [listResult, setListResult] = useState(null);
-    const listRequestId = useRef(0);
     const [refreshing, setRefreshing] = useState(false);
-    const [error,   setError]   = useState("");
+    const [manualRevision, setManualRevision] = useState(0);
+    const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
-
-    const [detailItem,  setDetailItem]  = useState(null);
-    const [approveItem, setApproveItem] = useState(null);
-    const [rejectItem,  setRejectItem]  = useState(null);
-    const [working,     setWorking]     = useState(false);
-
-    const currentTab = tabsConfig[activeTab] || tabsConfig[0];
-    const apiStatus = (currentTab.value === "Mine" || currentTab.value === "All") ? undefined : currentTab.value;
-    const list = listResult?.data ?? { items:[], totalItems:0, totalPages:0 };
-    const loading = refreshing || listResult?.apiStatus !== apiStatus || listResult?.pageNumber !== pageNumber;
+    const [detail, setDetail] = useState(null);
+    const [target, setTarget] = useState(null);
+    const [working, setWorking] = useState(false);
+    const [actionError, setActionError] = useState("");
+    const listRequest = useRef(0);
+    const apiStatus = activeTab === "All" ? undefined : activeTab;
+    const queryKey = JSON.stringify([apiStatus, pageNumber]);
+    const currentResult = listResult?.key === queryKey ? listResult : null;
+    const loading = refreshing || !currentResult;
+    const list = currentResult?.data || { items: [], totalItems: 0, totalPages: 0 };
 
     const load = useCallback((isActive = () => true) => {
-        const requestId = ++listRequestId.current;
-        const isCurrent = () => isActive() && requestId === listRequestId.current;
-        const params = { pageNumber, pageSize: PAGE_SIZE };
+        const requestId = ++listRequest.current;
+        const isCurrent = () => isActive() && requestId === listRequest.current;
+        const params = { pageNumber, pageSize };
         if (apiStatus) params.status = apiStatus;
-        return scheduleRequestApi.list(params)
-            .then(data => {
-                if (isCurrent()) {
-                    setListResult({ data, apiStatus, pageNumber });
-                    setError("");
-                }
-            })
-            .catch(err => {
-                if (isCurrent()) {
-                    setListResult({ data: { items:[], totalItems:0, totalPages:0 }, apiStatus, pageNumber });
-                    setError(getApiErrorMessage(err));
-                }
-            })
-            .finally(() => {
-                if (isCurrent()) setRefreshing(false);
-            });
-    }, [apiStatus, pageNumber]);
-
-    const refresh = () => {
-        setRefreshing(true);
-        setError("");
-        void load();
-    };
-
-    // refresh tab counts
-    useEffect(() => {
-        ["Pending","Approved","Rejected","Cancelled"].forEach(async (s) => {
-            try {
-                const d = await scheduleRequestApi.list({ status: s, pageNumber: 1, pageSize: 1 });
-                setTabCounts(prev => ({ ...prev, [s]: d.totalItems }));
-            } catch { /* ignore */ }
-        });
-    }, [success, revision]);
+        return scheduleRequestApi.list(params).then(data => {
+            if (!isCurrent()) return;
+            setListResult({ key: queryKey, data });
+            setError("");
+            if (pageNumber > Math.max(1, data.totalPages)) setPageNumber(Math.max(1, data.totalPages));
+        }).catch(requestError => {
+            if (isCurrent()) {
+                setListResult({ key: queryKey, data: { items: [], totalItems: 0, totalPages: 0 } });
+                setError(getApiErrorMessage(requestError));
+            }
+        }).finally(() => { if (isCurrent()) setRefreshing(false); });
+    }, [apiStatus, pageNumber, queryKey]);
 
     useEffect(() => {
         let active = true;
         void load(() => active);
         return () => { active = false; };
     }, [load, revision]);
+    useEffect(() => {
+        let active = true;
+        Promise.all(["Pending", "Approved", "Rejected", "Cancelled"].map(async status => {
+            try {
+                const data = await scheduleRequestApi.list({ status, pageNumber: 1, pageSize: 1 });
+                return [status, data.totalItems];
+            } catch { return [status, undefined]; }
+        })).then(counts => { if (active) setTabCounts(Object.fromEntries(counts)); });
+        return () => { active = false; };
+    }, [success, revision, manualRevision]);
 
-    // client-side filtering
-    const filteredItems = list.items.filter(item => {
-        const q = search.toLowerCase();
-        if (q && !(
-            item.doctorName?.toLowerCase().includes(q) ||
-            String(item.requestId).includes(q) ||
-            item.roomName?.toLowerCase().includes(q)
-        )) return false;
-        if (workDate && item.workDate !== workDate) return false;
-        if (roomFilter !== "all" && item.roomName !== roomFilter) return false;
-        return true;
+    const refresh = () => { setRefreshing(true); setManualRevision(value => value + 1); void load(); };
+    const reset = () => { setSearch(""); setWorkDate(""); setRoomFilter(""); };
+    const filtered = list.items.filter(item => {
+        const query = search.trim().toLocaleLowerCase("vi");
+        return (!query || `${item.requestId} ${item.doctorName} ${item.roomName}`.toLocaleLowerCase("vi").includes(query))
+            && (!workDate || item.workDate === workDate) && (!roomFilter || item.roomName === roomFilter);
     });
-
-    const rooms = [...new Set(list.items.map(i => i.roomName).filter(Boolean))];
-
-    async function handleApprove() {
-        setWorking(true); setError("");
+    const rooms = [...new Set([roomFilter, ...list.items.map(item => item.roomName)].filter(Boolean))];
+    const openAction = (item, action) => { setActionError(""); setTarget({ item, action }); };
+    const confirm = async reason => {
+        if (working || !target?.item.canReview) return;
+        setWorking(true); setActionError("");
         try {
-            await scheduleRequestApi.approve(approveItem.requestId);
-            setSuccess(`Đã phê duyệt yêu cầu #${approveItem.requestId} thành công.`);
-            setApproveItem(null);
+            if (target.action === "approve") await scheduleRequestApi.approve(target.item.requestId);
+            else await scheduleRequestApi.reject(target.item.requestId, reason);
+            setSuccess(`Đã ${target.action === "approve" ? "phê duyệt" : "từ chối"} yêu cầu #${target.item.requestId}.`);
+            setTarget(null);
             await load();
-        } catch (err) {
-            if ([409, 403].includes(err.response?.status)) void load();
-            setError(getApiErrorMessage(err));
+        } catch (requestError) {
+            if ([409, 403].includes(requestError.response?.status)) void load();
+            setActionError(getApiErrorMessage(requestError));
         } finally { setWorking(false); }
-    }
+    };
 
-    async function handleReject(reason) {
-        setWorking(true); setError("");
-        try {
-            await scheduleRequestApi.reject(rejectItem.requestId, reason);
-            setSuccess(`Đã từ chối yêu cầu #${rejectItem.requestId}.`);
-            setRejectItem(null);
-            await load();
-        } catch (err) {
-            if ([409, 403].includes(err.response?.status)) void load();
-            setError(getApiErrorMessage(err));
-        } finally { setWorking(false); }
-    }
-
-    function handleTabChange(_, newValue) {
-        setActiveTab(newValue);
-        setPageNumber(1);
-        setSearch(""); setWorkDate(""); setRoomFilter("all");
-        setError(""); setSuccess("");
-    }
-
-    const deptName = user?.departmentName || "";
-    const deptCode = user?.departmentCode || "";
-
-    return (
-        <Box sx={{ maxWidth:1200, mx:"auto" }}>
-
-            {/* ── Header ─────────────────────────────────────────────── */}
-            <Paper sx={{ p:{ xs:2, md:3 }, mb:2, borderRadius:2 }}>
-                <Stack direction={{ xs:"column", sm:"row" }} justifyContent="space-between"
-                    alignItems={{ sm:"flex-start" }} spacing={2}>
-                    <Box>
-                        <Stack direction="row" spacing={1} alignItems="center">
-                            <FactCheckOutlinedIcon sx={{ color:"#005DAC" }} />
-                            <Typography variant="h5" fontWeight={900} color="#111827">
-                                {isAdmin
-                                    ? "Duyệt yêu cầu ca khám – Trưởng các Khoa lâm sàng"
-                                    : `Duyệt yêu cầu đăng ký ca khám${deptName ? ` - ${deptName}` : ""}`}
-                            </Typography>
-                        </Stack>
-                        {!isAdmin && (
-                            <Stack direction="row" spacing={2} mt={0.5} flexWrap="wrap" alignItems="center">
-                                {user?.fullName && (
-                                    <Typography variant="body2" color="text.secondary">
-                                        Phụ trách: <strong>{user.fullName}</strong>
-                                    </Typography>
-                                )}
-                                {deptCode && (
-                                    <Typography variant="body2" color="text.secondary">
-                                        Mã khoa:{" "}
-                                        <Chip label={deptCode} size="small"
-                                            sx={{ fontWeight:800, bgcolor:"#DBEAFE", color:"#1D4ED8", height:20, fontSize:12 }} />
-                                    </Typography>
-                                )}
-                                {deptName && (
-                                    <Typography variant="caption" color="text.secondary">
-                                        Chỉ hiển thị bác sĩ thuộc {deptName}
-                                    </Typography>
-                                )}
-                            </Stack>
-                        )}
-                        {isAdmin && (
-                            <Typography variant="body2" color="text.secondary" sx={{ mt:0.5 }}>
-                                Hàng đợi lập đốc riêng cho Quản trị viên | Ban Giám Đốc xử lý yêu cầu đăng ký ca trực của Trưởng khoa (Department Heads).
-                            </Typography>
-                        )}
-                    </Box>
-                    <Stack direction="row" spacing={1} flexShrink={0}>
-                        <Button variant="outlined" startIcon={<FileDownloadOutlinedIcon />} size="small"
-                            sx={{ whiteSpace:"nowrap", fontWeight:700 }}>
-                            Xuất Báo Cáo Ca
-                        </Button>
-                        <Button variant="contained" startIcon={<RefreshOutlinedIcon />} size="small"
-                            onClick={refresh} sx={{ whiteSpace:"nowrap", fontWeight:700 }}>
-                            Làm Mới Dữ Liệu
-                        </Button>
-                    </Stack>
-                </Stack>
-            </Paper>
-
-            {/* ── Info panel ─────────────────────────────────────────── */}
-            <InfoPanel role={role} />
-
-            {/* ── Alerts ─────────────────────────────────────────────── */}
-            {error   && <Alert severity="error"   sx={{ mb:2 }} onClose={() => setError("")}>{error}</Alert>}
-            {success && <Alert severity="success" sx={{ mb:2 }} onClose={() => setSuccess("")}>{success}</Alert>}
-
-            {/* ── Main card ──────────────────────────────────────────── */}
-            <Paper sx={{ borderRadius:2, overflow:"hidden" }}>
-
-                {/* Tabs */}
-                <Box sx={{ borderBottom:"1px solid #E5E9F0" }}>
-                    <Tabs value={activeTab} onChange={handleTabChange}
-                        variant="scrollable" scrollButtons="auto"
-                        sx={{
-                            px:2,
-                            "& .MuiTab-root": { fontWeight:700, minHeight:52, textTransform:"none", fontSize:14 },
-                            "& .Mui-selected": { color:"#005DAC" },
-                            "& .MuiTabs-indicator": { backgroundColor:"#005DAC", height:3 },
-                        }}>
-                        {tabsConfig.map((tab, idx) => {
-                            const count = tabCounts[tab.value];
-                            return (
-                                <Tab key={tab.value}
-                                    label={
-                                        <Stack direction="row" spacing={0.75} alignItems="center">
-                                            {tab.value === "Mine" && <PersonOutlineOutlinedIcon sx={{ fontSize:15 }} />}
-                                            <span>{tab.label}</span>
-                                            {count !== undefined && (
-                                                <Chip label={count} size="small" sx={{
-                                                    height:20, minWidth:24, fontSize:11, fontWeight:800,
-                                                    bgcolor: activeTab === idx ? "#DBEAFE" : "#F3F4F6",
-                                                    color:  activeTab === idx ? "#1D4ED8" : "#6B7280",
-                                                }} />
-                                            )}
-                                        </Stack>
-                                    }
-                                />
-                            );
-                        })}
-                    </Tabs>
-                </Box>
-
-                {/* Filter bar */}
-                <Box sx={{ px:2, py:1.5, borderBottom:"1px solid #F3F4F6", backgroundColor:"#FAFAFA" }}>
-                    <Stack direction={{ xs:"column", sm:"row" }} spacing={1.5}
-                        alignItems={{ sm:"center" }} flexWrap="wrap">
-                        <TextField size="small"
-                            placeholder={isAdmin ? "Nhập tên GS, PGS, TS.BS hoặc mã nhân sự..." : "Nhập tên Bác sĩ / Mã yêu cầu..."}
-                            value={search} onChange={e => setSearch(e.target.value)}
-                            InputProps={{
-                                startAdornment: (
-                                    <InputAdornment position="start">
-                                        <SearchOutlinedIcon sx={{ fontSize:18, color:"#9CA3AF" }} />
-                                    </InputAdornment>
-                                ),
-                            }}
-                            sx={{ minWidth:240, flex:1 }}
-                        />
-                        <TextField size="small" type="date" label="Ngày khám"
-                            value={workDate} onChange={e => setWorkDate(e.target.value)}
-                            InputLabelProps={{ shrink:true }} sx={{ minWidth:160 }}
-                        />
-                        <TextField select size="small"
-                            label={isAdmin ? "Lọc theo khoa lâm sàng" : "Phòng khám"}
-                            value={roomFilter} onChange={e => setRoomFilter(e.target.value)}
-                            sx={{ minWidth:200 }}>
-                            <MenuItem value="all">{isAdmin ? "Tất cả khoa" : "Tất cả phòng"}</MenuItem>
-                            {rooms.map(r => <MenuItem key={r} value={r}>{r}</MenuItem>)}
-                        </TextField>
-                        <Tooltip title="Làm mới danh sách">
-                            <IconButton size="small" onClick={refresh}
-                                sx={{ border:"1px solid #E5E9F0" }}>
-                                <RefreshOutlinedIcon fontSize="small" />
-                            </IconButton>
-                        </Tooltip>
-                    </Stack>
-                </Box>
-
-                {/* Table */}
-                <TableContainer>
-                    <Table>
-                        <TableHead>
-                            <TableRow sx={{ backgroundColor:"#F8FAFC" }}>
-                                <TableCell sx={{ fontWeight:800, color:"#374151", fontSize:12, py:1.5 }}>MÃ YÊU CẦU</TableCell>
-                                <TableCell sx={{ fontWeight:800, color:"#374151", fontSize:12 }}>
-                                    {isAdmin ? "TRƯỞNG KHOA ĐỀ XUẤT" : "BÁC SĨ ĐỀ XUẤT"}
-                                </TableCell>
-                                {isAdmin && <TableCell sx={{ fontWeight:800, color:"#374151", fontSize:12 }}>CHUYÊN KHOA</TableCell>}
-                                <TableCell sx={{ fontWeight:800, color:"#374151", fontSize:12 }}>NGÀY KHÁM</TableCell>
-                                <TableCell sx={{ fontWeight:800, color:"#374151", fontSize:12 }}>KHUNG GIỜ</TableCell>
-                                <TableCell sx={{ fontWeight:800, color:"#374151", fontSize:12 }}>PHÒNG KHÁM</TableCell>
-                                {!isAdmin && <TableCell sx={{ fontWeight:800, color:"#374151", fontSize:12 }}>THỜI GIAN GỬI</TableCell>}
-                                <TableCell sx={{ fontWeight:800, color:"#374151", fontSize:12 }}>TRẠNG THÁI</TableCell>
-                                <TableCell align="right" sx={{ fontWeight:800, color:"#374151", fontSize:12 }}>THAO TÁC</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {loading ? (
-                                Array.from({ length:3 }).map((_, i) => (
-                                    <TableRow key={i}>
-                                        {Array.from({ length: isAdmin ? 7 : 8 }).map((_, j) => (
-                                            <TableCell key={j}><Skeleton variant="text" /></TableCell>
-                                        ))}
-                                    </TableRow>
-                                ))
-                            ) : filteredItems.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={isAdmin ? 7 : 8} align="center" sx={{ py:6 }}>
-                                        <Stack alignItems="center" spacing={1}>
-                                            <FactCheckOutlinedIcon sx={{ fontSize:40, color:"#D1D5DB" }} />
-                                            <Typography color="text.secondary">Không có yêu cầu nào.</Typography>
-                                        </Stack>
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                filteredItems.map((item) => {
-                                    const isConflict = item.isConflict;
-                                    const dur = durationHours(item.startTime, item.endTime);
-                                    const yr = new Date().getFullYear();
-                                    const reqCode = `SCH-${yr}-${String(item.requestId).padStart(4, "0")}`;
-                                    return (
-                                        <TableRow key={item.requestId} hover
-                                            sx={{
-                                                borderLeft: isConflict ? "3px solid #EF4444" : "3px solid transparent",
-                                                "&:hover": { backgroundColor:"#F8FAFC" },
-                                            }}>
-
-                                            {/* Mã yêu cầu */}
-                                            <TableCell>
-                                                <Typography sx={{ fontFamily:"monospace", fontWeight:700, fontSize:13, color:"#005DAC", whiteSpace:"nowrap" }}>
-                                                    {reqCode}
-                                                </Typography>
-                                            </TableCell>
-
-                                            {/* Bác sĩ / Trưởng khoa */}
-                                            <TableCell>
-                                                <Stack direction="row" spacing={1} alignItems="center">
-                                                    <DoctorAvatar name={item.doctorName} />
-                                                    <Box>
-                                                        <Typography variant="body2" fontWeight={700} sx={{ color:"#111827" }}>
-                                                            {item.doctorName}
-                                                        </Typography>
-                                                        {item.departmentName && (
-                                                            <Typography variant="caption" color="text.secondary" sx={{ display:"block" }}>
-                                                                {item.departmentName}
-                                                            </Typography>
-                                                        )}
-                                                        {item.doctorCode && (
-                                                            <Typography variant="caption" color="text.secondary" sx={{ display:"block" }}>
-                                                                Mã BS: {item.doctorCode}
-                                                            </Typography>
-                                                        )}
-                                                    </Box>
-                                                </Stack>
-                                            </TableCell>
-
-                                            {/* Chuyên khoa (Admin only) */}
-                                            {isAdmin && (
-                                                <TableCell>
-                                                    {item.departmentName && (
-                                                        <Chip label={item.departmentName} size="small"
-                                                            sx={{ fontSize:11, fontWeight:700, bgcolor:"#EDE9FE", color:"#5B21B6" }} />
-                                                    )}
-                                                </TableCell>
-                                            )}
-
-                                            {/* Ngày khám */}
-                                            <TableCell>
-                                                <Typography variant="body2" fontWeight={700}
-                                                    sx={{ color:"#111827", whiteSpace:"nowrap" }}>
-                                                    {dateText(item.workDate)}
-                                                </Typography>
-                                                <Typography variant="caption" color="text.secondary">
-                                                    {dayOfWeek(item.workDate)}
-                                                </Typography>
-                                            </TableCell>
-
-                                            {/* Khung giờ */}
-                                            <TableCell>
-                                                <Typography variant="body2" fontWeight={700}
-                                                    sx={{ color: item.status === "Pending" ? "#059669" : "#111827", whiteSpace:"nowrap" }}>
-                                                    {timeText(item.startTime)} – {timeText(item.endTime)}
-                                                </Typography>
-                                                {dur && (
-                                                    <Typography variant="caption" color="text.secondary">
-                                                        {dur} giờ
-                                                    </Typography>
-                                                )}
-                                            </TableCell>
-
-                                            {/* Phòng khám */}
-                                            <TableCell>
-                                                <Stack direction="row" spacing={0.5} alignItems="center">
-                                                    <Typography variant="body2" fontWeight={700}
-                                                        sx={{ color: isConflict ? "#DC2626" : "#111827" }}>
-                                                        {item.roomName || "–"}
-                                                    </Typography>
-                                                    {isConflict && (
-                                                        <Tooltip title="Có xung đột lịch">
-                                                            <WarningAmberOutlinedIcon sx={{ fontSize:16, color:"#EF4444" }} />
-                                                        </Tooltip>
-                                                    )}
-                                                </Stack>
-                                            </TableCell>
-
-                                            {/* Thời gian gửi (DepartmentHead) */}
-                                            {!isAdmin && (
-                                                <TableCell>
-                                                    {item.createdAt ? (
-                                                        <>
-                                                            <Typography variant="body2"
-                                                                sx={{ color:"#6B7280", whiteSpace:"nowrap", fontSize:12 }}>
-                                                                {new Date(item.createdAt).toLocaleDateString("vi-VN")}
-                                                            </Typography>
-                                                            <Typography variant="caption" color="text.secondary" sx={{ fontSize:11 }}>
-                                                                {new Date(item.createdAt).toLocaleTimeString("vi-VN", { hour:"2-digit", minute:"2-digit" })}
-                                                            </Typography>
-                                                        </>
-                                                    ) : <Typography variant="body2" color="text.secondary">–</Typography>}
-                                                </TableCell>
-                                            )}
-
-                                            {/* Trạng thái */}
-                                            <TableCell>
-                                                <StatusBadge status={item.status} />
-                                            </TableCell>
-
-                                            {/* Thao tác */}
-                                            <TableCell align="right">
-                                                <Stack direction="row" spacing={0.75} justifyContent="flex-end" flexWrap="wrap">
-                                                    {item.canReview ? (
-                                                        <>
-                                                            <Button size="small" variant="contained" color="primary"
-                                                                startIcon={<CheckCircleOutlineIcon sx={{ fontSize:15 }} />}
-                                                                onClick={() => setApproveItem(item)}
-                                                                sx={{ fontWeight:800, fontSize:12, px:1.5, py:0.5, whiteSpace:"nowrap" }}>
-                                                                Duyệt ca
-                                                            </Button>
-                                                            <Button size="small" variant="outlined" color="error"
-                                                                startIcon={<BlockOutlinedIcon sx={{ fontSize:15 }} />}
-                                                                onClick={() => setRejectItem(item)}
-                                                                sx={{ fontWeight:800, fontSize:12, px:1.5, py:0.5, whiteSpace:"nowrap" }}>
-                                                                Từ chối
-                                                            </Button>
-                                                        </>
-                                                    ) : item.status === "Pending" ? (
-                                                        <Chip
-                                                            label={isAdmin ? "Chỉ Ban Giám Đốc đặc xử lý" : "Chờ Admin duyệt"}
-                                                            size="small" variant="outlined"
-                                                            sx={{ fontSize:11, color:"#6B7280" }} />
-                                                    ) : null}
-                                                    <Tooltip title="Xem chi tiết">
-                                                        <IconButton size="small" onClick={() => setDetailItem(item)}
-                                                            sx={{ border:"1px solid #E5E9F0" }}>
-                                                            <VisibilityOutlinedIcon sx={{ fontSize:16 }} />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                </Stack>
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })
-                            )}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
-
-                {/* Pagination footer */}
-                <Box sx={{ px:2.5, py:1.5, borderTop:"1px solid #F3F4F6", backgroundColor:"#FAFAFA" }}>
-                    <Stack direction="row" alignItems="center" justifyContent="space-between"
-                        flexWrap="wrap" spacing={1}>
-                        <Typography variant="body2" color="text.secondary">
-                            Hiển thị <strong>{filteredItems.length}</strong> trong tổng số{" "}
-                            <strong>{list.totalItems}</strong> yêu cầu ca khám
-                            {!isAdmin && deptName ? ` của ${deptName}` : ""}
-                        </Typography>
-                        <Stack direction="row" alignItems="center" spacing={0.75}>
-                            <Button size="small" variant="outlined"
-                                disabled={pageNumber <= 1}
-                                onClick={() => setPageNumber(v => v - 1)}
-                                sx={{ minWidth:60, fontWeight:700 }}>
-                                Trước
-                            </Button>
-                            {Array.from({ length: Math.min(Math.max(1, list.totalPages), 5) }).map((_, idx) => {
-                                const p = idx + 1;
-                                return (
-                                    <Button key={p} size="small"
-                                        variant={pageNumber === p ? "contained" : "outlined"}
-                                        onClick={() => setPageNumber(p)}
-                                        sx={{ minWidth:36, fontWeight:700, px:0 }}>
-                                        {p}
-                                    </Button>
-                                );
-                            })}
-                            <Button size="small" variant="outlined"
-                                disabled={pageNumber >= list.totalPages}
-                                onClick={() => setPageNumber(v => v + 1)}
-                                sx={{ minWidth:60, fontWeight:700 }}>
-                                Sau
-                            </Button>
-                        </Stack>
-                    </Stack>
-                </Box>
-            </Paper>
-
-            {/* ── Dialogs ─────────────────────────────────────────────── */}
-            {approveItem && (
-                <ApproveDialog detail={approveItem} working={working}
-                    onClose={() => setApproveItem(null)} onConfirm={handleApprove} />
-            )}
-            {rejectItem && (
-                <RejectDialog detail={rejectItem} working={working}
-                    onClose={() => setRejectItem(null)} onConfirm={handleReject} />
-            )}
-            {detailItem && (
-                <DetailDialog detail={detailItem} onClose={() => setDetailItem(null)} />
-            )}
-        </Box>
-    );
+    return <Stack spacing={2.5} sx={{ pb: 4, minWidth: 0 }}>
+        <ClinicPageHeader title="Duyệt yêu cầu ca khám" icon={FactCheckOutlined} description={isAdmin ? "Xem và xử lý các yêu cầu ca làm việc theo quyền phê duyệt của bạn." : `Các yêu cầu ca làm việc trong khoa phụ trách${user?.departmentName ? ": " + user.departmentName : "."}`} />
+        <Alert severity="info" sx={{ borderRadius: 2, bgcolor: "#F0F9FF", color: "#075985" }}>Bạn không được tự duyệt yêu cầu của mình. {isAdmin ? "Các thao tác duyệt hiển thị theo quyền xử lý của từng yêu cầu." : "Chỉ hiển thị yêu cầu của bác sĩ và phòng khám thuộc khoa phụ trách."}</Alert>
+        {success && <Alert severity="success" onClose={() => setSuccess("")}>{success}</Alert>}
+        {error && <Alert severity="error" action={<Button color="inherit" onClick={refresh}>Thử lại</Button>}>{error}</Alert>}
+        <Paper variant="outlined" sx={{ ...clinicSurfaceSx, p: 2.5 }}>
+            <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 1 }}><FilterListOutlined sx={{ fontSize: 18, color: clinicColors.muted }} /><Typography sx={{ fontSize: 14, fontWeight: 600 }}>Bộ lọc yêu cầu</Typography></Stack>
+            <Typography sx={{ mb: 2, fontSize: 13, color: clinicColors.muted }}>Trạng thái và phân trang áp dụng cho toàn bộ danh sách. Các bộ lọc bên dưới áp dụng trên trang đang xem.</Typography>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1.5fr 1fr 1fr" }, gap: 1.5 }}>
+                <TextField fullWidth size="small" label="Tìm trong trang hiện tại" placeholder="Tên bác sĩ, mã yêu cầu hoặc phòng" value={search} onChange={event => setSearch(event.target.value)} sx={clinicFieldSx} slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchOutlined sx={{ color: "#94A3B8", fontSize: 20 }} /></InputAdornment> } }} />
+                <TextField fullWidth size="small" type="date" label="Ngày làm việc" value={workDate} onChange={event => setWorkDate(event.target.value)} sx={clinicFieldSx} slotProps={{ inputLabel: { shrink: true } }} />
+                <TextField fullWidth size="small" select label="Phòng khám trong trang" value={roomFilter} onChange={event => setRoomFilter(event.target.value)} sx={clinicFieldSx}><MenuItem value="">Tất cả phòng khám</MenuItem>{rooms.map(room => <MenuItem key={room} value={room}>{room}</MenuItem>)}</TextField>
+            </Box>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ justifyContent: "flex-end", mt: 2 }}>
+                <Button onClick={reset} startIcon={<RestartAltOutlined />} sx={clinicButtonSx}>Đặt lại bộ lọc</Button>
+                <Button variant="outlined" disabled={loading} onClick={refresh} startIcon={<RefreshOutlined />} sx={clinicSecondaryButtonSx}>Làm mới dữ liệu</Button>
+            </Stack>
+        </Paper>
+        <Paper variant="outlined" sx={{ ...clinicSurfaceSx, overflow: "hidden" }} aria-busy={loading}>
+            <Tabs value={activeTab} onChange={(_, value) => { setActiveTab(value); setPageNumber(1); reset(); setSuccess(""); }} variant="scrollable" scrollButtons="auto" aria-label="Trạng thái yêu cầu ca" sx={{ px: 1.5, borderBottom: "1px solid #E2E8F0", "& .MuiTab-root": { textTransform: "none", fontSize: 14, fontWeight: 600, minHeight: 56 } }}>
+                {tabs.map(status => <Tab key={status} value={status} label={<Stack direction="row" spacing={0.75} sx={{ alignItems: "center" }}><span>{status === "All" ? "Tất cả trạng thái" : statusConfig[status].label}</span>{tabCounts[status] !== undefined && <Chip size="small" label={tabCounts[status]} sx={{ height: 22, bgcolor: "#F1F5F9", color: clinicColors.muted }} />}</Stack>} />)}
+            </Tabs>
+            {loading && <LinearProgress />}
+            <Typography sx={{ px: 2.5, pt: 1.5, display: { xs: "block", md: "none" }, fontSize: 12, color: clinicColors.muted }}>Vuốt ngang bảng để xem trạng thái và thao tác.</Typography>
+            <TableContainer><Table aria-label="Các yêu cầu ca khám" sx={{ ...clinicTableSx, minWidth: 1060 }}><TableHead><TableRow><TableCell>Yêu cầu</TableCell><TableCell>Bác sĩ / khoa</TableCell><TableCell>Ca làm việc</TableCell><TableCell>Phòng khám</TableCell><TableCell>Trạng thái</TableCell><TableCell align="right">Thao tác</TableCell></TableRow></TableHead><TableBody>
+                {loading ? Array.from({ length: 5 }, (_, index) => <TableRow key={index}>{Array.from({ length: 6 }, (_, cell) => <TableCell key={cell}><Skeleton /></TableCell>)}</TableRow>) : filtered.length ? filtered.map(item => <TableRow key={item.requestId} hover>
+                    <TableCell sx={{ color: "#0284C7", fontWeight: 600 }}>#{item.requestId}</TableCell>
+                    <TableCell><Stack direction="row" spacing={1.25} sx={{ alignItems: "center" }}><Avatar sx={{ width: 34, height: 34, bgcolor: "#E0F2FE", color: "#0369A1", fontSize: 13 }}>{item.doctorName?.trim().split(" ").pop()?.slice(0, 2).toUpperCase()}</Avatar><Box><Typography sx={{ fontSize: 14, fontWeight: 600 }}>{item.doctorName}</Typography><Typography sx={{ fontSize: 13, color: clinicColors.muted, mt: 0.5 }}>{item.departmentName}</Typography></Box></Stack></TableCell>
+                    <TableCell><Typography sx={{ fontSize: 14, fontWeight: 500 }}>{dateText(item.workDate)}</Typography><Typography sx={{ fontSize: 13, color: clinicColors.muted, mt: 0.5 }}>{timeText(item.startTime)} – {timeText(item.endTime)}</Typography></TableCell>
+                    <TableCell><Typography sx={{ fontSize: 14 }}>{item.roomName || "–"}</Typography>{item.isConflict && <Tooltip title={item.conflictDetails || "Có xung đột lịch"}><Chip icon={<WarningAmberOutlined />} size="small" label="Trùng lịch" sx={{ mt: 0.75, bgcolor: "#FFFBEB", color: "#92400E" }} /></Tooltip>}</TableCell>
+                    <TableCell><StatusBadge status={item.status} /></TableCell>
+                    <TableCell align="right"><Stack direction="row" spacing={0.75} sx={{ justifyContent: "flex-end", alignItems: "center" }}>
+                        {item.canReview && <><Button size="small" variant="contained" onClick={() => openAction(item, "approve")} startIcon={<CheckCircleOutlineOutlined />} sx={{ ...clinicPrimaryButtonSx, minHeight: 34, whiteSpace: "nowrap" }}>Duyệt</Button><Button size="small" variant="outlined" color="error" onClick={() => openAction(item, "reject")} startIcon={<CancelOutlined />} sx={{ ...clinicButtonSx, minHeight: 34, whiteSpace: "nowrap" }}>Từ chối</Button></>}
+                        {!item.canReview && item.status === "Pending" && <Typography sx={{ fontSize: 12, color: clinicColors.muted }}>Không có quyền duyệt</Typography>}
+                        <Tooltip title="Xem chi tiết"><IconButton size="small" aria-label={`Xem chi tiết yêu cầu #${item.requestId}`} onClick={() => setDetail(item)} sx={{ color: "#64748B" }}><VisibilityOutlined fontSize="small" /></IconButton></Tooltip>
+                    </Stack></TableCell>
+                </TableRow>) : <TableRow><TableCell colSpan={6}><EmptyState message="Không có yêu cầu phù hợp trên trang này." /></TableCell></TableRow>}
+            </TableBody></Table></TableContainer>
+            <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} sx={{ p: 2.5, justifyContent: "space-between", alignItems: { md: "center" }, borderTop: "1px solid #E2E8F0" }}>
+                <Typography sx={{ fontSize: 13, color: clinicColors.muted }}>{filtered.length}/{list.items.length} yêu cầu trên trang · {list.totalItems} yêu cầu theo trạng thái</Typography>
+                <Pagination count={Math.max(1, list.totalPages)} page={pageNumber} disabled={loading} onChange={(_, value) => setPageNumber(value)} shape="rounded" color="primary" size="small" getItemAriaLabel={(type, value) => type === "next" ? "Trang tiếp" : type === "previous" ? "Trang trước" : `Trang ${value}`} />
+            </Stack>
+        </Paper>
+        {target && <ActionDialog key={`${target.action}-${target.item.requestId}`} target={target} working={working} error={actionError} onClose={() => setTarget(null)} onConfirm={confirm} />}
+        <Dialog open={Boolean(detail)} onClose={() => setDetail(null)} fullWidth maxWidth="sm" aria-labelledby="request-detail-title" slotProps={{ paper: { sx: clinicDialogPaperSx } }}>
+            <DialogTitle id="request-detail-title" sx={clinicDialogTitleSx}>Chi tiết yêu cầu #{detail?.requestId}</DialogTitle>
+            {detail && <DialogContent sx={{ px: 3, pb: 3 }}><Stack spacing={2.5}><RequestSummary item={detail} /><StatusBadge status={detail.status} />{detail.rejectReason && <Alert severity="warning" sx={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>Lý do từ chối: {detail.rejectReason}</Alert>}{detail.isConflict && <Alert severity="warning">{detail.conflictDetails}</Alert>}</Stack></DialogContent>}
+            <DialogActions sx={clinicDialogActionsSx}><Button onClick={() => setDetail(null)} sx={clinicSecondaryButtonSx}>Đóng</Button></DialogActions>
+        </Dialog>
+    </Stack>;
 }

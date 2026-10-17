@@ -1,4 +1,5 @@
-import { Box, Chip, Paper, Stack, Typography } from "@mui/material";
+import { Box, Button, Chip, Paper, Stack, Typography } from "@mui/material";
+import { Link } from "react-router-dom";
 
 /**
  * @param {{ doctor: import("../../api/doctorApi").PublicDoctor }} props
@@ -7,6 +8,7 @@ function PublicDoctorCard({ doctor }) {
     return (
         <Paper variant="outlined" sx={{ p: 2.5, height: "100%", borderRadius: 3 }}>
             <Stack spacing={1.25}>
+                <Button component={Link} to={`/reviews?doctorId=${doctor.doctorId}`} sx={{ alignSelf: "flex-start" }}>Xem đánh giá</Button>
                 <Box>
                     <Typography variant="h6" fontWeight={700} color="text.primary">
                         {doctor.title} {doctor.fullName}

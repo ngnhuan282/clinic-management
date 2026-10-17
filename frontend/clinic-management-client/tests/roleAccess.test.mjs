@@ -96,3 +96,29 @@ test("direct review URL redirects to login or 403 according to the active sessio
     assert.equal(redirectForProtectedRoute({ isAuthenticated: true, role: "Doctor", permissions: ["clinical.viewAssigned"] }, path, options), "/403");
     assert.equal(redirectForProtectedRoute({ isAuthenticated: true, role: "DepartmentHead", permissions: ["schedules.review"] }, path, options), null);
 });
+
+test("DepartmentHead, Cashier and Pharmacist can open their account profile but cannot moderate reviews", () => {
+    for (const role of ["DepartmentHead", "Cashier", "Pharmacist"]) {
+        const user = { role, permissions: [] };
+        assert.equal(canAccessPath(user, "/internal/profile"), true);
+        assert.equal(canAccessPath(user, "/internal/reviews"), false);
+        assert.equal(redirectForProtectedRoute({ ...user, isAuthenticated: true }, "/internal/reviews", { allowedRoles: ["Admin"] }), "/403");
+    }
+    assert.equal(redirectForProtectedRoute({ isAuthenticated: false }, "/internal/reviews", { allowedRoles: ["Admin"] }), "/internal/login");
+});
+
+test("billing portal is accessible to Cashier and Admin; patient reviews stay in the patient portal", () => {
+    assert.equal(canAccessPath({ role: "Cashier", permissions: [] }, "/internal/cashier/billing"), true);
+    assert.equal(canAccessPath({ role: "Admin", permissions: [] }, "/internal/cashier/billing"), true);
+    assert.equal(canAccessPath({ role: "Pharmacist", permissions: [] }, "/internal/cashier/billing"), false);
+    assert.equal(canAccessPath({ role: "Patient", permissions: [] }, "/my-reviews"), true);
+    assert.equal(canAccessPath({ role: "Cashier", permissions: [] }, "/my-reviews"), false);
+});
+
+test("an authenticated account with an empty custom role still has access to its own profile", () => {
+    const user = { isAuthenticated: true, role: "ProfileOnly", permissions: [] };
+    assert.equal(canAccessPath(user, "/profile"), true);
+    assert.equal(redirectForProtectedRoute(user, "/profile"), null);
+    assert.equal(redirectForProtectedRoute({ isAuthenticated: false }, "/profile"), "/login");
+    assert.equal(canAccessPath(user, "/internal/users"), false);
+});

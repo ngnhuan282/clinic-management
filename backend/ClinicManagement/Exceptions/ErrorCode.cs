@@ -372,6 +372,8 @@ public sealed class ErrorCode
         new(7203, "Lab test already has a result", HttpStatusCode.Conflict);
     public static readonly ErrorCode DOCTOR_SCHEDULE_CONFLICT =
         new(7301, "Doctor or room already has a schedule at this time", HttpStatusCode.Conflict);
+    public static readonly ErrorCode DOCTOR_SCHEDULE_NOT_FOUND =
+        new(7304, "Doctor schedule not found", HttpStatusCode.NotFound);
     public static readonly ErrorCode SCHEDULE_REQUEST_NOT_FOUND =
         new(7302, "Schedule request not found", HttpStatusCode.NotFound);
     public static readonly ErrorCode SCHEDULE_REQUEST_INVALID_STATUS =
@@ -379,6 +381,11 @@ public sealed class ErrorCode
 
     public static readonly ErrorCode PRESCRIPTION_NOT_FOUND =
         new(7401, "Prescription not found", HttpStatusCode.NotFound);
+
+    public static readonly ErrorCode REVIEW_EXISTED =
+        new(7501, "This appointment already has a review", HttpStatusCode.Conflict);
+    public static readonly ErrorCode REVIEW_NOT_FOUND =
+        new(7502, "Review not found", HttpStatusCode.NotFound);
 
     public static readonly ErrorCode PRESCRIPTION_EXISTED =
         new(7402, "Prescription already exists for this medical record", HttpStatusCode.Conflict);

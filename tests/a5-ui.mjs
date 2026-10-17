@@ -41,11 +41,10 @@ try {
     for (let i = 0; i < 100; i++) { try { if ((await fetch("http://127.0.0.1:5190")).ok) break; } catch {} await delay(200); }
     browser = await chromium.launch({ channel: process.env.BROWSER_CHANNEL || "msedge", headless: true });
     const context = await browser.newContext({ viewport: { width: 1440, height: 1050 } });
-    await context.addInitScript(({ accessToken, refreshToken, user }) => {
+    await context.addInitScript(({ accessToken, user }) => {
         localStorage.setItem("accessToken", accessToken);
-        localStorage.setItem("refreshToken", refreshToken);
         localStorage.setItem("user", JSON.stringify(user));
-    }, { accessToken: head.accessToken, refreshToken: head.refreshToken, user });
+    }, { accessToken: head.accessToken, user });
     page = await context.newPage();
     page.setDefaultTimeout(15000);
     page.setDefaultNavigationTimeout(60000);

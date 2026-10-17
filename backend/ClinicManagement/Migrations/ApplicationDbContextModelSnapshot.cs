@@ -614,6 +614,12 @@ namespace ClinicManagement.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<decimal>("InsuranceDiscountPercent")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("PatientAmount")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<int>("PatientId")
                         .HasColumnType("int");
 
@@ -1758,6 +1764,53 @@ namespace ClinicManagement.Migrations
                     b.ToTable("RefreshTokens");
                 });
 
+            modelBuilder.Entity("ClinicManagement.Data.Entities.Review", b =>
+                {
+                    b.Property<int>("ReviewId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ReviewId"));
+
+                    b.Property<int>("AppointmentId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DoctorId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsVisible")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<int>("PatientId")
+                        .HasColumnType("int");
+
+                    b.Property<byte>("Rating")
+                        .HasColumnType("tinyint");
+
+                    b.HasKey("ReviewId");
+
+                    b.HasIndex("AppointmentId")
+                        .IsUnique();
+
+                    b.HasIndex("PatientId");
+
+                    b.HasIndex("DoctorId", "IsVisible", "CreatedAt");
+
+                    b.ToTable("Reviews", t =>
+                        {
+                            t.HasCheckConstraint("CK_Reviews_Rating", "[Rating] BETWEEN 1 AND 5");
+                        });
+                });
+
             modelBuilder.Entity("ClinicManagement.Data.Entities.Role", b =>
                 {
                     b.Property<int>("RoleId")
@@ -2900,6 +2953,33 @@ namespace ClinicManagement.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ClinicManagement.Data.Entities.Review", b =>
+                {
+                    b.HasOne("ClinicManagement.Data.Entities.Appointment", "Appointment")
+                        .WithMany()
+                        .HasForeignKey("AppointmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ClinicManagement.Data.Entities.Doctor", "Doctor")
+                        .WithMany()
+                        .HasForeignKey("DoctorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ClinicManagement.Data.Entities.Patient", "Patient")
+                        .WithMany()
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Appointment");
+
+                    b.Navigation("Doctor");
+
+                    b.Navigation("Patient");
                 });
 
             modelBuilder.Entity("ClinicManagement.Data.Entities.RolePermission", b =>

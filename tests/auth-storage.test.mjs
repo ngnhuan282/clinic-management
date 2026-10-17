@@ -8,7 +8,7 @@ class MemoryStorage {
     setItem(key, value) { this.data.set(key, String(value)); }
     removeItem(key) { this.data.delete(key); }
 }
-const credentials = { accessToken: 'access', refreshToken: 'refresh', user: { userId: 4, role: 'Patient' } };
+const credentials = { accessToken: 'access', user: { userId: 4, role: 'Patient' } };
 beforeEach(() => {
     globalThis.localStorage = new MemoryStorage();
     globalThis.sessionStorage = new MemoryStorage();
@@ -50,4 +50,15 @@ test('existing local-storage sessions remain compatible', () => {
     localStorage.setItem('user', JSON.stringify(credentials.user));
     assert.equal(readSession().accessToken, 'legacy');
     assert.equal(readSession().remember, true);
+});
+
+test('refresh tokens are discarded from storage even with legacy credentials', () => {
+    saveSession({ ...credentials, refreshToken: 'legacy-secret' });
+    assert.equal(localStorage.getItem('refreshToken'), null);
+    assert.equal(sessionStorage.getItem('refreshToken'), null);
+    localStorage.setItem('refreshToken', 'stale-secret');
+    localStorage.setItem('accessToken', 'legacy');
+    localStorage.setItem('user', JSON.stringify(credentials.user));
+    readSession();
+    assert.equal(localStorage.getItem('refreshToken'), null);
 });
