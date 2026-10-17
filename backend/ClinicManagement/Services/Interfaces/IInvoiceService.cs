@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+    using System.Collections.Generic;
 using System.Threading.Tasks;
 using ClinicManagement.DTOs.Invoices;
 
@@ -9,5 +9,7 @@ namespace ClinicManagement.Services.Interfaces
         Task<List<PendingAppointmentBillingDto>> GetPendingBillingsAsync(string stage);
         Task<InvoiceResponseDto> CreateInvoiceAsync(int cashierId, CreateInvoiceDto dto);
         Task<InvoiceResponseDto?> GetInvoiceByIdAsync(int id);
+        Task<IEnumerable<InvoiceResponseDto>> GetInvoiceHistoryAsync(string? searchKeyword);
+        Task<InvoiceResponseDto> CreateAdjustmentInvoiceAsync(int cashierId, CreateAdjustmentInvoiceDto dto);
     }
 }

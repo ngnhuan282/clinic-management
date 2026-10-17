@@ -21,4 +21,5 @@ public interface IReceptionRepository
     Task AddBookInvoiceAsync(BookInvoice invoice);
     Task<IDbContextTransaction> BeginTransactionAsync();
     Task SaveChangesAsync();
+    Task<PatientBook?> GetLatestBookForPatientAsync(int patientId);
 }

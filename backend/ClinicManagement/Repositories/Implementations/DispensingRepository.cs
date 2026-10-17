@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Data;
 using ClinicManagement.Commons;
 using ClinicManagement.Data;
@@ -15,6 +16,181 @@ public class DispensingRepository(ApplicationDbContext context) : IDispensingRep
     public async Task<(IEnumerable<Prescription> Items, int TotalItems)> GetPagedAsync(
         DispensingFilterRequest request, DateOnly today)
     {
+        _context = context;
+    }
+
+    public async Task<(IEnumerable<Prescription> Items, int TotalItems)>
+        GetPagedAsync(DispensingFilterRequest request)
+    {
+        var query = BuildFilteredQuery(request);
+        var totalItems = await query.CountAsync();
+
+        var items = await IncludeListRelations(query)
+            .OrderByDescending(x => x.PrescriptionDate)
+            .ThenByDescending(x => x.PrescriptionId)
+            .Skip((request.PageNumber - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .AsSplitQuery()
+            .ToListAsync();
+
+        return (items, totalItems);
+    }
+
+    public async Task<(
+        int AwaitingPayment,
+        int ReadyToDispense,
+        int DispensedToday)> GetSummaryAsync(
+            DateTime todayStart,
+            DateTime tomorrowStart)
+    {
+        var active = _context.Prescriptions.AsNoTracking()
+            .Where(x =>
+                x.Status == PrescriptionStatusConstants.Issued ||
+                x.Status == PrescriptionStatusConstants.Dispensed
+            );
+
+        var awaitingPayment = await active.CountAsync(x =>
+            x.Status == PrescriptionStatusConstants.Issued &&
+            !_context.Invoices.Any(invoice =>
+                invoice.AppointmentId == x.MedicalRecord.AppointmentId &&
+                invoice.Status == PaidStatus &&
+                (invoice.BillingStage == MedicineStage ||
+                    invoice.BillingStage == FinalStage) &&
+                (invoice.InvoiceDetails.Any(line =>
+                    line.SourceType == "Prescription" &&
+                    line.SourceId == x.PrescriptionId
+                ) || x.Details.All(detail =>
+                    invoice.InvoiceDetails.Any(line =>
+                        line.SourceType == "PrescriptionDetail" &&
+                        line.SourceId == detail.PrescriptionDetailId
+                    )
+                ))
+            )
+        );
+
+        var readyToDispense = await active.CountAsync(x =>
+            x.Status == PrescriptionStatusConstants.Issued &&
+            _context.Invoices.Any(invoice =>
+                invoice.AppointmentId == x.MedicalRecord.AppointmentId &&
+                invoice.Status == PaidStatus &&
+                (invoice.BillingStage == MedicineStage ||
+                    invoice.BillingStage == FinalStage) &&
+                (invoice.InvoiceDetails.Any(line =>
+                    line.SourceType == "Prescription" &&
+                    line.SourceId == x.PrescriptionId
+                ) || x.Details.All(detail =>
+                    invoice.InvoiceDetails.Any(line =>
+                        line.SourceType == "PrescriptionDetail" &&
+                        line.SourceId == detail.PrescriptionDetailId
+                    )
+                ))
+            )
+        );
+
+        var dispensedToday = await active.CountAsync(x =>
+            x.Status == PrescriptionStatusConstants.Dispensed &&
+            x.DispensedAt >= todayStart &&
+            x.DispensedAt < tomorrowStart
+        );
+
+        return (awaitingPayment, readyToDispense, dispensedToday);
+    }
+
+    public Task<Prescription?> GetByIdAsync(
+        int prescriptionId,
+        bool asNoTracking = true)
+    {
+        IQueryable<Prescription> query = _context.Prescriptions;
+
+        if (asNoTracking)
+        {
+            query = query.AsNoTracking();
+        }
+
+        return IncludeDetailRelations(query)
+            .AsSplitQuery()
+            .FirstOrDefaultAsync(x =>
+                x.PrescriptionId == prescriptionId
+            );
+    }
+
+    public async Task<IReadOnlyList<Invoice>> GetPaidMedicineInvoicesAsync(
+        IReadOnlyCollection<int> appointmentIds)
+    {
+        if (appointmentIds.Count == 0)
+        {
+            return [];
+        }
+
+        return await _context.Invoices
+            .AsNoTracking() 
+            .Include(x => x.InvoiceDetails)
+            .Where(x =>
+                x.AppointmentId.HasValue &&
+    appointmentIds.Contains(x.AppointmentId.Value) &&
+    x.Status == PaidStatus &&
+    (x.BillingStage == MedicineStage ||
+     x.BillingStage == FinalStage)
+            )
+            .OrderByDescending(x => x.CreatedAt)
+            .ThenByDescending(x => x.Id)
+            .ToListAsync();
+    }
+
+    public async Task<Invoice?> GetPaidMedicineInvoiceAsync(
+        int appointmentId,
+        int prescriptionId,
+        IReadOnlyCollection<int> prescriptionDetailIds)
+    {
+        var candidates = await _context.Invoices
+            .AsNoTracking()
+            .Include(x => x.InvoiceDetails)
+            .Where(x =>
+                x.AppointmentId == appointmentId &&
+                x.Status == PaidStatus &&
+                (x.BillingStage == MedicineStage ||
+                    x.BillingStage == FinalStage)
+            )
+            .OrderByDescending(x => x.CreatedAt)
+            .ThenByDescending(x => x.Id)
+            .ToListAsync();
+
+        return candidates.FirstOrDefault(x =>
+            IsInvoiceForPrescription(
+                x,
+                prescriptionId,
+                prescriptionDetailIds
+            )
+        );
+    }
+
+    public async Task AddDispenseDetailsAsync(
+        IEnumerable<DispenseDetail> dispenseDetails)
+    {
+        await _context.DispenseDetails.AddRangeAsync(dispenseDetails);
+    }
+
+    public async Task SaveChangesAsync()
+    {
+        await _context.SaveChangesAsync();
+    }
+
+    public Task<IDbContextTransaction> BeginTransactionAsync(
+        IsolationLevel isolationLevel)
+    {
+        return _context.Database.BeginTransactionAsync(isolationLevel);
+    }
+
+    private IQueryable<Prescription> BuildFilteredQuery(
+        DispensingFilterRequest request)
+    {
+        var query = _context.Prescriptions
+            .AsNoTracking()
+            .Where(x =>
+                x.Status == PrescriptionStatusConstants.Issued ||
+                x.Status == PrescriptionStatusConstants.Dispensed
+            );
+
         var query = WorkflowQuery(ActiveQuery(), request.WorkflowStatus, today);
         if (!string.IsNullOrWhiteSpace(request.Search))
         {
@@ -68,20 +244,38 @@ public class DispensingRepository(ApplicationDbContext context) : IDispensingRep
             await WorkflowQuery(active, "NeedsReview", today).CountAsync());
     }
 
-    public Task<Prescription?> GetByIdAsync(int prescriptionId, bool asNoTracking = true)
+    private static bool IsInvoiceForPrescription(
+    Invoice invoice, int prescriptionId, IReadOnlyCollection<int> prescriptionDetailIds)
+{
+    if (invoice.InvoiceDetails.Any(x => x.SourceType == "Prescription" && x.SourceId == prescriptionId))
     {
-        IQueryable<Prescription> query = context.Prescriptions;
-        if (asNoTracking) query = query.AsNoTracking();
-        return IncludeRelations(query).Include(x => x.DispensedByUser)
-            .Include(x => x.Details).ThenInclude(x => x.DispenseDetails).ThenInclude(x => x.Inventory)
-            .Include(x => x.StockReviews).ThenInclude(x => x.CreatedByUser)
-            .Include(x => x.StockReviews).ThenInclude(x => x.ResolvedByUser)
-            .Include(x => x.StockReviews).ThenInclude(x => x.Decisions).ThenInclude(x => x.DoctorUser)
-            .AsSplitQuery().FirstOrDefaultAsync(x => x.PrescriptionId == prescriptionId);
+        return true;
     }
 
-    public async Task<IReadOnlyList<Invoice>> GetPaidMedicineInvoicesAsync(
-        IReadOnlyCollection<int> appointmentIds, bool onlyPaid = true)
+    if (prescriptionDetailIds == null || prescriptionDetailIds.Count == 0)
+    {
+        return false;
+    }
+
+    var billedDetailIds = invoice.InvoiceDetails
+        .Where(x => x.SourceType == "PrescriptionDetail")
+        .Select(x => x.SourceId)
+        .ToHashSet();
+
+    // Dùng foreach thuần túy để triệt tiêu hoàn toàn lỗi xung đột extension method của C#
+    foreach (var id in prescriptionDetailIds)
+    {
+        if (!billedDetailIds.Contains(id))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+    private static IQueryable<Prescription> IncludeDetailRelations(
+        IQueryable<Prescription> query)
     {
         if (appointmentIds.Count == 0) return [];
         return await context.Invoices.AsNoTracking().Include(x => x.InvoiceDetails)

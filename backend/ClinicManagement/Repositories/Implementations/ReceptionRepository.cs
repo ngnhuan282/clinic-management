@@ -96,4 +96,12 @@ public class ReceptionRepository : IReceptionRepository
         _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
     public Task SaveChangesAsync() => _context.SaveChangesAsync();
+
+    public Task<PatientBook?> GetLatestBookForPatientAsync(int patientId) =>
+    _context.PatientBooks
+        .AsNoTracking()
+        .Where(x => x.PatientId == patientId)
+        .OrderByDescending(x => x.IssuedAt)
+        .ThenByDescending(x => x.PatientBookId)
+        .FirstOrDefaultAsync();
 }

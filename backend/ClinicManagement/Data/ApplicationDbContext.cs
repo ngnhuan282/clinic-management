@@ -111,31 +111,36 @@ public class ApplicationDbContext : DbContext
                 {
                     RoleId = 1,
                     RoleName = "Admin",
-                    Description = "System administrator", IsSystem = true
+                    Description = "System administrator",
+                    IsSystem = true
                 },
                 new Role
                 {
                     RoleId = 2,
                     RoleName = "Doctor",
-                    Description = "Doctor", IsSystem = true
+                    Description = "Doctor",
+                    IsSystem = true
                 },
                 new Role
                 {
                     RoleId = 3,
                     RoleName = "Receptionist",
-                    Description = "Receptionist", IsSystem = true
+                    Description = "Receptionist",
+                    IsSystem = true
                 },
                 new Role
                 {
                     RoleId = 4,
                     RoleName = "Patient",
-                    Description = "Patient", IsSystem = true
+                    Description = "Patient",
+                    IsSystem = true
                 },
                 new Role
                 {
                     RoleId = 5,
                     RoleName = "LabTechnician",
-                    Description = "Lab technician", IsSystem = true
+                    Description = "Lab technician",
+                    IsSystem = true
                 },
                 new Role
                 {
@@ -147,7 +152,8 @@ public class ApplicationDbContext : DbContext
                 {
                     RoleId = 7,
                     RoleName = "Pharmacist",
-                    Description = "Pharmacist", IsSystem = true
+                    Description = "Pharmacist",
+                    IsSystem = true
                 }
             );
         });
@@ -162,8 +168,12 @@ public class ApplicationDbContext : DbContext
             entity.Property(x => x.Scope).HasMaxLength(250);
             entity.HasData(PermissionCatalog.All.Select(x => new Permission
             {
-                Code = x.Code, Module = x.Module, Name = x.Name, Kind = x.Kind,
-                Scope = x.Scope, IsImplemented = x.IsImplemented
+                Code = x.Code,
+                Module = x.Module,
+                Name = x.Name,
+                Kind = x.Kind,
+                Scope = x.Scope,
+                IsImplemented = x.IsImplemented
             }));
         });
 
@@ -177,6 +187,11 @@ public class ApplicationDbContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict);
             var roleIds = new Dictionary<string, int>
             {
+                [RoleConstants.Admin] = 1,
+                [RoleConstants.Doctor] = 2,
+                [RoleConstants.Receptionist] = 3,
+                [RoleConstants.Patient] = 4,
+                [RoleConstants.LabTechnician] = 5,
                 [RoleConstants.Admin] = 1, [RoleConstants.Doctor] = 2,
                 [RoleConstants.Receptionist] = 3, [RoleConstants.Patient] = 4,
                 [RoleConstants.LabTechnician] = 5, [RoleConstants.DepartmentHead] = 6,
@@ -820,5 +835,14 @@ public class ApplicationDbContext : DbContext
                 .HasForeignKey(x => x.InventoryId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
+        
+
+        modelBuilder.Entity<Invoice>(entity =>
+{
+    entity.Property(e => e.TotalAmount).HasPrecision(18, 2);
+    entity.Property(e => e.InsuranceAmount).HasPrecision(18, 2);
+    entity.Property(e => e.InsuranceDiscountPercent).HasPrecision(5, 2);
+    entity.Property(e => e.PatientAmount).HasPrecision(18, 2);
+});
     }
 }
