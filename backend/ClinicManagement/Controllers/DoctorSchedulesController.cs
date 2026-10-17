@@ -58,8 +58,7 @@ public class DoctorSchedulesController(IDoctorScheduleService service, ISchedule
 
     [HttpGet]
     public async Task<IActionResult> Get([FromQuery] DoctorScheduleQuery query) =>
-        Ok(ApiResponse<object>.Success(await service.GetSchedulesAsync(query.Date, query.WeekStart,
-            query.SpecializationId, query.DoctorId, query.RoomId)));
+        Ok(ApiResponse<PagedResponse<DoctorScheduleResponse>>.Success(await service.GetSchedulesAsync(query)));
 
     [HttpGet("{id:guid}")]
     [Authorize(Roles = RoleConstants.Admin + "," + RoleConstants.DepartmentHead)]

@@ -145,30 +145,32 @@ public class DoctorScheduleService(ApplicationDbContext context, ICurrentUserSer
         return MapSchedule(created);
     }
 
-    public async Task<List<DoctorScheduleResponse>> GetSchedulesAsync(DateOnly? date, DateOnly? weekStart, int? specializationId,
-        int? doctorId = null, int? roomId = null)
+    public async Task<PagedResponse<DoctorScheduleResponse>> GetSchedulesAsync(DoctorScheduleQuery query)
     {
         // Only approved, active shifts are published; pending or rejected requests never reach booking or department views.
-        var query = GetScheduleQuery()
+        var scheduleQuery = GetScheduleQuery()
             .Where(x => x.Status == ScheduleStatusConstants.Approved && x.IsActive);
         var departmentId = await scope.ForHeadAsync();
-        await scope.ValidateFiltersAsync(departmentId, doctorId, roomId);
+        await scope.ValidateFiltersAsync(departmentId, query.DoctorId, query.RoomId);
         if (departmentId.HasValue)
         {
-            query = query.Where(x => x.Doctor.DepartmentId == departmentId && x.Room.DepartmentId == departmentId);
+            scheduleQuery = scheduleQuery.Where(x => x.Doctor.DepartmentId == departmentId && x.Room.DepartmentId == departmentId);
         }
-        if (doctorId.HasValue) query = query.Where(x => x.DoctorId == doctorId);
-        if (roomId.HasValue) query = query.Where(x => x.RoomId == roomId);
-        if (date.HasValue) query = query.Where(x => x.WorkDate == date.Value);
-        if (weekStart.HasValue)
+        if (query.DoctorId.HasValue) scheduleQuery = scheduleQuery.Where(x => x.DoctorId == query.DoctorId);
+        if (query.RoomId.HasValue) scheduleQuery = scheduleQuery.Where(x => x.RoomId == query.RoomId);
+        if (query.Date.HasValue) scheduleQuery = scheduleQuery.Where(x => x.WorkDate == query.Date.Value);
+        if (query.WeekStart.HasValue)
         {
-            var weekEnd = weekStart.Value.AddDays(6);
-            query = query.Where(x => x.WorkDate >= weekStart.Value && x.WorkDate <= weekEnd);
+            var weekEnd = query.WeekStart.Value.AddDays(6);
+            scheduleQuery = scheduleQuery.Where(x => x.WorkDate >= query.WeekStart.Value && x.WorkDate <= weekEnd);
         }
-        if (specializationId.HasValue)
-            query = query.Where(x => x.Doctor.SpecializationId == specializationId.Value);
-        var schedules = await query.OrderBy(x => x.WorkDate).ThenBy(x => x.Shift).ToListAsync();
-        return schedules.Select(MapSchedule).ToList();
+        if (query.SpecializationId.HasValue)
+            scheduleQuery = scheduleQuery.Where(x => x.Doctor.SpecializationId == query.SpecializationId.Value);
+
+        var ordered = scheduleQuery.OrderBy(x => x.WorkDate).ThenBy(x => x.Shift).ThenBy(x => x.ScheduleId);
+        var totalItems = await ordered.CountAsync();
+        var schedules = await ordered.Skip((query.PageNumber - 1) * query.PageSize).Take(query.PageSize).ToListAsync();
+        return new PagedResponse<DoctorScheduleResponse>(schedules.Select(MapSchedule), query.PageNumber, query.PageSize, totalItems);
     }
 
     public async Task<DoctorScheduleResponse> GetByIdAsync(Guid id)

@@ -1990,6 +1990,14 @@ namespace ClinicManagement.Migrations
                         },
                         new
                         {
+                            RoleId = 6,
+                            Description = "Department head and doctor",
+                            IsSystem = true,
+                            RoleName = "DepartmentHead",
+                            Version = new byte[0]
+                        },
+                        new
+                        {
                             RoleId = 7,
                             Description = "Pharmacist",
                             IsSystem = true,
@@ -2178,6 +2186,66 @@ namespace ClinicManagement.Migrations
                         {
                             RoleId = 1,
                             PermissionCode = "reports.revenue"
+                        },
+                        new
+                        {
+                            RoleId = 6,
+                            PermissionCode = "schedules.review"
+                        },
+                        new
+                        {
+                            RoleId = 6,
+                            PermissionCode = "appointments.startExamination"
+                        },
+                        new
+                        {
+                            RoleId = 6,
+                            PermissionCode = "clinical.viewAssigned"
+                        },
+                        new
+                        {
+                            RoleId = 6,
+                            PermissionCode = "clinical.writeRecord"
+                        },
+                        new
+                        {
+                            RoleId = 6,
+                            PermissionCode = "clinical.editDiagnosis"
+                        },
+                        new
+                        {
+                            RoleId = 6,
+                            PermissionCode = "clinical.manageDiseases"
+                        },
+                        new
+                        {
+                            RoleId = 6,
+                            PermissionCode = "pharmacy.viewInventory"
+                        },
+                        new
+                        {
+                            RoleId = 6,
+                            PermissionCode = "pharmacy.viewCatalog"
+                        },
+                        new
+                        {
+                            RoleId = 6,
+                            PermissionCode = "pharmacy.prescribe"
+                        },
+                        new
+                        {
+                            RoleId = 6,
+                            PermissionCode = "labs.viewTypes"
+                        },
+                        new
+                        {
+                            RoleId = 6,
+                            PermissionCode = "labs.viewOrders"
+                        },
+                        new
+                        {
+                            RoleId = 6,
+                            PermissionCode = "labs.order"
                         },
                         new
                         {

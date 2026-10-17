@@ -63,8 +63,8 @@ export default function DoctorScheduleManagementPage() {
     }, [revision]);
     useEffect(() => {
         let active = true;
-        doctorScheduleApi.list({ weekStart, specializationId: specializationId || undefined })
-            .then(response => { if (active) setList({ key: queryKey, items: doctorScheduleApi.unwrap(response) }); })
+        doctorScheduleApi.list({ weekStart, specializationId: specializationId || undefined, pageSize: 100 })
+            .then(response => { if (active) setList({ key: queryKey, items: doctorScheduleApi.unwrap(response).items }); })
             .catch(error => { if (active) setList({ key: queryKey, error: getApiErrorMessage(error) }); });
         return () => { active = false; };
     }, [weekStart, specializationId, queryKey]);
