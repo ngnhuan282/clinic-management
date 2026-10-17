@@ -72,6 +72,7 @@ const MENU_ICONS = {
 };
 
 const ROLE_BRANDS = {
+    Cashier: { title: "MediFlow Cashier", subtitle: "Thu ngân" },
     Admin: {
         title: "MediFlow Admin",
         subtitle: "Phòng khám Đa khoa",

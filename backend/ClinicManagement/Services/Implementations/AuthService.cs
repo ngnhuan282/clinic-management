@@ -161,6 +161,7 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponse?> RefreshAsync(RefreshTokenRequest request)
     {
+        if (string.IsNullOrWhiteSpace(request.RefreshToken) || request.RefreshToken.Length > 256) return null;
         var token = await _refreshTokens.GetByHashAsync(HashToken(request.RefreshToken));
         if (token == null || token.RevokedAt != null || token.ExpiresAt <= DateTime.UtcNow || !token.User.Status
             || token.SecurityVersion != token.User.SecurityVersion)
@@ -180,6 +181,7 @@ public class AuthService : IAuthService
 
     public async Task LogoutAsync(RefreshTokenRequest request)
     {
+        if (string.IsNullOrWhiteSpace(request.RefreshToken) || request.RefreshToken.Length > 256) return;
         var token = await _refreshTokens.GetByHashAsync(HashToken(request.RefreshToken));
         if (token == null || token.RevokedAt != null) return;
         token.RevokedAt = DateTime.UtcNow;
@@ -192,12 +194,13 @@ public class AuthService : IAuthService
         var permissions = await _db.RolePermissions.AsNoTracking().Where(x => x.RoleId == user.RoleId)
             .Select(x => x.PermissionCode).OrderBy(x => x).ToListAsync();
         var refreshToken = _refreshTokenGenerator.GenerateRefreshToken();
+        var expiresAt = DateTime.UtcNow.AddDays(_settings.RefreshTokenExpirationDays);
         await _refreshTokens.AddAsync(new RefreshToken
         {
             UserId = user.UserId,
             SecurityVersion = user.SecurityVersion,
             TokenHash = HashToken(refreshToken),
-            ExpiresAt = DateTime.UtcNow.AddDays(_settings.RefreshTokenExpirationDays)
+            ExpiresAt = expiresAt
         });
         await _refreshTokens.SaveChangesAsync();
 
@@ -205,6 +208,7 @@ public class AuthService : IAuthService
         {
             AccessToken = _jwtTokenGenerator.GenerateAccessToken(user.UserId, user.Role.RoleName, user.SecurityVersion),
             RefreshToken = refreshToken,
+            RefreshTokenExpiresAt = expiresAt,
             UserId = user.UserId,
             Username = user.Username,
             FullName = user.FullName,

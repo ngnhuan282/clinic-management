@@ -3,6 +3,7 @@ import { Alert, Box, Button, CircularProgress, Paper, Stack, TextField, Typograp
 
 import { getMyDoctorProfile, updateMyDoctorProfile } from "../../../api/doctorApi";
 import { useMyProfile } from "../../../hooks/useMyProfile";
+import AccountProfile from "../../../components/common/AccountProfile";
 
 const toForm = profile => ({
     fullName: profile.fullName ?? "",
@@ -61,6 +62,7 @@ export default function DoctorProfilePage() {
                 Cập nhật thông tin hiển thị với bệnh nhân khi tra cứu bác sĩ.
             </Typography>
 
+            <Box sx={{ mb: 3 }}><AccountProfile /></Box>
             {status === "loading" && <CircularProgress />}
             {status === "error" && <Alert severity="error">{error}</Alert>}
 

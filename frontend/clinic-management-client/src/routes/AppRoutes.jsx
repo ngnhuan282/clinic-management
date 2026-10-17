@@ -85,6 +85,7 @@ export default function AppRoutes() {
                 <Route element={<PatientLayout />}>
                     <Route path="/" element={<HomePage />} />
                     <Route path="/doctors" element={<DoctorSearchPage />} />
+                    <Route path="/reviews" element={<ReviewsPage />} />
                     <Route path="/login" element={<AuthPage key="login" />} />
                     <Route
                         path="/internal/login"
@@ -123,6 +124,10 @@ export default function AppRoutes() {
                             element={<Navigate to="dashboard" replace />}
                         />
                         <Route path="dashboard" element={<DashboardPage />} />
+                        <Route path="profile" element={<AccountProfilePage />} />
+                        <Route element={<ProtectedRoute allowedRoles={["Admin"]} />}>
+                            <Route path="reviews" element={<ReviewsManagementPage />} />
+                        </Route>
                         <Route element={<ProtectedRoute allowedRoles={["DepartmentHead"]} />}>
                             <Route path="department-schedules" element={<DepartmentSchedulesPage />} />
                         </Route>

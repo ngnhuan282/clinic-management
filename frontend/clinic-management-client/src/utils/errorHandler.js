@@ -54,6 +54,8 @@ const API_ERROR_MESSAGES = {
     7107: "Hồ sơ hoặc đơn thuốc đã thay đổi ở phiên khác. Vui lòng tải lại hồ sơ và đối chiếu sổ giấy trước khi lưu hoặc chốt lượt.",
     7401: "Không tìm thấy đơn thuốc.",
     7402: "Hồ sơ bệnh án này đã có đơn thuốc.",
+    7501: "Lịch hẹn này đã có đánh giá.",
+    7502: "Không tìm thấy đánh giá.",
     7403: "Trạng thái đơn thuốc không hợp lệ.",
     7404: "Đơn thuốc cần có hóa đơn thuốc hoặc hóa đơn cuối đã thanh toán trước khi cấp.",
     7405: "Tồn kho còn hạn không đủ để cấp toàn bộ đơn thuốc.",

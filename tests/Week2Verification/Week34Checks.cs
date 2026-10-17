@@ -13,16 +13,19 @@ internal static class Week34Checks
         async Task<JsonNode?> Send(HttpMethod method, string path, object? body = null, int status = 200, string? token = null)
         {
             using var request = new HttpRequestMessage(method, path);
+            body = TestAuthCookies.Apply(request, body);
             if (token != null) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             if (body != null) request.Content = JsonContent.Create(body);
             using var response = await client.SendAsync(request);
             check((int)response.StatusCode == status, $"A3/A4 {method} {path.Split('?')[0]} expected {status}, got {(int)response.StatusCode}");
             var text = await response.Content.ReadAsStringAsync();
-            return string.IsNullOrWhiteSpace(text) ? null : JsonNode.Parse(text);
+            var envelope = string.IsNullOrWhiteSpace(text) ? null : JsonNode.Parse(text);
+            TestAuthCookies.Capture(response, envelope);
+            return envelope;
         }
         async Task<JsonNode> Login(string username) => (await Send(HttpMethod.Post, "api/auth/login", new { username, password }))!["result"]!;
         static string Access(JsonNode session) => session["accessToken"]!.GetValue<string>();
-        static string Refresh(JsonNode session) => session["refreshToken"]!.GetValue<string>();
+        static string Refresh(JsonNode session) => TestAuthCookies.RawFor(session);
         client.DefaultRequestHeaders.Authorization = null;
         var admin = await Login("testadmin");
         var adminToken = Access(admin);
@@ -35,7 +38,7 @@ internal static class Week34Checks
         await Send(HttpMethod.Get, "api/users?access_token=" + adminToken, status: 401);
 
         var roleList = (await Send(HttpMethod.Get, "api/roles", token: adminToken))!["result"]!.AsArray();
-        check(roleList.Count == 6 && roleList.Any(x => x!["roleName"]!.GetValue<string>() == "DepartmentHead"),
+        check(roleList.Count >= 6 && roleList.Any(x => x!["roleName"]!.GetValue<string>() == "DepartmentHead"),
             "DepartmentHead is a supported system role");
         var doctorRole = roleList.Single(x => x!["roleName"]!.GetValue<string>() == "Doctor")!["roleId"]!.GetValue<int>();
         var patientRole = roleList.Single(x => x!["roleName"]!.GetValue<string>() == "Patient")!["roleId"]!.GetValue<int>();
@@ -120,8 +123,11 @@ internal static class Week34Checks
         await Send(HttpMethod.Get, "api/LabTestTypes", status: 401, token: Access(promoted));
         await Send(HttpMethod.Get, "api/auth/me", status: 401, token: patientToken);
         var finalSession = await Login("accesspatient");
-        var concurrent = await Task.WhenAll(Enumerable.Range(0, 4).Select(_ =>
-            client.PostAsJsonAsync("api/auth/refresh", new { refreshToken = Refresh(finalSession) })));
+        var concurrent = await Task.WhenAll(Enumerable.Range(0, 4).Select(_ => {
+            var request = new HttpRequestMessage(HttpMethod.Post, "api/auth/refresh");
+            request.Headers.Add("Cookie", "clinic_refresh=" + Refresh(finalSession));
+            return client.SendAsync(request);
+        }));
         check(concurrent.Count(x => (int)x.StatusCode == 200) == 1 && concurrent.Count(x => (int)x.StatusCode == 401) == 3,
             "Concurrent refresh rotates exactly once");
         foreach (var response in concurrent) response.Dispose();

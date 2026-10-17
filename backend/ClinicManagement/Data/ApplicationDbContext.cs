@@ -18,6 +18,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
     public DbSet<RbacAudit> RbacAudits => Set<RbacAudit>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<Review> Reviews => Set<Review>();
     public DbSet<DoctorSchedule> DoctorSchedules => Set<DoctorSchedule>();
     public DbSet<DoctorScheduleRequest> DoctorScheduleRequests => Set<DoctorScheduleRequest>();
     public DbSet<TimeSlot> TimeSlots => Set<TimeSlot>();

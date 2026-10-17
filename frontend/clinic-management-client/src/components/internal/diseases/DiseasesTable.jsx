@@ -1,283 +1,42 @@
-import {
-    Box,
-    Chip,
-    IconButton,
-    Paper,
-    Stack,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TablePagination,
-    TableRow,
-    Tooltip,
-    Typography,
-} from "@mui/material";
-import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
-import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
-
+﻿import { Chip, IconButton, LinearProgress, Paper, Skeleton, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, Tooltip, Typography } from "@mui/material";
+import { DeleteOutlineOutlined, EditOutlined } from "@mui/icons-material";
 import EmptyState from "../../common/EmptyState";
+import { clinicColors, clinicSurfaceSx, clinicTableSx } from "../../common/clinicUi";
 
-const ACTIVE_STATUS = {
-    true: {
-        label: "Đang áp dụng",
-        color: "#047857",
-        borderColor: "#A7F3D0",
-        backgroundColor: "#ECFDF5",
-    },
-    false: {
-        label: "Tạm ngưng",
-        color: "#B45309",
-        borderColor: "#FDE68A",
-        backgroundColor: "#FFFBEB",
-    },
+const activeStatus = {
+    true: { label: "Đang áp dụng", color: "#047857", backgroundColor: "#ECFDF5" },
+    false: { label: "Tạm ngưng", color: "#B45309", backgroundColor: "#FFFBEB" },
 };
+const formatDate = value => value ? new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(value)) : "–";
 
-function formatDate(value) {
-    if (!value) {
-        return "-";
-    }
-
-    return new Intl.DateTimeFormat("vi-VN", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-    }).format(new Date(value));
-}
-
-function DiseasesTable({
-    diseases,
-    pagination,
-    filters,
-    onPageChange,
-    onPageSizeChange,
-    onEdit,
-    onDelete,
-}) {
+export default function DiseasesTable({ diseases, pagination, filters, loading, saving, error, onPageChange, onPageSizeChange, onEdit, onDelete }) {
     const totalItems = pagination?.totalItems || 0;
-
-    return (
-        <Paper
-            elevation={0}
-            sx={{
-                borderRadius: 2,
-                border: "1px solid #E5E9F0",
-                overflow: "hidden",
-                backgroundColor: "#FFFFFF",
-            }}
-        >
-            <TableContainer>
-                <Table sx={{ minWidth: 980 }}>
-                    <TableHead>
-                        <TableRow sx={{ backgroundColor: "#F8FAFC" }}>
-                            {[
-                                "Mã bệnh",
-                                "Tên bệnh",
-                                "Mô tả / ghi chú",
-                                "Trạng thái",
-                                "Ngày tạo",
-                                "Thao tác",
-                            ].map((header) => (
-                                <TableCell
-                                    key={header}
-                                    align={
-                                        header === "Thao tác"
-                                            ? "center"
-                                            : "left"
-                                    }
-                                    sx={{
-                                        color: "#6B7280",
-                                        fontSize: 12,
-                                        fontWeight: 800,
-                                        textTransform: "uppercase",
-                                        letterSpacing: "0.02em",
-                                        borderColor: "#E5E9F0",
-                                    }}
-                                >
-                                    {header}
-                                </TableCell>
-                            ))}
-                        </TableRow>
-                    </TableHead>
-
-                    <TableBody>
-                        {diseases.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={6}>
-                                    <EmptyState message="Chưa có bệnh phù hợp. Thêm bệnh mới hoặc điều chỉnh bộ lọc để xem dữ liệu." />
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            diseases.map((disease) => {
-                                const status =
-                                    ACTIVE_STATUS[
-                                        String(disease.isActive)
-                                    ] || ACTIVE_STATUS.false;
-
-                                return (
-                                    <TableRow
-                                        hover
-                                        key={disease.diseaseId}
-                                        sx={{
-                                            "& td": {
-                                                borderColor:
-                                                    "#EEF2F7",
-                                            },
-                                        }}
-                                    >
-                                        <TableCell>
-                                            <Typography
-                                                variant="body2"
-                                                sx={{
-                                                    color: "#2563EB",
-                                                    fontWeight: 900,
-                                                    fontVariantNumeric:
-                                                        "tabular-nums",
-                                                }}
-                                            >
-                                                {disease.diseaseCode}
-                                            </Typography>
-                                        </TableCell>
-
-                                        <TableCell>
-                                            <Typography
-                                                variant="body2"
-                                                sx={{
-                                                    color: "#1F2937",
-                                                    fontWeight: 800,
-                                                }}
-                                            >
-                                                {disease.diseaseName}
-                                            </Typography>
-                                        </TableCell>
-
-                                        <TableCell sx={{ maxWidth: 420 }}>
-                                            <Typography
-                                                variant="body2"
-                                                sx={{
-                                                    color: disease.description
-                                                        ? "#374151"
-                                                        : "#9CA3AF",
-                                                    lineHeight: 1.55,
-                                                }}
-                                            >
-                                                {disease.description ||
-                                                    "Chưa có mô tả"}
-                                            </Typography>
-                                        </TableCell>
-
-                                        <TableCell>
-                                            <Chip
-                                                label={status.label}
-                                                size="small"
-                                                sx={{
-                                                    minWidth: 116,
-                                                    borderRadius: 999,
-                                                    color: status.color,
-                                                    border: "1px solid",
-                                                    borderColor:
-                                                        status.borderColor,
-                                                    backgroundColor:
-                                                        status.backgroundColor,
-                                                    fontWeight: 800,
-                                                }}
-                                            />
-                                        </TableCell>
-
-                                        <TableCell>
-                                            <Typography
-                                                variant="body2"
-                                                sx={{
-                                                    color: "#4B5563",
-                                                    fontWeight: 600,
-                                                }}
-                                            >
-                                                {formatDate(
-                                                    disease.createdAt
-                                                )}
-                                            </Typography>
-                                        </TableCell>
-
-                                        <TableCell align="center">
-                                            <Stack
-                                                direction="row"
-                                                spacing={0.5}
-                                                justifyContent="center"
-                                            >
-                                                <Tooltip title="Sửa bệnh">
-                                                    <IconButton
-                                                        size="small"
-                                                        onClick={() =>
-                                                            onEdit(
-                                                                disease
-                                                            )
-                                                        }
-                                                        sx={{
-                                                            color:
-                                                                "#2563EB",
-                                                            backgroundColor:
-                                                                "#EFF6FF",
-                                                        }}
-                                                    >
-                                                        <EditOutlinedIcon fontSize="small" />
-                                                    </IconButton>
-                                                </Tooltip>
-
-                                                <Tooltip title="Xóa bệnh">
-                                                    <IconButton
-                                                        size="small"
-                                                        onClick={() =>
-                                                            onDelete(
-                                                                disease
-                                                            )
-                                                        }
-                                                        sx={{
-                                                            color:
-                                                                "#E11D48",
-                                                            backgroundColor:
-                                                                "#FEF2F2",
-                                                        }}
-                                                    >
-                                                        <DeleteOutlineOutlinedIcon fontSize="small" />
-                                                    </IconButton>
-                                                </Tooltip>
-                                            </Stack>
-                                        </TableCell>
-                                    </TableRow>
-                                );
-                            })
-                        )}
-                    </TableBody>
-                </Table>
-            </TableContainer>
-
-            <Box
-                sx={{
-                    borderTop: "1px solid #E5E9F0",
-                    backgroundColor: "#FFFFFF",
-                }}
-            >
-                <TablePagination
-                    component="div"
-                    count={totalItems}
-                    page={Math.max(filters.pageNumber - 1, 0)}
-                    rowsPerPage={filters.pageSize}
-                    onPageChange={(_, page) =>
-                        onPageChange(page + 1)
-                    }
-                    onRowsPerPageChange={(event) =>
-                        onPageSizeChange(Number(event.target.value))
-                    }
-                    rowsPerPageOptions={[5, 10, 20, 50]}
-                    labelRowsPerPage="Số dòng:"
-                    labelDisplayedRows={({ from, to, count }) =>
-                        `${from}-${to} trong ${count}`
-                    }
-                />
-            </Box>
-        </Paper>
-    );
+    const currentPage = Math.min(Math.max(filters.pageNumber - 1, 0), Math.max(0, Math.ceil(totalItems / filters.pageSize) - 1));
+    return <Paper variant="outlined" sx={{ ...clinicSurfaceSx, overflow: "hidden" }} aria-busy={loading}>
+        <Stack direction="row" spacing={1} sx={{ p: 2.5, alignItems: "center", borderBottom: "1px solid #E2E8F0" }}>
+            <Typography sx={{ fontWeight: 600 }}>Danh sách bệnh</Typography>
+            {!loading && !error && <Chip size="small" label={`${totalItems} bệnh`} sx={{ bgcolor: "#F0F9FF", color: "#0369A1" }} />}
+        </Stack>
+        {loading && <LinearProgress aria-label="Đang tải danh mục bệnh" />}
+        <Typography sx={{ px: 2.5, pt: 1.5, display: { xs: "block", md: "none" }, fontSize: 12, color: clinicColors.muted }}>Vuốt ngang bảng để xem đầy đủ thông tin và thao tác.</Typography>
+        <TableContainer sx={{ overflowX: "auto" }}><Table aria-label="Danh sách bệnh" sx={{ ...clinicTableSx, minWidth: 980 }}><TableHead><TableRow>
+            {["Mã bệnh", "Tên bệnh", "Mô tả / ghi chú", "Trạng thái", "Ngày tạo", "Thao tác"].map(label => <TableCell key={label} align={label === "Thao tác" ? "right" : "left"}>{label}</TableCell>)}
+        </TableRow></TableHead><TableBody>
+            {loading ? Array.from({ length: 5 }, (_, index) => <TableRow key={index}>{Array.from({ length: 6 }, (_, cell) => <TableCell key={cell}><Skeleton /></TableCell>)}</TableRow>) : error ? <TableRow><TableCell colSpan={6}><EmptyState message="Chưa tải được danh mục bệnh. Hãy thử tải lại dữ liệu." /></TableCell></TableRow> : diseases.length ? diseases.map(disease => {
+                const status = activeStatus[String(disease.isActive)] || activeStatus.false;
+                return <TableRow hover key={disease.diseaseId}>
+                    <TableCell sx={{ color: "#0284C7", fontWeight: 600, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{disease.diseaseCode}</TableCell>
+                    <TableCell sx={{ minWidth: 180, maxWidth: 250 }}><Typography sx={{ fontSize: 14, fontWeight: 600, color: clinicColors.heading, overflowWrap: "anywhere" }}>{disease.diseaseName}</Typography></TableCell>
+                    <TableCell sx={{ maxWidth: 360 }}><Typography sx={{ fontSize: 13, color: clinicColors.muted, lineHeight: 1.65, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{disease.description || "Chưa có mô tả"}</Typography></TableCell>
+                    <TableCell><Chip size="small" label={status.label} sx={{ color: status.color, bgcolor: status.backgroundColor, fontWeight: 500, whiteSpace: "nowrap" }} /></TableCell>
+                    <TableCell sx={{ color: clinicColors.muted, whiteSpace: "nowrap" }}>{formatDate(disease.createdAt)}</TableCell>
+                    <TableCell align="right"><Stack direction="row" spacing={0.5} sx={{ justifyContent: "flex-end" }}>
+                        <Tooltip title="Sửa bệnh"><span><IconButton size="small" aria-label={`Sửa bệnh ${disease.diseaseCode}`} disabled={saving} onClick={() => onEdit(disease)} sx={{ color: "#0284C7" }}><EditOutlined fontSize="small" /></IconButton></span></Tooltip>
+                        <Tooltip title="Xóa bệnh"><span><IconButton size="small" aria-label={`Xóa bệnh ${disease.diseaseCode}`} disabled={saving} onClick={() => onDelete(disease)} sx={{ color: "#DC2626" }}><DeleteOutlineOutlined fontSize="small" /></IconButton></span></Tooltip>
+                    </Stack></TableCell>
+                </TableRow>;
+            }) : <TableRow><TableCell colSpan={6}><EmptyState message="Không có bệnh phù hợp. Hãy đổi bộ lọc hoặc thêm bệnh mới." /></TableCell></TableRow>}
+        </TableBody></Table></TableContainer>
+        <TablePagination component="div" count={totalItems} page={currentPage} rowsPerPage={filters.pageSize} onPageChange={(_, page) => onPageChange(page + 1)} onRowsPerPageChange={event => onPageSizeChange(Number(event.target.value))} rowsPerPageOptions={[5, 10, 20, 50]} labelRowsPerPage="Số dòng:" labelDisplayedRows={({ from, to, count }) => `${from}–${to} / ${count} bệnh`} getItemAriaLabel={type => type === "next" ? "Trang tiếp" : "Trang trước"} disabled={loading || saving} sx={{ borderTop: "1px solid #E2E8F0", "& .MuiTablePagination-toolbar": { flexWrap: "wrap", px: 2 }, "& .MuiTablePagination-spacer": { display: { xs: "none", sm: "block" } }, "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows": { fontSize: 13 } }} />
+    </Paper>;
 }
-
-export default DiseasesTable;

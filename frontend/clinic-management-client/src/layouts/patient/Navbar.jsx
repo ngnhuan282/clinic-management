@@ -13,8 +13,6 @@ import {
     ListItem,
     ListItemButton,
     ListItemText,
-    Menu,
-    MenuItem,
     Stack,
     Toolbar,
     Typography,
@@ -27,6 +25,7 @@ import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
 import { useNavigate } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
+import AccountMenu from "./AccountMenu";
 
 const NAV_LINKS = [
     { label: "Trang chủ", href: "/" },
@@ -174,18 +173,11 @@ const NAVBAR_STYLES = {
 
 function Navbar() {
     const [mobileOpen, setMobileOpen] = useState(false);
-    const [accountAnchor, setAccountAnchor] = useState(null);
-    const { isAuthenticated, user, role, logout } = useAuth();
+    const { isAuthenticated, user, role, sessionChecked, logout } = useAuth();
     const navigate = useNavigate();
-    const accountProps = isAuthenticated ? {
-        component: "button",
-        onClick: event => setAccountAnchor(event.currentTarget),
-        "aria-haspopup": "menu",
-        "aria-expanded": Boolean(accountAnchor),
-    } : { component: "a", href: "/login" };
+    const handleAccountNavigate = path => { setMobileOpen(false); navigate(path); };
 
     async function handleLogout() {
-        setAccountAnchor(null);
         setMobileOpen(false);
         try { await logout(); }
         catch { /* Local credentials are cleared even if the server is unavailable. */ }
@@ -254,14 +246,15 @@ function Navbar() {
                                 <LocalPhoneIcon sx={{ color: COLORS.primary, fontSize: 18 }} />
                                 <Box>1900 6868</Box>
                             </Box>
-                            <Button
+                            {isAuthenticated ? <AccountMenu key={user?.userId} user={user} role={role} sessionChecked={sessionChecked} onNavigate={handleAccountNavigate} onLogout={handleLogout} /> : <Button
                                 variant="outlined"
-                                {...accountProps}
+                                component="a"
+                                href="/login"
                                 startIcon={<AccountCircleIcon sx={{ fontSize: "18px" }} />}
                                 sx={NAVBAR_STYLES.patientPortalBtn}
                             >
-                                {isAuthenticated ? "Tài khoản" : "Cổng Bệnh Nhân"}
-                            </Button>
+                                Cổng Bệnh Nhân
+                            </Button>}
                             <Button
                                 variant="contained"
                                 component="a"
@@ -294,7 +287,7 @@ function Navbar() {
                 anchor="right"
                 open={mobileOpen}
                 onClose={handleDrawerToggle}
-                PaperProps={{ sx: { width: 280 } }}
+                slotProps={{ paper: { sx: { width: 280, maxWidth: "100vw" } } }}
             >
                 <Box
                     sx={{
@@ -344,18 +337,19 @@ function Navbar() {
                 </List>
                 <Divider />
                 <Box sx={{ p: 2, display: "flex", flexDirection: "column", gap: 1.5 }}>
-                    <Button
+                    {isAuthenticated ? <AccountMenu key={user?.userId} user={user} role={role} sessionChecked={sessionChecked} fullWidth onNavigate={handleAccountNavigate} onLogout={handleLogout} /> : <Button
                         fullWidth
                         variant="outlined"
-                        {...accountProps}
+                        component="a"
+                        href="/login"
                         startIcon={<AccountCircleIcon />}
                         sx={{
                             ...NAVBAR_STYLES.patientPortalBtn,
                             justifyContent: "flex-start",
                         }}
                     >
-                        {isAuthenticated ? "Tài khoản" : "Cổng Bệnh Nhân"}
-                    </Button>
+                        Cổng Bệnh Nhân
+                    </Button>}
                     <Button
                         fullWidth
                         variant="contained"
