@@ -227,9 +227,9 @@ public class ReceptionService : IReceptionService
 
         var book = await _receptionRepository.GetBookAsync(request.PatientBookId)
             ?? throw new AppException(ErrorCode.BOOK_NOT_FOUND);
-        if (book.PatientId != request.PatientProfileId || book.Status != "Issued" ||
+        if (book.PatientId != request.PatientProfileId || book.Status != PatientBookStatusConstants.Issued ||
             (book.BookInvoiceId.HasValue && book.BookInvoice?.Status != "Paid") ||
-            (!book.BookInvoiceId.HasValue && !request.BookPresented))
+            !request.BookPresented)
             throw new AppException(ErrorCode.BOOK_NOT_VERIFIED);
 
         var now = DateTime.UtcNow;

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Box, Button, Checkbox, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Divider, IconButton, LinearProgress, MenuItem, Paper, Snackbar, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TextField, Typography } from "@mui/material";
 import { AddCircleOutlineOutlined, AssignmentTurnedInOutlined, CalendarMonthOutlined, CancelOutlined, CheckCircleOutlineOutlined, CloseOutlined, EditCalendarOutlined, EventAvailableOutlined, HighlightOffOutlined, PeopleAltOutlined, RefreshOutlined, SearchOutlined } from "@mui/icons-material";
 import { cancelAppointment, confirmAppointment, createDirectAppointment, getAppointments, rescheduleAppointment } from "../../api/appointmentApi";
@@ -102,9 +102,11 @@ function emptyDialogForm() {
 }
 
 export default function AppointmentsPage() {
-    const { revision, availabilityRevision } = useNotifications();
+    const { revision, availabilityRevision, appointmentEvent } = useNotifications();
+    const appointmentRequest = useRef(0);
+    const summaryRequest = useRef(0);
     const today = toDateValue(new Date());
-    const [query, setQuery] = useState({ pageNumber: 1, pageSize: 10, search: "", status: "", dateFrom: today, dateTo: "" });
+    const [query, setQuery] = useState({ pageNumber: 1, pageSize: 10, search: "", status: "", doctorId: "", dateFrom: today, dateTo: "" });
     const [search, setSearch] = useState("");
     const [items, setItems] = useState([]);
     const [totalItems, setTotalItems] = useState(0);
@@ -124,6 +126,7 @@ export default function AppointmentsPage() {
     const [selectedIds, setSelectedIds] = useState([]);
     const [departments, setDepartments] = useState([]);
     const [doctors, setDoctors] = useState([]);
+    const [filterDoctors, setFilterDoctors] = useState([]);
     const [slots, setSlots] = useState([]);
     const [slotsLoading, setSlotsLoading] = useState(false);
     const [dialogForm, setDialogForm] = useState(emptyDialogForm);
@@ -131,6 +134,13 @@ export default function AppointmentsPage() {
     const [patientMatches, setPatientMatches] = useState([]);
     const [matchingPatients, setMatchingPatients] = useState(false);
     const [checkInAppointment, setCheckInAppointment] = useState(null);
+
+    useEffect(() => {
+        if (!appointmentEvent) return;
+        const timer = setTimeout(() => setCheckInAppointment(current =>
+            current?.appointmentId === appointmentEvent.appointmentId ? { ...current, ...appointmentEvent } : current), 0);
+        return () => clearTimeout(timer);
+    }, [appointmentEvent]);
 
     function changeFilter(key, value) {
         setQuery(current => ({ ...current, [key]: value, pageNumber: 1 }));
@@ -166,6 +176,7 @@ export default function AppointmentsPage() {
     }
 
     const loadAppointments = useCallback(async (signal) => {
+        const requestId = ++appointmentRequest.current;
         setLoading(true);
         setError("");
         try {
@@ -176,68 +187,64 @@ export default function AppointmentsPage() {
                 status: query.status || undefined,
                 dateFrom: query.dateFrom || undefined,
                 dateTo: query.dateTo || undefined,
+                doctorId: query.doctorId || undefined,
             }, signal);
-            if (signal?.aborted) return;
+            if (signal?.aborted || requestId !== appointmentRequest.current) return;
             setItems(data.items || []);
             setTotalItems(data.totalItems || 0);
             setSelectedIds(current => current.filter(id =>
                 (data.items || []).some(item => item.appointmentId === id)
             ));
         } catch (err) {
-            if (err.name !== "CanceledError") setError(getApiErrorMessage(err));
+            if (err.name !== "CanceledError" && requestId === appointmentRequest.current) setError(getApiErrorMessage(err));
         } finally {
-            if (!signal?.aborted) setLoading(false);
+            if (!signal?.aborted && requestId === appointmentRequest.current) setLoading(false);
         }
     }, [query]);
 
-    const loadSummary = useCallback(async () => {
+    const loadSummary = useCallback(async (signal) => {
+        const requestId = ++summaryRequest.current;
         try {
-            const [all, confirmed, cancelled, inProgress, completed] = await Promise.all([
-                getAppointments({ pageNumber: 1, pageSize: 1 }),
-                getAppointments({ pageNumber: 1, pageSize: 1, status: "Confirmed" }),
-                getAppointments({ pageNumber: 1, pageSize: 1, status: "Cancelled" }),
-                getAppointments({ pageNumber: 1, pageSize: 1, status: "InProgress" }),
-                getAppointments({ pageNumber: 1, pageSize: 1, status: "Completed" }),
+            const filters = { pageNumber: 1, pageSize: 1, search: query.search || undefined,
+                dateFrom: query.dateFrom || undefined, dateTo: query.dateTo || undefined,
+                doctorId: query.doctorId || undefined, status: query.status || undefined };
+            const countStatus = status => query.status && query.status !== status
+                ? Promise.resolve({ totalItems: 0 }) : getAppointments({ ...filters, status }, signal);
+            const [all, pending, confirmed, cancelled] = await Promise.all([
+                getAppointments(filters, signal), countStatus("Pending"), countStatus("Confirmed"), countStatus("Cancelled"),
             ]);
-
-            const total = all.totalItems || 0;
-            const confirmedCount = confirmed.totalItems || 0;
-            const cancelledCount = cancelled.totalItems || 0;
-            const inProgressCount = inProgress.totalItems || 0;
-            const completedCount = completed.totalItems || 0;
-
+            if (signal?.aborted || requestId !== summaryRequest.current) return;
             setSummary({
-                total,
-                Pending: Math.max(
-                    total
-                    - confirmedCount
-                    - cancelledCount
-                    - inProgressCount
-                    - completedCount,
-                    0
-                ),
-                Confirmed: confirmedCount,
-                Cancelled: cancelledCount,
+                total: all.totalItems || 0, Pending: pending.totalItems || 0,
+                Confirmed: confirmed.totalItems || 0, Cancelled: cancelled.totalItems || 0,
             });
         } catch {
             setSummary(current => current);
         }
-    }, []);
+    }, [query.search, query.status, query.dateFrom, query.dateTo, query.doctorId]);
 
     useEffect(() => {
         const controller = new AbortController();
         Promise.resolve().then(() => loadAppointments(controller.signal));
-        return () => controller.abort();
+        return () => { controller.abort(); appointmentRequest.current += 1; };
     }, [loadAppointments, revision]);
 
     useEffect(() => {
-        Promise.resolve().then(loadSummary);
+        const controller = new AbortController();
+        Promise.resolve().then(() => loadSummary(controller.signal));
+        return () => { controller.abort(); summaryRequest.current += 1; };
     }, [loadSummary, revision]);
 
     useEffect(() => {
-        getDepartments()
-            .then(setDepartments)
+        let active = true;
+        getDepartments().then(async result => {
+            if (!active) return;
+            setDepartments(result);
+            const doctorLists = await Promise.all(result.map(department => getDoctorsByDepartment(department.departmentId)));
+            if (active) setFilterDoctors(doctorLists.flat().sort((left, right) => left.fullName.localeCompare(right.fullName, "vi")));
+        })
             .catch(() => setDepartments([]));
+        return () => { active = false; };
     }, []);
 
     useEffect(() => {
@@ -512,15 +519,20 @@ export default function AppointmentsPage() {
                     </Stack>
                 </Stack>
             </Box>
-            <Stack component="form" onSubmit={event => { event.preventDefault(); changeFilter("search", search.trim()); }} direction={{ xs: "column", lg: "row" }} spacing={2} sx={{ p: 3, bgcolor: "#f6f9fc" }}>
-                <TextField label="Tìm lịch hẹn" placeholder="Tên, SĐT, bác sĩ hoặc lý do" value={search} onChange={event => setSearch(event.target.value)} size="small" sx={{ flex: 1, ...FILTER_FIELD_SX }} slotProps={{ htmlInput: { maxLength: 100 } }} />
+            <Stack component="form" onSubmit={event => { event.preventDefault(); changeFilter("search", search.trim()); }} direction={{ xs: "column", lg: "row" }} spacing={2} useFlexGap sx={{ p: 3, bgcolor: "#f6f9fc", flexWrap: "wrap" }}>
+                <TextField label="Tìm lịch hẹn" placeholder="Tên, SĐT, bác sĩ hoặc lý do" value={search} onChange={event => setSearch(event.target.value)} size="small" sx={{ flex: 1, minWidth: 220, ...FILTER_FIELD_SX }} slotProps={{ htmlInput: { maxLength: 100 } }} />
                 <Button type="submit" variant="contained" startIcon={<SearchOutlined />} sx={{ borderRadius: 1.5 }}>Tìm kiếm</Button>
                 <TextField select label="Trạng thái" value={query.status} onChange={event => changeFilter("status", event.target.value)} size="small" sx={{ minWidth: 180, ...FILTER_FIELD_SX }}>
                     <MenuItem value="">Tất cả trạng thái</MenuItem>
                     {STATUS_OPTIONS.map(option => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
                 </TextField>
+                <TextField select label="Bác sĩ" value={query.doctorId} onChange={event => changeFilter("doctorId", event.target.value)} size="small" sx={{ minWidth: 180, ...FILTER_FIELD_SX }}>
+                    <MenuItem value="">Tất cả bác sĩ</MenuItem>
+                    {filterDoctors.map(doctor => <MenuItem key={doctor.doctorId} value={doctor.doctorId}>{doctor.fullName}</MenuItem>)}
+                </TextField>
                 <TextField label="Từ ngày" type="date" value={query.dateFrom} onChange={event => changeFilter("dateFrom", event.target.value)} size="small" sx={{ minWidth: 165, ...FILTER_FIELD_SX }} slotProps={{ inputLabel: { shrink: true } }} />
                 <TextField label="Đến ngày" type="date" value={query.dateTo} onChange={event => changeFilter("dateTo", event.target.value)} size="small" sx={{ minWidth: 165, ...FILTER_FIELD_SX }} slotProps={{ inputLabel: { shrink: true } }} />
+                <Button onClick={() => { setSearch(""); setQuery(current => ({ ...current, search: "", status: "", doctorId: "", dateFrom: "", dateTo: "", pageNumber: 1 })); }}>Xóa bộ lọc</Button>
             </Stack>
 
             {loading && <LinearProgress aria-label="Đang tải lịch hẹn" />}
@@ -797,7 +809,7 @@ export default function AppointmentsPage() {
                 </DialogActions>
             </>}
         </Dialog>
-        {checkInAppointment && <ReceptionCheckInDialog appointment={checkInAppointment}
+        {checkInAppointment && <ReceptionCheckInDialog appointment={items.find(item => item.appointmentId === checkInAppointment.appointmentId) || checkInAppointment}
             onClose={() => setCheckInAppointment(null)} onCheckedIn={async () => {
                 setCheckInAppointment(null);
                 setNotice("Đã check-in sau khi kiểm tra sổ khám.");

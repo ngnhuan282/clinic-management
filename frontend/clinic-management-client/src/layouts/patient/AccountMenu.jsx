@@ -56,6 +56,7 @@ export default function AccountMenu({ user, role, sessionChecked, fullWidth = fa
         patient
             ? { label: "Đặt lịch khám", path: "/booking", icon: CalendarMonthOutlined }
             : { label: "Trang quản lý", path: "/internal/dashboard", icon: DashboardOutlined },
+        ...(patient ? [{ label: "Lịch hẹn của tôi", path: "/my-appointments", icon: CalendarMonthOutlined }] : []),
         ...(patient ? [{ label: "Kết quả xét nghiệm", path: "/lab-results", icon: ScienceOutlined }] : []),
         { label: "Hồ sơ cá nhân", path: "/profile", icon: PersonOutlineOutlined },
         ...(patient ? [{ label: "Đánh giá sau khám", path: "/my-reviews", icon: StarOutlineRounded }] : []),
