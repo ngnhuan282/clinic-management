@@ -6,6 +6,8 @@ public class InventorySummaryResponse
 
     public int TotalQuantity { get; set; }
 
+    public int AvailableQuantity { get; set; }
+
     public int InStockBatches { get; set; }
 
     public int LowStockBatches { get; set; }

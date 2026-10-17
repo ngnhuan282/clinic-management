@@ -1,41 +1,33 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import {
-    confirmDispensing,
-    getDispensingDetail,
     getDispensingQueue,
     getDispensingSummary,
 } from "../api/dispensingApi";
 import getApiErrorMessage from "../utils/errorHandler";
-
-const DEFAULT_FILTERS = {
-    search: "",
-    workflowStatus: "",
-    fromDate: "",
-    toDate: "",
-    pageNumber: 1,
-    pageSize: 10,
-};
+import { readDispensingFilters, writeDispensingFilters } from "../utils/dispensingFilters";
 
 function normalizeFilters(filters) {
     return {
         ...filters,
         search: filters.search || undefined,
         workflowStatus: filters.workflowStatus || undefined,
+        paymentStatus: filters.paymentStatus || undefined,
+        reviewStatus: filters.reviewStatus || undefined,
         fromDate: filters.fromDate || undefined,
         toDate: filters.toDate || undefined,
     };
 }
 
 function useDispensing() {
-    const [filters, setFilters] = useState(DEFAULT_FILTERS);
+    const [searchParams, setSearchParams] = useSearchParams();
+    const filters = useMemo(() => readDispensingFilters(searchParams), [searchParams]);
     const [pagedData, setPagedData] = useState(null);
     const [summary, setSummary] = useState(null);
-    const [detail, setDetail] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [detailLoading, setDetailLoading] = useState(false);
-    const [confirming, setConfirming] = useState(false);
     const [error, setError] = useState("");
+    const queueSequence = useRef(0);
 
     const requestParams = useMemo(
         () => normalizeFilters(filters),
@@ -43,6 +35,7 @@ function useDispensing() {
     );
 
     const loadQueue = useCallback(async () => {
+        const sequence = ++queueSequence.current;
         setLoading(true);
         setError("");
 
@@ -51,89 +44,46 @@ function useDispensing() {
                 getDispensingQueue(requestParams),
                 getDispensingSummary(),
             ]);
+            if (sequence !== queueSequence.current) return;
             setPagedData(queueResult);
             setSummary(summaryResult);
         } catch (err) {
+            if (sequence !== queueSequence.current) return;
             setError(getApiErrorMessage(
                 err,
                 "Không tải được danh sách cấp thuốc."
             ));
         } finally {
-            setLoading(false);
+            if (sequence === queueSequence.current) setLoading(false);
         }
     }, [requestParams]);
 
     useEffect(() => {
+        const queueRequest = queueSequence;
         // Fetch remote data when queue filters change.
         // eslint-disable-next-line react-hooks/set-state-in-effect
         loadQueue();
+        return () => { queueRequest.current++; };
     }, [loadQueue]);
 
     const updateFilters = useCallback((nextFilters) => {
-        setFilters((current) => ({
-            ...current,
-            ...nextFilters,
-            pageNumber: nextFilters.pageNumber ?? current.pageNumber,
-        }));
-    }, []);
+        setSearchParams((current) => writeDispensingFilters({ ...readDispensingFilters(current), ...nextFilters }), { replace: true });
+    }, [setSearchParams]);
 
     const resetFilters = useCallback(() => {
-        setFilters(DEFAULT_FILTERS);
-    }, []);
-
-    const loadDetail = useCallback(async (prescriptionId) => {
-        setDetailLoading(true);
-
-        try {
-            const result = await getDispensingDetail(prescriptionId);
-            setDetail(result);
-            return result;
-        } catch (err) {
-            throw new Error(
-                getApiErrorMessage(err, "Không tải được chi tiết cấp thuốc."),
-                { cause: err }
-            );
-        } finally {
-            setDetailLoading(false);
-        }
-    }, []);
-
-    const clearDetail = useCallback(() => setDetail(null), []);
-
-    const dispense = useCallback(async (prescriptionId) => {
-        setConfirming(true);
-
-        try {
-            const result = await confirmDispensing(prescriptionId);
-            setDetail(result);
-            await loadQueue();
-            return result;
-        } catch (err) {
-            throw new Error(
-                getApiErrorMessage(err, "Không thể xác nhận giao thuốc."),
-                { cause: err }
-            );
-        } finally {
-            setConfirming(false);
-        }
-    }, [loadQueue]);
+        setSearchParams({}, { replace: true });
+    }, [setSearchParams]);
 
     return {
         filters,
         queueItems: pagedData?.items || [],
         pagination: pagedData,
         summary,
-        detail,
         loading,
-        detailLoading,
-        confirming,
         error,
         updateFilters,
         resetFilters,
         loadQueue,
-        loadDetail,
-        clearDetail,
-        dispense,
     };
 }
 

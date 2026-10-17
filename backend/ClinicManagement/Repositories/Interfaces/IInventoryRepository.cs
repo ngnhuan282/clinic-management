@@ -6,7 +6,8 @@ namespace ClinicManagement.Repositories.Interfaces;
 public interface IInventoryRepository
 {
     Task<(IEnumerable<Inventory> Items, int TotalItems)> GetPagedAsync(
-        InventoryFilterRequest request
+        InventoryFilterRequest request,
+        DateOnly today
     );
 
     Task<IReadOnlyList<Inventory>> GetAllAsync();

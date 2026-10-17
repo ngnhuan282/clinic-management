@@ -10,29 +10,14 @@ import {
     TableHead,
     TablePagination,
     TableRow,
+    TableSortLabel,
     Typography,
 } from "@mui/material";
 
 import EmptyState from "../../common/EmptyState";
 import formatCurrency from "../../../utils/formatCurrency";
 import formatDate from "../../../utils/formatDate";
-import { getInventoryStatusConfig } from "./inventoryStatus";
-
-function getExpiryText(item) {
-    if (item.stockStatus === "Expired") {
-        return `Quá hạn ${Math.abs(item.daysUntilExpiry)} ngày`;
-    }
-
-    if (item.daysUntilExpiry === 0) {
-        return "Hết hạn hôm nay";
-    }
-
-    if (item.daysUntilExpiry > 0) {
-        return `Còn ${item.daysUntilExpiry} ngày`;
-    }
-
-    return "-";
-}
+import { getInventoryExpiryText, getInventoryStatusConfig, getInventoryStatuses } from "./inventoryStatus";
 
 function InventoryTable({
     inventoryItems,
@@ -40,6 +25,7 @@ function InventoryTable({
     filters,
     onPageChange,
     onPageSizeChange,
+    onSortChange,
 }) {
     const totalItems = pagination?.totalItems || 0;
 
@@ -58,27 +44,40 @@ function InventoryTable({
                     <TableHead>
                         <TableRow sx={{ backgroundColor: "#F8FAFC" }}>
                             {[
-                                "Thuốc & số lô",
-                                "Danh mục",
-                                "Nhà cung cấp",
-                                "ĐVT",
-                                "Giá bán",
-                                "Tồn kho",
-                                "Hạn dùng",
-                                "Trạng thái",
+                                { label: "Thuốc & số lô", sort: "medicine" },
+                                { label: "Danh mục" },
+                                { label: "Nhà cung cấp" },
+                                { label: "ĐVT" },
+                                { label: "Giá bán" },
+                                { label: "Tồn kho", sort: "quantity" },
+                                { label: "Hạn dùng", sort: "expiry" },
+                                { label: "Trạng thái" },
                             ].map((header) => (
                                 <TableCell
-                                    key={header}
+                                    key={header.label}
+                                    sortDirection={header.sort === filters.sortBy ? filters.sortOrder : false}
                                     sx={{
                                         color: "#6B7280",
                                         fontSize: 12,
                                         fontWeight: 800,
                                         textTransform: "uppercase",
-                                        letterSpacing: "0.02em",
+                                        letterSpacing: 0,
                                         borderColor: "#E5E9F0",
                                     }}
                                 >
-                                    {header}
+                                    {header.sort ? (
+                                        <TableSortLabel
+                                            active={header.sort === filters.sortBy}
+                                            direction={header.sort === filters.sortBy ? filters.sortOrder : "asc"}
+                                            onClick={() => onSortChange({
+                                                sortBy: header.sort,
+                                                sortOrder: header.sort === filters.sortBy && filters.sortOrder === "asc" ? "desc" : "asc",
+                                                pageNumber: 1,
+                                            })}
+                                        >
+                                            {header.label}
+                                        </TableSortLabel>
+                                    ) : header.label}
                                 </TableCell>
                             ))}
                         </TableRow>
@@ -88,15 +87,14 @@ function InventoryTable({
                         {inventoryItems.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={8}>
-                                    <EmptyState message="Chưa có lô tồn kho phù hợp. Hãy điều chỉnh bộ lọc hoặc tạo phiếu nhập kho." />
+                                    <EmptyState message="Không có lô tồn kho phù hợp." />
                                 </TableCell>
                             </TableRow>
                         ) : (
                             inventoryItems.map((item) => {
-                                const status =
-                                    getInventoryStatusConfig(
-                                        item.stockStatus
-                                    );
+                                const statuses = getInventoryStatuses(item);
+                                const status = getInventoryStatusConfig(statuses[0]);
+                                const isExpired = item.daysUntilExpiry < 0;
 
                                 return (
                                     <TableRow
@@ -139,6 +137,8 @@ function InventoryTable({
                                                     sx={{
                                                         color: "#2563EB",
                                                         fontWeight: 800,
+                                                        flexShrink: 0,
+                                                        whiteSpace: "nowrap",
                                                         fontVariantNumeric:
                                                             "tabular-nums",
                                                     }}
@@ -221,7 +221,7 @@ function InventoryTable({
                                                 variant="body2"
                                                 sx={{
                                                     color:
-                                                        item.quantityInStock >
+                                                        !isExpired && item.quantityInStock >
                                                         0
                                                             ? "#047857"
                                                             : "#E11D48",
@@ -233,6 +233,11 @@ function InventoryTable({
                                                 {item.quantityInStock}{" "}
                                                 {item.unit}
                                             </Typography>
+                                            {isExpired && item.quantityInStock > 0 && (
+                                                <Typography variant="caption" color="error.main">
+                                                    Khả dụng: {item.availableQuantity ?? 0}
+                                                </Typography>
+                                            )}
                                         </TableCell>
 
                                         <TableCell>
@@ -253,31 +258,25 @@ function InventoryTable({
                                             <Typography
                                                 variant="caption"
                                                 sx={{
-                                                    color: status.color,
+                                                    color: isExpired ? "#991B1B" : item.daysUntilExpiry <= 30 ? "#C2410C" : "#047857",
                                                     fontWeight: 700,
                                                 }}
                                             >
-                                                {getExpiryText(item)}
+                                                {getInventoryExpiryText(item)}
                                             </Typography>
                                         </TableCell>
 
                                         <TableCell>
-                                            <Chip
-                                                label={status.label}
-                                                size="small"
-                                                sx={{
-                                                    minWidth: 108,
-                                                    borderRadius: 999,
-                                                    color: status.color,
-                                                    border:
-                                                        "1px solid",
-                                                    borderColor:
-                                                        status.borderColor,
-                                                    backgroundColor:
-                                                        status.backgroundColor,
-                                                    fontWeight: 800,
-                                                }}
-                                            />
+                                            <Stack spacing={0.75} alignItems="flex-start">
+                                                {statuses.map((value) => {
+                                                    const badge = getInventoryStatusConfig(value);
+                                                    return <Chip key={value} label={badge.label} size="small" sx={{
+                                                        minWidth: 108, borderRadius: 999, color: badge.color,
+                                                        border: "1px solid", borderColor: badge.borderColor,
+                                                        backgroundColor: badge.backgroundColor, fontWeight: 800,
+                                                    }} />;
+                                                })}
+                                            </Stack>
                                         </TableCell>
 
                                     </TableRow>
@@ -312,6 +311,7 @@ function InventoryTable({
                     labelDisplayedRows={({ from, to, count }) =>
                         `${from}-${to} trong ${count}`
                     }
+                    sx={{ "& .MuiTablePagination-toolbar": { flexWrap: "wrap", justifyContent: "flex-end", pl: 1 } }}
                 />
             </Box>
         </Paper>

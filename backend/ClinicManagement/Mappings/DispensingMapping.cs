@@ -8,10 +8,15 @@ public static class DispensingMapping
 {
     public static DispensingListItemResponse ToDispensingListItem(
         this Prescription prescription,
-        Invoice? paidInvoice)
+        Invoice? paidInvoice,
+        DateOnly today)
     {
         return new DispensingListItemResponse
         {
+            ShortageItems = prescription.Status == PrescriptionStatusConstants.Dispensed ? 0
+                : prescription.Details.Count(x => x.Quantity > x.Medicine.Inventories
+                    .Where(i => i.ExpiryDate >= today && i.QuantityInStock > 0).Sum(i => i.QuantityInStock)),
+            ReviewStatus = GetReviewStatus(prescription),
             PrescriptionId = prescription.PrescriptionId,
             PrescriptionCode = GetPrescriptionCode(
                 prescription.PrescriptionId
@@ -29,7 +34,10 @@ public static class DispensingMapping
             PrescriptionStatus = prescription.Status,
             WorkflowStatus = GetWorkflowStatus(
                 prescription.Status,
-                paidInvoice != null
+                paidInvoice?.Status == "Paid",
+                prescription.Details.All(x => x.Quantity <= x.Medicine.Inventories
+                    .Where(i => i.ExpiryDate >= today && i.QuantityInStock > 0).Sum(i => i.QuantityInStock)),
+                prescription.StockReviews.Any(x => x.Status == "Pending")
             ),
             InvoiceId = paidInvoice?.Id,
             PaymentStatus = paidInvoice?.Status ?? "Unpaid",
@@ -50,10 +58,17 @@ public static class DispensingMapping
             ))
             .ToList();
         var hasSufficientStock = medicines.All(x => x.IsFulfillable);
-        var isPaid = paidInvoice != null;
+        var isPaid = paidInvoice?.Status == "Paid";
+        var hasPendingReview = prescription.StockReviews.Any(x => x.Status == "Pending");
 
         return new DispensingResponse
         {
+            UpdatedAt = DateTime.SpecifyKind(prescription.UpdatedAt, DateTimeKind.Utc),
+            ReviewStatus = GetReviewStatus(prescription),
+            CanRequestReview = prescription.Status == PrescriptionStatusConstants.Issued
+                && !hasSufficientStock && !hasPendingReview,
+            Reviews = prescription.StockReviews.OrderByDescending(x => x.CreatedAt)
+                .ThenByDescending(x => x.PrescriptionStockReviewId).Select(x => x.ToStockReviewResponse()).ToList(),
             PrescriptionId = prescription.PrescriptionId,
             PrescriptionCode = GetPrescriptionCode(
                 prescription.PrescriptionId
@@ -64,7 +79,7 @@ public static class DispensingMapping
             PrescriptionStatus = prescription.Status,
             WorkflowStatus = GetWorkflowStatus(
                 prescription.Status,
-                isPaid
+                isPaid, hasSufficientStock, hasPendingReview
             ),
             PatientName = prescription.MedicalRecord.Appointment.PatientName,
             PatientPhone = prescription.MedicalRecord.Appointment.PatientPhone,
@@ -77,7 +92,7 @@ public static class DispensingMapping
             CanDispense =
                 prescription.Status == PrescriptionStatusConstants.Issued &&
                 isPaid &&
-                hasSufficientStock,
+                hasSufficientStock && !hasPendingReview,
             DispensedByUserId = prescription.DispensedByUserId,
             DispensedByName = prescription.DispensedByUser?.FullName,
             DispensedAt = prescription.DispensedAt,
@@ -175,15 +190,20 @@ public static class DispensingMapping
 
     private static string GetWorkflowStatus(
         string prescriptionStatus,
-        bool isPaid)
+        bool isPaid, bool hasSufficientStock, bool hasPendingReview)
     {
         if (prescriptionStatus == PrescriptionStatusConstants.Dispensed)
         {
             return "Dispensed";
         }
 
+        if (!hasSufficientStock || hasPendingReview) return "NeedsReview";
         return isPaid ? "Ready" : "AwaitingPayment";
     }
+
+    private static string GetReviewStatus(Prescription prescription) =>
+        prescription.StockReviews.Any(x => x.Status == "Pending") ? "Pending"
+            : prescription.StockReviews.Count > 0 ? "Resolved" : "NotRequested";
 
     private static string GetPrescriptionCode(int prescriptionId)
     {

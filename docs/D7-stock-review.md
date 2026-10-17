@@ -1,0 +1,70 @@
+# D7: Dispensing Stock Review
+
+## Scope
+
+- `/internal/pharmacy/dispensing` is a full-width queue with NeedsReview and payment/review filters.
+- `/internal/pharmacy/dispensing/{prescriptionId}` is the dedicated detail route under the same `pharmacy.dispense` guard. It shows patient/payment information, medicine directions, FEFO lots, actions and review history without a separately scrolling side panel.
+- Queue filters and pagination use URL query parameters and are preserved when opening details, reloading and returning. Direct detail links load independently of the queue and have a fallback return link.
+- A paid but insufficient order is not Ready. Pending requests also stay in NeedsReview even if inventory is replenished.
+- AwaitingPayment and Unpaid filters exclude paid prescription IDs through SQL subqueries, preserving relational keys for paginated collection loading. Partial payment remains in the not-fully-paid group; contradictory workflow/payment filters return an empty page, not an API error.
+- Availability uses positive lots with expiry on/after the clinic date. FEFO suggestions are previews, not reservations.
+- GET operations never create requests or deduct stock. Only the existing actual dispensing confirmation deducts stock.
+
+## Requests And Traceability
+
+- POST `/api/dispensing/{id}/stock-reviews`: requires `pharmacy.dispense`, an Issued prescription with shortages, current `expectedUpdatedAt` and a 3-2000 character note.
+- Store actor/time, note, shortage snapshot, invoice/payment state and recipient snapshot in PrescriptionStockReviews. A filtered unique index permits at most one Pending request per prescription.
+- Resolve the prescribing doctor's active account by doctor ID and prescribing permission. Finance recipients must have implemented `billing.create` and `billing.recordPayment` permissions. Prefer the invoice's actual cashier when eligible; otherwise use the configured eligible users. There is no invented Cashier role or fixed counter/user ID.
+- Always notify the prescribing doctor and eligible finance recipients, including orders without an invoice. There is no recipient opt-out; legacy `notifyBilling` fields are ignored. Reject sending if either department has no active eligible recipient. The dialog shows only the prescribing doctor, not finance names or recipient counts; validation, automatic notification delivery and full recipient audit snapshots are unchanged.
+- Persist notifications in the same transaction. Publish realtime notifications only after commit; delivery failure does not undo a saved request.
+- POST `/api/dispensing/{id}/stock-reviews/recheck`: requires `expectedReviewId`, `expectedReviewUpdatedAt` and `expectedPrescriptionUpdatedAt`. Re-read stock/quantities in a serializable transaction. Only a round waiting for pharmacy after an official doctor response can be rechecked; waiting for doctor or billing is blocked. Reject stale IDs/versions so an old tab cannot close a newer request.
+- Recheck closes the round as `Resolved` when sufficient or `StillShortage` when insufficient, recording resolver/time and notifying previous recipients. Neither result changes the prescription, invoice or inventory. A still-short round permits the pharmacist to explicitly send a new request; recheck never automatically creates one. The old request, shortage snapshot and decision remain unchanged. This is not clinical approval, handover or refund.
+- Prescription medicines/quantities, clinical confirmation, invoice money and paid history are never changed by either endpoint. Existing billed-prescription edit guards remain in effect.
+- Sending duplicates, stale requests, dispensing with an open review and concurrent SQL conflicts return business conflicts. UI preserves the note after a failed send and displays the persisted state after success/reload.
+- Reset demo seed clears the new dependent rows before invoices/prescriptions. The live clinic database is not reset during verification.
+
+## Migration
+
+Apply `AddPrescriptionStockReviews` together with its generated designer and model snapshot. It creates only the review table, foreign keys and indexes. The snapshot also records the three invoice fields already created by `AddInsuranceToInvoices`; it does not add duplicate invoice columns.
+
+Apply `AddStockReviewDoctorDecisions` next. It adds the append-only decision table and review `UpdatedAt` concurrency token, backfilling old requests from their creation/resolution timestamp. No invoice/payment columns or live seed data are changed.
+
+The one-response policy adds no migration or database columns. Open rounds keep the existing `Pending` value. `workflowStatus` is derived from the stored status/latest decision: `PendingDoctor`, `WaitingPharmacyRecheck`, `WaitingBilling`, `Completed` or `StillShortage`. The existing string status/resolver/time fields store the still-short terminal result. Legacy multi-response histories are preserved, not deduplicated or deleted.
+
+## Doctor Handling
+
+- `/internal/doctor/stock-reviews` and `/{reviewId}` require Doctor/DepartmentHead and `pharmacy.prescribe`. The API independently restricts all reads/writes to the active doctor linked to the prescribing record, including when someone guesses a review ID. Admin prescribing permission alone does not grant doctor-response access.
+- GET `/api/stock-reviews`: own requests, search (RX/RS code, patient name/phone), Pending/Resolved/StillShortage/all, paginated. GET `/{reviewId}` returns the current prescription, shortage/recipient snapshots, decision history, current invoice guard and both version stamps.
+- POST `/api/stock-reviews/{reviewId}/responses`: `action` is `KeepPrescription` or `AdjustPrescription`; `reason` is required, trimmed, 3-2000 characters. Both `expectedReviewUpdatedAt` and `expectedPrescriptionUpdatedAt` are required. Adjustment also supplies `notes` (max 1000) and nonempty distinct medicine details, positive integer quantities, dosage (max 100), instructions (max 255). Unchanged adjustments are rejected; use KeepPrescription for a response without edits.
+- Every successful response appends actor/time/action/outcome/reason and full clinical before/after snapshots. It never rewrites a prior response or the original pharmacy request. Reads do not add audit rows.
+- Each request accepts exactly one official doctor response. Any second valid response returns conflict `7413`, regardless of changed action, reason, medicines or current version stamps, before writing audit/notifications or changing the review version. Serializable transaction/concurrency handling also protects simultaneous first submissions. The form is removed immediately after success and stays locked after reload; API protection covers direct calls and old multi-response requests. Replacing or withdrawing a submitted decision is outside this scope.
+- Without an active Medicine/Final invoice, adjustments apply in the same serializable transaction as audit and notifications. Retained medicines keep source detail IDs; removed/replacement medicines follow the existing prescription behavior. Clinical edits invalidate paper-book confirmation and reopen a Completed visit for re-confirmation, as normal prescription editing does.
+- With any active Medicine/Final invoice (including a partially matched prescription source), save outcome `AwaitingBilling` and the proposed prescription only. The current prescription, invoice/payment money, stock and paper-book confirmation are untouched. The current UI labels the proposal as not applied.
+- Active medicine invoices include `Unpaid`, `PartiallyPaid` and `Paid`. Partial payment locks reviewed adjustments and ordinary medicine/quantity changes or cancellation just like the other active invoice states. Dispensing reads and request snapshots preserve the real partial-payment invoice/status; only `Paid` authorizes actual handover. This guard does not implement payments, invoice adjustment or refunds and adds no schema/migration changes.
+- KeepPrescription records `Kept` and goes directly to `WaitingPharmacyRecheck`, even if an invoice exists, because the prescription did not change. An unbilled adjustment records `Applied` and also waits for pharmacy. Neither closes the Pending request or hands over stock. Pharmacy must recheck current stock and independently enforce Paid/valid FEFO before dispensing. An `AwaitingBilling` proposal stays `WaitingBilling` and blocks closure even if stock was replenished.
+- Normal prescription update/cancel cannot bypass an open review; use its response route so changes have a reason and linked audit. Existing invoiced-prescription restrictions still apply outside this workflow.
+- Persistent notifications to pharmacy and finance join the same transaction; realtime delivery is after commit. Notification history includes an additive `stockReviewId` derived from the server event key, so a doctor can open the request from the existing bell. Queue/detail URLs preserve filters on return.
+- UI uses existing medicine picker/table with dosage/instruction limits, before/after audit comparison, confirmation before sending, loading/empty/error states, and retains the draft on failed/stale submission. An explicit reload replaces that draft with current server state.
+- Audit responses are newest first, with three per page by default and 3/5/10 page-size choices on both doctor and pharmacy screens. A new response returns the history to the latest page. Local save confirmation is inline; the existing global realtime toast remains unchanged, so the two feedback sources no longer overlap.
+- Doctor and pharmacy share the same framed review history: sender/time/payment snapshot, request note, a shortage table captured at sending, separated doctor decisions/reasons, before/after comparison and recheck result. Recipient names are no longer listed in the visible history; their stored audit snapshot and notification delivery remain unchanged. The shortage table does not substitute current stock for historical quantities.
+- Each final result is labeled with its own RS code; multi-round history distinguishes the newest round from earlier rounds. Badge and final recheck text use the same persisted terminal status (`Resolved` means enough; `StillShortage` means insufficient), not current inventory or a different round. No new latest-recheck columns are needed because one recheck closes a round with its existing status/resolver/time fields. Replenishment never rewrites a closed shortage result. Current enough stock, review completion, payment and actual handover remain separate; the detail can display enough stock alongside Unpaid and a disabled handover action. A closed still-short order may wait for replenishment without a new request; creating another round remains explicit, not automatic.
+- Review sections use inset horizontal dividers and tables with shared inner padding. Request content has an icon label with a desktop gutter and stacks below that label on mobile; decision reasons remain separately headed and wrapping. Shared history uses 16px body text and 14px metadata/table labels without changing the application theme or audit pagination.
+- Dispensing detail follows the supplied reference layout: an unframed title with prescription metadata, patient summary and workflow/payment alerts in one bordered section, equal-width prescription/quantity tables side by side on desktop, and a full-width FEFO table aligned to their inner gutters below. Tables stack on mobile; action buttons remain at the bottom right. Missing specialty or record-type fields from the mockup are not fabricated or added to the API.
+- Doctor review detail uses the same read-only medicine cards and direction/quantity tables as dispensing, followed by shared review history and the response form. Its clinical summary has labeled table rows. Prescription-wide doctor notes are a bordered heading/content block inside the prescription section on both pages, not repeated for each medicine. These presentation changes do not change response locking, audit snapshots, billing, stock or API contracts.
+
+## Integration Still Required
+
+The current billing module has no Payment/refund/adjustment workflow contract. Doctor response, unbilled prescription adjustment and billed clinical proposals now exist; the billing owner's financial workflow remains separate. They still need invoice adjustment before collection and refund documents after collection, without deleting Paid invoices/payment history, followed by a transactional handoff applying the submitted proposal and returning the round to pharmacy recheck. There is intentionally no endpoint that marks `AwaitingBilling` reconciled without actual adjustment/refund evidence. Existing billing/payment services, settings and schema are not changed by the one-response policy. Completing a stock review alone never authorizes dispensing an Unpaid prescription.
+
+## Verification
+
+```powershell
+dotnet build tests/Week2Verification/Week2Verification.csproj -o tmp/d7-review-verification
+dotnet tmp/d7-review-verification/Week2Verification.dll --d7-review
+dotnet tmp/d7-review-verification/Week2Verification.dll --d7-doctor
+dotnet tmp/d7-review-verification/Week2Verification.dll --d6
+npm.cmd --prefix frontend/clinic-management-client test
+npm.cmd --prefix frontend/clinic-management-client run build
+```
+
+The harness migrates and seeds a unique temporary LocalDB database, verifies authorization, shortages/expiry, invoice matching, snapshots, notifications, duplicate/concurrent requests, recheck and one-time actual deduction, and deletes that test database on exit. `--d7-doctor` also checks single official responses, immutable legacy audits, retained/replacement medicines, existing paper-book invalidation, invoice proposals without money edits, waiting-billing blocking, still-short closure, explicit new rounds, stale-tab protection, and sufficient-but-Unpaid dispensing rejection. `--d7-review-ui` or `--d7-doctor-ui` keeps the fixture alive until stdin receives a newline for browser tests. Browser screenshots/scripts live under ignored `tmp/`.

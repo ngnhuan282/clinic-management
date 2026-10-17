@@ -17,16 +17,18 @@ const CARD_CONFIG = [
         icon: Inventory2OutlinedIcon,
     },
     {
-        key: "totalQuantity",
+        key: "availableQuantity",
         label: "Tổng tồn khả dụng",
         accent: "#059669",
         icon: VerifiedOutlinedIcon,
     },
     {
-        key: "lowStockBatches",
-        label: "Tồn thấp",
+        key: "stockAlerts",
+        label: "Tồn thấp / hết hàng",
         accent: "#F59E0B",
         icon: WarningAmberOutlinedIcon,
+        getValue: (summary) => (summary?.lowStockBatches ?? 0) + (summary?.outOfStockBatches ?? 0),
+        getDetail: (summary) => `${summary?.lowStockBatches ?? 0} tồn thấp / ${summary?.outOfStockBatches ?? 0} hết hàng`,
     },
     {
         key: "expiryAlerts",
@@ -36,6 +38,7 @@ const CARD_CONFIG = [
         getValue: (summary) =>
             (summary?.expiringSoonBatches ?? 0) +
             (summary?.expiredBatches ?? 0),
+        getDetail: (summary) => `${summary?.expiringSoonBatches ?? 0} sắp hết hạn / ${summary?.expiredBatches ?? 0} hết hạn`,
     },
 ];
 
@@ -86,7 +89,7 @@ function InventoryStatCards({ summary }) {
                                         color: "#6B7280",
                                         fontWeight: 700,
                                         textTransform: "uppercase",
-                                        letterSpacing: "0.02em",
+                                        letterSpacing: 0,
                                         display: "block",
                                         lineHeight: 1.3,
                                     }}
@@ -106,6 +109,11 @@ function InventoryStatCards({ summary }) {
                                 >
                                     {value}
                                 </Typography>
+                                {item.getDetail && (
+                                    <Typography variant="caption" sx={{ color: "#6B7280", display: "block", mt: 0.75 }}>
+                                        {item.getDetail(summary)}
+                                    </Typography>
+                                )}
                             </Box>
 
                             <Box

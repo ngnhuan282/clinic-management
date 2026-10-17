@@ -51,6 +51,7 @@ function ReadOnlyText({ children, muted = false }) {
         <Box
             sx={{
                 minHeight: 74,
+                minWidth: 0,
                 px: 1.75,
                 py: 1.5,
                 borderRadius: 1.5,
@@ -65,6 +66,7 @@ function ReadOnlyText({ children, muted = false }) {
                     fontWeight: muted ? 500 : 600,
                     lineHeight: 1.7,
                     whiteSpace: "pre-wrap",
+                    overflowWrap: "anywhere",
                 }}
             >
                 {children}
@@ -77,7 +79,7 @@ function MedicalRecordReadOnlySections({ record }) {
     const diagnoses = record?.diagnoses || [];
 
     return (
-        <Stack spacing={3}>
+        <Stack spacing={3} sx={{ minWidth: 0 }}>
             <Paper
                 elevation={0}
                 sx={{
@@ -134,12 +136,15 @@ function MedicalRecordReadOnlySections({ record }) {
                                         sm: "center",
                                     }}
                                     justifyContent="space-between"
+                                    sx={{ minWidth: 0, flexWrap: "wrap" }}
                                 >
                                     <Typography
                                         variant="body2"
                                         sx={{
                                             color: "#111827",
                                             fontWeight: 900,
+                                            minWidth: 0,
+                                            overflowWrap: "anywhere",
                                         }}
                                     >
                                         {diagnosis.diseaseCode} -{" "}
@@ -166,6 +171,8 @@ function MedicalRecordReadOnlySections({ record }) {
                                             mt: 0.75,
                                             color: "#6B7280",
                                             lineHeight: 1.6,
+                                            whiteSpace: "pre-wrap",
+                                            overflowWrap: "anywhere",
                                         }}
                                     >
                                         {diagnosis.note}

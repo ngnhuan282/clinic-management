@@ -38,6 +38,7 @@ public static class ExaminationMapping
             DoctorId = appointment.DoctorId,
             DoctorName = appointment.Doctor.FullName,
             PatientId = appointment.PatientId,
+            PatientProfileId = appointment.PatientProfileId ?? appointment.PatientBook?.PatientId,
             PatientBookId = appointment.PatientBookId,
             PatientBookNumber = appointment.PatientBook?.BookNumber,
             BookVerifiedAt = appointment.BookVerifiedAt,
@@ -62,6 +63,8 @@ public static class ExaminationMapping
             DoctorId = record.DoctorId,
             DoctorName = record.Doctor.FullName,
             PatientId = record.PatientId,
+            PatientProfileId = record.PatientBook?.PatientId
+                ?? record.Appointment.PatientProfileId ?? record.Appointment.PatientBook?.PatientId,
             PatientBookId =
                 record.PatientBookId ??
                 record.Appointment.PatientBookId,
@@ -79,7 +82,8 @@ public static class ExaminationMapping
             PaperBookUpdatedAt = record.PaperBookUpdatedAt,
             Status = record.Appointment.Status,
             CreatedAt = record.CreatedAt,
-            UpdatedAt = record.UpdatedAt,
+            // SQL datetime2 loses DateTime.Kind; preserve the UTC version written by the services.
+            UpdatedAt = DateTime.SpecifyKind(record.UpdatedAt, DateTimeKind.Utc),
             Diagnoses = record.Diagnoses
                 .OrderByDescending(x => x.IsPrimary)
                 .ThenBy(x => x.Disease.DiseaseName)

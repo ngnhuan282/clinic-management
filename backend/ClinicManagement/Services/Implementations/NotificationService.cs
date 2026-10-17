@@ -168,9 +168,16 @@ public class NotificationService(IHubContext<NotificationHub> hub, ApplicationDb
         var total = await query.CountAsync();
         var items = await query.OrderByDescending(x => x.CreatedAt).ThenByDescending(x => x.NotificationId)
             .Skip((pageNumber - 1) * pageSize).Take(pageSize)
-            .Select(x => new NotificationHistoryResponse(x.NotificationId, x.Title, x.Content, x.Type, x.IsRead, x.CreatedAt))
+            .Select(x => new { x.NotificationId, x.Title, x.Content, x.Type, x.IsRead, x.CreatedAt, x.EventKey })
             .ToListAsync();
-        return new(items, pageNumber, pageSize, total);
+        return new(items.Select(x => new NotificationHistoryResponse(x.NotificationId, x.Title, x.Content,
+            x.Type, x.IsRead, x.CreatedAt, StockReviewId(x.EventKey))), pageNumber, pageSize, total);
+    }
+
+    private static int? StockReviewId(string? eventKey)
+    {
+        var parts = eventKey?.Split(':');
+        return parts is { Length: >= 3 } && parts[0] == "stock-review" && int.TryParse(parts[1], out var id) && id > 0 ? id : null;
     }
 
     public async Task MarkReadAsync(int id)

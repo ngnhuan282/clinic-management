@@ -10,17 +10,22 @@ import {
 } from "@mui/material";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
+import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
 import LocalPharmacyOutlinedIcon from "@mui/icons-material/LocalPharmacyOutlined";
 import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
+import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { getPrescriptionByMedicalRecord } from "../../../api/prescriptionApi";
 import ConfirmDialog from "../../../components/common/ConfirmDialog";
 import Loading from "../../../components/common/Loading";
 import MedicalRecordFormSections from "../../../components/internal/examinations/MedicalRecordFormSections";
+import MedicalRecordPaperBookSection from "../../../components/internal/examinations/MedicalRecordPaperBookSection";
 import MedicalRecordPatientSummary from "../../../components/internal/examinations/MedicalRecordPatientSummary";
 import MedicalRecordStatusPanel from "../../../components/internal/examinations/MedicalRecordStatusPanel";
+import MedicalRecordPrescriptionPanel from "../../../components/internal/prescriptions/MedicalRecordPrescriptionPanel";
 import useMedicalRecordForm from "../../../hooks/useMedicalRecordForm";
+import getApiErrorMessage from "../../../utils/errorHandler";
 
 function MedicalRecordPage() {
     const { appointmentId } = useParams();
@@ -41,9 +46,11 @@ function MedicalRecordPage() {
         saving,
         error,
         actionError,
+        recordConflict,
         successMessage,
         selectedDiagnoses,
         completionReady,
+        createDraft,
         updateField,
         addDiagnosisRow,
         updateDiagnosisRow,
@@ -56,6 +63,7 @@ function MedicalRecordPage() {
     } = useMedicalRecordForm({
         appointmentId,
         initialAppointment,
+        initialDraft: location.state?.medicalRecordDraft,
     });
 
     const [
@@ -63,12 +71,15 @@ function MedicalRecordPage() {
         setCompleteWithoutPrescriptionOpen,
     ] = useState(false);
     const [prescriptionResult, setPrescriptionResult] = useState(null);
+    const [reloadRecordOpen, setReloadRecordOpen] = useState(false);
+    const [prescriptionRetry, setPrescriptionRetry] = useState(0);
     const medicalRecordId = medicalRecord?.medicalRecordId;
-    const prescription = medicalRecordId && prescriptionResult?.medicalRecordId === medicalRecordId
-        ? prescriptionResult.value
-        : null;
-    const checkingPrescription = Boolean(medicalRecordId)
-        && prescriptionResult?.medicalRecordId !== medicalRecordId;
+    const prescriptionKey = JSON.stringify([appointmentId, medicalRecordId, medicalRecord?.updatedAt, prescriptionRetry]);
+    const currentPrescription = prescriptionResult?.key === prescriptionKey ? prescriptionResult : null;
+    const prescription = currentPrescription?.value || null;
+    const prescriptionError = currentPrescription?.error || "";
+    const checkingPrescription = Boolean(medicalRecordId) && !currentPrescription;
+    const retryPrescription = () => setPrescriptionRetry((value) => value + 1);
 
     useEffect(() => {
         let ignore = false;
@@ -78,19 +89,19 @@ function MedicalRecordPage() {
         getPrescriptionByMedicalRecord(medicalRecordId)
             .then((result) => {
                 if (!ignore) {
-                    setPrescriptionResult({ medicalRecordId, value: result || null });
+                    setPrescriptionResult({ key: prescriptionKey, value: result || null });
                 }
             })
-            .catch(() => {
+            .catch((error) => {
                 if (!ignore) {
-                    setPrescriptionResult({ medicalRecordId, value: null });
+                    setPrescriptionResult({ key: prescriptionKey, error: getApiErrorMessage(error, "Không thể tải đơn thuốc của lượt khám.") });
                 }
             });
 
         return () => {
             ignore = true;
         };
-    }, [medicalRecordId]);
+    }, [medicalRecordId, prescriptionKey]);
 
     const handleSubmitRecord = useCallback(
         async (markCompleted) => {
@@ -117,13 +128,14 @@ function MedicalRecordPage() {
     }, [handleSubmitRecord]);
 
     const handleRequestCompleteExam = useCallback(() => {
-        if (!prescription) {
+        if (checkingPrescription || prescriptionError) return null;
+        if (!prescription || prescription.status === "Cancelled") {
             setCompleteWithoutPrescriptionOpen(true);
             return null;
         }
 
         return handleSubmitRecord(true);
-    }, [handleSubmitRecord, prescription]);
+    }, [checkingPrescription, handleSubmitRecord, prescription, prescriptionError]);
 
     const handleStatusPanelSubmit = useCallback(
         (markCompleted) => {
@@ -139,6 +151,29 @@ function MedicalRecordPage() {
     const handleCompleteDialogCancel = useCallback(() => {
         setCompleteWithoutPrescriptionOpen(false);
     }, []);
+
+    const openMedicalHistory = () => {
+        const draft = createDraft();
+        // Preserve unsaved fields in the current entry for both the back button and browser Back.
+        navigate(location.pathname, {
+            replace: true,
+            state: { ...location.state, appointment, medicalRecordDraft: draft },
+        });
+        navigate(`/internal/examinations/${appointmentId}/history`, {
+            state: { examinationReturn: { screen: "edit", appointment, draft } },
+        });
+    };
+
+    const openPrescription = () => {
+        const draft = createDraft();
+        navigate(location.pathname, {
+            replace: true,
+            state: { ...location.state, appointment, medicalRecordDraft: draft },
+        });
+        navigate(`/internal/examinations/${appointmentId}/prescription`, {
+            state: { examinationReturn: { screen: "edit", appointment, draft } },
+        });
+    };
 
     if (loading && !appointment) {
         return <Loading />;
@@ -230,8 +265,18 @@ function MedicalRecordPage() {
 
                             <Button
                                 variant="outlined"
+                                startIcon={<HistoryOutlinedIcon />}
+                                disabled={saving || !appointment?.patientBookId}
+                                onClick={openMedicalHistory}
+                                sx={{ minHeight: 42 }}
+                            >
+                                Lịch sử khám
+                            </Button>
+
+                            <Button
+                                variant="outlined"
                                 startIcon={<SaveOutlinedIcon />}
-                                disabled={saving}
+                                disabled={saving || loading || recordConflict}
                                 onClick={() => handleSubmitRecord(false)}
                                 sx={{ minHeight: 42 }}
                             >
@@ -241,12 +286,8 @@ function MedicalRecordPage() {
                             <Button
                                 variant="outlined"
                                 startIcon={<LocalPharmacyOutlinedIcon />}
-                                disabled={saving || !medicalRecord}
-                                onClick={() =>
-                                    navigate(
-                                        `/internal/examinations/${appointmentId}/prescription`
-                                    )
-                                }
+                                disabled={saving || loading || recordConflict || !medicalRecord}
+                                onClick={openPrescription}
                                 sx={{ minHeight: 42 }}
                             >
                                 Kê đơn thuốc
@@ -259,6 +300,7 @@ function MedicalRecordPage() {
                                 disabled={
                                     saving ||
                                     checkingPrescription ||
+                                    Boolean(prescriptionError) ||
                                     !completionReady
                                 }
                                 onClick={handleRequestCompleteExam}
@@ -292,7 +334,18 @@ function MedicalRecordPage() {
                 )}
 
                 {actionError && (
-                    <Alert severity="error" onClose={clearActionError}>
+                    <Alert severity="error" onClose={recordConflict ? undefined : clearActionError}
+                        sx={recordConflict ? {
+                            "& .MuiAlert-message": { minWidth: 0 },
+                            "& .MuiButton-root": { whiteSpace: "nowrap" },
+                            "@media (max-width: 599px)": {
+                                flexWrap: "wrap",
+                                "& .MuiAlert-message": { flex: 1 },
+                                "& .MuiAlert-action": { flexBasis: "100%", margin: 0, padding: "4px 0 0 34px" },
+                            },
+                        } : undefined}
+                        action={recordConflict && <Button color="inherit" size="small" startIcon={<RefreshOutlinedIcon />}
+                            disabled={saving || loading} onClick={() => setReloadRecordOpen(true)}>Tải lại hồ sơ</Button>}>
                         {actionError}
                     </Alert>
                 )}
@@ -314,29 +367,59 @@ function MedicalRecordPage() {
                         alignItems: "start",
                     }}
                 >
-                    <MedicalRecordFormSections
-                        appointment={appointment}
-                        medicalRecord={medicalRecord}
-                        form={form}
-                        diseases={diseases}
-                        updateField={updateField}
-                        addDiagnosisRow={addDiagnosisRow}
-                        updateDiagnosisRow={updateDiagnosisRow}
-                        setPrimaryDiagnosis={setPrimaryDiagnosis}
-                        removeDiagnosisRow={removeDiagnosisRow}
-                    />
+                    <Stack sx={{ gap: 3, minWidth: 0 }}>
+                        <MedicalRecordFormSections
+                            appointment={appointment}
+                            form={form}
+                            diseases={diseases}
+                            updateField={updateField}
+                            addDiagnosisRow={addDiagnosisRow}
+                            updateDiagnosisRow={updateDiagnosisRow}
+                            setPrimaryDiagnosis={setPrimaryDiagnosis}
+                            removeDiagnosisRow={removeDiagnosisRow}
+                        />
+                        <MedicalRecordPaperBookSection key={appointmentId}
+                            appointment={appointment} medicalRecord={medicalRecord} form={form}
+                            diseases={diseases} selectedDiagnoses={selectedDiagnoses} prescription={prescription}
+                            checkingPrescription={checkingPrescription} prescriptionError={prescriptionError}
+                            onPrescriptionRetry={retryPrescription} saving={saving || loading || recordConflict} updateField={updateField} />
+                    </Stack>
 
-                    <MedicalRecordStatusPanel
-                        appointment={appointment}
-                        diseases={diseases}
-                        selectedDiagnoses={selectedDiagnoses}
-                        form={form}
-                        saving={saving || checkingPrescription}
-                        completionReady={completionReady}
-                        submitRecord={handleStatusPanelSubmit}
-                    />
+                    <Stack spacing={3} sx={{ minWidth: 0 }}>
+                        <MedicalRecordStatusPanel
+                            appointment={appointment}
+                            diseases={diseases}
+                            selectedDiagnoses={selectedDiagnoses}
+                            form={form}
+                            saving={saving}
+                            disabled={loading || recordConflict}
+                            completingDisabled={checkingPrescription || Boolean(prescriptionError)}
+                            completionReady={completionReady}
+                            submitRecord={handleStatusPanelSubmit}
+                        />
+                        <MedicalRecordPrescriptionPanel
+                            prescription={prescription}
+                            loading={loading || checkingPrescription}
+                            error={prescriptionError}
+                            disabled={saving || loading || recordConflict || !medicalRecordId}
+                            onOpen={openPrescription}
+                        />
+                    </Stack>
                 </Box>
+                {prescriptionError && <Alert severity="error" action={<Button color="inherit" size="small" onClick={retryPrescription}>Thử lại</Button>}>{prescriptionError}</Alert>}
             </Stack>
+
+            <ConfirmDialog
+                open={reloadRecordOpen}
+                title="Tải lại hồ sơ mới nhất?"
+                message="Các thay đổi chưa lưu trên màn hình này sẽ được thay thế bằng hồ sơ mới nhất. Bạn cần đối chiếu lại sổ giấy trước khi chốt lượt."
+                confirmText="Tải lại hồ sơ"
+                cancelText="Giữ nội dung đang nhập"
+                confirmColor="primary"
+                loading={loading}
+                onCancel={() => setReloadRecordOpen(false)}
+                onConfirm={async () => { setReloadRecordOpen(false); await reload(); }}
+            />
 
             <ConfirmDialog
                 open={completeWithoutPrescriptionOpen}

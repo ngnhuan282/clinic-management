@@ -51,6 +51,7 @@ function PharmacyModuleTabs({ active }) {
     const visibleTabs = tabs.filter((tab) =>
         permissions.includes(tab.permission)
     );
+    if (visibleTabs.length === 0) return null;
 
     return (
         <Paper
