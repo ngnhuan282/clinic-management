@@ -3,7 +3,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import assert from "node:assert/strict";
 
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || "playwright");
-const host = spawn("dotnet", ["run", "--no-build", "--no-restore", "--project", "tests/Week2Verification", "--", "--week8-ui"],
+const host = spawn("dotnet", ["run", "--no-build", "--no-restore", "--configuration", process.env.TEST_CONFIGURATION || "Debug", "--project", "tests/Week2Verification", "--", "--week8-ui"],
     { windowsHide: true, stdio: ["pipe", "pipe", "pipe"] });
 const finished = new Promise(resolve => host.once("exit", resolve));
 let vite, browser, diagnosticPage;

@@ -45,8 +45,13 @@ function ActionDialog({ target, working, error, onClose, onConfirm }) {
 }
 
 export default function ScheduleReviewPage() {
+    const { userId, sessionRevision } = useAuth();
+    return <ScheduleReviewContent key={`${userId}:${sessionRevision}`} />;
+}
+
+function ScheduleReviewContent() {
     const { revision } = useNotifications();
-    const { role, user } = useAuth();
+    const { role, user, userId, sessionRevision } = useAuth();
     const isAdmin = role === "Admin";
     const tabs = ["Pending", "Approved", "Rejected", ...(!isAdmin ? ["Cancelled"] : []), "All"];
     const [activeTab, setActiveTab] = useState("Pending");
@@ -66,7 +71,7 @@ export default function ScheduleReviewPage() {
     const [actionError, setActionError] = useState("");
     const listRequest = useRef(0);
     const apiStatus = activeTab === "All" ? undefined : activeTab;
-    const queryKey = JSON.stringify([apiStatus, pageNumber]);
+    const queryKey = JSON.stringify([userId, sessionRevision, apiStatus, pageNumber]);
     const currentResult = listResult?.key === queryKey ? listResult : null;
     const loading = refreshing || !currentResult;
     const list = currentResult?.data || { items: [], totalItems: 0, totalPages: 0 };

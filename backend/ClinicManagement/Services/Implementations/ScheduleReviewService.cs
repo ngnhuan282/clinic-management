@@ -20,6 +20,8 @@ public class ScheduleReviewService(ApplicationDbContext db, ICurrentUserService 
         int? doctorId = null, int? roomId = null)
     {
         var (userId, departmentId, isAdmin) = await ReviewerAsync();
+        if (pageNumber < 1 || pageSize is < 1 or > 100 || (long)(pageNumber - 1) * pageSize > int.MaxValue)
+            throw new AppException(ErrorCode.INVALID_REQUEST);
         await scope.ValidateFiltersAsync(departmentId, doctorId, roomId);
         if (status is not null && status is not ("Pending" or "Approved" or "Rejected" or "Cancelled"))
             throw new AppException(ErrorCode.INVALID_REQUEST);

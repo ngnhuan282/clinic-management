@@ -6,12 +6,12 @@ import useAuth from "./useAuth";
 import useNotifications from "./useNotifications";
 
 export default function useDepartmentStatistics(period) {
-    const { userId } = useAuth();
+    const { userId, sessionRevision } = useAuth();
     const { departmentStatisticsRevision } = useNotifications();
     const navigate = useNavigate();
     const [revision, setRevision] = useState(0);
     const [state, setState] = useState(null);
-    const requestKey = JSON.stringify({ userId, ...period, revision, departmentStatisticsRevision });
+    const requestKey = JSON.stringify({ userId, sessionRevision, ...period, revision, departmentStatisticsRevision });
 
     useEffect(() => {
         const controller = new AbortController();

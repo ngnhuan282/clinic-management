@@ -21,13 +21,13 @@ const unwrap = (response) => response.data.result ?? response.data;
 
 const doctorScheduleApi = {
     list: (params) => axiosClient.get("/doctor-schedules", { params }),
-    department: (params) => axiosClient.get("/doctor-schedules/department", { params }),
-    departmentOptions: () => axiosClient.get("/doctor-schedules/department/options"),
+    department: (params, signal) => axiosClient.get("/doctor-schedules/department", { params, signal }),
+    departmentOptions: (signal) => axiosClient.get("/doctor-schedules/department/options", { signal }),
     create: (payload) => axiosClient.post("/doctor-schedules", payload),
     availableSlots: (params) => axiosClient.get("/doctor-schedules/available-slots", { params }),
     submitRequest: (payload) => axiosClient.post("/doctor-schedules/request", payload),
-    myRequests: () => axiosClient.get("/doctor-schedules/my-requests"),
-    rooms: () => axiosClient.get("/doctor-schedules/rooms"),
+    myRequests: (signal) => axiosClient.get("/doctor-schedules/my-requests", { signal }),
+    rooms: (signal) => axiosClient.get("/doctor-schedules/rooms", { signal }),
     doctors: (departmentId) => axiosClient.get("/doctors", { params: { departmentId } }),
     unwrap,
 };
