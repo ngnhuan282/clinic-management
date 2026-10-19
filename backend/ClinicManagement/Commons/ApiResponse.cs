@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace ClinicManagement.Commons;
 
 public class ApiResponse<T>
@@ -7,6 +9,9 @@ public class ApiResponse<T>
 	public string Message { get; set; } = string.Empty;
 
 	public T? Result { get; set; }
+
+	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+	public IDictionary<string, string[]>? Errors { get; set; }
 
 	public static ApiResponse<T> Success(
 		T? result,
@@ -22,12 +27,14 @@ public class ApiResponse<T>
 
 	public static ApiResponse<T> Failure(
 		int code,
-		string message)
+		string message,
+		IDictionary<string, string[]>? errors = null)
 	{
 		return new ApiResponse<T>
 		{
 			Code = code,
-			Message = message
+			Message = message,
+			Errors = errors
 		};
 	}
 }

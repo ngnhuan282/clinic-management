@@ -14,6 +14,11 @@ public static class DependencyInjection
         services.AddScoped<RefreshCookie>();
         services.AddScoped<ReviewRepository>();
         services.AddScoped<DepartmentScope>();
+        services.AddScoped<IDepartmentStatisticsService, DepartmentStatisticsService>();
+        services.AddScoped<IVisitReportQuery, VisitReportQuery>();
+        services.AddScoped<IDepartmentStatisticsRepository, DepartmentStatisticsRepository>();
+        services.AddScoped<FluentValidation.IValidator<ClinicManagement.DTOs.Requests.DepartmentStatisticsQuery>,
+            ClinicManagement.Validators.DepartmentStatisticsQueryValidator>();
         services.AddScoped<IReviewService, ReviewService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<RbacService>();

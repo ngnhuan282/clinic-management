@@ -12,10 +12,7 @@ function PageHeader({
     return (
         <Stack
             direction={{ xs: "column", sm: "row" }}
-            alignItems={{ xs: "flex-start", sm: "center" }}
-            justifyContent="space-between"
-            gap={2}
-            sx={{ mb: 3 }}
+            sx={{ mb: 3, gap: 2, alignItems: { xs: "flex-start", sm: "center" }, justifyContent: "space-between" }}
         >
             <Box>
                 <Typography

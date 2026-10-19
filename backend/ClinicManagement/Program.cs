@@ -30,7 +30,7 @@ namespace ClinicManagement
             // =========================
             // Controllers
             // =========================
-            builder.Services.AddControllers();
+            builder.Services.AddControllers().AddDepartmentStatisticsValidation();
 
             // =========================
             // Global Exception Handler

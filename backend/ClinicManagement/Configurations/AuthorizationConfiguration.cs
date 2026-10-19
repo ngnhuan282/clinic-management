@@ -15,6 +15,8 @@ public static class AuthorizationConfiguration
                     policy.RequireAuthenticatedUser().AddRequirements(new PermissionRequirement(permission.Code));
                     if (permission.Code.StartsWith("accounts.", StringComparison.Ordinal))
                         policy.RequireRole(RoleConstants.Admin);
+                    if (permission.Code == PermissionCodes.ReportsDepartmentStatistics)
+                        policy.RequireRole(RoleConstants.DepartmentHead);
                 });
             options.AddPolicy(PolicyConstants.ManageUsers, policy =>
                 policy.RequireAuthenticatedUser().RequireRole(RoleConstants.Admin)

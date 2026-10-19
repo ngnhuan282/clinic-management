@@ -34,12 +34,12 @@ import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import SecurityOutlinedIcon from "@mui/icons-material/SecurityOutlined";
 import {
     Link as RouterLink,
-    Outlet,
     useLocation,
     useNavigate,
 } from "react-router-dom";
 
 import useAuth from "../hooks/useAuth";
+import RouteContent from "../components/common/RouteContent";
 import {
     INTERNAL_PAGES,
     ROLE_LABELS,
@@ -50,6 +50,7 @@ const SIDEBAR_WIDTH = 260;
 const TOPBAR_HEIGHT = 76;
 
 const MENU_ICONS = {
+    "/internal/department-statistics": BarChartOutlinedIcon,
     "/internal/dashboard": DashboardOutlinedIcon,
     "/internal/examinations": MedicalServicesOutlinedIcon,
     "/internal/doctor/stock-reviews": FactCheckOutlinedIcon,
@@ -563,7 +564,7 @@ function InternalLayout() {
                         p: { xs: 2, md: 3 },
                     }}
                 >
-                    <Outlet />
+                    <RouteContent />
                 </Box>
             </Box>
         </Box>

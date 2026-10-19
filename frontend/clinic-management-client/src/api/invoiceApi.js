@@ -11,8 +11,8 @@
 import axiosClient from './axiosClient';
 
 const invoiceApi = {
-  getPendingBillings: (stage) => {
-    return axiosClient.get(`/Invoices/pending?stage=${stage}`);
+  getPendingBillings: (stage, config) => {
+    return axiosClient.get('/Invoices/pending', { ...config, params: { stage } });
   },
   createInvoice: (dto) => {
     return axiosClient.post('/Invoices', dto);
@@ -21,8 +21,8 @@ const invoiceApi = {
     return axiosClient.get(`/Invoices/${id}`);
   },
   // Nâng cấp Tuần 6
-  getInvoiceHistory: (search) => {
-    return axiosClient.get(`/Invoices/history?search=${search || ''}`);
+  getInvoiceHistory: (search, config) => {
+    return axiosClient.get('/Invoices/history', { ...config, params: { search: search || '' } });
   },
   createAdjustment: (dto) => {
     return axiosClient.post('/Invoices/adjustment', dto);

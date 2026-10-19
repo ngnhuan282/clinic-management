@@ -11,6 +11,7 @@ public static class SwaggerConfiguration
 
         services.AddSwaggerGen(options =>
         {
+            options.OperationFilter<DepartmentStatisticsOperationFilter>();
             // =========================
             // Swagger Information
             // =========================

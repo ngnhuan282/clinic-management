@@ -1,8 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Table, Button, Card, Select, Tag, Space, Typography, 
-  message, Row, Col, Divider, Statistic, InputNumber, Tabs, Modal, Form, Input 
+  message, Row, Col, Divider, Statistic, InputNumber, Tabs, Modal, Form, Input, Alert
 } from 'antd';
 import { 
   DollarOutlined, CreditCardOutlined, SolutionOutlined, 
@@ -10,63 +10,74 @@ import {
 } from '@ant-design/icons';
 import invoiceApi from '../../api/invoiceApi';
 import getApiErrorMessage from '../../utils/errorHandler';
+import useAuth from '../../hooks/useAuth';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 
 export default function CashierBillingPage() {
+  const { userId } = useAuth();
   const [activeTab, setActiveTab] = useState('1'); // Tab 1: Thu tiền, Tab 2: Lịch sử & Điều chỉnh
   
   // States cho Tab 1
   const [stage, setStage] = useState('Pending');
-  const [pendingList, setPendingList] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [pendingState, setPendingState] = useState(null);
+  const [pendingRevision, setPendingRevision] = useState(0);
   const [submitting, setSubmitting] = useState(false);
-  const [selectedRecord, setSelectedRecord] = useState(null);
+  const [selection, setSelection] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [insuranceDiscountPercent, setInsuranceDiscountPercent] = useState(0);
 
   // States cho Tab 2 (Lịch sử & Điều chỉnh)
-  const [historyList, setHistoryList] = useState([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyState, setHistoryState] = useState(null);
+  const [historyFilter, setHistoryFilter] = useState({ search: '', revision: 0 });
   const [searchKeyword, setSearchKeyword] = useState('');
   const [adjustmentModalOpen, setAdjustmentModalOpen] = useState(false);
   const [selectedInvoiceForAdjust, setSelectedInvoiceForAdjust] = useState(null);
   const [adjForm] = Form.useForm();
 
-  useEffect(() => {
+  const pendingKey = JSON.stringify({ userId, stage, pendingRevision });
+  const historyKey = JSON.stringify({ userId, ...historyFilter });
+  const pending = pendingState?.key === pendingKey ? pendingState : null;
+  const history = historyState?.key === historyKey ? historyState : null;
+  const pendingList = pending?.items || [];
+  const historyList = history?.items || [];
+  const loading = !pending;
+  const historyLoading = !history;
+  const selectedRecord = selection?.key === pendingKey ? selection.record : null;
+  const fetchPending = () => setPendingRevision(value => value + 1);
+  const fetchHistory = () => setHistoryFilter(value => ({ search: searchKeyword, revision: value.revision + 1 }));
+
+  function selectRecord(record) {
+    setSelection({ key: pendingKey, record });
     setInsuranceDiscountPercent(0);
-  }, [selectedRecord]);
-
-  const fetchPending = async () => {
-    setLoading(true);
-    try {
-      const res = await invoiceApi.getPendingBillings(stage);
-      setPendingList(res.data);
-      setSelectedRecord(null);
-    } catch {
-      message.error('Lỗi khi tải danh sách chờ thu tiền!');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchHistory = async () => {
-    setHistoryLoading(true);
-    try {
-      const res = await invoiceApi.getInvoiceHistory(searchKeyword);
-      setHistoryList(res.data);
-    } catch {
-      message.error('Lỗi khi tải lịch sử hóa đơn!');
-    } finally {
-      setHistoryLoading(false);
-    }
-  };
+  }
 
   useEffect(() => {
-    if (activeTab === '1') fetchPending();
-    if (activeTab === '2') fetchHistory();
-  }, [stage, activeTab]);
+    if (activeTab !== '1') return;
+    const controller = new AbortController();
+    const { stage: requestedStage } = JSON.parse(pendingKey);
+    invoiceApi.getPendingBillings(requestedStage, { signal: controller.signal })
+      .then(response => {
+        if (!controller.signal.aborted) setPendingState({ key: pendingKey, items: response.data });
+      }).catch(error => {
+        if (!controller.signal.aborted) setPendingState({ key: pendingKey, items: [], error: getApiErrorMessage(error) });
+      });
+    return () => controller.abort();
+  }, [activeTab, pendingKey]);
+
+  useEffect(() => {
+    if (activeTab !== '2') return;
+    const controller = new AbortController();
+    const { search } = JSON.parse(historyKey);
+    invoiceApi.getInvoiceHistory(search, { signal: controller.signal })
+      .then(response => {
+        if (!controller.signal.aborted) setHistoryState({ key: historyKey, items: response.data });
+      }).catch(error => {
+        if (!controller.signal.aborted) setHistoryState({ key: historyKey, items: [], error: getApiErrorMessage(error) });
+      });
+    return () => controller.abort();
+  }, [activeTab, historyKey]);
 
   // Tài chính Tab 1
   const rawTotalAmount = selectedRecord?.items?.reduce((sum, item) => sum + item.totalPrice, 0) || 0;
@@ -194,9 +205,12 @@ export default function CashierBillingPage() {
         </Title>
       </Card>
 
-      <Tabs 
+      {(activeTab === '1' ? pending?.error : history?.error) && <Alert type="error" showIcon
+        title={activeTab === '1' ? pending.error : history.error}
+        action={<Button onClick={activeTab === '1' ? fetchPending : fetchHistory}>Thử lại</Button>} />}
+      <Tabs
         activeKey={activeTab} 
-        onChange={setActiveTab}
+        onChange={value => { setActiveTab(value); if (value === '1') fetchPending(); else fetchHistory(); }}
         type="card"
         items={[
           {
@@ -223,7 +237,7 @@ export default function CashierBillingPage() {
                   <Col span={14}>
                     <Card title="Chi tiết Hóa đơn Thanh toán">
                       {selectedRecord ? (
-                        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                        <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                           <div>
                             <Text type="secondary">Mã Lịch hẹn: </Text><Tag color="volcano">#{selectedRecord.appointmentId}</Tag>
                             <Text type="secondary" style={{ marginLeft: 16 }}>Mã Bệnh nhân: </Text><Tag color="green">#{selectedRecord.patientId}</Tag>
@@ -261,12 +275,12 @@ export default function CashierBillingPage() {
                           </Card>
                           <Row gutter={16}>
                             <Col span={8}><Statistic title="Tổng chi phí gốc" value={rawTotalAmount} precision={0} suffix="đ" /></Col>
-                            <Col span={8}><Statistic title="BHYT chi trả" value={insuranceAmount} precision={0} suffix="đ" valueStyle={{ color: '#3f8600' }} /></Col>
-                            <Col span={8}><Statistic title="Bệnh nhân thực trả" value={finalPatientAmount} precision={0} suffix="đ" valueStyle={{ color: '#cf1322', fontWeight: 'bold' }} /></Col>
+                            <Col span={8}><Statistic title="BHYT chi trả" value={insuranceAmount} precision={0} suffix="đ" styles={{ content: { color: '#3f8600' } }} /></Col>
+                            <Col span={8}><Statistic title="Bệnh nhân thực trả" value={finalPatientAmount} precision={0} suffix="đ" styles={{ content: { color: '#cf1322', fontWeight: 'bold' } }} /></Col>
                           </Row>
                           <Row justify="space-between" align="middle" style={{ marginTop: 8 }}>
                             <Col>
-                              <Space direction="vertical">
+                              <Space orientation="vertical">
                                 <Text strong>Phương thức thanh toán:</Text>
                                 <Select value={paymentMethod} onChange={setPaymentMethod} style={{ width: 180 }}>
                                   <Option value="Cash">Tiền mặt</Option>

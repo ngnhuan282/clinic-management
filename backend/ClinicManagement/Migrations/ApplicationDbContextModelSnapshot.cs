@@ -1437,6 +1437,15 @@ namespace ClinicManagement.Migrations
                         },
                         new
                         {
+                            Code = "reports.departmentStatistics",
+                            IsImplemented = true,
+                            Kind = "Xem",
+                            Module = "Báo cáo",
+                            Name = "Thống kê khoa",
+                            Scope = "Chỉ khoa của Trưởng khoa đăng nhập"
+                        },
+                        new
+                        {
                             Code = "reports.operations",
                             IsImplemented = false,
                             Kind = "Xem",
@@ -2203,6 +2212,11 @@ namespace ClinicManagement.Migrations
                         {
                             RoleId = 1,
                             PermissionCode = "reports.revenue"
+                        },
+                        new
+                        {
+                            RoleId = 6,
+                            PermissionCode = "reports.departmentStatistics"
                         },
                         new
                         {

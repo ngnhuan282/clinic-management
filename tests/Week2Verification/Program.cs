@@ -46,12 +46,22 @@ async Task<JsonNode?> Send(HttpMethod method, string path, object? body = null, 
 }
 try
 {
-    await db.Database.MigrateAsync();
-    Check(!(await db.Database.GetPendingMigrationsAsync()).Any(), "All migrations apply to an empty SQL Server database");
-    Check(await db.Departments.CountAsync() == 3 && await db.Rooms.CountAsync() == 3 && await db.Specializations.CountAsync() == 3, "Catalog master data seeded");
-    if (args.Contains("--migrations-only"))
+    if (args.Contains("--model-schema"))
     {
-        await MigrationChecks.RunAsync(db, Check);
+        await db.Database.EnsureCreatedAsync();
+        Check(true, "Explicit model fixture: SQL Server schema from current EF model; legacy migration chain is NOT verified");
+    }
+    else
+    {
+        await db.Database.MigrateAsync();
+        Check(!(await db.Database.GetPendingMigrationsAsync()).Any(), "All migrations apply to an empty SQL Server database");
+    }
+    if (args.Contains("--a7") || args.Contains("--a7-ui")) await A7Checks.VerifyPermissionMigrationAsync(db, Check);
+    Check(await db.Departments.CountAsync() == 3 && await db.Rooms.CountAsync() == 3 && await db.Specializations.CountAsync() == 3, "Catalog master data seeded");
+    if (args.Contains("--migrations-only") || args.Contains("--billing-migrations-only"))
+    {
+        await BillingMigrationChecks.RunAsync(db, Check);
+        if (!args.Contains("--billing-migrations-only")) await MigrationChecks.RunAsync(db, Check);
         Console.WriteLine($"SUCCESS: {checks} migration checks passed.");
         return;
     }
@@ -73,7 +83,7 @@ try
     start.Environment["ConnectionStrings__DefaultConnection"] = connection;
     start.Environment["Jwt__Key"] = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
     if (args.Contains("--a6")) start.Environment["AuthCookie__Secure"] = "true";
-    if (args.Contains("--ui") || args.Contains("--a5-ui") || args.Contains("--a6-ui") || args.Contains("--clinic-realtime-ui") || args.Contains("--c6c7-ui")) start.Environment["Cors__FrontendUrl"] = "http://127.0.0.1:5190";
+    if (args.Contains("--ui") || args.Contains("--a5-ui") || args.Contains("--a6-ui") || args.Contains("--clinic-realtime-ui") || args.Contains("--c6c7-ui") || args.Contains("--a7-ui")) start.Environment["Cors__FrontendUrl"] = "http://127.0.0.1:5190";
     server = Process.Start(start)!;
     server.OutputDataReceived += (_, e) => { if (e.Data != null) serverLog.Enqueue(e.Data); };
     server.ErrorDataReceived += (_, e) => { if (e.Data != null) serverLog.Enqueue(e.Data); };
@@ -86,6 +96,19 @@ try
         await Task.Delay(200);
     }
     await Send(HttpMethod.Get, "swagger/v1/swagger.json");
+    if (args.Contains("--a7") || args.Contains("--a7-ui"))
+    {
+        var fixture = System.Text.Json.JsonSerializer.SerializeToNode(await A7Checks.RunAsync(client, db, password, Check))!.AsObject();
+        Console.WriteLine($"SUCCESS: {checks} A7 checks passed.");
+        if (args.Contains("--a7-ui"))
+        {
+            fixture["baseUrl"] = client.BaseAddress!.ToString();
+            fixture["password"] = password;
+            Console.WriteLine("AUTH_UI_SESSION:" + fixture.ToJsonString());
+            await Console.In.ReadLineAsync();
+        }
+        return;
+    }
     if (args.Contains("--c6c7") || args.Contains("--c6c7-ui"))
     {
         await C6C7Checks.RunAsync(client, db, password, Check);
