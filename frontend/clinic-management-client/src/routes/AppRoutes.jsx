@@ -140,7 +140,7 @@ export default function AppRoutes() {
                         <Route element={<ProtectedRoute allowedRoles={["Admin"]} />}>
                             <Route path="reviews" element={<ReviewsManagementPage />} />
                         </Route>
-                        <Route element={<ProtectedRoute allowedRoles={["DepartmentHead"]} />}>
+                        <Route element={<ProtectedRoute allowedRoles={["DepartmentHead"]} allowedPermissions={["schedules.viewDepartment"]} />}>
                             <Route path="department-schedules" element={<DepartmentSchedulesPage />} />
                         </Route>
                         <Route element={<ProtectedRoute allowedRoles={["DepartmentHead"]} allowedPermissions={["reports.departmentStatistics"]} />}>

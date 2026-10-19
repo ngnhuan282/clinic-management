@@ -8,7 +8,8 @@ namespace ClinicManagement.Repositories.Implementations;
 public class DepartmentScheduleRepository(ApplicationDbContext db) : IDepartmentScheduleRepository
 {
     public Task<int?> GetDepartmentIdAsync(int userId) => db.Doctors.AsNoTracking()
-        .Where(x => x.UserId == userId && x.IsActive).Select(x => (int?)x.DepartmentId).SingleOrDefaultAsync();
+        .Where(x => x.UserId == userId && x.IsActive && x.Department.IsActive)
+        .Select(x => (int?)x.DepartmentId).SingleOrDefaultAsync();
 
     public Task<bool> HasDoctorAsync(int departmentId, int doctorId) => db.Doctors
         .AnyAsync(x => x.DoctorId == doctorId && x.DepartmentId == departmentId);

@@ -107,7 +107,8 @@ public class ScheduleReviewService(ApplicationDbContext db, ICurrentUserService 
             if (request.Status != "Pending") throw new AppException(ErrorCode.SCHEDULE_REQUEST_INVALID_STATUS);
             if (request.StartTime >= request.EndTime ||
                 (request.EndTime - request.StartTime).Ticks % TimeSpan.FromMinutes(30).Ticks != 0 ||
-                !request.Doctor.IsActive || !request.Room.IsActive)
+                !request.Doctor.IsActive || !request.Doctor.Department.IsActive || !request.Room.IsActive
+                || request.Doctor.DepartmentId != request.Room.DepartmentId)
                 throw new AppException(ErrorCode.INVALID_REQUEST);
 
             if (reason is null)
@@ -146,6 +147,7 @@ public class ScheduleReviewService(ApplicationDbContext db, ICurrentUserService 
             await _db.SaveChangesAsync();
             await transaction.CommitAsync();
             await notifications.PublishAsync(rows);
+            await notifications.PublishDepartmentWorkflowChangedAsync(request.DoctorId, DepartmentWorkflowChangedResponse.Schedules);
             return Map(request, reviewer);
         }
         catch (Exception ex) when (IsSqlConflict(ex))

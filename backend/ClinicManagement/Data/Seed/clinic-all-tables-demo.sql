@@ -110,7 +110,7 @@ BEGIN TRY
     SELECT 1, Code FROM dbo.Permissions WHERE Code NOT IN
         ('appointments.viewOwn','appointments.bookSelf','appointments.cancelOwn','clinical.viewOwn',
          'pharmacy.viewOwnPrescription','labs.viewOwnResult','billing.viewOwn',
-         'labs.order','labs.enterResult','labs.viewPending','reports.departmentStatistics');
+         'labs.order','labs.enterResult','labs.viewPending','reports.departmentStatistics','schedules.viewDepartment');
     INSERT INTO dbo.RolePermissions (RoleId, PermissionCode)
     SELECT 2, Code FROM dbo.Permissions WHERE Code IN
         ('appointments.startExamination','clinical.viewAssigned','clinical.writeRecord','clinical.editDiagnosis',
@@ -129,7 +129,7 @@ BEGIN TRY
         ('labs.viewOrders','labs.viewPending','labs.start','labs.enterResult');
     INSERT INTO dbo.RolePermissions (RoleId, PermissionCode)
     SELECT 6, Code FROM dbo.Permissions WHERE Code IN
-        ('reports.departmentStatistics','schedules.review','appointments.startExamination','clinical.viewAssigned','clinical.writeRecord',
+        ('schedules.viewDepartment','reports.departmentStatistics','schedules.review','appointments.startExamination','clinical.viewAssigned','clinical.writeRecord',
          'clinical.editDiagnosis','clinical.manageDiseases','pharmacy.viewInventory','pharmacy.viewCatalog',
          'pharmacy.prescribe','labs.viewTypes','labs.viewOrders','labs.order');
     INSERT INTO dbo.RolePermissions (RoleId, PermissionCode)

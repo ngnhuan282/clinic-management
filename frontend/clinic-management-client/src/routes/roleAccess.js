@@ -65,6 +65,7 @@ const ADDITIONAL_INTERNAL_ROUTES = [];
 
 const PAGE_PERMISSIONS = {
     "/internal/department-statistics": "reports.departmentStatistics",
+    "/internal/department-schedules": "schedules.viewDepartment",
     "/internal/appointments": "appointments.view",
     "/internal/patient-books": "appointments.checkIn",
     "/internal/users": "accounts.view",

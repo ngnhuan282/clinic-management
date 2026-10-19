@@ -12,7 +12,8 @@ test("calendar navigation preserves dates across month/year boundaries and uses 
 
 test("department calendar direct route is restricted to DepartmentHead", () => {
     const path = "/internal/department-schedules";
-    assert.equal(canAccessPath({ role: "DepartmentHead", permissions: [] }, path), true);
+    assert.equal(canAccessPath({ role: "DepartmentHead", permissions: ["schedules.viewDepartment"] }, path), true);
+    assert.equal(canAccessPath({ role: "DepartmentHead", permissions: [] }, path), false);
     for (const role of ["Doctor", "Receptionist", "Patient", "Admin"]) {
         assert.equal(canAccessPath({ role, permissions: ["schedules.review"] }, path), false);
         assert.equal(redirectForProtectedRoute({ isAuthenticated: true, role }, path, { allowedRoles: ["DepartmentHead"] }), "/403");

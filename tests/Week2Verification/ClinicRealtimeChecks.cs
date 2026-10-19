@@ -178,10 +178,10 @@ internal static class ClinicRealtimeChecks
         check(await db.PatientBooks.CountAsync(x => x.PatientId == profile.PatientId) == 2
             && await db.PatientBooks.CountAsync(x => x.PatientId == profile.PatientId && x.Status == "Issued") == 1
             && await db.PatientBooks.AsNoTracking().AnyAsync(x => x.PatientBookId == replacementBookId && x.PreviousBookId == bookId),
-            "Reissuing preserves the previous book, voids it and keeps exactly one active replacement");
+            "Reissuing preserves the previous book and keeps exactly one active replacement");
         bookId = replacementBookId;
 
-        var checkInBody = new { patientProfileId = profile.PatientId, patientBookId = bookId, bookPresented = false };
+        var checkInBody = new { patientProfileId = profile.PatientId, patientBookId = bookId, bookPresented = true };
         await Send(HttpMethod.Patch, $"api/appointments/{clinical.AppointmentId}/check-in", receptionToken,
             new { patientProfileId = profile.PatientId, patientBookId = 999999 }, 404);
         check(patient.Count("CheckInChanged") == 0, "Failed check-in emits no event");

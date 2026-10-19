@@ -15,11 +15,13 @@ public class DoctorSchedulesController(IDoctorScheduleService service, ISchedule
 {
     [HttpGet("department")]
     [Authorize(Roles = RoleConstants.DepartmentHead)]
+    [Authorize(Policy = PermissionCodes.SchedulesViewDepartment)]
     public async Task<ActionResult<ApiResponse<List<DepartmentScheduleResponse>>>> Department([FromQuery] DepartmentScheduleQuery query) =>
         Ok(ApiResponse<List<DepartmentScheduleResponse>>.Success(await departmentService.ListAsync(query)));
 
     [HttpGet("department/options")]
     [Authorize(Roles = RoleConstants.DepartmentHead)]
+    [Authorize(Policy = PermissionCodes.SchedulesViewDepartment)]
     public async Task<ActionResult<ApiResponse<DepartmentScheduleOptionsResponse>>> DepartmentOptions() =>
         Ok(ApiResponse<DepartmentScheduleOptionsResponse>.Success(await departmentService.GetOptionsAsync()));
 

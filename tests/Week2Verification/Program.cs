@@ -57,6 +57,7 @@ try
         Check(!(await db.Database.GetPendingMigrationsAsync()).Any(), "All migrations apply to an empty SQL Server database");
     }
     if (args.Contains("--a7") || args.Contains("--a7-ui")) await A7Checks.VerifyPermissionMigrationAsync(db, Check);
+    if (args.Contains("--week8") || args.Contains("--week8-ui")) await Week8Checks.VerifyMigrationAsync(db, Check);
     Check(await db.Departments.CountAsync() == 3 && await db.Rooms.CountAsync() == 3 && await db.Specializations.CountAsync() == 3, "Catalog master data seeded");
     if (args.Contains("--migrations-only") || args.Contains("--billing-migrations-only"))
     {
@@ -83,7 +84,7 @@ try
     start.Environment["ConnectionStrings__DefaultConnection"] = connection;
     start.Environment["Jwt__Key"] = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
     if (args.Contains("--a6")) start.Environment["AuthCookie__Secure"] = "true";
-    if (args.Contains("--ui") || args.Contains("--a5-ui") || args.Contains("--a6-ui") || args.Contains("--clinic-realtime-ui") || args.Contains("--c6c7-ui") || args.Contains("--a7-ui")) start.Environment["Cors__FrontendUrl"] = "http://127.0.0.1:5190";
+    if (args.Contains("--ui") || args.Contains("--a5-ui") || args.Contains("--a6-ui") || args.Contains("--clinic-realtime-ui") || args.Contains("--c6c7-ui") || args.Contains("--a7-ui") || args.Contains("--week8-ui")) start.Environment["Cors__FrontendUrl"] = "http://127.0.0.1:5190";
     server = Process.Start(start)!;
     server.OutputDataReceived += (_, e) => { if (e.Data != null) serverLog.Enqueue(e.Data); };
     server.ErrorDataReceived += (_, e) => { if (e.Data != null) serverLog.Enqueue(e.Data); };
@@ -96,6 +97,22 @@ try
         await Task.Delay(200);
     }
     await Send(HttpMethod.Get, "swagger/v1/swagger.json");
+    if (args.Contains("--week8") || args.Contains("--week8-ui"))
+    {
+        await ScheduleReviewChecks.RunAsync(client, db, password, Check);
+        await A7Checks.RunAsync(client, db, password, Check);
+        var fixture = System.Text.Json.JsonSerializer.SerializeToNode(
+            await Week8Checks.RunAsync(client, db, password, start.Environment["Jwt__Key"]!, Check))!.AsObject();
+        Console.WriteLine($"SUCCESS: {checks} Week8 integration checks passed.");
+        if (args.Contains("--week8-ui"))
+        {
+            fixture["baseUrl"] = client.BaseAddress!.ToString();
+            fixture["password"] = password;
+            Console.WriteLine("AUTH_UI_SESSION:" + fixture.ToJsonString());
+            await Console.In.ReadLineAsync();
+        }
+        return;
+    }
     if (args.Contains("--a7") || args.Contains("--a7-ui"))
     {
         var fixture = System.Text.Json.JsonSerializer.SerializeToNode(await A7Checks.RunAsync(client, db, password, Check))!.AsObject();

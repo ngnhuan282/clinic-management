@@ -100,7 +100,7 @@ public class ReceptionRepository : IReceptionRepository
     public Task<PatientBook?> GetLatestBookForPatientAsync(int patientId) =>
     _context.PatientBooks
         .AsNoTracking()
-        .Where(x => x.PatientId == patientId)
+        .Where(x => x.PatientId == patientId && x.Status != PatientBookStatusConstants.Pending)
         .OrderByDescending(x => x.IssuedAt)
         .ThenByDescending(x => x.PatientBookId)
         .FirstOrDefaultAsync();

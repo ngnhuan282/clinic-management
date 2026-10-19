@@ -10,6 +10,7 @@ public static class PermissionCodes
     public const string CatalogManage = "catalog.manage";
     public const string SchedulesManage = "schedules.manage";
     public const string SchedulesReview = "schedules.review";
+    public const string SchedulesViewDepartment = "schedules.viewDepartment";
     public const string AppointmentsView = "appointments.view";
     public const string AppointmentsViewOwn = "appointments.viewOwn";
     public const string AppointmentsBookSelf = "appointments.bookSelf";
@@ -55,6 +56,7 @@ public static class PermissionCatalog
 {
     public static readonly PermissionDefinition[] All =
     [
+        new(PermissionCodes.SchedulesViewDepartment, "Lịch bác sĩ", "Xem lịch trực khoa", "Xem", "Chỉ khoa của Trưởng khoa đăng nhập"),
         new(PermissionCodes.SchedulesReview, "Lịch bác sĩ", "Duyệt ca khám", "Duyệt", "Theo khoa hoặc yêu cầu của Trưởng khoa"),
         new(PermissionCodes.AccountsView, "Tài khoản", "Xem tài khoản", "Xem"),
         new(PermissionCodes.AccountsCreate, "Tài khoản", "Tạo tài khoản nhân viên", "Tạo", IsImplemented: false),
@@ -108,8 +110,9 @@ public static class PermissionCatalog
             && x != PermissionCodes.AppointmentsCancelOwn && x != PermissionCodes.PharmacyViewOwnPrescription
             && x != PermissionCodes.LabsViewOwnResult && x != PermissionCodes.BillingViewOwn
             && x != PermissionCodes.LabsOrder && x != PermissionCodes.LabsEnterResult
-            && x != PermissionCodes.LabsViewPending && x != PermissionCodes.ReportsDepartmentStatistics).ToArray(),
-        [RoleConstants.DepartmentHead] = [PermissionCodes.ReportsDepartmentStatistics, PermissionCodes.SchedulesReview, PermissionCodes.AppointmentsStartExamination, PermissionCodes.ClinicalViewAssigned,
+            && x != PermissionCodes.LabsViewPending && x != PermissionCodes.ReportsDepartmentStatistics
+            && x != PermissionCodes.SchedulesViewDepartment).ToArray(),
+        [RoleConstants.DepartmentHead] = [PermissionCodes.SchedulesViewDepartment, PermissionCodes.ReportsDepartmentStatistics, PermissionCodes.SchedulesReview, PermissionCodes.AppointmentsStartExamination, PermissionCodes.ClinicalViewAssigned,
             PermissionCodes.ClinicalWriteRecord, PermissionCodes.ClinicalEditDiagnosis, PermissionCodes.ClinicalManageDiseases,
             PermissionCodes.PharmacyViewInventory, PermissionCodes.PharmacyViewCatalog,
             PermissionCodes.PharmacyPrescribe, PermissionCodes.LabsViewTypes, PermissionCodes.LabsViewOrders, PermissionCodes.LabsOrder],

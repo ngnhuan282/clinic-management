@@ -184,11 +184,18 @@ public class ReceptionService : IReceptionService
         || invoice.PatientBook is { Status: not PatientBookStatusConstants.Pending })
         throw new AppException(ErrorCode.BOOK_INVOICE_INVALID_STATUS);
 
-    // 👇 BỔ SUNG ĐOẠN NÀY ĐỂ LẤY SỔ KHÁM BỆNH TRƯỚC ĐÓ CỦA BỆNH NHÂN
-    var previousBook = await _receptionRepository.GetLatestBookForPatientAsync(invoice.PatientId);
-    // (Lưu ý: Nếu repo của bạn tên hàm khác, bạn có thể gọi hàm lấy sổ cũ tương ứng, ví dụ: _receptionRepository.GetPreviousBookAsync(...) hoặc qua _context)
-
+    var previousBook = await _receptionRepository.GetIssuedBookAsync(invoice.PatientId)
+        ?? await _receptionRepository.GetLatestBookForPatientAsync(invoice.PatientId);
     var now = DateTime.UtcNow;
+    if (previousBook?.Status == PatientBookStatusConstants.Issued)
+    {
+        if (await _receptionRepository.IsBookInUseAsync(previousBook.PatientBookId))
+            throw new AppException(ErrorCode.BOOK_IN_USE);
+        previousBook.Status = PatientBookStatusConstants.Replaced;
+        previousBook.UpdatedAt = now;
+        // Release the filtered unique Issued index before inserting/updating the replacement, in the same transaction.
+        await SaveBookAsync();
+    }
     var book = invoice.PatientBook ?? new PatientBook
     {
         PatientId = invoice.PatientId,
@@ -197,6 +204,7 @@ public class ReceptionService : IReceptionService
         CreatedAt = now
     };
     
+    book.PreviousBookId = previousBook?.PatientBookId;
     book.BookNumber = bookNumber.Trim();
     book.Status = PatientBookStatusConstants.Issued;
     book.IssuedAt = now;

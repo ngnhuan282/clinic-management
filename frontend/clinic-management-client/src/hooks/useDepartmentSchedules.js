@@ -9,7 +9,7 @@ export default function useDepartmentSchedules({ mode, date, doctorId, roomId })
     const [options, setOptions] = useState(null);
     const [state, setState] = useState({ items: [], loading: true });
     const [reload, setReload] = useState(0);
-    const { revision } = useNotifications();
+    const { departmentCalendarRevision } = useNotifications();
     const { userId } = useAuth();
     const weekStart = mondayOf(date);
     const requestKey = JSON.stringify({ ...(mode === "week" ? { weekStart } : { date }),
@@ -28,7 +28,7 @@ export default function useDepartmentSchedules({ mode, date, doctorId, roomId })
                 if (!disposed) setState({ items: [], loading: false, error: getApiErrorMessage(error), requestKey, userId });
             });
         return () => { disposed = true; };
-    }, [requestKey, userId, reload, revision]);
+    }, [requestKey, userId, reload, departmentCalendarRevision]);
 
     const visible = state.requestKey === requestKey && state.userId === userId ? state : { items: [], loading: true };
     return { ...visible, options: options?.userId === userId ? options.data : null, refresh: () => setReload(value => value + 1) };

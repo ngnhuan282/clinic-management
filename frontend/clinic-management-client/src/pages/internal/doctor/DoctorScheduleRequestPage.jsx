@@ -23,7 +23,7 @@ export default function DoctorScheduleRequestPage() {
     };
     return <Box sx={{ p: { xs: 2, md: 4 }, backgroundColor: "#F6FAFE", minHeight: "100%" }}>
         <Typography variant="h4" sx={{ mb: 1 }}>Đăng ký lịch làm việc</Typography>
-        <Typography color="text.secondary" sx={{ mb: 3 }}>Gửi ca trực để quản trị viên phê duyệt trước khi mở lịch cho bệnh nhân.</Typography>
+        <Typography color="text.secondary" sx={{ mb: 3 }}>Gửi ca trực để trưởng khoa phê duyệt trước khi mở lịch cho bệnh nhân. Ca của trưởng khoa do quản trị viên duyệt.</Typography>
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         <Paper component="form" onSubmit={submit} sx={{ p: 2, mb: 3 }}>
             <Stack direction={{ xs: "column", md: "row" }} spacing={2}>

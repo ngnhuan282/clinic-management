@@ -614,12 +614,6 @@ namespace ClinicManagement.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<decimal>("InsuranceDiscountPercent")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("PatientAmount")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<int>("PatientId")
                         .HasColumnType("int");
 
@@ -1098,6 +1092,15 @@ namespace ClinicManagement.Migrations
                     b.ToTable("Permissions");
 
                     b.HasData(
+                        new
+                        {
+                            Code = "schedules.viewDepartment",
+                            IsImplemented = true,
+                            Kind = "Xem",
+                            Module = "Lịch bác sĩ",
+                            Name = "Xem lịch trực khoa",
+                            Scope = "Chỉ khoa của Trưởng khoa đăng nhập"
+                        },
                         new
                         {
                             Code = "schedules.review",
@@ -2212,6 +2215,11 @@ namespace ClinicManagement.Migrations
                         {
                             RoleId = 1,
                             PermissionCode = "reports.revenue"
+                        },
+                        new
+                        {
+                            RoleId = 6,
+                            PermissionCode = "schedules.viewDepartment"
                         },
                         new
                         {

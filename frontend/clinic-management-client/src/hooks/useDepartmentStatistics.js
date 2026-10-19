@@ -3,13 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { getDepartmentStatistics } from "../api/departmentStatisticsApi";
 import getApiErrorMessage from "../utils/errorHandler";
 import useAuth from "./useAuth";
+import useNotifications from "./useNotifications";
 
 export default function useDepartmentStatistics(period) {
     const { userId } = useAuth();
+    const { departmentStatisticsRevision } = useNotifications();
     const navigate = useNavigate();
     const [revision, setRevision] = useState(0);
     const [state, setState] = useState(null);
-    const requestKey = JSON.stringify({ userId, ...period, revision });
+    const requestKey = JSON.stringify({ userId, ...period, revision, departmentStatisticsRevision });
 
     useEffect(() => {
         const controller = new AbortController();

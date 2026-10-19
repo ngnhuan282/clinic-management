@@ -38,6 +38,7 @@ public class DoctorScheduleService(ApplicationDbContext context, ICurrentUserSer
         await _context.SaveChangesAsync();
         await transaction.CommitAsync();
         await notifications.PublishAsync(rows);
+        await notifications.PublishDepartmentWorkflowChangedAsync(doctorId, DepartmentWorkflowChangedResponse.Schedules);
         return await ProjectRequest(entity.RequestId);
     }
 
@@ -101,9 +102,11 @@ public class DoctorScheduleService(ApplicationDbContext context, ICurrentUserSer
             || start >= end || end > TimeSpan.FromDays(1))
             throw new AppException(ErrorCode.INVALID_REQUEST);
 
-        var doctorExists = await _context.Doctors.AnyAsync(x => x.DoctorId == request.DoctorId && x.IsActive);
-        var roomExists = await _context.Rooms.AnyAsync(x => x.RoomId == request.RoomId && x.IsActive);
-        if (!doctorExists || !roomExists)
+        var departmentId = await _context.Doctors.Where(x => x.DoctorId == request.DoctorId && x.IsActive && x.Department.IsActive)
+            .Select(x => (int?)x.DepartmentId).SingleOrDefaultAsync();
+        var roomExists = await _context.Rooms.AnyAsync(x => x.RoomId == request.RoomId && x.IsActive
+            && x.Department.IsActive && x.DepartmentId == departmentId);
+        if (!departmentId.HasValue || !roomExists)
             throw new AppException(ErrorCode.INVALID_REQUEST);
 
         await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
@@ -141,6 +144,7 @@ public class DoctorScheduleService(ApplicationDbContext context, ICurrentUserSer
         _context.DoctorSchedules.Add(schedule);
         await _context.SaveChangesAsync();
         await transaction.CommitAsync();
+        await notifications.PublishDepartmentWorkflowChangedAsync(schedule.DoctorId, DepartmentWorkflowChangedResponse.Schedules);
         var created = await GetScheduleQuery().SingleAsync(x => x.ScheduleId == schedule.ScheduleId);
         return MapSchedule(created);
     }

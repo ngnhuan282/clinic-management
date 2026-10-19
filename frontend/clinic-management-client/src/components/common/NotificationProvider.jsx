@@ -35,15 +35,27 @@ export default function NotificationProvider({ children }) {
             refresh();
         }, () => {
             setLive(value => ({ userId, revision: value.revision + 1 }));
-            // Reload availability on initial connection and reconnect to recover missed events.
-            setClinic(value => ({ userId, availabilityRevision: value.availabilityRevision + 1 }));
+            // Re-read scoped APIs on connection/reconnect to recover missed events.
+            setClinic(value => ({ userId, availabilityRevision: (value.availabilityRevision || 0) + 1,
+                departmentCalendarRevision: (value.departmentCalendarRevision || 0) + 1,
+                departmentStatisticsRevision: (value.departmentStatisticsRevision || 0) + 1 }));
             refresh();
         }, (eventName, payload) => {
+            if (eventName === "DepartmentWorkflowChanged") {
+                if (!Number.isInteger(payload?.departmentId) || payload.departmentId <= 0
+                    || !["Schedules", "Statistics"].includes(payload.area)) return;
+                setClinic(value => ({ ...(value.userId === userId ? value : {}), userId,
+                    departmentCalendarRevision: (value.departmentCalendarRevision || 0) + (payload.area === "Schedules" ? 1 : 0),
+                    departmentStatisticsRevision: (value.departmentStatisticsRevision || 0) + 1 }));
+                if (payload.area === "Schedules")
+                    setLive(value => ({ ...(value.userId === userId ? value : {}), userId, revision: value.revision + 1 }));
+                return;
+            }
             setClinic(value => ({ ...(value.userId === userId ? value : {}), userId,
                 [eventName === "CheckInChanged" ? "AppointmentChanged" : eventName]: payload,
                 availabilityRevision: (value.availabilityRevision || 0) + (eventName === "SlotAvailabilityChanged" ? 1 : 0) }));
             if (eventName !== "SlotAvailabilityChanged")
-                setLive(value => ({ ...value, userId, revision: value.revision + 1 }));
+                setLive(value => ({ ...(value.userId === userId ? value : {}), userId, revision: value.revision + 1 }));
         });
     }, [userId, role, isAuthenticated]);
 
@@ -51,11 +63,13 @@ export default function NotificationProvider({ children }) {
     const realtime = isAuthenticated && clinic.userId === userId ? clinic : {};
     const markRead = async id => { await notificationApi.markRead(id); refresh(); };
     return <NotificationContext.Provider value={{ ...visible, items: visible.items || [], refresh,
-        pageNumber, setPageNumber, markRead, revision: live.userId === userId ? live.revision : 0,
+        pageNumber, setPageNumber, markRead, revision: isAuthenticated && live.userId === userId ? live.revision : 0,
         message: isAuthenticated && live.userId === userId ? live.message : null,
         appointmentEvent: realtime.AppointmentChanged, bookInvoiceEvent: realtime.BookInvoiceChanged,
         patientBookEvent: realtime.PatientBookChanged, slotEvent: realtime.SlotAvailabilityChanged,
-        availabilityRevision: realtime.availabilityRevision || 0 }}>
+        availabilityRevision: realtime.availabilityRevision || 0,
+        departmentCalendarRevision: realtime.departmentCalendarRevision || 0,
+        departmentStatisticsRevision: realtime.departmentStatisticsRevision || 0 }}>
         {children}
     </NotificationContext.Provider>;
 }
