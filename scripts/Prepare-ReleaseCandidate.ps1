@@ -10,8 +10,8 @@ if ($rcVersion -notmatch '^\d+\.\d+\.\d+-rc\.\d+$') { throw 'Invalid RC version.
 [xml]$apiProject = Get-Content -LiteralPath (Join-Path $repoRoot 'backend/ClinicManagement/ClinicManagement.csproj') -Raw
 $clientPackage = Get-Content -LiteralPath (Join-Path $repoRoot 'frontend/clinic-management-client/package.json') -Raw | ConvertFrom-Json
 $lockVersions = (& node -e "const lock=require('./frontend/clinic-management-client/package-lock.json'); process.stdout.write(lock.version+'|'+lock.packages[''].version);").Split('|')
-if ($LASTEXITCODE -ne 0 -or [string]$apiProject.Project.PropertyGroup.Version -ne $rcVersion -or $clientPackage.version -ne $rcVersion
-    -or $lockVersions.Count -ne 2 -or $lockVersions[0] -ne $rcVersion -or $lockVersions[1] -ne $rcVersion) {
+if ($LASTEXITCODE -ne 0 -or [string]$apiProject.Project.PropertyGroup.Version -ne $rcVersion -or $clientPackage.version -ne $rcVersion -or
+    $lockVersions.Count -ne 2 -or $lockVersions[0] -ne $rcVersion -or $lockVersions[1] -ne $rcVersion) {
     throw 'Backend, frontend, lockfile and RC metadata versions must agree.'
 }
 if (& git status --porcelain --untracked-files=normal) { throw 'Commit the reviewed source before preparing an RC.' }
