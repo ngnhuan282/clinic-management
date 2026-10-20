@@ -34,6 +34,19 @@ function Get-RcFileHash {
     finally { $stream.Dispose(); $algorithm.Dispose() }
 }
 
+function New-RcArchive {
+    param([string]$SourceRoot, [string]$Destination)
+    Add-Type -AssemblyName System.IO.Compression
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $archive = [IO.Compression.ZipFile]::Open($Destination, [IO.Compression.ZipArchiveMode]::Create)
+    try {
+        foreach ($path in [IO.Directory]::EnumerateFiles($SourceRoot, '*', [IO.SearchOption]::AllDirectories)) {
+            $entryName = [IO.Path]::GetFileName($SourceRoot) + '/' + $path.Substring($SourceRoot.Length + 1).Replace('\', '/')
+            [void][IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, $path, $entryName, [IO.Compression.CompressionLevel]::Optimal)
+        }
+    } finally { $archive.Dispose() }
+}
+
 function Invoke-RcCheck {
     param([string]$Name, [string]$Executable, [string[]]$Arguments, [string]$Directory = $repoRoot)
     $logPath = Join-Path $evidenceRoot ($Name + '.log')
@@ -99,8 +112,7 @@ try {
         knownLimitations = $metadata.knownLimitations; dotnet = (& dotnet --version).Trim(); node = (& node --version).Trim();
         checks = @($checks.ToArray()); files = $files } | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $packageRoot 'manifest.json') -Encoding utf8
     $zipPath = Join-Path $outputRoot ('clinic-management-' + $rcVersion + '.zip')
-    Add-Type -AssemblyName System.IO.Compression.FileSystem
-    [IO.Compression.ZipFile]::CreateFromDirectory($packageRoot, $zipPath, [IO.Compression.CompressionLevel]::Optimal, $true)
+    New-RcArchive $packageRoot $zipPath
     $zipHash = Get-RcFileHash $zipPath
     ($zipHash + '  ' + [IO.Path]::GetFileName($zipPath)) | Set-Content -LiteralPath ($zipPath + '.sha256') -Encoding ascii
     Write-Host "RC_ARTIFACT:$zipPath"
