@@ -26,6 +26,14 @@ $frontendRoot = Join-Path $repoRoot 'frontend/clinic-management-client'
 New-Item -ItemType Directory -Path $evidenceRoot -Force | Out-Null
 $checks = [Collections.Generic.List[object]]::new()
 
+function Get-RcFileHash {
+    param([string]$Path)
+    $algorithm = [Security.Cryptography.SHA256]::Create()
+    $stream = [IO.File]::OpenRead($Path)
+    try { return [BitConverter]::ToString($algorithm.ComputeHash($stream)).Replace('-', '').ToLowerInvariant() }
+    finally { $stream.Dispose(); $algorithm.Dispose() }
+}
+
 function Invoke-RcCheck {
     param([string]$Name, [string]$Executable, [string[]]$Arguments, [string]$Directory = $repoRoot)
     $logPath = Join-Path $evidenceRoot ($Name + '.log')
@@ -62,7 +70,7 @@ try {
     }
     Invoke-RcCheck 'backend-publish' 'dotnet' @('publish', 'backend/ClinicManagement/ClinicManagement.csproj', '--configuration', 'Release', '--no-restore', '--output', $apiRoot, '-p:UseAppHost=false')
     # Never package a developer's database connection, JWT key or environment-specific appsettings.
-    Get-ChildItem -LiteralPath $apiRoot -Filter 'appsettings*.json' -File | ForEach-Object { Remove-Item -LiteralPath $_.FullName }
+    [IO.Directory]::EnumerateFiles($apiRoot, 'appsettings*.json', [IO.SearchOption]::TopDirectoryOnly) | ForEach-Object { [IO.File]::Delete($_) }
     [ordered]@{
         Logging = @{ LogLevel = @{ Default = 'Information'; 'Microsoft.AspNetCore' = 'Warning' } }
         AllowedHosts = '*'
@@ -83,16 +91,17 @@ try {
     if ((& git rev-parse HEAD).Trim() -ne $sourceCommit -or (& git status --porcelain --untracked-files=normal)) {
         throw 'Source changed during verification. Run the RC process again from the final clean commit.'
     }
-    $files = @(Get-ChildItem -LiteralPath $packageRoot -File -Recurse | Sort-Object FullName | ForEach-Object {
-        [ordered]@{ path = $_.FullName.Substring($packageRoot.Length + 1).Replace('\', '/'); sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() }
+    $files = @([IO.Directory]::EnumerateFiles($packageRoot, '*', [IO.SearchOption]::AllDirectories) | Sort-Object | ForEach-Object {
+        [ordered]@{ path = $_.Substring($packageRoot.Length + 1).Replace('\', '/'); sha256 = Get-RcFileHash $_ }
     })
     [ordered]@{ schemaVersion = 1; status = 'verified-release-candidate'; version = $rcVersion; sourceCommit = $sourceCommit;
         sourceBranch = $sourceBranch; createdAtUtc = [DateTime]::UtcNow.ToString('o'); scope = $metadata.scope;
         knownLimitations = $metadata.knownLimitations; dotnet = (& dotnet --version).Trim(); node = (& node --version).Trim();
         checks = @($checks.ToArray()); files = $files } | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $packageRoot 'manifest.json') -Encoding utf8
     $zipPath = Join-Path $outputRoot ('clinic-management-' + $rcVersion + '.zip')
-    Compress-Archive -LiteralPath $packageRoot -DestinationPath $zipPath -CompressionLevel Optimal
-    $zipHash = (Get-FileHash -LiteralPath $zipPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    [IO.Compression.ZipFile]::CreateFromDirectory($packageRoot, $zipPath, [IO.Compression.CompressionLevel]::Optimal, $true)
+    $zipHash = Get-RcFileHash $zipPath
     ($zipHash + '  ' + [IO.Path]::GetFileName($zipPath)) | Set-Content -LiteralPath ($zipPath + '.sha256') -Encoding ascii
     Write-Host "RC_ARTIFACT:$zipPath"
     Write-Host "RC_SOURCE:$sourceCommit"
