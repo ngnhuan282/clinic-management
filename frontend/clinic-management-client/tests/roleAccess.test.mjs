@@ -2,6 +2,22 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { canAccessPath, canSeePage, homeForRole, INTERNAL_PAGES, redirectForProtectedRoute } from "../src/routes/roleAccess.js";
 
+test("all eight department permission combinations agree between navigation and route guards", () => {
+    const policies = [["/internal/department-schedules", "schedules.viewDepartment"],
+        ["/internal/department-statistics", "reports.departmentStatistics"],
+        ["/internal/schedule-requests", "schedules.review"]];
+    for (let mask = 0; mask < 8; mask++) {
+        const user = { isAuthenticated: true, role: "DepartmentHead",
+            permissions: policies.filter((_, index) => mask & (1 << index)).map(([, code]) => code) };
+        for (const [index, [path, code]] of policies.entries()) {
+            const allowed = Boolean(mask & (1 << index));
+            assert.equal(canAccessPath(user, path), allowed);
+            assert.equal(redirectForProtectedRoute(user, path,
+                { allowedRoles: ["DepartmentHead"], allowedPermissions: [code] }), allowed ? null : "/403");
+        }
+    }
+});
+
 test("department calendar and statistics require independent permissions and the head role", () => {
     const calendar = "/internal/department-schedules";
     const statistics = "/internal/department-statistics";

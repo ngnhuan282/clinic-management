@@ -10,6 +10,7 @@ const initialState = {
     user: session?.user || null,
     isAuthenticated: Boolean(session),
     sessionChecked: !session,
+    sessionRevision: 0,
 };
 
 const authSlice = createSlice({
@@ -17,6 +18,7 @@ const authSlice = createSlice({
     initialState,
     reducers: {
         setCredentials: (state, action) => {
+            state.sessionRevision++;
             const { accessToken, user } = action.payload;
             saveSession(action.payload);
 
@@ -28,6 +30,7 @@ const authSlice = createSlice({
         },
 
         logout: (state) => {
+            state.sessionRevision++;
             state.accessToken = null;
             state.user = null;
             state.isAuthenticated = false;

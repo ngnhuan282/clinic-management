@@ -1,0 +1,11 @@
+{
+  "version": "0.10.0-rc.1",
+  "scope": "Week10 DepartmentHead authorization, doctor schedules, department statistics, queries and UI",
+  "notes": "docs/WEEK10-RC.md",
+  "database": "SQL Server; fresh database or current migrated schema",
+  "lastMigration": "20261019010000_AddDepartmentSchedulePermission",
+  "knownLimitations": [
+    "Legacy databases with Voided patient books need an agreed status mapping before the historical status migration; do not run that upgrade without resolving it.",
+    "SignalR connection revocation uses a single API process; multiple instances require shared revocation/backplane configuration."
+  ]
+}
