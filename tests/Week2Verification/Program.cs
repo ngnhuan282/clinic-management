@@ -254,6 +254,12 @@ try
         Console.WriteLine($"SUCCESS: {checks} A4 checks passed.");
         return;
     }
+    if (args.Contains("--core-workflow"))
+    {
+        await CoreWorkflowChecks.RunAsync(client, db, password, Check);
+        Console.WriteLine($"SUCCESS: {checks} core workflow checks passed.");
+        return;
+    }
     if (args.Contains("--ui"))
     {
         // Consumed by the browser harness; test credentials never enter the repository.
@@ -517,6 +523,7 @@ try
     await ScheduleReviewChecks.RunAsync(client, db, password, Check);
     await Week34Checks.RunAsync(client, db, password, Check);
     await RbacChecks.RunAsync(client, db, password, Check);
+    await CoreWorkflowChecks.RunAsync(client, db, password, Check);
     var allTablesSeed = await File.ReadAllTextAsync(
         Path.Combine(root, "backend/ClinicManagement/Data/Seed/clinic-all-tables-demo.sql"));
     await db.Database.ExecuteSqlRawAsync(allTablesSeed);
