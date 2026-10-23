@@ -8,20 +8,7 @@ import {
 import EventNoteOutlinedIcon from "@mui/icons-material/EventNoteOutlined";
 
 import { getExaminationStatus } from "./examinationStatus";
-
-function formatDateTime(value) {
-    if (!value) {
-        return "-";
-    }
-
-    return new Intl.DateTimeFormat("vi-VN", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-    }).format(new Date(value));
-}
+import { formatMedicalRecordPaperTime, formatMedicalRecordUtcTime } from "../../../utils/medicalRecordTime";
 
 function formatDate(value) {
     if (!value) {
@@ -151,7 +138,7 @@ function MedicalRecordAuditPanel({ record }) {
 
                     <InfoItem
                         label="Ghi sổ giấy"
-                        value={formatDateTime(record?.paperBookUpdatedAt)}
+                        value={formatMedicalRecordPaperTime(record?.paperBookUpdatedAt)}
                     />
 
                     <InfoItem
@@ -166,12 +153,12 @@ function MedicalRecordAuditPanel({ record }) {
 
                     <InfoItem
                         label="Tạo hồ sơ"
-                        value={formatDateTime(record?.createdAt)}
+                        value={formatMedicalRecordUtcTime(record?.createdAt)}
                     />
 
                     <InfoItem
                         label="Cập nhật gần nhất"
-                        value={formatDateTime(record?.updatedAt)}
+                        value={formatMedicalRecordUtcTime(record?.updatedAt)}
                     />
                 </Box>
             </Stack>

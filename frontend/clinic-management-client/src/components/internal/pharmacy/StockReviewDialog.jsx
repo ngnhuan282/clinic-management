@@ -9,6 +9,7 @@ import SendOutlinedIcon from "@mui/icons-material/SendOutlined";
 import PeopleOutlineIcon from "@mui/icons-material/PeopleAltOutlined";
 import MedicationOutlinedIcon from "@mui/icons-material/MedicationOutlined";
 import StockShortageTable from "./StockShortageTable";
+import { getDispensingPaymentLabel } from "./dispensingStatus";
 
 function StockReviewDialog({ open, detail, loading, error, onClose, onSubmit }) {
     const [note, setNote] = useState("");
@@ -28,9 +29,9 @@ function StockReviewDialog({ open, detail, loading, error, onClose, onSubmit }) 
             <DialogContent sx={{ p: 0 }}>
                 <Box sx={{ px: 2.5, py: 2, bgcolor: "#EFF6FF", borderBottom: "1px solid #E5E9F0" }}>
                     <Typography sx={{ fontWeight: 800, mb: 0.75, overflowWrap: "anywhere" }}>{detail?.patientName}</Typography>
-                    <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" alignItems="center">
+                    <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap", alignItems: "center" }}>
                         <Typography color="primary" sx={{ fontWeight: 700, whiteSpace: "nowrap" }}>{detail?.prescriptionCode}</Typography>
-                        <Chip size="small" label={detail?.paymentStatus === "Paid" ? "Đã thanh toán" : "Chưa thanh toán"}
+                        <Chip size="small" label={getDispensingPaymentLabel(detail?.paymentStatus)}
                             sx={{ bgcolor: detail?.paymentStatus === "Paid" ? "#ECFDF5" : "#FFFBEB", color: detail?.paymentStatus === "Paid" ? "#047857" : "#B45309" }} />
                     </Stack>
                     <Typography variant="body2" sx={{ mt: 0.75 }}>SĐT: {detail?.patientPhone || "Chưa có"}</Typography>
@@ -38,14 +39,14 @@ function StockReviewDialog({ open, detail, loading, error, onClose, onSubmit }) 
                 <Stack spacing={2.5} sx={{ p: 2.5 }}>
                     {error && <Alert severity="error">{error}</Alert>}
                     <Box>
-                        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.25 }}>
+                        <Stack direction="row" spacing={1} sx={{ mb: 1.25, alignItems: "center" }}>
                             <MedicationOutlinedIcon color="primary" fontSize="small" />
                             <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>Thuốc cần xử lý</Typography>
                         </Stack>
                         <StockShortageTable medicines={(detail?.medicines || []).filter((x) => !x.isFulfillable)} />
                     </Box>
                     <Box>
-                        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                        <Stack direction="row" spacing={1} sx={{ mb: 1, alignItems: "center" }}>
                             <PeopleOutlineIcon color="primary" fontSize="small" />
                             <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>Bộ phận nhận yêu cầu</Typography>
                         </Stack>

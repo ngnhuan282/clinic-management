@@ -7,6 +7,8 @@ import {
 } from "../api/dispensingApi";
 import getApiErrorMessage from "../utils/errorHandler";
 import { readDispensingFilters, writeDispensingFilters } from "../utils/dispensingFilters";
+import useAuth from "./useAuth";
+import useDispensingAutoRefresh from "./useDispensingAutoRefresh";
 
 function normalizeFilters(filters) {
     return {
@@ -21,12 +23,10 @@ function normalizeFilters(filters) {
 }
 
 function useDispensing() {
+    const { userId, sessionRevision } = useAuth();
     const [searchParams, setSearchParams] = useSearchParams();
     const filters = useMemo(() => readDispensingFilters(searchParams), [searchParams]);
-    const [pagedData, setPagedData] = useState(null);
-    const [summary, setSummary] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
+    const [result, setResult] = useState(null);
     const queueSequence = useRef(0);
 
     const requestParams = useMemo(
@@ -34,10 +34,12 @@ function useDispensing() {
         [filters]
     );
 
-    const loadQueue = useCallback(async () => {
+    const key = JSON.stringify([userId, sessionRevision, requestParams]);
+    const current = result?.key === key ? result : null;
+    const loadQueue = useCallback(async ({ background = false } = {}) => {
+        if (!userId) return;
         const sequence = ++queueSequence.current;
-        setLoading(true);
-        setError("");
+        if (!background) setResult({ key, loading: true });
 
         try {
             const [queueResult, summaryResult] = await Promise.all([
@@ -45,18 +47,18 @@ function useDispensing() {
                 getDispensingSummary(),
             ]);
             if (sequence !== queueSequence.current) return;
-            setPagedData(queueResult);
-            setSummary(summaryResult);
+            setResult({ key, pagedData: queueResult, summary: summaryResult });
         } catch (err) {
             if (sequence !== queueSequence.current) return;
-            setError(getApiErrorMessage(
+            setResult({ key, error: getApiErrorMessage(
                 err,
                 "Không tải được danh sách cấp thuốc."
-            ));
-        } finally {
-            if (sequence === queueSequence.current) setLoading(false);
+            ) });
         }
-    }, [requestParams]);
+    }, [key, requestParams, userId]);
+
+    const refreshInBackground = useCallback(() => loadQueue({ background: true }), [loadQueue]);
+    useDispensingAutoRefresh(refreshInBackground, Boolean(userId));
 
     useEffect(() => {
         const queueRequest = queueSequence;
@@ -76,11 +78,11 @@ function useDispensing() {
 
     return {
         filters,
-        queueItems: pagedData?.items || [],
-        pagination: pagedData,
-        summary,
-        loading,
-        error,
+        queueItems: current?.pagedData?.items || [],
+        pagination: current?.pagedData,
+        summary: current?.summary,
+        loading: Boolean(userId && (!current || current.loading)),
+        error: current?.error || "",
         updateFilters,
         resetFilters,
         loadQueue,

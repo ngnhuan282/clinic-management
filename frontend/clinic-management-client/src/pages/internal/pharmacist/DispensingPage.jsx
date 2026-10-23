@@ -23,7 +23,7 @@ function DispensingPage() {
         <Stack spacing={3} sx={{ minWidth: 0 }}>
             <Paper elevation={0} sx={{ p: { xs: 2.5, md: 3.5 }, borderRadius: 2, border: "1px solid #E5E9F0" }}>
                 <Box sx={{ minWidth: 0 }}>
-                    <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" alignItems="center">
+                    <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap", alignItems: "center" }}>
                         <Typography variant="caption" sx={{ color: "#6B7280", fontWeight: 700 }}>Dược sĩ / Quầy cấp thuốc</Typography>
                         <Chip icon={<VerifiedOutlinedIcon fontSize="small" />} label="Cấp thuốc theo FEFO" size="small"
                             sx={{ height: 24, color: "#047857", bgcolor: "#ECFDF5", border: "1px solid #A7F3D0", fontWeight: 700 }} />

@@ -6,6 +6,7 @@ import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
 import NotesOutlinedIcon from "@mui/icons-material/NotesOutlined";
 import StockReviewDecisionHistory from "./StockReviewDecisionHistory";
 import StockShortageTable from "./StockShortageTable";
+import { getDispensingPaymentLabel } from "./dispensingStatus";
 import { getStockReviewRecheckResultConfig, getStockReviewStatusConfig } from "../../../utils/stockReviewWorkflow";
 
 const formatTime = (value) => new Intl.DateTimeFormat("vi-VN", {
@@ -48,7 +49,7 @@ function StockReviewHistory({ reviews, footer, showEmptyResponse = true }) {
                                 { label: "Dược sĩ gửi", value: review.createdByName },
                                 { label: "Thời gian gửi", value: formatTime(review.createdAt) },
                                 { label: "Thanh toán lúc gửi", value: <>
-                                    <Typography component="span" variant="body2" sx={{ color: paid ? "#047857" : "#B45309", fontWeight: 700 }}>{paid ? "Đã thanh toán" : "Chưa thanh toán"}</Typography>
+                                    <Typography component="span" variant="body2" sx={{ color: paid ? "#047857" : "#B45309", fontWeight: 700 }}>{getDispensingPaymentLabel(review.paymentStatus)}</Typography>
                                     <Typography component="span" variant="caption" sx={{ display: "block", mt: 0.25, color: "#6B7280" }}>{review.invoiceId ? `HD-${String(review.invoiceId).padStart(5, "0")}` : "Chưa có hóa đơn"}</Typography>
                                 </> },
                             ].map((field) => <Box key={field.label}>

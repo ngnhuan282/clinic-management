@@ -148,7 +148,64 @@ try
         }
         return;
     }
+    if (args.Contains("--d9-clinical-ui"))
+    {
+        var clinicalUiCases = await ClinicJourneyChecks.PrepareClinicalUiAsync(db, Check);
+        Console.WriteLine($"SUCCESS: {checks} D9 clinical UI setup checks passed; reception is a prepared prerequisite, not tested UI.");
+        Console.WriteLine("AUTH_UI_SESSION:" + System.Text.Json.JsonSerializer.Serialize(new
+        {
+            baseUrl = client.BaseAddress, password, clinicalUiCases,
+            journeys = Array.Empty<ClinicJourneyChecks.Journey>(), gaps = Array.Empty<ClinicJourneyChecks.Gap>()
+        }, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
+        await Console.In.ReadLineAsync();
+        return;
+    }
+    if (args.Contains("--d9") || args.Contains("--d9-ui") || args.Contains("--d9-strict"))
+    {
+        var report = await ClinicJourneyChecks.RunAsync(client, db, password, Check);
+        Console.WriteLine($"SUCCESS: {checks} D9 available-path API checks passed; {report.Gaps.Count} integration gaps remain. Full D9 acceptance is NOT implied.");
+        if (args.Contains("--d9-ui"))
+        {
+            var clinicalUiCases = await ClinicJourneyChecks.PrepareClinicalUiAsync(db, Check);
+            Console.WriteLine("AUTH_UI_SESSION:" + System.Text.Json.JsonSerializer.Serialize(new
+            {
+                baseUrl = client.BaseAddress, password, report.Journeys, report.Gaps, clinicalUiCases
+            }, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
+            await Console.In.ReadLineAsync();
+        }
+        if (args.Contains("--d9-strict") && report.Gaps.Count > 0)
+            throw new InvalidOperationException("D9 is not ready for full acceptance; resolve the BLOCKED integration items first.");
+        return;
+    }
+    if (args.Contains("--d8") || args.Contains("--d8-ui"))
+    {
+        var fixture = await PrescriptionDispensingChecks.RunAsync(client, db, password, Check);
+        Console.WriteLine($"SUCCESS: {checks} D8 prescription/dispensing checks passed.");
+        if (args.Contains("--d8-ui"))
+        {
+            Console.WriteLine("AUTH_UI_SESSION:" + System.Text.Json.JsonSerializer.Serialize(new
+            {
+                baseUrl = client.BaseAddress, password, prescriptionId = fixture.PrescriptionId,
+                appointmentId = fixture.AppointmentId, medicalRecordId = fixture.MedicalRecordId,
+                patientId = fixture.PatientId, medicineId = fixture.MedicineId, detailId = fixture.DetailId,
+                shortagePrescriptionId = fixture.ShortagePrescriptionId
+            }));
+            await Console.In.ReadLineAsync();
+        }
+        return;
+    }
     if (args.Contains("--a6") || args.Contains("--a6-ui"))
+    {
+        await A6Checks.RunAsync(client, db, password, Check, args.Contains("--a6"));
+        Console.WriteLine($"SUCCESS: {checks} A6 checks passed.");
+        if (args.Contains("--a6-ui"))
+        {
+            Console.WriteLine("AUTH_UI_SESSION:" + System.Text.Json.JsonSerializer.Serialize(new { baseUrl = client.BaseAddress, password }));
+            await Console.In.ReadLineAsync();
+        }
+        return;
+    }
+    if (args.Contains("--d7-review") || args.Contains("--d7-review-ui") || args.Contains("--d7-doctor") || args.Contains("--d7-doctor-ui"))
     {
         var fixture = await StockReviewChecks.RunAsync(client, db, password, Check,
             verifyDoctor: args.Contains("--d7-doctor") || args.Contains("--d7-doctor-ui"));

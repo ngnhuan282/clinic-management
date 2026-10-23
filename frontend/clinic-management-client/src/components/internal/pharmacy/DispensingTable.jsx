@@ -19,7 +19,7 @@ import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import EmptyState from "../../common/EmptyState";
 import formatCurrency from "../../../utils/formatCurrency";
 import formatDate from "../../../utils/formatDate";
-import { getDispensingStatusConfig, getReviewStatusLabel } from "./dispensingStatus";
+import { getDispensingPaymentLabel, getDispensingStatusConfig, getReviewStatusLabel } from "./dispensingStatus";
 
 function StatusChip({ status }) {
     const config = getDispensingStatusConfig(status);
@@ -104,7 +104,7 @@ function DispensingTable({
                                 }}
                             >
                                 <TableCell>
-                                    <Stack direction="row" spacing={1.25} alignItems="center">
+                                    <Stack direction="row" spacing={1.25} sx={{ alignItems: "center" }}>
                                         <Box
                                             sx={{
                                                 width: 36,
@@ -159,7 +159,7 @@ function DispensingTable({
                                                 HD-{String(item.invoiceId).padStart(5, "0")}
                                             </Typography>
                                             <Typography variant="caption" sx={{ color: item.paymentStatus === "Paid" ? "#047857" : "#B45309", fontWeight: 700 }}>
-                                                {item.paymentStatus === "Paid" ? "Đã thanh toán" : "Chưa thanh toán"}
+                                                {getDispensingPaymentLabel(item.paymentStatus)}
                                             </Typography>
                                         </>
                                     ) : (

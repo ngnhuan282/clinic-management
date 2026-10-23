@@ -97,7 +97,7 @@ public class DispensingService : IDispensingService
                 prescription.PrescriptionId,
                 prescription.Details
                     .Select(x => x.PrescriptionDetailId)
-                    .ToArray(), onlyPaid: false
+                    .ToArray(), GetBillingPatientId(prescription), onlyPaid: false
             );
 
         var response = prescription.ToDispensingResponse(
@@ -145,7 +145,7 @@ public class DispensingService : IDispensingService
                     prescription.PrescriptionId,
                     prescription.Details
                         .Select(x => x.PrescriptionDetailId)
-                        .ToArray()
+                        .ToArray(), GetBillingPatientId(prescription)
                 );
 
             if (invoice == null)
@@ -231,7 +231,7 @@ public class DispensingService : IDispensingService
             var pending = prescription.StockReviews.SingleOrDefault(x => x.Status == "Pending");
             var invoice = await _dispensingRepository.GetPaidMedicineInvoiceAsync(
                 prescription.MedicalRecord.AppointmentId, prescriptionId,
-                prescription.Details.Select(x => x.PrescriptionDetailId).ToArray(), onlyPaid: false);
+                prescription.Details.Select(x => x.PrescriptionDetailId).ToArray(), GetBillingPatientId(prescription), onlyPaid: false);
             var response = prescription.ToDispensingResponse(invoice, DateOnly.FromDateTime(ClinicNow));
             List<Notification> notifications;
             if (request != null)
@@ -383,6 +383,7 @@ public class DispensingService : IDispensingService
         return invoices.FirstOrDefault(invoice =>
             invoice.AppointmentId ==
                 prescription.MedicalRecord.AppointmentId &&
+            invoice.PatientId == GetBillingPatientId(prescription) &&
             (invoice.InvoiceDetails.Any(line =>
                 line.SourceType == "Prescription" &&
                 line.SourceId == prescription.PrescriptionId
@@ -395,6 +396,10 @@ public class DispensingService : IDispensingService
             )))
         );
     }
+
+    private static int GetBillingPatientId(Prescription prescription) =>
+        prescription.MedicalRecord.PatientId ?? prescription.MedicalRecord.Appointment.PatientId
+        ?? prescription.MedicalRecord.Appointment.PatientProfileId ?? 0;
 
     private sealed record PlannedAllocation(
         int PrescriptionDetailId,

@@ -8,6 +8,7 @@ import SendOutlinedIcon from "@mui/icons-material/SendOutlined";
 import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
 import { PrescriptionMedicineSummary, PrescriptionNotes } from "../prescriptions/PrescriptionMedicineSummary";
 import StockReviewHistory from "./StockReviewHistory";
+import { getDispensingPaymentLabel } from "./dispensingStatus";
 import formatDate from "../../../utils/formatDate";
 import { formatDispensedAt } from "../../../utils/dispensingTime";
 import { getStockReviewWorkflowStatus } from "../../../utils/stockReviewWorkflow";
@@ -107,7 +108,7 @@ function DispensingDetailContent({ detail, busy, onConfirm, onRequestReview, onR
             <Box>
                 <InfoField label="Hóa đơn" value={detail.invoiceId ? `HD-${String(detail.invoiceId).padStart(5, "0")}` : "Chưa có hóa đơn"} />
                 <Typography variant="caption" sx={{ display: "block", mt: 0.5, fontWeight: 500, color: detail.paymentStatus === "Paid" ? "#047857" : "#B45309" }}>
-                    {detail.paymentStatus === "Paid" ? "Đã thanh toán" : "Chưa thanh toán"}
+                    {getDispensingPaymentLabel(detail.paymentStatus)}
                 </Typography>
             </Box>
             <InfoField label="Mã hồ sơ" value={`HS-${String(detail.medicalRecordId).padStart(5, "0")}`} />
