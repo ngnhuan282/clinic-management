@@ -20,6 +20,14 @@ await using var db = new ApplicationDbContext(options);
 Process? server = null;
 var checks = 0;
 var password = "Test-" + Convert.ToHexString(RandomNumberGenerator.GetBytes(12));
+if (args.Contains("--c8c9-ui"))
+{
+    // The browser runner sends its generated fixture password through the private stdin pipe.
+    password = await Console.In.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(10))
+        ?? throw new InvalidOperationException("Run C8/C9 UI through tests/c8c9-ui.mjs.");
+    if (string.IsNullOrWhiteSpace(password))
+        throw new InvalidOperationException("C8/C9 UI requires a fixture password on stdin.");
+}
 var listener = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
 listener.Start();
 var port = ((IPEndPoint)listener.LocalEndpoint).Port;
@@ -73,7 +81,7 @@ try
     start.Environment["ConnectionStrings__DefaultConnection"] = connection;
     start.Environment["Jwt__Key"] = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
     if (args.Contains("--a6")) start.Environment["AuthCookie__Secure"] = "true";
-    if (args.Contains("--ui") || args.Contains("--a5-ui") || args.Contains("--a6-ui") || args.Contains("--clinic-realtime-ui") || args.Contains("--c6c7-ui")) start.Environment["Cors__FrontendUrl"] = "http://127.0.0.1:5190";
+    if (args.Contains("--ui") || args.Contains("--a5-ui") || args.Contains("--a6-ui") || args.Contains("--clinic-realtime-ui") || args.Contains("--c6c7-ui") || args.Contains("--c8c9-ui")) start.Environment["Cors__FrontendUrl"] = "http://127.0.0.1:5190";
     server = Process.Start(start)!;
     server.OutputDataReceived += (_, e) => { if (e.Data != null) serverLog.Enqueue(e.Data); };
     server.ErrorDataReceived += (_, e) => { if (e.Data != null) serverLog.Enqueue(e.Data); };
@@ -86,6 +94,25 @@ try
         await Task.Delay(200);
     }
     await Send(HttpMethod.Get, "swagger/v1/swagger.json");
+    if (args.Any(arg => arg is "--c8" or "--c9" or "--c8c9" or "--c8c9-ui"))
+    {
+        var fixture = await C8C9Checks.RunAsync(client, db, password, Check,
+            runC8: !args.Contains("--c9"), runC9: !args.Contains("--c8"));
+        Console.WriteLine($"SUCCESS: {checks} C8/C9 checks passed.");
+        if (args.Contains("--c8c9-ui"))
+        {
+            Console.WriteLine("C8C9_UI_SESSION:" + System.Text.Json.JsonSerializer.Serialize(new
+            {
+                baseUrl = client.BaseAddress, fixture.Today, fixture.FutureDate,
+                fixture.DoctorId, fixture.DoctorName, fixture.DepartmentName,
+                fixture.UiAppointmentId, fixture.UiPatientName, fixture.UiPatientId,
+                patientUsername = "c8patient", receptionUsername = "testreceptionist",
+                doctorUsername = "testdoctor", cashierUsername = "c8cashier"
+            }));
+            await Console.In.ReadLineAsync();
+        }
+        return;
+    }
     if (args.Contains("--c6c7") || args.Contains("--c6c7-ui"))
     {
         await C6C7Checks.RunAsync(client, db, password, Check);
