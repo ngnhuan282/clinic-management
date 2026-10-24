@@ -21,10 +21,11 @@ function DispensingDetailPage() {
     const { userId } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
-    const { detail, loading, error, confirming, reviewing, reload, dispense, processReview } = useDispensingDetail(recordId, userId);
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [reviewOpen, setReviewOpen] = useState(false);
     const [recheckOpen, setRecheckOpen] = useState(false);
+    const { detail, loading, error, confirming, reviewing, reload, dispense, processReview } =
+        useDispensingDetail(recordId, userId, !confirmOpen && !reviewOpen && !recheckOpen);
     const [actionError, setActionError] = useState("");
     const [reviewError, setReviewError] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
@@ -49,7 +50,8 @@ function DispensingDetailPage() {
         if (!detail || busy) return;
         setActionError("");
         try {
-            await dispense();
+            const result = await dispense();
+            if (!result) return;
             setConfirmOpen(false);
             setSuccessMessage(`Đã giao thuốc và trừ kho cho đơn ${detail.prescriptionCode}.`);
         } catch (err) {
@@ -65,6 +67,7 @@ function DispensingDetailPage() {
         setReviewError("");
         try {
             const result = await processReview(request);
+            if (!result) return;
             setReviewOpen(false);
             setRecheckOpen(false);
             setSuccessMessage(request ? "Đã lưu và gửi yêu cầu rà soát." : result.reviews[0]?.status === "StillShortage"

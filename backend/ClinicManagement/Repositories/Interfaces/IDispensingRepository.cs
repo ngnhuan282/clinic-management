@@ -27,7 +27,7 @@ public interface IDispensingRepository
     Task<Invoice?> GetPaidMedicineInvoiceAsync(
         int appointmentId,
         int prescriptionId,
-        IReadOnlyCollection<int> prescriptionDetailIds, bool onlyPaid = true
+        IReadOnlyCollection<int> prescriptionDetailIds, int patientId, bool onlyPaid = true
     );
 
     Task AddDispenseDetailsAsync(

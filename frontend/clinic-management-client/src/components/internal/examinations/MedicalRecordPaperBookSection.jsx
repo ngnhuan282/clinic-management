@@ -3,10 +3,7 @@ import { Alert, Box, Button, Chip, Paper, Stack, Typography } from "@mui/materia
 import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
 import PaperBookConfirmDialog from "./PaperBookConfirmDialog";
-
-function formatDateTime(value) {
-    return new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
-}
+import { formatMedicalRecordPaperTime } from "../../../utils/medicalRecordTime";
 
 function MedicalRecordPaperBookSection({
     appointment, medicalRecord, form, diseases, selectedDiagnoses, prescription,
@@ -59,11 +56,11 @@ function MedicalRecordPaperBookSection({
                 </Stack>
             </Box>
             {!isBookVerified ? <Alert severity="warning" sx={{ mt: 2 }}>Lượt khám chưa có sổ giấy được đối chiếu.</Alert> : hasSavedConfirmation ?
-                <Alert severity="success" sx={{ mt: 2 }}>Đã ghi nhận cập nhật sổ giấy lúc {formatDateTime(medicalRecord.paperBookUpdatedAt)}.</Alert> : isConfirmed ?
+                <Alert severity="success" sx={{ mt: 2 }}>Đã ghi nhận cập nhật sổ giấy lúc {formatMedicalRecordPaperTime(medicalRecord.paperBookUpdatedAt)}.</Alert> : isConfirmed ?
                     <Alert severity="info" sx={{ mt: 2 }}>Đã xác nhận cập nhật sổ giấy, chưa lưu hồ sơ.</Alert> :
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>{medicalRecord?.paperBookUpdatedAt
+                    <Alert severity={medicalRecord?.paperBookUpdatedAt ? "warning" : "info"} sx={{ mt: 2 }}>{medicalRecord?.paperBookUpdatedAt
                         ? "Nội dung khám đã thay đổi. Vui lòng cập nhật sổ giấy và xác nhận lại."
-                        : "Chưa xác nhận cập nhật sổ giấy."}</Typography>}
+                        : "Chưa xác nhận cập nhật sổ giấy."}</Alert>}
             {dialogOpen && <PaperBookConfirmDialog appointment={appointment} bookNumber={bookNumber} isBookVerified={isBookVerified}
                 form={form} diseases={diseases} selectedDiagnoses={selectedDiagnoses} prescription={prescription}
                 checkingPrescription={checkingPrescription} prescriptionError={prescriptionError} onPrescriptionRetry={onPrescriptionRetry}

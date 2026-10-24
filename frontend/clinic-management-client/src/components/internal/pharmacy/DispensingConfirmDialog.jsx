@@ -102,9 +102,7 @@ function DispensingConfirmDialog({ open, detail, loading, onCancel, onConfirm })
                             direction="row"
                             spacing={0.75}
                             useFlexGap
-                            flexWrap="wrap"
-                            alignItems="center"
-                            sx={{ mt: 0.75 }}
+                            sx={{ mt: 0.75, flexWrap: "wrap", alignItems: "center" }}
                         >
                             <Typography variant="body2" sx={{ color: "#005DAC", fontWeight: 900 }}>
                                 {detail.prescriptionCode}
@@ -140,7 +138,7 @@ function DispensingConfirmDialog({ open, detail, loading, onCancel, onConfirm })
             </DialogTitle>
 
             <DialogContent sx={{ px: 2.5, pt: "22px !important", pb: 2.5 }}>
-                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.25 }}>
+                <Stack direction="row" spacing={1} sx={{ mb: 1.25, alignItems: "center" }}>
                     <Inventory2OutlinedIcon color="primary" fontSize="small" />
                     <Typography variant="subtitle2" sx={{ color: "#111827", fontWeight: 900 }}>
                         Phân bổ lô xuất theo FEFO

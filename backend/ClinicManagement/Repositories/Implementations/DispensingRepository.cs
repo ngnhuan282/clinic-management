@@ -86,6 +86,7 @@ public class DispensingRepository(ApplicationDbContext context) : IDispensingRep
         if (appointmentIds.Count == 0) return [];
         return await context.Invoices.AsNoTracking().Include(x => x.InvoiceDetails)
             .Where(x => x.AppointmentId.HasValue && appointmentIds.Contains(x.AppointmentId.Value)
+                && x.InvoiceType == "Standard" && x.OriginalInvoiceId == null
                 && (x.Status == "Paid" || !onlyPaid && (x.Status == "Unpaid" || x.Status == "PartiallyPaid"))
                 && (x.BillingStage == "Medicine" || x.BillingStage == "Final"))
             .OrderByDescending(x => x.Status == "Paid").ThenByDescending(x => x.CreatedAt)
@@ -93,13 +94,13 @@ public class DispensingRepository(ApplicationDbContext context) : IDispensingRep
     }
 
     public async Task<Invoice?> GetPaidMedicineInvoiceAsync(int appointmentId, int prescriptionId,
-        IReadOnlyCollection<int> prescriptionDetailIds, bool onlyPaid = true)
+        IReadOnlyCollection<int> prescriptionDetailIds, int patientId, bool onlyPaid = true)
     {
         var candidates = await GetPaidMedicineInvoicesAsync([appointmentId], onlyPaid);
-        return candidates.FirstOrDefault(x => x.InvoiceDetails.Any(d =>
+        return candidates.FirstOrDefault(x => x.PatientId == patientId && (x.InvoiceDetails.Any(d =>
                 d.SourceType == "Prescription" && d.SourceId == prescriptionId)
             || prescriptionDetailIds.Count > 0 && prescriptionDetailIds.All(id =>
-                x.InvoiceDetails.Any(d => d.SourceType == "PrescriptionDetail" && d.SourceId == id)));
+                x.InvoiceDetails.Any(d => d.SourceType == "PrescriptionDetail" && d.SourceId == id))));
     }
 
     public async Task<IReadOnlyList<StockReviewRecipientResponse>> GetReviewRecipientsAsync(int doctorId, int? cashierId)
@@ -139,6 +140,9 @@ public class DispensingRepository(ApplicationDbContext context) : IDispensingRep
 
     private IQueryable<Prescription> PaidQuery(IQueryable<Prescription> query) => query.Where(x =>
         context.Invoices.Any(invoice => invoice.AppointmentId == x.MedicalRecord.AppointmentId
+            && invoice.PatientId == (x.MedicalRecord.PatientId ?? x.MedicalRecord.Appointment.PatientId
+                ?? x.MedicalRecord.Appointment.PatientProfileId ?? 0)
+            && invoice.InvoiceType == "Standard" && invoice.OriginalInvoiceId == null
             && invoice.Status == "Paid" && (invoice.BillingStage == "Medicine" || invoice.BillingStage == "Final")
             && (invoice.InvoiceDetails.Any(line => line.SourceType == "Prescription" && line.SourceId == x.PrescriptionId)
                 || x.Details.Any() && x.Details.All(detail => invoice.InvoiceDetails.Any(line =>

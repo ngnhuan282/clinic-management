@@ -43,6 +43,12 @@ export function getReviewStatusLabel(status) {
     return REVIEW_STATUS_OPTIONS.find((x) => x.value === status)?.label || "Chưa gửi yêu cầu";
 }
 
+export function getDispensingPaymentLabel(status) {
+    if (status === "Paid") return "Đã thanh toán";
+    if (status === "PartiallyPaid") return "Thanh toán một phần";
+    return "Chưa thanh toán";
+}
+
 export function getDispensingStatusConfig(status) {
     return STATUS_CONFIG[status] || {
         label: status || "Không xác định",

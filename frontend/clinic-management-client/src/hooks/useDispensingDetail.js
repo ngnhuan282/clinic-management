@@ -2,18 +2,20 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { confirmDispensing, getDispensingDetail, requestStockReview, recheckStockReview } from "../api/dispensingApi";
 import getApiErrorMessage from "../utils/errorHandler";
 import { buildStockReviewRecheckRequest } from "../utils/stockReviewWorkflow";
+import useDispensingAutoRefresh from "./useDispensingAutoRefresh";
 
-function useDispensingDetail(prescriptionId, userId) {
+function useDispensingDetail(prescriptionId, userId, autoRefresh = true) {
     const key = JSON.stringify([userId, prescriptionId]);
     const [result, setResult] = useState(null);
     const [mutation, setMutation] = useState(null);
     const sequence = useRef(0);
+    const mutating = useRef(null);
     const current = result?.key === key ? result : null;
 
-    const reload = useCallback(async () => {
-        if (!prescriptionId || !userId) return;
+    const reload = useCallback(async ({ background = false } = {}) => {
+        if (!prescriptionId || !userId || mutating.current?.key === key) return;
         const request = ++sequence.current;
-        setResult({ key, loading: true });
+        if (!background) setResult({ key, loading: true });
         try {
             const value = await getDispensingDetail(prescriptionId);
             if (request === sequence.current) setResult({ key, value });
@@ -24,6 +26,9 @@ function useDispensingDetail(prescriptionId, userId) {
         }
     }, [key, prescriptionId, userId]);
 
+    const refreshInBackground = useCallback(() => reload({ background: true }).catch(() => {}), [reload]);
+    useDispensingAutoRefresh(refreshInBackground, autoRefresh && Boolean(prescriptionId && userId) && mutation?.key !== key);
+
     useEffect(() => {
         const activeSequence = sequence;
         // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -32,16 +37,21 @@ function useDispensingDetail(prescriptionId, userId) {
     }, [reload]);
 
     const performMutation = useCallback(async (type, action, fallback) => {
+        if (mutating.current?.key === key) return null;
+        const activeMutation = { key };
+        mutating.current = activeMutation;
         const request = ++sequence.current;
         setMutation({ key, type });
         try {
             const value = await action();
             if (request === sequence.current) setResult({ key, value });
-            return value;
+            return request === sequence.current ? value : null;
         } catch (err) {
+            if (request !== sequence.current) return null;
             throw new Error(getApiErrorMessage(err, fallback), { cause: err });
         } finally {
-            if (request === sequence.current) setMutation(null);
+            if (mutating.current === activeMutation) mutating.current = null;
+            setMutation(currentMutation => currentMutation?.key === key ? null : currentMutation);
         }
     }, [key]);
 
