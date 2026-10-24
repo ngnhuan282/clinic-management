@@ -324,6 +324,7 @@ public class BookingService : IBookingService
     public async Task<AppointmentResponse> ConfirmAppointmentAsync(
         int appointmentId)
     {
+        await using var transaction = await _receptionRepository.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
         var appointment =
             await GetAppointmentForReceptionAsync(
                 appointmentId
@@ -340,6 +341,7 @@ public class BookingService : IBookingService
             AppointmentStatusConstants.Confirmed;
 
         await _appointmentRepository.SaveChangesAsync();
+        await transaction.CommitAsync();
         await _notifications.PublishAppointmentChangedAsync(appointment, "Confirmed");
         _logger.LogInformation("Appointment {AppointmentId} confirmed", appointmentId);
 
@@ -351,6 +353,7 @@ public class BookingService : IBookingService
         RescheduleAppointmentRequest request)
     {
         ValidateRescheduleRequest(request);
+        await using var transaction = await _receptionRepository.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
 
         var appointment =
             await GetAppointmentForReceptionAsync(
@@ -412,7 +415,10 @@ public class BookingService : IBookingService
         var previousDate = appointment.AppointmentDate;
         if (previousDoctorId == request.DoctorId && previousDate == date && appointment.StartTime == startTime
             && appointment.Status == AppointmentStatusConstants.Confirmed)
+        {
+            await transaction.CommitAsync();
             return MapAppointment(appointment);
+        }
         appointment.DoctorId = request.DoctorId;
         appointment.TimeSlotId = schedules.SelectMany(x => x.TimeSlots)
             .Where(x => x.StartTime == startTime && x.IsAvailable)
@@ -440,6 +446,7 @@ public class BookingService : IBookingService
         }
 
         appointment.Doctor = doctor;
+        await transaction.CommitAsync();
         await _notifications.PublishAppointmentChangedAsync(appointment, "Rescheduled", previousDoctorId, previousDate);
         _logger.LogInformation("Appointment {AppointmentId} rescheduled", appointmentId);
 
@@ -449,6 +456,7 @@ public class BookingService : IBookingService
     public async Task<AppointmentResponse> CancelAppointmentAsync(
         int appointmentId)
     {
+        await using var transaction = await _receptionRepository.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
         var appointment =
             await GetAppointmentForReceptionAsync(
                 appointmentId
@@ -467,6 +475,7 @@ public class BookingService : IBookingService
             AppointmentStatusConstants.Cancelled;
 
         await _appointmentRepository.SaveChangesAsync();
+        await transaction.CommitAsync();
         await _notifications.PublishAppointmentChangedAsync(appointment, "Cancelled");
         _logger.LogInformation("Appointment {AppointmentId} cancelled", appointmentId);
 
@@ -476,8 +485,9 @@ public class BookingService : IBookingService
     public async Task<AppointmentResponse> StartExaminationAsync(
         int appointmentId)
     {
+        await using var transaction = await _receptionRepository.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
         var appointment =
-            await _appointmentRepository.GetByIdAsync(
+            await _appointmentRepository.GetByIdForUpdateAsync(
                 appointmentId
             );
 
@@ -504,6 +514,7 @@ public class BookingService : IBookingService
             || !appointment.PatientBookId.HasValue)
             throw new AppException(ErrorCode.BOOK_NOT_VERIFIED);
 
+        var changed = false;
         if (appointment.Status == AppointmentStatusConstants.Pending
             || appointment.Status == AppointmentStatusConstants.Confirmed)
         {
@@ -516,7 +527,7 @@ public class BookingService : IBookingService
 
             appointment.Status = AppointmentStatusConstants.InProgress;
             await _appointmentRepository.SaveChangesAsync();
-            await _notifications.PublishAppointmentChangedAsync(appointment, "InProgress");
+            changed = true;
         }
 
         if (appointment.Status != AppointmentStatusConstants.InProgress)
@@ -525,7 +536,8 @@ public class BookingService : IBookingService
                 ErrorCode.APPOINTMENT_INVALID_STATUS
             );
         }
-
+        await transaction.CommitAsync();
+        if (changed) await _notifications.PublishAppointmentChangedAsync(appointment, "InProgress");
         return MapAppointment(appointment);
     }
 
@@ -550,7 +562,7 @@ public class BookingService : IBookingService
         int appointmentId)
     {
         var appointment =
-            await _appointmentRepository.GetByIdAsync(
+            await _appointmentRepository.GetByIdForUpdateAsync(
                 appointmentId
             );
 

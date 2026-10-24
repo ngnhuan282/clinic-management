@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -19,7 +19,8 @@ namespace ClinicManagement.Migrations
                 scale: 2,
                 nullable: false,
                 oldClrType: typeof(decimal),
-                oldType: "decimal(18,2)");
+                oldType: "decimal(18,2)",
+                oldDefaultValue: 0m);
 
             migrationBuilder.AddColumn<string>(
                 name: "InvoiceType",
@@ -33,7 +34,6 @@ namespace ClinicManagement.Migrations
                 table: "Invoices",
                 type: "int",
                 nullable: true);
-
         }
 
         /// <inheritdoc />
@@ -52,6 +52,7 @@ namespace ClinicManagement.Migrations
                 table: "Invoices",
                 type: "decimal(18,2)",
                 nullable: false,
+                defaultValue: 0m,
                 oldClrType: typeof(decimal),
                 oldType: "decimal(5,2)",
                 oldPrecision: 5,
