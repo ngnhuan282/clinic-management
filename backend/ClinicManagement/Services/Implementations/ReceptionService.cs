@@ -171,57 +171,67 @@ public class ReceptionService : IReceptionService
     }
 
     public async Task<PatientBookResponse> IssueBookAsync(int invoiceId, string bookNumber)
-{
-    if (string.IsNullOrWhiteSpace(bookNumber) || bookNumber.Trim().Length > 40)
-        throw new AppException(ErrorCode.INVALID_REQUEST);
-        
-    await using var transaction = await _receptionRepository.BeginTransactionAsync();
-    
-    var invoice = await _receptionRepository.GetBookInvoiceAsync(invoiceId)
-        ?? throw new AppException(ErrorCode.BOOK_INVOICE_NOT_FOUND);
-        
-    if (invoice.Status != "Paid"
-        || invoice.PatientBook is { Status: not PatientBookStatusConstants.Pending })
-        throw new AppException(ErrorCode.BOOK_INVOICE_INVALID_STATUS);
+    {
+        if (string.IsNullOrWhiteSpace(bookNumber) || bookNumber.Trim().Length > 40)
+            throw new AppException(ErrorCode.INVALID_REQUEST);
 
-    var previousBook = await _receptionRepository.GetIssuedBookAsync(invoice.PatientId)
-        ?? await _receptionRepository.GetLatestBookForPatientAsync(invoice.PatientId);
-    var now = DateTime.UtcNow;
-    if (previousBook?.Status == PatientBookStatusConstants.Issued)
-    {
-        if (await _receptionRepository.IsBookInUseAsync(previousBook.PatientBookId))
+        await using var transaction = await _receptionRepository.BeginTransactionAsync();
+        var invoice = await _receptionRepository.GetBookInvoiceAsync(invoiceId)
+            ?? throw new AppException(ErrorCode.BOOK_INVOICE_NOT_FOUND);
+        if (invoice.Status != "Paid"
+            || invoice.PatientBook is { Status: not PatientBookStatusConstants.Pending })
+            throw new AppException(ErrorCode.BOOK_INVOICE_INVALID_STATUS);
+
+        var previousBook = await _receptionRepository.GetIssuedBookAsync(invoice.PatientId);
+        if (previousBook != null && await _receptionRepository.IsBookInUseAsync(previousBook.PatientBookId))
             throw new AppException(ErrorCode.BOOK_IN_USE);
-        previousBook.Status = PatientBookStatusConstants.Replaced;
-        previousBook.UpdatedAt = now;
-        // Release the filtered unique Issued index before inserting/updating the replacement, in the same transaction.
+
+        var now = DateTime.UtcNow;
+        if (previousBook != null)
+        {
+            // Retire first, inside this transaction, to preserve the unique Issued-book constraint.
+            previousBook.Status = PatientBookStatusConstants.Replaced;
+            previousBook.UpdatedAt = now;
+            await SaveBookAsync();
+        }
+
+        var book = invoice.PatientBook ?? new PatientBook
+        {
+            PatientId = invoice.PatientId,
+            BookInvoiceId = invoiceId,
+            CreatedAt = now
+        };
+        if (!book.PreviousBookId.HasValue)
+        {
+            var linkedPreviousBook = previousBook
+                ?? await _receptionRepository.GetLatestBookForPatientAsync(invoice.PatientId);
+
+            // A pending book must not become its own predecessor or replace an issued-book history link.
+            if (linkedPreviousBook == null
+                || linkedPreviousBook.PatientBookId == book.PatientBookId
+                || linkedPreviousBook.Status == PatientBookStatusConstants.Pending)
+            {
+                linkedPreviousBook = (await _receptionRepository.GetBooksAsync(invoice.PatientId))
+                    .FirstOrDefault(x => x.Status == PatientBookStatusConstants.Lost
+                        && x.PatientBookId != book.PatientBookId);
+            }
+
+            book.PreviousBookId = linkedPreviousBook?.PatientBookId;
+        }
+
+        book.BookNumber = bookNumber.Trim();
+        book.Status = PatientBookStatusConstants.Issued;
+        book.IssuedAt = now;
+        book.UpdatedAt = now;
+        if (invoice.PatientBook == null) await _receptionRepository.AddBookAsync(book);
         await SaveBookAsync();
+        await transaction.CommitAsync();
+
+        if (previousBook != null) await _notifications.PublishPatientBookChangedAsync(previousBook);
+        await _notifications.PublishPatientBookChangedAsync(book);
+        _logger.LogInformation("Book {PatientBookId} issued after invoice {InvoiceId} was paid", book.PatientBookId, invoiceId);
+        return MapBook(book);
     }
-    var book = invoice.PatientBook ?? new PatientBook
-    {
-        PatientId = invoice.PatientId,
-        PreviousBookId = previousBook?.PatientBookId,
-        BookInvoiceId = invoiceId,
-        CreatedAt = now
-    };
-    
-    book.PreviousBookId = previousBook?.PatientBookId;
-    book.BookNumber = bookNumber.Trim();
-    book.Status = PatientBookStatusConstants.Issued;
-    book.IssuedAt = now;
-    book.UpdatedAt = now;
-    
-    if (invoice.PatientBook == null) await _receptionRepository.AddBookAsync(book);
-    await SaveBookAsync();
-    await transaction.CommitAsync();
-    
-    if (previousBook != null) await _notifications.PublishPatientBookChangedAsync(previousBook);
-    await _notifications.PublishPatientBookChangedAsync(book);
-    
-    _logger.LogInformation("Book {PatientBookId} issued after invoice {InvoiceId} was paid",
-        book.PatientBookId, invoiceId);
-        
-    return MapBook(book);
-}
 
     public async Task<AppointmentResponse> CheckInAsync(int appointmentId, CheckInAppointmentRequest request)
     {
@@ -258,7 +268,7 @@ public class ReceptionService : IReceptionService
     }
 
     private async Task<Appointment> RequireReceptionAppointmentAsync(int appointmentId) =>
-        await _appointmentRepository.GetByIdAsync(appointmentId)
+        await _appointmentRepository.GetByIdForUpdateAsync(appointmentId)
             ?? throw new AppException(ErrorCode.APPOINTMENT_NOT_FOUND);
 
     private async Task<Patient> RequirePatientAsync(int patientId) =>

@@ -11,6 +11,7 @@ public interface IAppointmentRepository
         ClinicManagement.DTOs.Requests.AppointmentQuery request, int patientUserId);
 
     Task<Appointment?> GetByIdAsync(int appointmentId);
+    Task<Appointment?> GetByIdForUpdateAsync(int appointmentId);
 
     Task<List<Appointment>> GetBookedSlotsAsync(
         int doctorId,

@@ -92,6 +92,16 @@ public class AppointmentRepository : IAppointmentRepository
             .SingleOrDefaultAsync(x => x.AppointmentId == appointmentId);
     }
 
+    public Task<Appointment?> GetByIdForUpdateAsync(int appointmentId)
+    {
+        if (_context.Database.CurrentTransaction == null)
+            throw new InvalidOperationException("Updating an appointment requires a transaction.");
+        return _context.Appointments
+            .FromSqlInterpolated($"SELECT * FROM Appointments WITH (UPDLOCK, ROWLOCK) WHERE AppointmentId = {appointmentId}")
+            .Include(x => x.Doctor).ThenInclude(x => x.Department)
+            .SingleOrDefaultAsync();
+    }
+
     public Task<List<Appointment>> GetBookedSlotsAsync(
         int doctorId,
         DateTime appointmentDate)

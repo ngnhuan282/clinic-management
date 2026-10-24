@@ -35,10 +35,13 @@ public class ReceptionRepository : IReceptionRepository
         .ThenByDescending(x => x.PatientBookId).ToListAsync();
 
     public Task<PatientBook?> GetBookAsync(int patientBookId) =>
-        _context.PatientBooks.Include(x => x.BookInvoice)
+        (_context.Database.CurrentTransaction == null ? _context.PatientBooks : _context.PatientBooks
+            .FromSqlInterpolated($"SELECT * FROM PatientBooks WITH (UPDLOCK, ROWLOCK) WHERE PatientBookId = {patientBookId}"))
+            .Include(x => x.BookInvoice)
             .SingleOrDefaultAsync(x => x.PatientBookId == patientBookId);
 
     public Task<PatientBook?> GetIssuedBookAsync(int patientId) => _context.PatientBooks
+        .FromSqlInterpolated($"SELECT * FROM PatientBooks WITH (UPDLOCK, ROWLOCK) WHERE PatientId = {patientId} AND Status = N'Issued'")
         .SingleOrDefaultAsync(x => x.PatientId == patientId && x.Status == PatientBookStatusConstants.Issued);
 
     public async Task<(List<PatientBook> Items, int Total)> GetBookPageAsync(PatientBookQuery query)
@@ -87,13 +90,15 @@ public class ReceptionRepository : IReceptionRepository
         .ThenByDescending(x => x.BookInvoiceId).ToListAsync();
 
     public Task<BookInvoice?> GetBookInvoiceAsync(int invoiceId) =>
-        _context.BookInvoices.Include(x => x.PatientBook)
+        (_context.Database.CurrentTransaction == null ? _context.BookInvoices : _context.BookInvoices
+            .FromSqlInterpolated($"SELECT * FROM BookInvoices WITH (UPDLOCK, ROWLOCK) WHERE BookInvoiceId = {invoiceId}"))
+            .Include(x => x.PatientBook)
             .SingleOrDefaultAsync(x => x.BookInvoiceId == invoiceId);
 
     public Task AddBookInvoiceAsync(BookInvoice invoice) => _context.BookInvoices.AddAsync(invoice).AsTask();
 
-    public Task<IDbContextTransaction> BeginTransactionAsync() =>
-        _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+    public Task<IDbContextTransaction> BeginTransactionAsync(IsolationLevel isolationLevel = IsolationLevel.Serializable) =>
+        _context.Database.BeginTransactionAsync(isolationLevel);
 
     public Task SaveChangesAsync() => _context.SaveChangesAsync();
 

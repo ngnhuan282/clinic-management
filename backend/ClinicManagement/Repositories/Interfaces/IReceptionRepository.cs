@@ -19,7 +19,7 @@ public interface IReceptionRepository
     Task<List<BookInvoice>> GetBookInvoicesAsync(int patientId);
     Task<BookInvoice?> GetBookInvoiceAsync(int invoiceId);
     Task AddBookInvoiceAsync(BookInvoice invoice);
-    Task<IDbContextTransaction> BeginTransactionAsync();
+    Task<IDbContextTransaction> BeginTransactionAsync(System.Data.IsolationLevel isolationLevel = System.Data.IsolationLevel.Serializable);
     Task SaveChangesAsync();
     Task<PatientBook?> GetLatestBookForPatientAsync(int patientId);
 }
