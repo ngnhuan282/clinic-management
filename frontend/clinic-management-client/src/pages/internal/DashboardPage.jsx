@@ -41,8 +41,7 @@ function StatCard({ title, value, description, icon, loading }) {
             <CardContent sx={{ p: 2.5 }}>
                 <Stack
                     direction="row"
-                    justifyContent="space-between"
-                    alignItems="flex-start"
+                    sx={{ justifyContent: "space-between", alignItems: "flex-start" }}
                     spacing={2}
                 >
                     <Box sx={{ minWidth: 0 }}>
@@ -94,7 +93,7 @@ function StatCard({ title, value, description, icon, loading }) {
 }
 
 export default function DashboardPage() {
-    const { user, role } = useAuth();
+    const { user, role, userId } = useAuth();
 
     const pages = INTERNAL_PAGES.filter(
         (page) => canSeePage(user, page) && !page.path.endsWith("dashboard")
@@ -102,32 +101,27 @@ export default function DashboardPage() {
 
     const isAdmin = role === "Admin";
 
-    const [summary, setSummary] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
-
-    const loadDashboard = async () => {
-        if (!isAdmin) return;
-
-        setLoading(true);
-        setError("");
-
-        try {
-            const response = await axiosClient.get("/admin-dashboard/summary");
-            setSummary(response.data);
-        } catch (err) {
-            setError(
-                err.response?.data?.message ||
-                "Không thể tải dữ liệu Dashboard. Hãy kiểm tra quyền Admin và trạng thái backend."
-            );
-        } finally {
-            setLoading(false);
-        }
-    };
+    const [state, setState] = useState(null);
+    const [revision, setRevision] = useState(0);
+    const requestKey = JSON.stringify({ userId, isAdmin, revision });
+    const visible = state?.requestKey === requestKey ? state : null;
+    const summary = visible?.summary;
+    const loading = isAdmin && !visible;
+    const error = visible?.error;
+    const loadDashboard = () => setRevision(value => value + 1);
 
     useEffect(() => {
-        loadDashboard();
-    }, [isAdmin]);
+        if (!JSON.parse(requestKey).isAdmin) return;
+        const controller = new AbortController();
+        axiosClient.get("/admin-dashboard/summary", { signal: controller.signal })
+            .then(response => {
+                if (!controller.signal.aborted) setState({ requestKey, summary: response.data });
+            }).catch(error => {
+                if (!controller.signal.aborted) setState({ requestKey, error: error.response?.data?.message
+                    || "Không thể tải dữ liệu Dashboard. Hãy kiểm tra quyền Admin và trạng thái backend." });
+            });
+        return () => controller.abort();
+    }, [requestKey]);
 
     const appointmentStats = summary?.appointments;
     const revenueStats = summary?.revenue;
@@ -153,8 +147,7 @@ export default function DashboardPage() {
                 <Stack spacing={2}>
                     <Stack
                         direction={{ xs: "column", sm: "row" }}
-                        justifyContent="space-between"
-                        alignItems={{ xs: "flex-start", sm: "center" }}
+                        sx={{ justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" } }}
                         spacing={1}
                     >
                         <Box>

@@ -20,6 +20,8 @@ public class ScheduleReviewService(ApplicationDbContext db, ICurrentUserService 
         int? doctorId = null, int? roomId = null)
     {
         var (userId, departmentId, isAdmin) = await ReviewerAsync();
+        if (pageNumber < 1 || pageSize is < 1 or > 100 || (long)(pageNumber - 1) * pageSize > int.MaxValue)
+            throw new AppException(ErrorCode.INVALID_REQUEST);
         await scope.ValidateFiltersAsync(departmentId, doctorId, roomId);
         if (status is not null && status is not ("Pending" or "Approved" or "Rejected" or "Cancelled"))
             throw new AppException(ErrorCode.INVALID_REQUEST);
@@ -107,7 +109,8 @@ public class ScheduleReviewService(ApplicationDbContext db, ICurrentUserService 
             if (request.Status != "Pending") throw new AppException(ErrorCode.SCHEDULE_REQUEST_INVALID_STATUS);
             if (request.StartTime >= request.EndTime ||
                 (request.EndTime - request.StartTime).Ticks % TimeSpan.FromMinutes(30).Ticks != 0 ||
-                !request.Doctor.IsActive || !request.Room.IsActive)
+                !request.Doctor.IsActive || !request.Doctor.Department.IsActive || !request.Room.IsActive
+                || request.Doctor.DepartmentId != request.Room.DepartmentId)
                 throw new AppException(ErrorCode.INVALID_REQUEST);
 
             if (reason is null)
@@ -146,6 +149,7 @@ public class ScheduleReviewService(ApplicationDbContext db, ICurrentUserService 
             await _db.SaveChangesAsync();
             await transaction.CommitAsync();
             await notifications.PublishAsync(rows);
+            await notifications.PublishDepartmentWorkflowChangedAsync(request.DoctorId, DepartmentWorkflowChangedResponse.Schedules);
             return Map(request, reviewer);
         }
         catch (Exception ex) when (IsSqlConflict(ex))

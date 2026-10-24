@@ -20,6 +20,7 @@ export const ROLE_LABELS = {
 };
 
 export const INTERNAL_PAGES = [
+    { label: "Thống kê khoa", path: "/internal/department-statistics", roles: ["DepartmentHead"] },
     { label: "Hồ sơ cá nhân", path: "/internal/profile", roles: INTERNAL_ROLES },
     { label: "Quản lý đánh giá", path: "/internal/reviews", roles: ["Admin"] },
     { label: "Thu ngân", path: "/internal/cashier/billing", roles: ["Admin", "Cashier"] },
@@ -63,6 +64,8 @@ export const INTERNAL_PAGES = [
 const ADDITIONAL_INTERNAL_ROUTES = [];
 
 const PAGE_PERMISSIONS = {
+    "/internal/department-statistics": "reports.departmentStatistics",
+    "/internal/department-schedules": "schedules.viewDepartment",
     "/internal/appointments": "appointments.view",
     "/internal/patient-books": "appointments.checkIn",
     "/internal/users": "accounts.view",
@@ -111,7 +114,8 @@ export function canSeePage(value, page) {
             : [];
         if (requiredPermissions.some(code => code.startsWith("accounts.")) && user.role !== "Admin") return false;
         if (page.path === "/internal/schedule-requests" && !page.roles.includes(user.role)) return false;
-        if (page.path === "/internal/department-schedules" && user.role !== "DepartmentHead") return false;
+        if (["/internal/reviews", "/internal/cashier/billing"].includes(page.path) && !page.roles.includes(user.role)) return false;
+        if (["/internal/department-schedules", "/internal/department-statistics"].includes(page.path) && user.role !== "DepartmentHead") return false;
         if (page.path === "/internal/diseases" && !page.roles.includes(user.role)) return false;
         if (page.path === "/internal/pharmacy/inventory" && !page.roles.includes(user.role)) return false;
         if (page.path === "/internal/doctor/stock-reviews" && !page.roles.includes(user.role)) return false;
@@ -136,7 +140,8 @@ export const homeForRole = (value) =>
 
 export function canAccessPath(value, path) {
     const user = asUser(value);
-    if (["/booking", "/lab-results", "/profile", "/medical-records"].includes(path)
+    if (path === "/profile") return user.isAuthenticated || Boolean(user.role);
+    if (["/booking", "/lab-results", "/my-reviews", "/medical-records"].includes(path)
         || path.startsWith("/medical-records/")) {
         return user.role === "Patient";
     }

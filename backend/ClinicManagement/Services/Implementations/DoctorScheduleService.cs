@@ -38,6 +38,7 @@ public class DoctorScheduleService(ApplicationDbContext context, ICurrentUserSer
         await _context.SaveChangesAsync();
         await transaction.CommitAsync();
         await notifications.PublishAsync(rows);
+        await notifications.PublishDepartmentWorkflowChangedAsync(doctorId, DepartmentWorkflowChangedResponse.Schedules);
         return await ProjectRequest(entity.RequestId);
     }
 
@@ -67,7 +68,7 @@ public class DoctorScheduleService(ApplicationDbContext context, ICurrentUserSer
     {
         var userId = _currentUser.GetRequiredUserId();
         var departmentId = await _context.Doctors
-            .Where(x => x.UserId == userId && x.IsActive)
+            .Where(x => x.UserId == userId && x.IsActive && x.Department.IsActive)
             .Select(x => (int?)x.DepartmentId)
             .SingleOrDefaultAsync()
             ?? throw new AppException(ErrorCode.UNAUTHORIZED);
@@ -98,12 +99,16 @@ public class DoctorScheduleService(ApplicationDbContext context, ICurrentUserSer
             throw new AppException(ErrorCode.INVALID_REQUEST);
         if (!TimeSpan.TryParse(request.StartTime, out var start) ||
             !TimeSpan.TryParse(request.EndTime, out var end) || start < TimeSpan.Zero
-            || start >= end || end > TimeSpan.FromDays(1))
+            || start >= end || end >= TimeSpan.FromDays(1))
             throw new AppException(ErrorCode.INVALID_REQUEST);
 
-        var doctorExists = await _context.Doctors.AnyAsync(x => x.DoctorId == request.DoctorId && x.IsActive);
-        var roomExists = await _context.Rooms.AnyAsync(x => x.RoomId == request.RoomId && x.IsActive);
-        if (!doctorExists || !roomExists)
+        await scope.ValidateFiltersAsync(await scope.ForHeadAsync(), request.DoctorId, request.RoomId);
+
+        var departmentId = await _context.Doctors.Where(x => x.DoctorId == request.DoctorId && x.IsActive && x.Department.IsActive)
+            .Select(x => (int?)x.DepartmentId).SingleOrDefaultAsync();
+        var roomExists = await _context.Rooms.AnyAsync(x => x.RoomId == request.RoomId && x.IsActive
+            && x.Department.IsActive && x.DepartmentId == departmentId);
+        if (!departmentId.HasValue || !roomExists)
             throw new AppException(ErrorCode.INVALID_REQUEST);
 
         await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
@@ -141,12 +146,17 @@ public class DoctorScheduleService(ApplicationDbContext context, ICurrentUserSer
         _context.DoctorSchedules.Add(schedule);
         await _context.SaveChangesAsync();
         await transaction.CommitAsync();
+        await notifications.PublishDepartmentWorkflowChangedAsync(schedule.DoctorId, DepartmentWorkflowChangedResponse.Schedules);
         var created = await GetScheduleQuery().SingleAsync(x => x.ScheduleId == schedule.ScheduleId);
         return MapSchedule(created);
     }
 
     public async Task<PagedResponse<DoctorScheduleResponse>> GetSchedulesAsync(DoctorScheduleQuery query)
     {
+        if (query.Date.HasValue && query.WeekStart.HasValue || query.Date == DateOnly.MinValue
+            || query.WeekStart == DateOnly.MinValue || query.WeekStart > DateOnly.MaxValue.AddDays(-6)
+            || (long)(query.PageNumber - 1) * query.PageSize > int.MaxValue)
+            throw new AppException(ErrorCode.INVALID_REQUEST);
         // Only approved, active shifts are published; pending or rejected requests never reach booking or department views.
         var scheduleQuery = GetScheduleQuery()
             .Where(x => x.Status == ScheduleStatusConstants.Approved && x.IsActive);
@@ -238,7 +248,7 @@ public class DoctorScheduleService(ApplicationDbContext context, ICurrentUserSer
     {
         if (request.RoomId <= 0 || request.WorkDate == default || !TimeSpan.TryParse(request.StartTime, out var start)
             || !TimeSpan.TryParse(request.EndTime, out var end) || start < TimeSpan.Zero || start >= end
-            || end > TimeSpan.FromDays(1) || (end - start).Ticks % TimeSpan.FromMinutes(30).Ticks != 0)
+            || end >= TimeSpan.FromDays(1) || (end - start).Ticks % TimeSpan.FromMinutes(30).Ticks != 0)
             throw new AppException(ErrorCode.INVALID_REQUEST);
         var departmentId = await _context.Doctors.Where(x => x.DoctorId == doctorId && x.IsActive && x.Department.IsActive)
             .Select(x => (int?)x.DepartmentId).SingleOrDefaultAsync();

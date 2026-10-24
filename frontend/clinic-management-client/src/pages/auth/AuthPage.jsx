@@ -24,7 +24,7 @@ function Introduction({ register, internal }) {
         "&::before": { content: '""', position: "absolute", width: 310, height: 310, borderRadius: "50%", bgcolor: "rgba(255,255,255,.045)", right: -130, top: -100 },
         "&::after": { content: '""', position: "absolute", width: 220, height: 220, borderRadius: "50%", bgcolor: "rgba(255,255,255,.045)", right: 35, bottom: 40, pointerEvents: "none" },
     }}>
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ alignSelf: "flex-start", borderRadius: 10, px: 1.75, py: 0.8, bgcolor: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.2)", mb: 3 }}>
+        <Stack direction="row" spacing={1} sx={{ alignItems: "center", alignSelf: "flex-start", borderRadius: 10, px: 1.75, py: 0.8, bgcolor: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.2)", mb: 3 }}>
             <ShieldOutlined sx={{ fontSize: 18, color: "#a5e6ff" }} />
             <Typography sx={{ fontSize: 12, fontWeight: 700, letterSpacing: ".04em" }}>{internal ? "CỔNG NỘI BỘ MEDICLINIC" : "CỔNG DỊCH VỤ BỆNH NHÂN MEDICLINIC"}</Typography>
         </Stack>
@@ -35,12 +35,12 @@ function Introduction({ register, internal }) {
             {register ? "Đồng hành cùng bạn và gia đình. Tạo tài khoản để chủ động lựa chọn bác sĩ và đặt lịch khám phù hợp." : "Chào mừng bạn trở lại. Đăng nhập để kết nối với phòng khám và sắp xếp lịch khám thuận tiện hơn."}
         </Typography>
         <Stack spacing={3} sx={{ my: 4.5, display: { xs: "none", md: "flex" } }}>
-            {FEATURES.map(({ icon: Icon, title, description }) => <Stack key={title} direction="row" spacing={1.75} alignItems="flex-start">
+            {FEATURES.map(({ icon: Icon, title, description }) => <Stack key={title} direction="row" spacing={1.75} sx={{ alignItems: "flex-start" }}>
                 <Box sx={{ p: 0.9, display: "flex", borderRadius: 1.5, bgcolor: "rgba(255,255,255,.12)", color: "#a2e7ff" }}><Icon sx={{ fontSize: 22 }} /></Box>
                 <Box><Typography sx={{ fontSize: 16, fontWeight: 650, mb: 0.4 }}>{title}</Typography><Typography sx={{ fontSize: 14, lineHeight: 1.6, color: "#d1e5ff" }}>{description}</Typography></Box>
             </Stack>)}
         </Stack>
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: "auto", pt: 2.5, borderTop: "1px solid rgba(255,255,255,.18)", display: { xs: "none", md: "flex" }, color: "#d1e5ff" }}>
+        <Stack direction="row" spacing={1} sx={{ alignItems: "center", mt: "auto", pt: 2.5, borderTop: "1px solid rgba(255,255,255,.18)", display: { xs: "none", md: "flex" }, color: "#d1e5ff" }}>
             <LockOutlined sx={{ fontSize: 18 }} /><Typography variant="body2">An tâm kết nối, chủ động chăm sóc sức khỏe.</Typography>
         </Stack>
     </Box>;

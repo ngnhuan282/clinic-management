@@ -184,6 +184,8 @@ public class MedicalRecordService : IMedicalRecordService
         await _medicalRecordRepository.SaveChangesAsync();
         if (previousStatus != appointment.Status)
             await _notifications.PublishAppointmentChangedAsync(appointment, appointment.Status);
+        else
+            await _notifications.PublishDepartmentWorkflowChangedAsync(appointment.DoctorId, DepartmentWorkflowChangedResponse.Statistics);
 
         return await GetByIdAsync(record.MedicalRecordId);
     }
@@ -263,6 +265,8 @@ public class MedicalRecordService : IMedicalRecordService
         await transaction.CommitAsync();
         if (previousStatus != record.Appointment.Status)
             await _notifications.PublishAppointmentChangedAsync(record.Appointment, record.Appointment.Status);
+        else
+            await _notifications.PublishDepartmentWorkflowChangedAsync(record.DoctorId, DepartmentWorkflowChangedResponse.Statistics);
 
         return await GetByIdAsync(medicalRecordId);
     }

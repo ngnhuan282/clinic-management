@@ -1,5 +1,6 @@
 using ClinicManagement.Data;
 using ClinicManagement.Data.Entities;
+using ClinicManagement.Exceptions;
 using ClinicManagement.DTOs.Invoices;
 using ClinicManagement.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -88,7 +89,7 @@ public class InvoiceService(
     {
         ArgumentNullException.ThrowIfNull(dto);
         if (dto.Items is not { Count: > 0 })
-            throw new InvalidOperationException("Hóa đơn phải có ít nhất một khoản mục.");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Hóa đơn phải có ít nhất một khoản mục.");
 
         await using var transaction = dto.BillingStage == "Book"
             ? await context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable)
@@ -99,7 +100,7 @@ public class InvoiceService(
             if (await context.InvoiceDetails.AnyAsync(detail =>
                     detail.SourceType == item.SourceType && detail.SourceId == item.SourceId))
             {
-                throw new InvalidOperationException(
+                throw new AppException(ErrorCode.INVALID_REQUEST,
                     $"Khoản phí '{item.ItemName}' (Mã: {item.SourceId}) đã được thanh toán trước đó!");
             }
         }
@@ -119,13 +120,13 @@ public class InvoiceService(
         foreach (var bookInvoice in bookInvoices)
         {
             if (bookInvoice.PatientId != dto.PatientId || bookInvoice.Status != "Unpaid")
-                throw new InvalidOperationException("Hóa đơn sổ không thuộc bệnh nhân hoặc đã được thanh toán.");
+                throw new AppException(ErrorCode.INVALID_REQUEST, "Hóa đơn sổ không thuộc bệnh nhân hoặc đã được thanh toán.");
 
             var sources = dto.Items
                 .Where(item => item.SourceType == "Book" && item.SourceId == bookInvoice.BookInvoiceId)
                 .ToList();
             if (sources.Count != 1 || sources[0].Quantity != 1 || sources[0].UnitPrice != bookInvoice.Amount)
-                throw new InvalidOperationException("Số tiền thanh toán phải khớp phí trên hóa đơn sổ.");
+                throw new AppException(ErrorCode.INVALID_REQUEST, "Số tiền thanh toán phải khớp phí trên hóa đơn sổ.");
 
             bookInvoice.Status = "Paid";
             bookInvoice.PaidAt = DateTime.UtcNow;

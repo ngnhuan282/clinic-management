@@ -54,12 +54,25 @@ async Task<JsonNode?> Send(HttpMethod method, string path, object? body = null, 
 }
 try
 {
-    await db.Database.MigrateAsync();
-    Check(!(await db.Database.GetPendingMigrationsAsync()).Any(), "All migrations apply to an empty SQL Server database");
-    Check(await db.Departments.CountAsync() == 3 && await db.Rooms.CountAsync() == 3 && await db.Specializations.CountAsync() == 3, "Catalog master data seeded");
-    if (args.Contains("--migrations-only"))
+    if (args.Contains("--model-schema"))
     {
-        await MigrationChecks.RunAsync(db, Check);
+        await db.Database.EnsureCreatedAsync();
+        Check(true, "Explicit model fixture: SQL Server schema from current EF model; legacy migration chain is NOT verified");
+    }
+    else
+    {
+        await db.Database.MigrateAsync();
+        Check(!(await db.Database.GetPendingMigrationsAsync()).Any(), "All migrations apply to an empty SQL Server database");
+    }
+    if (args.Contains("--a7") || args.Contains("--a7-ui") || args.Contains("--week10") || args.Contains("--week10-ui"))
+        await A7Checks.VerifyPermissionMigrationAsync(db, Check);
+    if (args.Contains("--week8") || args.Contains("--week8-ui") || args.Contains("--week10") || args.Contains("--week10-ui"))
+        await Week8Checks.VerifyMigrationAsync(db, Check);
+    Check(await db.Departments.CountAsync() == 3 && await db.Rooms.CountAsync() == 3 && await db.Specializations.CountAsync() == 3, "Catalog master data seeded");
+    if (args.Contains("--migrations-only") || args.Contains("--billing-migrations-only"))
+    {
+        await BillingMigrationChecks.RunAsync(db, Check);
+        if (!args.Contains("--billing-migrations-only")) await MigrationChecks.RunAsync(db, Check);
         Console.WriteLine($"SUCCESS: {checks} migration checks passed.");
         return;
     }
@@ -74,14 +87,17 @@ try
         (await db.Users.SingleAsync(x => x.Username == "testdoctor")).UserId;
     await db.SaveChangesAsync();
 
-    var start = new ProcessStartInfo("dotnet") { WorkingDirectory = Path.Combine(root, "backend/ClinicManagement"), UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
-    start.ArgumentList.Add(Path.Combine(AppContext.BaseDirectory, "ClinicManagement.dll"));
+    var publishedIndex = Array.IndexOf(args, "--api-dir");
+    var serverDirectory = publishedIndex < 0 ? AppContext.BaseDirectory : Path.GetFullPath(args[publishedIndex + 1]);
+    var start = new ProcessStartInfo("dotnet") { WorkingDirectory = publishedIndex < 0 ? Path.Combine(root, "backend/ClinicManagement") : serverDirectory,
+        UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
+    start.ArgumentList.Add(Path.Combine(serverDirectory, "ClinicManagement.dll"));
     start.Environment["ASPNETCORE_URLS"] = client.BaseAddress.ToString().TrimEnd('/');
     start.Environment["ASPNETCORE_ENVIRONMENT"] = "Development";
     start.Environment["ConnectionStrings__DefaultConnection"] = connection;
     start.Environment["Jwt__Key"] = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
     if (args.Contains("--a6")) start.Environment["AuthCookie__Secure"] = "true";
-    if (args.Contains("--ui") || args.Contains("--a5-ui") || args.Contains("--a6-ui") || args.Contains("--clinic-realtime-ui") || args.Contains("--c6c7-ui") || args.Contains("--c8c9-ui")) start.Environment["Cors__FrontendUrl"] = "http://127.0.0.1:5190";
+    if (args.Any(arg => arg.EndsWith("-ui", StringComparison.Ordinal)) || args.Contains("--ui")) start.Environment["Cors__FrontendUrl"] = "http://127.0.0.1:5190";
     server = Process.Start(start)!;
     server.OutputDataReceived += (_, e) => { if (e.Data != null) serverLog.Enqueue(e.Data); };
     server.ErrorDataReceived += (_, e) => { if (e.Data != null) serverLog.Enqueue(e.Data); };
@@ -109,6 +125,38 @@ try
                 patientUsername = "c8patient", receptionUsername = "testreceptionist",
                 doctorUsername = "testdoctor", cashierUsername = "c8cashier"
             }));
+            await Console.In.ReadLineAsync();
+        }
+        return;
+    }
+    if (args.Contains("--week8") || args.Contains("--week8-ui") || args.Contains("--week10") || args.Contains("--week10-ui"))
+    {
+        await ScheduleReviewChecks.RunAsync(client, db, password, Check);
+        await A7Checks.RunAsync(client, db, password, Check);
+        var fixture = System.Text.Json.JsonSerializer.SerializeToNode(
+            await Week8Checks.RunAsync(client, db, password, start.Environment["Jwt__Key"]!, Check))!.AsObject();
+        var week10 = args.Contains("--week10") || args.Contains("--week10-ui");
+        if (week10) fixture = System.Text.Json.JsonSerializer.SerializeToNode(
+            await Week10Checks.RunAsync(client, db, password, start.Environment["Jwt__Key"]!, Check))!.AsObject();
+        Console.WriteLine($"SUCCESS: {checks} {(week10 ? "Week10" : "Week8")} integration checks passed.");
+        if (args.Contains("--week8-ui") || args.Contains("--week10-ui"))
+        {
+            fixture["baseUrl"] = client.BaseAddress!.ToString();
+            fixture["password"] = password;
+            Console.WriteLine("AUTH_UI_SESSION:" + fixture.ToJsonString());
+            await Console.In.ReadLineAsync();
+        }
+        return;
+    }
+    if (args.Contains("--a7") || args.Contains("--a7-ui"))
+    {
+        var fixture = System.Text.Json.JsonSerializer.SerializeToNode(await A7Checks.RunAsync(client, db, password, Check))!.AsObject();
+        Console.WriteLine($"SUCCESS: {checks} A7 checks passed.");
+        if (args.Contains("--a7-ui"))
+        {
+            fixture["baseUrl"] = client.BaseAddress!.ToString();
+            fixture["password"] = password;
+            Console.WriteLine("AUTH_UI_SESSION:" + fixture.ToJsonString());
             await Console.In.ReadLineAsync();
         }
         return;

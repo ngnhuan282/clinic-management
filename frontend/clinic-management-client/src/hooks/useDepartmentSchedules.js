@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import doctorScheduleApi from "../api/doctorScheduleApi";
 import getApiErrorMessage from "../utils/errorHandler";
 import useNotifications from "./useNotifications";
@@ -9,27 +10,33 @@ export default function useDepartmentSchedules({ mode, date, doctorId, roomId })
     const [options, setOptions] = useState(null);
     const [state, setState] = useState({ items: [], loading: true });
     const [reload, setReload] = useState(0);
-    const { revision } = useNotifications();
-    const { userId } = useAuth();
+    const { departmentCalendarRevision } = useNotifications();
+    const { userId, sessionRevision } = useAuth();
+    const navigate = useNavigate();
     const weekStart = mondayOf(date);
-    const requestKey = JSON.stringify({ ...(mode === "week" ? { weekStart } : { date }),
+    const requestKey = JSON.stringify({ userId, sessionRevision, departmentCalendarRevision, reload,
+        ...(mode === "week" ? { weekStart } : { date }),
         doctorId: doctorId || undefined, roomId: roomId || undefined });
 
     useEffect(() => {
-        let disposed = false;
-        const params = JSON.parse(requestKey);
-        Promise.resolve().then(() => { if (!disposed) setState({ items: [], loading: true, requestKey, userId }); });
-        Promise.all([doctorScheduleApi.department(params), doctorScheduleApi.departmentOptions()])
+        const controller = new AbortController();
+        const { date, weekStart, doctorId, roomId } = JSON.parse(requestKey);
+        const params = { date, weekStart, doctorId, roomId };
+        Promise.all([doctorScheduleApi.department(params, controller.signal), doctorScheduleApi.departmentOptions(controller.signal)])
             .then(([scheduleResponse, optionsResponse]) => {
-                if (disposed) return;
-                setOptions({ userId, data: optionsResponse.data.result });
+                if (controller.signal.aborted) return;
+                setOptions({ requestKey, data: optionsResponse.data.result });
                 setState({ items: scheduleResponse.data.result, loading: false, requestKey, userId });
             }).catch(error => {
-                if (!disposed) setState({ items: [], loading: false, error: getApiErrorMessage(error), requestKey, userId });
+                if (controller.signal.aborted) return;
+                if (error.response?.status === 403)
+                    navigate("/403", { replace: true, state: { deniedPath: "/internal/department-schedules" } });
+                setOptions(null);
+                setState({ items: [], loading: false, error: getApiErrorMessage(error), requestKey, userId });
             });
-        return () => { disposed = true; };
-    }, [requestKey, userId, reload, revision]);
+        return () => controller.abort();
+    }, [requestKey, userId, navigate]);
 
     const visible = state.requestKey === requestKey && state.userId === userId ? state : { items: [], loading: true };
-    return { ...visible, options: options?.userId === userId ? options.data : null, refresh: () => setReload(value => value + 1) };
+    return { ...visible, options: options?.requestKey === requestKey ? options.data : null, refresh: () => setReload(value => value + 1) };
 }

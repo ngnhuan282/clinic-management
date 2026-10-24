@@ -34,7 +34,7 @@ export default function NotificationBell() {
                     <List sx={{ maxHeight: 450, overflow: "auto" }}>{items.map(item => <ListItemButton key={item.notificationId} onClick={() => read(item)} sx={{ bgcolor: item.isRead ? "transparent" : "#EFF6FF", mb: 1, overflowWrap: "anywhere" }}>
                         <ListItemText primary={item.title} secondary={<>{item.message}<br />{new Date(item.createdAt + (item.createdAt.endsWith("Z") ? "" : "Z")).toLocaleString("vi-VN")}</>} />
                     </ListItemButton>)}</List>}
-                <Stack direction="row" justifyContent="space-between">
+                <Stack direction="row" sx={{ justifyContent: "space-between" }}>
                     <Button disabled={pageNumber === 1 || loading} onClick={() => setPageNumber(pageNumber - 1)}>Trước</Button>
                     <Typography sx={{ pt: 1 }}>Trang {pageNumber}</Typography>
                     <Button disabled={!hasNextPage || loading} onClick={() => setPageNumber(pageNumber + 1)}>Sau</Button>

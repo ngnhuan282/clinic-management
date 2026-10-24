@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -10,7 +10,7 @@ namespace ClinicManagement.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // The nullable appointment and insurance columns already belong to earlier migrations.
+            // Insurance fields and nullable AppointmentId already exist in earlier migrations.
             migrationBuilder.AlterColumn<decimal>(
                 name: "InsuranceDiscountPercent",
                 table: "Invoices",
@@ -27,14 +27,13 @@ namespace ClinicManagement.Migrations
                 table: "Invoices",
                 type: "nvarchar(max)",
                 nullable: false,
-                defaultValue: "");
+                defaultValue: "Standard");
 
             migrationBuilder.AddColumn<int>(
                 name: "OriginalInvoiceId",
                 table: "Invoices",
                 type: "int",
                 nullable: true);
-
         }
 
         /// <inheritdoc />

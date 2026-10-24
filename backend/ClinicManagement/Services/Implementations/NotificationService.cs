@@ -86,6 +86,33 @@ public class NotificationService(IHubContext<NotificationHub> hub, ApplicationDb
         return recipients.Distinct().ToList();
     }
 
+    public async Task PublishDepartmentWorkflowChangedAsync(int doctorId, string area)
+    {
+        try
+        {
+            var departmentId = await db.Doctors.AsNoTracking()
+                .Where(x => x.DoctorId == doctorId && x.Department.IsActive)
+                .Select(x => (int?)x.DepartmentId).SingleOrDefaultAsync();
+            if (!departmentId.HasValue) return;
+
+            var recipients = await db.Users.Where(x => x.Status && x.Role.RoleName == RoleConstants.DepartmentHead
+                && db.Doctors.Any(d => d.UserId == x.UserId && d.IsActive && d.DepartmentId == departmentId)
+                && db.RolePermissions.Any(p => p.RoleId == x.RoleId && p.Permission.IsImplemented
+                    && (p.PermissionCode == PermissionCodes.ReportsDepartmentStatistics
+                        || area == DepartmentWorkflowChangedResponse.Schedules
+                        && (p.PermissionCode == PermissionCodes.SchedulesReview
+                            || p.PermissionCode == PermissionCodes.SchedulesViewDepartment))))
+                .Select(x => x.UserId.ToString()).ToListAsync();
+            if (recipients.Count > 0)
+                await hub.Clients.Users(recipients).SendAsync("DepartmentWorkflowChanged",
+                    new DepartmentWorkflowChangedResponse(departmentId.Value, area));
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Realtime department invalidation failed for {Area}", area);
+        }
+    }
+
     private Task<List<int>> PatientRecipientsAsync(int userId) => db.Users.Where(x => x.UserId == userId
         && x.Status && x.Role.RoleName == RoleConstants.Patient).Select(x => x.UserId).ToListAsync();
 
@@ -116,8 +143,14 @@ public class NotificationService(IHubContext<NotificationHub> hub, ApplicationDb
         await PublishEventAsync(change == "CheckedIn" ? "CheckInChanged" : "AppointmentChanged",
             () => AppointmentRecipientsAsync(appointment, previousDoctorId), payload);
 
+        if (change is AppointmentStatusConstants.InProgress or AppointmentStatusConstants.Completed)
+            await PublishDepartmentWorkflowChangedAsync(appointment.DoctorId, DepartmentWorkflowChangedResponse.Statistics);
+
         if (change is "Created" or "Rescheduled" or "Cancelled")
         {
+            await PublishDepartmentWorkflowChangedAsync(appointment.DoctorId, DepartmentWorkflowChangedResponse.Schedules);
+            if (previousDoctorId.HasValue && previousDoctorId != appointment.DoctorId)
+                await PublishDepartmentWorkflowChangedAsync(previousDoctorId.Value, DepartmentWorkflowChangedResponse.Schedules);
             await PublishEventAsync("SlotAvailabilityChanged", BookingRecipientsAsync,
                 new SlotAvailabilityChangedResponse(appointment.DoctorId, appointment.AppointmentDate));
             if (previousDoctorId.HasValue && previousAppointmentDate.HasValue

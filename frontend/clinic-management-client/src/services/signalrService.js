@@ -21,7 +21,7 @@ export function connectNotifications(onNotification, onConnected = () => {}, onC
         catch { retry(); }
     }
     connection.on("NotificationReceived", notification => { if (!disposed) onNotification(notification); });
-    const clinicEvents = ["AppointmentChanged", "CheckInChanged", "BookInvoiceChanged", "PatientBookChanged", "SlotAvailabilityChanged"];
+    const clinicEvents = ["AppointmentChanged", "CheckInChanged", "BookInvoiceChanged", "PatientBookChanged", "SlotAvailabilityChanged", "DepartmentWorkflowChanged"];
     for (const eventName of clinicEvents) {
         connection.on(eventName, payload => { if (!disposed) onClinicEvent(eventName, payload); });
     }

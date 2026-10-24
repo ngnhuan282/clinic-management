@@ -203,10 +203,22 @@ public class ReceptionService : IReceptionService
         };
         if (!book.PreviousBookId.HasValue)
         {
-            book.PreviousBookId = previousBook?.PatientBookId
-                ?? (await _receptionRepository.GetBooksAsync(invoice.PatientId))
-                    .FirstOrDefault(x => x.Status == PatientBookStatusConstants.Lost)?.PatientBookId;
+            var linkedPreviousBook = previousBook
+                ?? await _receptionRepository.GetLatestBookForPatientAsync(invoice.PatientId);
+
+            // A pending book must not become its own predecessor or replace an issued-book history link.
+            if (linkedPreviousBook == null
+                || linkedPreviousBook.PatientBookId == book.PatientBookId
+                || linkedPreviousBook.Status == PatientBookStatusConstants.Pending)
+            {
+                linkedPreviousBook = (await _receptionRepository.GetBooksAsync(invoice.PatientId))
+                    .FirstOrDefault(x => x.Status == PatientBookStatusConstants.Lost
+                        && x.PatientBookId != book.PatientBookId);
+            }
+
+            book.PreviousBookId = linkedPreviousBook?.PatientBookId;
         }
+
         book.BookNumber = bookNumber.Trim();
         book.Status = PatientBookStatusConstants.Issued;
         book.IssuedAt = now;

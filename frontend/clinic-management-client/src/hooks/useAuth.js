@@ -10,6 +10,7 @@ function useAuth() {
         user,
         isAuthenticated,
         sessionChecked,
+        sessionRevision,
     } = useSelector((state) => state.auth);
 
 
@@ -18,6 +19,7 @@ function useAuth() {
         user,
         isAuthenticated,
         sessionChecked,
+        sessionRevision,
         role: user?.role || null,
         permissions: user?.permissions || [],
         userId: user?.userId || null,

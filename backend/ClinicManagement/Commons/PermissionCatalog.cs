@@ -10,6 +10,7 @@ public static class PermissionCodes
     public const string CatalogManage = "catalog.manage";
     public const string SchedulesManage = "schedules.manage";
     public const string SchedulesReview = "schedules.review";
+    public const string SchedulesViewDepartment = "schedules.viewDepartment";
     public const string AppointmentsView = "appointments.view";
     public const string AppointmentsViewOwn = "appointments.viewOwn";
     public const string AppointmentsBookSelf = "appointments.bookSelf";
@@ -44,6 +45,7 @@ public static class PermissionCodes
     public const string BillingRecordPayment = "billing.recordPayment";
     public const string BillingViewOwn = "billing.viewOwn";
     public const string ReportsOperations = "reports.operations";
+    public const string ReportsDepartmentStatistics = "reports.departmentStatistics";
     public const string ReportsRevenue = "reports.revenue";
 }
 
@@ -54,6 +56,7 @@ public static class PermissionCatalog
 {
     public static readonly PermissionDefinition[] All =
     [
+        new(PermissionCodes.SchedulesViewDepartment, "Lịch bác sĩ", "Xem lịch trực khoa", "Xem", "Chỉ khoa của Trưởng khoa đăng nhập"),
         new(PermissionCodes.SchedulesReview, "Lịch bác sĩ", "Duyệt ca khám", "Duyệt", "Theo khoa hoặc yêu cầu của Trưởng khoa"),
         new(PermissionCodes.AccountsView, "Tài khoản", "Xem tài khoản", "Xem"),
         new(PermissionCodes.AccountsCreate, "Tài khoản", "Tạo tài khoản nhân viên", "Tạo", IsImplemented: false),
@@ -95,6 +98,7 @@ public static class PermissionCatalog
         new(PermissionCodes.BillingCreate, "Hóa đơn và thanh toán", "Lập hóa đơn sổ khám", "Tạo"),
         new(PermissionCodes.BillingRecordPayment, "Hóa đơn và thanh toán", "Ghi nhận thanh toán sổ khám", "Nghiệp vụ"),
         new(PermissionCodes.BillingViewOwn, "Hóa đơn và thanh toán", "Xem hóa đơn bản thân", "Xem", "Chỉ hóa đơn của bệnh nhân đăng nhập", false),
+        new(PermissionCodes.ReportsDepartmentStatistics, "Báo cáo", "Thống kê khoa", "Xem", "Chỉ khoa của Trưởng khoa đăng nhập"),
         new(PermissionCodes.ReportsOperations, "Báo cáo", "Xem báo cáo lượt khám", "Xem", IsImplemented: false),
         new(PermissionCodes.ReportsRevenue, "Báo cáo", "Xem báo cáo doanh thu", "Xem", IsImplemented: false),
     ];
@@ -106,8 +110,9 @@ public static class PermissionCatalog
             && x != PermissionCodes.AppointmentsCancelOwn && x != PermissionCodes.PharmacyViewOwnPrescription
             && x != PermissionCodes.LabsViewOwnResult && x != PermissionCodes.BillingViewOwn
             && x != PermissionCodes.LabsOrder && x != PermissionCodes.LabsEnterResult
-            && x != PermissionCodes.LabsViewPending).ToArray(),
-        [RoleConstants.DepartmentHead] = [PermissionCodes.SchedulesReview, PermissionCodes.AppointmentsStartExamination, PermissionCodes.ClinicalViewAssigned,
+            && x != PermissionCodes.LabsViewPending && x != PermissionCodes.ReportsDepartmentStatistics
+            && x != PermissionCodes.SchedulesViewDepartment).ToArray(),
+        [RoleConstants.DepartmentHead] = [PermissionCodes.SchedulesViewDepartment, PermissionCodes.ReportsDepartmentStatistics, PermissionCodes.SchedulesReview, PermissionCodes.AppointmentsStartExamination, PermissionCodes.ClinicalViewAssigned,
             PermissionCodes.ClinicalWriteRecord, PermissionCodes.ClinicalEditDiagnosis, PermissionCodes.ClinicalManageDiseases,
             PermissionCodes.PharmacyViewInventory, PermissionCodes.PharmacyViewCatalog,
             PermissionCodes.PharmacyPrescribe, PermissionCodes.LabsViewTypes, PermissionCodes.LabsViewOrders, PermissionCodes.LabsOrder],

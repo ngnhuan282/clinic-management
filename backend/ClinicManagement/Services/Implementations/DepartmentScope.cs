@@ -8,6 +8,19 @@ namespace ClinicManagement.Services.Implementations;
 
 public class DepartmentScope(ApplicationDbContext db, ICurrentUserService currentUser)
 {
+    public async Task<(int DepartmentId, string DepartmentName)> RequireHeadDepartmentAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var userId = currentUser.GetRequiredUserId();
+        if (currentUser.Role != RoleConstants.DepartmentHead) throw new AppException(ErrorCode.UNAUTHORIZED);
+        var department = await db.Doctors.AsNoTracking()
+            .Where(x => x.UserId == userId && x.DepartmentId > 0 && x.IsActive && x.Department.IsActive)
+            .Select(x => new { x.DepartmentId, DepartmentName = x.Department.Name })
+            .SingleOrDefaultAsync(cancellationToken)
+            ?? throw new AppException(ErrorCode.DEPARTMENT_SCOPE_REQUIRED);
+        return (department.DepartmentId, department.DepartmentName);
+    }
+
     public async Task<int?> ForHeadAsync()
     {
         if (currentUser.Role != RoleConstants.DepartmentHead) return null;

@@ -1,6 +1,7 @@
 // src/utils/errorHandler.js
 
 const API_ERROR_MESSAGES = {
+    1010: "Tài khoản cần hồ sơ bác sĩ và khoa đang hoạt động. Vui lòng liên hệ quản trị viên.",
     2007: "Bạn không thể tự khóa tài khoản hoặc đổi vai trò của mình.",
     2008: "Hệ thống cần ít nhất một quản trị viên đang hoạt động.",
     2009: "Quyền tài khoản vừa thay đổi. Vui lòng tải lại và thử lại.",

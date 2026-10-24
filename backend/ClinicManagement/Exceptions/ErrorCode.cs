@@ -56,6 +56,9 @@ public sealed class ErrorCode
     // User
     // =========================
 
+    public static readonly ErrorCode DEPARTMENT_SCOPE_REQUIRED =
+        new(1010, "An active doctor profile and department are required", HttpStatusCode.Forbidden);
+
     public static readonly ErrorCode USER_EXISTED =
         new(
             2001,

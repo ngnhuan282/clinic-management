@@ -1,3 +1,4 @@
+import { lazy } from "react";
 import {
     BrowserRouter,
     Navigate,
@@ -13,51 +14,52 @@ import InternalLayout from "../layouts/InternalLayout";
 import ProtectedRoute from "./ProtectedRoute";
 
 import HomePage from "../pages/patient/HomePage";
-import BookingPage from "../pages/patient/BookingPage";
-import MyAppointmentsPage from "../pages/patient/MyAppointmentsPage";
-import LabResultsPage from "../pages/patient/LabResultsPage";
-import DoctorSearchPage from "../pages/patient/DoctorSearchPage";
-import PatientProfilePage from "../pages/patient/PatientProfilePage";
-import PatientMedicalHistoryPage from "../pages/patient/PatientMedicalHistoryPage";
-import PatientMedicalHistoryDetailPage from "../pages/patient/PatientMedicalHistoryDetailPage";
-import ReviewsPage from "../pages/patient/ReviewsPage";
-import AuthPage from "../pages/auth/AuthPage";
+const BookingPage = lazy(() => import("../pages/patient/BookingPage"));
+const MyAppointmentsPage = lazy(() => import("../pages/patient/MyAppointmentsPage"));
+const LabResultsPage = lazy(() => import("../pages/patient/LabResultsPage"));
+const DoctorSearchPage = lazy(() => import("../pages/patient/DoctorSearchPage"));
+const ProfilePage = lazy(() => import("../pages/ProfilePage"));
+const PatientMedicalHistoryPage = lazy(() => import("../pages/patient/PatientMedicalHistoryPage"));
+const PatientMedicalHistoryDetailPage = lazy(() => import("../pages/patient/PatientMedicalHistoryDetailPage"));
+const ReviewsPage = lazy(() => import("../pages/patient/ReviewsPage"));
+const AuthPage = lazy(() => import("../pages/auth/AuthPage"));
 
-import InventoryPage from "../pages/internal/admin/InventoryPage";
-import PurchaseOrdersPage from "../pages/internal/admin/PurchaseOrdersPage";
-import MedicineCategoriesPage from "../pages/internal/admin/MedicineCategoriesPage";
-import MedicinesPage from "../pages/internal/admin/MedicinesPage";
-import SuppliersPage from "../pages/internal/admin/SuppliersPage";
-import UsersPage from "../pages/internal/admin/UsersPage";
-import RolesPermissionsPage from "../pages/internal/admin/RolesPermissionsPage";
+const InventoryPage = lazy(() => import("../pages/internal/admin/InventoryPage"));
+const PurchaseOrdersPage = lazy(() => import("../pages/internal/admin/PurchaseOrdersPage"));
+const MedicineCategoriesPage = lazy(() => import("../pages/internal/admin/MedicineCategoriesPage"));
+const MedicinesPage = lazy(() => import("../pages/internal/admin/MedicinesPage"));
+const SuppliersPage = lazy(() => import("../pages/internal/admin/SuppliersPage"));
+const UsersPage = lazy(() => import("../pages/internal/admin/UsersPage"));
+const RolesPermissionsPage = lazy(() => import("../pages/internal/admin/RolesPermissionsPage"));
 
-import CatalogManagementPage from "../pages/internal/CatalogManagementPage";
-import LabTestTypesPage from "../pages/internal/LabTestTypesPage";
-import DiseasesPage from "../pages/internal/DiseasesPage";
-import DashboardPage from "../pages/internal/DashboardPage";
-import AppointmentsPage from "../pages/internal/AppointmentsPage";
-import DoctorScheduleManagementPage from "../pages/internal/DoctorScheduleManagementPage";
-import ScheduleReviewPage from "../pages/internal/ScheduleReviewPage";
-import DepartmentSchedulesPage from "../pages/internal/DepartmentSchedulesPage";
-import CashierBillingPage from "../pages/internal/CashierBillingPage";
-import AccountProfilePage from "../pages/internal/AccountProfilePage";
-import ReviewsManagementPage from "../pages/internal/admin/ReviewsManagementPage";
+const CatalogManagementPage = lazy(() => import("../pages/internal/CatalogManagementPage"));
+const LabTestTypesPage = lazy(() => import("../pages/internal/LabTestTypesPage"));
+const DiseasesPage = lazy(() => import("../pages/internal/DiseasesPage"));
+const DashboardPage = lazy(() => import("../pages/internal/DashboardPage"));
+const AppointmentsPage = lazy(() => import("../pages/internal/AppointmentsPage"));
+const DoctorScheduleManagementPage = lazy(() => import("../pages/internal/DoctorScheduleManagementPage"));
+const ScheduleReviewPage = lazy(() => import("../pages/internal/ScheduleReviewPage"));
+const DepartmentSchedulesPage = lazy(() => import("../pages/internal/DepartmentSchedulesPage"));
+const DepartmentStatisticsPage = lazy(() => import("../pages/internal/DepartmentStatisticsPage"));
+const CashierBillingPage = lazy(() => import("../pages/internal/CashierBillingPage"));
+const AccountProfilePage = lazy(() => import("../pages/internal/AccountProfilePage"));
+const ReviewsManagementPage = lazy(() => import("../pages/internal/admin/ReviewsManagementPage"));
 
-import DoctorLabOrdersPage from "../pages/internal/doctor/DoctorLabOrdersPage";
-import DoctorAppointmentsPage from "../pages/internal/doctor/DoctorAppointmentsPage";
-import MedicalRecordDetailPage from "../pages/internal/doctor/MedicalRecordDetailPage";
-import MedicalHistoryPage from "../pages/internal/doctor/MedicalHistoryPage";
-import MedicalRecordPage from "../pages/internal/doctor/MedicalRecordPage";
-import PrescriptionPage from "../pages/internal/doctor/PrescriptionPage";
-import DoctorStockReviewsPage from "../pages/internal/doctor/DoctorStockReviewsPage";
-import DoctorStockReviewDetailPage from "../pages/internal/doctor/DoctorStockReviewDetailPage";
-import DoctorScheduleRequestPage from "../pages/internal/doctor/DoctorScheduleRequestPage";
-import DoctorProfilePage from "../pages/internal/doctor/DoctorProfilePage";
-import PatientBooksPage from "../pages/internal/PatientBooksPage";
+const DoctorLabOrdersPage = lazy(() => import("../pages/internal/doctor/DoctorLabOrdersPage"));
+const DoctorAppointmentsPage = lazy(() => import("../pages/internal/doctor/DoctorAppointmentsPage"));
+const MedicalRecordDetailPage = lazy(() => import("../pages/internal/doctor/MedicalRecordDetailPage"));
+const MedicalHistoryPage = lazy(() => import("../pages/internal/doctor/MedicalHistoryPage"));
+const MedicalRecordPage = lazy(() => import("../pages/internal/doctor/MedicalRecordPage"));
+const PrescriptionPage = lazy(() => import("../pages/internal/doctor/PrescriptionPage"));
+const DoctorStockReviewsPage = lazy(() => import("../pages/internal/doctor/DoctorStockReviewsPage"));
+const DoctorStockReviewDetailPage = lazy(() => import("../pages/internal/doctor/DoctorStockReviewDetailPage"));
+const DoctorScheduleRequestPage = lazy(() => import("../pages/internal/doctor/DoctorScheduleRequestPage"));
+const DoctorProfilePage = lazy(() => import("../pages/internal/doctor/DoctorProfilePage"));
+const PatientBooksPage = lazy(() => import("../pages/internal/PatientBooksPage"));
 
-import TechnicianLabQueuePage from "../pages/internal/technician/TechnicianLabQueuePage";
-import DispensingPage from "../pages/internal/pharmacist/DispensingPage";
-import DispensingDetailPage from "../pages/internal/pharmacist/DispensingDetailPage";
+const TechnicianLabQueuePage = lazy(() => import("../pages/internal/technician/TechnicianLabQueuePage"));
+const DispensingPage = lazy(() => import("../pages/internal/pharmacist/DispensingPage"));
+const DispensingDetailPage = lazy(() => import("../pages/internal/pharmacist/DispensingDetailPage"));
 
 function UnauthorizedPage() {
     const { state } = useLocation();
@@ -104,6 +106,9 @@ export default function AppRoutes() {
                         element={<Navigate to="/login" replace />}
                     />
 
+                    <Route element={<ProtectedRoute />}>
+                        <Route path="/profile" element={<ProfilePage />} />
+                    </Route>
                     <Route
                         element={<ProtectedRoute allowedRoles={["Patient"]} />}
                     >
@@ -112,7 +117,7 @@ export default function AppRoutes() {
                             <Route path="/my-appointments" element={<MyAppointmentsPage />} />
                         </Route>
                         <Route path="/lab-results" element={<LabResultsPage />} />
-                        <Route path="/profile" element={<PatientProfilePage />} />
+                        <Route path="/my-reviews" element={<ReviewsPage own />} />
                         <Route path="/medical-records" element={<PatientMedicalHistoryPage />} />
                         <Route path="/medical-records/:medicalRecordId" element={<PatientMedicalHistoryDetailPage />} />
                     </Route>
@@ -135,8 +140,11 @@ export default function AppRoutes() {
                         <Route element={<ProtectedRoute allowedRoles={["Admin"]} />}>
                             <Route path="reviews" element={<ReviewsManagementPage />} />
                         </Route>
-                        <Route element={<ProtectedRoute allowedRoles={["DepartmentHead"]} />}>
+                        <Route element={<ProtectedRoute allowedRoles={["DepartmentHead"]} allowedPermissions={["schedules.viewDepartment"]} />}>
                             <Route path="department-schedules" element={<DepartmentSchedulesPage />} />
+                        </Route>
+                        <Route element={<ProtectedRoute allowedRoles={["DepartmentHead"]} allowedPermissions={["reports.departmentStatistics"]} />}>
+                            <Route path="department-statistics" element={<DepartmentStatisticsPage />} />
                         </Route>
 
                         <Route

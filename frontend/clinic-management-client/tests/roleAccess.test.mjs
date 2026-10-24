@@ -2,6 +2,38 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { canAccessPath, canSeePage, homeForRole, INTERNAL_PAGES, redirectForProtectedRoute } from "../src/routes/roleAccess.js";
 
+test("all eight department permission combinations agree between navigation and route guards", () => {
+    const policies = [["/internal/department-schedules", "schedules.viewDepartment"],
+        ["/internal/department-statistics", "reports.departmentStatistics"],
+        ["/internal/schedule-requests", "schedules.review"]];
+    for (let mask = 0; mask < 8; mask++) {
+        const user = { isAuthenticated: true, role: "DepartmentHead",
+            permissions: policies.filter((_, index) => mask & (1 << index)).map(([, code]) => code) };
+        for (const [index, [path, code]] of policies.entries()) {
+            const allowed = Boolean(mask & (1 << index));
+            assert.equal(canAccessPath(user, path), allowed);
+            assert.equal(redirectForProtectedRoute(user, path,
+                { allowedRoles: ["DepartmentHead"], allowedPermissions: [code] }), allowed ? null : "/403");
+        }
+    }
+});
+
+test("department calendar and statistics require independent permissions and the head role", () => {
+    const calendar = "/internal/department-schedules";
+    const statistics = "/internal/department-statistics";
+    const head = { role: "DepartmentHead", permissions: ["schedules.viewDepartment"] };
+    assert.equal(canAccessPath(head, calendar), true);
+    assert.equal(canAccessPath(head, statistics), false);
+    assert.equal(canAccessPath({ ...head, permissions: ["reports.departmentStatistics"] }, calendar), false);
+    assert.equal(canAccessPath({ ...head, permissions: ["reports.departmentStatistics"] }, statistics), true);
+    for (const role of ["Admin", "Doctor", "Receptionist", "Patient", "CustomReader"])
+        for (const path of [calendar, statistics])
+            assert.equal(canAccessPath({ role, permissions: ["schedules.viewDepartment", "reports.departmentStatistics"] }, path), false);
+    const options = { allowedRoles: ["DepartmentHead"], allowedPermissions: ["schedules.viewDepartment"] };
+    assert.equal(redirectForProtectedRoute({ isAuthenticated: false }, calendar, options), "/internal/login");
+    assert.equal(redirectForProtectedRoute({ ...head, isAuthenticated: true, permissions: [] }, calendar, options), "/403");
+});
+
 test("doctor stock review queue and detail require clinical role and prescribing permission", () => {
     for (const role of ["Doctor", "DepartmentHead"])
         assert.equal(canAccessPath({ role, permissions: ["pharmacy.prescribe"] }, "/internal/doctor/stock-reviews/1"), true);
