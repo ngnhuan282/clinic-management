@@ -1,0 +1,23 @@
+/* Patient booking appearance restored from the previous layout; scoped to this page. */
+.booking-page {
+  --appt-accent: #1976d2;
+  --appt-accent-hover: #1565c0;
+  --appt-accent-soft: #eff6ff;
+  --appt-canvas: #f5f9fd;
+  --appt-paper: #ffffff;
+  --appt-ink: #1f2937;
+  --appt-body: #374151;
+  --appt-muted: #6b7280;
+  --appt-rule: #d8e1ee;
+  --appt-rule-soft: #e5e9f0;
+  --booking-green: #10b981;
+  --booking-green-text: #166534;
+  --booking-green-soft: #ecfdf5;
+  --booking-green-border: #bbf7d0;
+  --booking-step-done: #54bd95;
+  --booking-step-idle: #edf2f8;
+  --booking-step-ring: #dbeafe;
+  --booking-border-strong: #d8e1ee;
+  --booking-occupied: #f3f4f6;
+  --booking-panel-shadow: rgb(31 41 55 / 5%);
+}
