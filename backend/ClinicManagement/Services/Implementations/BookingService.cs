@@ -5,6 +5,7 @@ using ClinicManagement.DTOs.Responses;
 using ClinicManagement.Exceptions;
 using ClinicManagement.Repositories.Interfaces;
 using ClinicManagement.Services.Interfaces;
+using ClinicManagement.Validators;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Data.SqlClient;
 
@@ -74,6 +75,7 @@ public class BookingService : IBookingService
 
     private static void ValidateAppointmentQuery(AppointmentQuery query)
     {
+        BookingRequestValidator.ValidatePagination(query);
         ValidateStatusFilter(query.Status);
         if (query.DateFrom.HasValue && query.DateTo.HasValue
             && query.DateFrom.Value.Date > query.DateTo.Value.Date)
@@ -546,7 +548,6 @@ public class BookingService : IBookingService
         CreateAppointmentRequest request)
     {
         if (request.DoctorId <= 0
-            || request.AppointmentDate.Date.Add(request.StartTime) <= ClinicNow
             || string.IsNullOrWhiteSpace(request.PatientName)
             || string.IsNullOrWhiteSpace(request.PatientPhone)
             || string.IsNullOrWhiteSpace(request.Reason)
@@ -556,6 +557,7 @@ public class BookingService : IBookingService
                 ErrorCode.INVALID_REQUEST
             );
         }
+        BookingRequestValidator.ValidateTime(request.AppointmentDate, request.StartTime, ClinicNow);
     }
 
     private async Task<Appointment> GetAppointmentForReceptionAsync(
@@ -579,13 +581,13 @@ public class BookingService : IBookingService
     private static void ValidateRescheduleRequest(
         RescheduleAppointmentRequest request)
     {
-        if (request.DoctorId <= 0
-            || request.AppointmentDate.Date.Add(request.StartTime) <= ClinicNow)
+        if (request.DoctorId <= 0)
         {
             throw new AppException(
                 ErrorCode.INVALID_REQUEST
             );
         }
+        BookingRequestValidator.ValidateTime(request.AppointmentDate, request.StartTime, ClinicNow);
     }
 
     private static void ValidateStatusFilter(

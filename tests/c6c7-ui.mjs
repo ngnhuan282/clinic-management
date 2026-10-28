@@ -2,9 +2,11 @@ import { spawn } from "node:child_process";
 import { mkdir } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
 import assert from "node:assert/strict";
+import { randomBytes } from "node:crypto";
 
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || "playwright");
 await mkdir(".tmp", { recursive: true });
+const fixturePassword = "Test-" + randomBytes(12).toString("hex");
 const host = spawn("dotnet", [process.env.CLINIC_TEST_ASSEMBLY || "tests/Week2Verification/bin/Debug/net8.0/Week2Verification.dll", "--c6c7-ui"],
     { windowsHide: true, stdio: ["pipe", "pipe", "pipe"] });
 const hostFinished = new Promise(resolve => host.once("exit", resolve));
@@ -23,11 +25,13 @@ try {
             }
             pending = pending.slice(pending.lastIndexOf("\n") + 1);
         });
-        host.stderr.on("data", chunk => process.stderr.write(chunk));
+        host.stderr.on("data", () => {});
         host.once("error", reject);
         host.once("exit", code => { clearTimeout(timeout); reject(new Error(`C6/C7 fixture exited: ${code}`)); });
+        host.stdin.write(fixturePassword + "\n");
     });
-    const fixture = { ...seeded, date: seeded.today, noBookAppointmentId: seeded.newAppointmentId,
+    assert(!Object.hasOwn(seeded, "password"), "C6/C7 fixture metadata must not contain a password");
+    const fixture = { ...seeded, password: fixturePassword, date: seeded.today, noBookAppointmentId: seeded.newAppointmentId,
         noBookPatientId: seeded.newPatientId, noBookPatientName: seeded.newPatientName,
         pendingBookAppointmentId: seeded.paidAppointmentId, pendingBookPatientId: seeded.paidPatientId,
         pendingBookPatientName: seeded.paidPatientName, pendingBookInvoiceId: seeded.paidInvoiceId };
@@ -77,6 +81,8 @@ try {
     const patient = await open(patientSession, "/my-appointments");
     const otherPatient = await open(otherPatientSession, "/my-appointments");
     const reception = await open(receptionSession, "/internal/appointments");
+    const mobileRow = reception.getByRole("row").filter({ hasText: fixture.noBookPatientName });
+    await mobileRow.waitFor();
     for (const width of [1280, 360]) {
         await reception.setViewportSize({ width, height: 1050 });
         const filters = reception.locator("form").filter({ has: reception.getByLabel("Tìm lịch hẹn", { exact: true }) });
@@ -96,9 +102,24 @@ try {
         }
         const overflow = await reception.evaluate(() => ({ page: document.documentElement.scrollWidth, viewport: window.innerWidth }));
         assert.ok(overflow.page <= overflow.viewport + 1, `Reception page should avoid horizontal overflow at ${width}px: ${JSON.stringify(overflow)}`);
+        if (width < 600) {
+            await mobileRow.getByText("Đã xác nhận", { exact: true }).waitFor();
+            const rowBox = await mobileRow.boundingBox();
+            for (const cell of await mobileRow.getByRole("cell").all()) {
+                const box = await cell.boundingBox();
+                assert(box && box.y >= rowBox.y - 1 && box.y + box.height <= rowBox.y + rowBox.height + 1,
+                    "Mobile row height must contain its cells instead of overlapping the next patient");
+            }
+            for (const name of ["Đổi lịch", "Hủy", "Check-in"]) {
+                const button = mobileRow.getByRole("button", { name, exact: true });
+                const box = await button.boundingBox();
+                assert(box && box.x >= 0 && box.x + box.width <= width, `Mobile ${name} must be accessible without horizontal scrolling`);
+            }
+            await mobileRow.getByRole("button", { name: "Check-in", exact: true }).click({ trial: true });
+        }
     }
     await reception.setViewportSize({ width: 1440, height: 1050 });
-    console.log("PASS C7 UI keeps reception filters inside the page at 1280px and 360px");
+    console.log("PASS C7 UI keeps reception filters inside the page and exposes mobile status/actions without horizontal scrolling");
     const ownRow = patient.getByRole("article").filter({ has: patient.getByRole("heading", { name: `Lịch hẹn #${fixture.ownAppointmentId}`, exact: true }) });
     async function showOwnAppointment() {
         await patient.getByLabel("Từ ngày", { exact: true }).fill(fixture.futureDate);
@@ -181,14 +202,27 @@ try {
     await existing.row.getByText("Đã check-in", { exact: true }).waitFor();
     console.log("PASS C7 UI blocks lost or forgotten books and checks in an existing book only after physical verification");
 
+    const booksUrl = `**/api/patients/${fixture.noBookPatientId}/books`;
+    await reception.route(booksUrl, route => route.fulfill({ status: 500, contentType: "application/json",
+        body: JSON.stringify({ code: 9999, message: "Uncategorized error", result: null }) }));
     const withoutBook = await openCheckIn(fixture.noBookPatientName);
+    const loadError = withoutBook.dialog.getByRole("alert").filter({ has: reception.getByRole("button", { name: "Tải lại", exact: true }) });
+    await loadError.waitFor();
+    assert.equal(await withoutBook.dialog.getByRole("status").count(), 0, "A failed book request must stop showing loading");
+    assert(await withoutBook.dialog.getByRole("button", { name: "Check-in", exact: true }).isDisabled());
+    await reception.unroute(booksUrl);
+    await loadError.getByRole("button", { name: "Tải lại", exact: true }).click();
+    await loadError.waitFor({ state: "hidden" });
+    console.log("PASS C7 UI distinguishes failed book loading from loading and safely retries before check-in");
     await withoutBook.dialog.getByRole("radio", { name: "Chưa có sổ", exact: true }).check();
     await withoutBook.dialog.getByLabel("Phí sổ khám (VNĐ)", { exact: true }).fill("20000");
     const invoiceResponse = reception.waitForResponse(response => response.request().method() === "POST"
         && new URL(response.url()).pathname === `/api/patients/${fixture.noBookPatientId}/book-invoices`);
     await withoutBook.dialog.getByRole("button", { name: "Lập hóa đơn sổ", exact: true }).click();
     const invoice = (await (await invoiceResponse).json()).result;
-    await withoutBook.dialog.getByText(new RegExp(`#${invoice.bookInvoiceId} .*Unpaid`)).waitFor();
+    assert.equal(invoice.status, "Unpaid");
+    await withoutBook.dialog.getByRole("group", { name: `Hóa đơn sổ #${invoice.bookInvoiceId}`, exact: true })
+        .getByText("Chưa thanh toán", { exact: true }).waitFor();
     assert.equal(await withoutBook.dialog.getByRole("button", { name: "Check-in", exact: true }).isDisabled(), true);
     assert.equal(await withoutBook.dialog.getByRole("button", { name: "Phát / cấp lại sổ", exact: true }).count(), 0);
     await patient.goto("http://127.0.0.1:5190/my-appointments", { waitUntil: "domcontentloaded" });
@@ -234,10 +268,11 @@ try {
     console.log("PASS C7 UI disables an open check-in dialog after another session cancels its appointment");
     assert.deepEqual(errors, []);
     await reception.screenshot({ path: ".tmp/c6c7-reception.png", fullPage: true });
-    console.log("SUCCESS: 8 focused C6/C7 browser checks passed.");
+    console.log("SUCCESS: 9 focused C6/C7 browser checks passed.");
 } catch (error) {
     for (let i = 0; i < pages.length; i++) await pages[i].screenshot({ path: `.tmp/c6c7-ui-failure-${i}.png`, fullPage: true }).catch(() => {});
-    throw error;
+    console.error(String(error?.stack || error).replaceAll(fixturePassword, "[redacted]"));
+    process.exitCode = 1;
 } finally {
     await browser?.close();
     vite?.kill();

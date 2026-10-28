@@ -20,13 +20,13 @@ await using var db = new ApplicationDbContext(options);
 Process? server = null;
 var checks = 0;
 var password = "Test-" + Convert.ToHexString(RandomNumberGenerator.GetBytes(12));
-if (args.Contains("--c8c9-ui"))
+if (args.Contains("--c8c9-ui") || args.Contains("--c6c7-ui"))
 {
     // The browser runner sends its generated fixture password through the private stdin pipe.
     password = await Console.In.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(10))
-        ?? throw new InvalidOperationException("Run C8/C9 UI through tests/c8c9-ui.mjs.");
+        ?? throw new InvalidOperationException("Run appointment UI through its browser test runner.");
     if (string.IsNullOrWhiteSpace(password))
-        throw new InvalidOperationException("C8/C9 UI requires a fixture password on stdin.");
+        throw new InvalidOperationException("Appointment UI requires a fixture password on stdin.");
 }
 var listener = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
 listener.Start();
@@ -169,8 +169,7 @@ try
         {
             var fixture = System.Text.Json.JsonSerializer.SerializeToNode(await C6C7Checks.SeedUiAsync(db, password))!.AsObject();
             fixture["baseUrl"] = client.BaseAddress!.ToString();
-            fixture["password"] = password;
-            Console.WriteLine("AUTH_UI_SESSION:" + fixture.ToJsonString());
+            Console.WriteLine("C6C7_UI_SESSION:" + fixture.ToJsonString());
             await Console.In.ReadLineAsync();
         }
         return;

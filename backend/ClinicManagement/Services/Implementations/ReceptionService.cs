@@ -201,7 +201,12 @@ public class ReceptionService : IReceptionService
             BookInvoiceId = invoiceId,
             CreatedAt = now
         };
-        if (!book.PreviousBookId.HasValue)
+        if (previousBook != null)
+        {
+            // A Pending request may predate a newer issuance; link the book actually being retired.
+            book.PreviousBookId = previousBook.PatientBookId;
+        }
+        else if (!book.PreviousBookId.HasValue)
         {
             var linkedPreviousBook = previousBook
                 ?? await _receptionRepository.GetLatestBookForPatientAsync(invoice.PatientId);

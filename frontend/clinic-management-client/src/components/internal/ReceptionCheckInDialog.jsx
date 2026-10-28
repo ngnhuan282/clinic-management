@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, FormLabel, MenuItem, Radio, RadioGroup, Stack, TextField, Typography } from "@mui/material";
-import { checkInAppointment, createBookInvoice, findPatientMatches, getBookInvoices, getPatientBooks, issueBook, markBookInvoicePaid, matchAppointmentPatient, registerExistingBook } from "../../api/receptionApi";
+import { checkInAppointment, findPatientMatches, getBookInvoices, getPatientBooks, matchAppointmentPatient, registerExistingBook } from "../../api/receptionApi";
 import { getApiErrorMessage } from "../../utils/errorHandler";
 import useNotifications from "../../hooks/useNotifications";
+import ReceptionBookPayment from "./ReceptionBookPayment";
+import { appointmentButtonSx, appointmentColors as colors, appointmentDialogActionsSx, appointmentDialogPaperSx, appointmentDialogTitleSx, appointmentFieldSx, appointmentPrimaryButtonSx } from "../appointments/appointmentUi";
 
 export default function ReceptionCheckInDialog({ appointment, onClose, onCheckedIn }) {
     const { revision } = useNotifications();
@@ -15,14 +17,12 @@ export default function ReceptionCheckInDialog({ appointment, onClose, onChecked
     const [invoiceRecords, setInvoices] = useState([]);
     const [loadedPatientId, setLoadedPatientId] = useState(null);
     const [recordsLoading, setRecordsLoading] = useState(false);
+    const [recordsError, setRecordsError] = useState("");
     const recordRequest = useRef(0);
     const [bookId, setBookId] = useState("");
     const [existingBookNumber, setExistingBookNumber] = useState("");
-    const [newBookNumber, setNewBookNumber] = useState("");
-    const [amount, setAmount] = useState("");
     const [checkedBookKey, setCheckedBookKey] = useState("");
     const [situation, setSituation] = useState(null);
-    const [paymentReceived, setPaymentReceived] = useState(false);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
 
@@ -30,18 +30,18 @@ export default function ReceptionCheckInDialog({ appointment, onClose, onChecked
         if (!patientId) return;
         const requestId = ++recordRequest.current;
         setRecordsLoading(true);
+        setRecordsError("");
         try {
             const [bookList, invoiceList] = await Promise.all([getPatientBooks(patientId), getBookInvoices(patientId)]);
             if (requestId !== recordRequest.current) return;
             setBooks(bookList);
             setInvoices(invoiceList);
             setLoadedPatientId(patientId);
-            setError("");
             setBookId(current => current && !bookList.some(book => book.patientBookId === Number(current) && book.status === "Issued") ? "" : current);
         } catch (err) {
             if (requestId === recordRequest.current) {
                 setLoadedPatientId(null);
-                setError(getApiErrorMessage(err));
+                setRecordsError(getApiErrorMessage(err));
             }
             throw err;
         } finally { if (requestId === recordRequest.current) setRecordsLoading(false); }
@@ -78,15 +78,19 @@ export default function ReceptionCheckInDialog({ appointment, onClose, onChecked
         && appointment.appointmentDate.slice(0, 10) === today
         && recordsLoaded && bookSituation === "present" && bookPaid && presented;
 
-    return <Dialog open={Boolean(appointment)} onClose={busy ? undefined : onClose} fullWidth maxWidth="sm">
-        <DialogTitle>Tiếp nhận và kiểm tra sổ khám</DialogTitle>
-        <DialogContent>
-            <Stack spacing={2} sx={{ pt: 1 }}>
-                <Typography variant="body2">{appointment.patientName} · {appointment.patientPhone}</Typography>
+    return <Dialog open={Boolean(appointment)} onClose={busy ? undefined : onClose} fullWidth maxWidth="sm"
+        slotProps={{ paper: { className: "appointment-dialog", sx: appointmentDialogPaperSx } }}>
+        <DialogTitle sx={appointmentDialogTitleSx}>Tiếp nhận và kiểm tra sổ khám</DialogTitle>
+        <DialogContent sx={{ px: { xs: 2, sm: 3 }, "&.MuiDialogContent-root": { pt: 2.5 }, "& .MuiTextField-root": appointmentFieldSx }}>
+            <Stack spacing={2}>
+                <Box>
+                    <Typography sx={{ color: colors.heading, fontWeight: 600 }}>{appointment.patientName}</Typography>
+                    <Typography variant="body2" sx={{ mt: 0.25, color: colors.muted }}>{appointment.patientPhone}</Typography>
+                </Box>
                 {appointment.checkedInAt && <Alert severity="success">Lịch hẹn này đã được check-in.</Alert>}
                 {appointment.status !== "Confirmed" && <Alert severity="warning">Trạng thái lịch hẹn hiện tại không cho phép check-in.</Alert>}
                 <Alert severity="info">Đặt lịch trên web chưa cần sổ khám. Khi đến quầy, đối chiếu hồ sơ và kiểm tra sổ trước khi check-in.</Alert>
-                {error && <Alert severity="error" action={patientId && <Button disabled={busy} onClick={() => run(refreshBooks)}>Tải lại</Button>}>{error}</Alert>}
+                {error && <Alert severity="error">{error}</Alert>}
                 {!patientId ? <>
                     <Typography variant="body2">Đối chiếu hồ sơ bệnh nhân theo tên và số điện thoại trước khi check-in.</Typography>
                     <Button disabled={busy} variant="outlined" onClick={() => run(async () => {
@@ -98,10 +102,10 @@ export default function ReceptionCheckInDialog({ appointment, onClose, onChecked
                         onChange={event => setSelectedPatientId(event.target.value)}>
                         <MenuItem value="">Chọn hồ sơ</MenuItem>
                         {matches.map(patient => <MenuItem key={patient.patientId} value={patient.patientId}>
-                            #{patient.patientId} · {patient.fullName} · {patient.phone}
+                            #{patient.patientId}: {patient.fullName}, {patient.phone}
                         </MenuItem>)}
                     </TextField>}
-                    <Stack direction="row" spacing={1}>
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                         <Button disabled={busy || !selectedPatientId} variant="contained" onClick={() => run(async () => {
                             const updated = await matchAppointmentPatient(appointment.appointmentId, Number(selectedPatientId));
                             setPatientId(updated.patientProfileId);
@@ -113,10 +117,11 @@ export default function ReceptionCheckInDialog({ appointment, onClose, onChecked
                     </Stack>
                 </> : <>
                     <Typography variant="body2">Hồ sơ bệnh nhân #{patientId}</Typography>
-                    {!recordsLoaded && <Typography variant="body2" color="text.secondary">Đang tải sổ khám và hóa đơn...</Typography>}
+                    {recordsLoading && <Typography role="status" variant="body2" sx={{ color: colors.muted }}>Đang tải sổ khám và hóa đơn…</Typography>}
+                    {recordsError && <Alert severity="error" action={<Button disabled={busy || recordsLoading} onClick={() => { void refreshBooks().catch(() => {}); }}>Tải lại</Button>}>{recordsError}</Alert>}
                     <Box>
                         <FormLabel id="book-situation-label">Tình trạng sổ khi đến quầy</FormLabel>
-                        <RadioGroup aria-labelledby="book-situation-label" value={bookSituation} onChange={event => {
+                        <RadioGroup aria-labelledby="book-situation-label" value={bookSituation} sx={{ mt: 0.5, display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, minmax(0, 1fr))" }, "& .MuiFormControlLabel-label": { fontSize: 14 } }} onChange={event => {
                             setSituation({ patientId, value: event.target.value });
                             setBookId("");
                             setCheckedBookKey("");
@@ -125,7 +130,7 @@ export default function ReceptionCheckInDialog({ appointment, onClose, onChecked
                                 <FormControlLabel key={value} value={value} control={<Radio disabled={busy || !recordsLoaded} />} label={label} />)}
                         </RadioGroup>
                     </Box>
-                    {bookSituation !== "present" && <Alert severity="warning">
+                    {recordsLoaded && bookSituation !== "present" && <Alert severity="warning">
                         {bookSituation === "none" ? "Bệnh nhân chưa có sổ." : bookSituation === "lost" ? "Bệnh nhân báo mất sổ." : "Bệnh nhân quên mang sổ."}
                         {" Lập hóa đơn sổ, xác nhận thanh toán rồi phát hoặc cấp lại sổ. Chỉ check-in sau khi đã kiểm tra sổ mới."}
                     </Alert>}
@@ -138,7 +143,7 @@ export default function ReceptionCheckInDialog({ appointment, onClose, onChecked
                         <MenuItem value="">Chọn sổ đã kiểm tra</MenuItem>
                         {books.filter(book => book.status === "Issued").map(book =>
                             <MenuItem key={book.patientBookId} value={book.patientBookId}>
-                                {book.bookNumber} {book.bookInvoiceId ? "· Cấp sau thanh toán" : "· Sổ cũ"}
+                                {book.bookNumber} {book.bookInvoiceId ? "(Cấp sau thanh toán)" : "(Sổ cũ)"}
                             </MenuItem>)}
                     </TextField>
                     {selectedBook && !bookPaid && <Alert severity="warning">Hóa đơn của sổ chưa được xác nhận thanh toán. Chưa thể check-in.</Alert>}
@@ -161,54 +166,19 @@ export default function ReceptionCheckInDialog({ appointment, onClose, onChecked
                         onChange={event => setCheckedBookKey(event.target.checked ? currentBookKey : "")} />}
                         label="Đã kiểm tra sổ bệnh nhân mang theo" />
                     </>}
-                    <Box sx={{ borderTop: 1, borderColor: "divider", pt: 2 }}>
-                        <Typography variant="subtitle2">Phát hoặc cấp lại sổ sau thanh toán</Typography>
-                        {readyInvoices.length > 0 && <Alert severity="success" sx={{ mt: 1 }}>
-                            Hóa đơn {readyInvoices.map(invoice => `#${invoice.bookInvoiceId}`).join(", ")} đã thanh toán.
-                            Nhập số sổ để phát hoặc cấp lại sổ cho bệnh nhân.
-                            {books.some(book => book.status === "Issued") && " Cấp lại sẽ ngừng hiệu lực sổ cũ."}
-                        </Alert>}
-                        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 1 }}>
-                            <TextField size="small" label="Phí sổ khám (VNĐ)" type="number" value={amount} disabled={busy || !recordsLoaded}
-                                onChange={event => setAmount(event.target.value)} />
-                            <TextField size="small" label="Số sổ mới" value={newBookNumber} disabled={busy || !recordsLoaded}
-                                onChange={event => setNewBookNumber(event.target.value)} slotProps={{ htmlInput: { maxLength: 40 } }} />
-                            <Button disabled={busy || !recordsLoaded || !Number.isFinite(Number(amount)) || Number(amount) <= 0} variant="outlined" onClick={() => run(async () => {
-                                await createBookInvoice(patientId, Number(amount));
-                                await refreshBooks();
-                                setAmount("");
-                            })}>Lập hóa đơn sổ</Button>
-                        </Stack>
-                        {invoices.map(invoice => <Stack key={invoice.bookInvoiceId} direction={{ xs: "column", sm: "row" }}
-                            spacing={1} sx={{ mt: 1, alignItems: { sm: "center" } }}>
-                            <Typography variant="body2">#{invoice.bookInvoiceId} · {invoice.amount.toLocaleString("vi-VN")} ₫ · {invoice.status}</Typography>
-                            {invoice.status === "Unpaid" && <Button size="small" disabled={busy || !recordsLoaded || !paymentReceived}
-                                onClick={() => run(async () => {
-                                    await markBookInvoicePaid(invoice.bookInvoiceId);
-                                    await refreshBooks();
-                                    setPaymentReceived(false);
-                                })}>Ghi Paid</Button>}
-                            {readyInvoices.some(ready => ready.bookInvoiceId === invoice.bookInvoiceId) &&
-                                <Button size="small" disabled={busy || !recordsLoaded || !newBookNumber.trim()} onClick={() => run(async () => {
-                                    const book = await issueBook(invoice.bookInvoiceId, newBookNumber.trim());
-                                    await refreshBooks();
-                                    setBookId(book.patientBookId);
-                                    setSituation({ patientId, value: "present" });
-                                    setCheckedBookKey("");
-                                    setNewBookNumber("");
-                                })}>Phát / cấp lại sổ</Button>}
-                        </Stack>)}
-                        <FormControlLabel control={<Checkbox checked={paymentReceived} disabled={busy || !recordsLoaded}
-                            onChange={event => setPaymentReceived(event.target.checked)} />}
-                            label="Đã nhận thanh toán thực tế cho hóa đơn sổ" />
-                    </Box>
+                    <ReceptionBookPayment key={patientId} patientId={patientId} books={books} invoices={invoices} readyInvoices={readyInvoices}
+                        busy={busy} recordsLoaded={recordsLoaded} run={run} refreshBooks={refreshBooks} onIssued={book => {
+                            setBookId(book.patientBookId);
+                            setSituation({ patientId, value: "present" });
+                            setCheckedBookKey("");
+                        }} />
                     {!canCheckIn && recordsLoaded && <Alert severity="info">Chưa thể check-in: cần sổ còn hiệu lực, hóa đơn sổ đã thanh toán nếu có, và xác nhận kiểm tra sổ thực tế.</Alert>}
                 </>}
             </Stack>
         </DialogContent>
-        <DialogActions>
-            <Button disabled={busy} onClick={onClose}>Đóng</Button>
-            <Button variant="contained" disabled={busy || !canCheckIn}
+        <DialogActions sx={appointmentDialogActionsSx}>
+            <Button sx={appointmentButtonSx} disabled={busy} onClick={onClose}>Đóng</Button>
+            <Button variant="contained" sx={appointmentPrimaryButtonSx} disabled={busy || !canCheckIn}
                 onClick={() => run(async () => {
                     await checkInAppointment(appointment.appointmentId, {
                         patientProfileId: patientId, patientBookId: Number(bookId), bookPresented: presented,

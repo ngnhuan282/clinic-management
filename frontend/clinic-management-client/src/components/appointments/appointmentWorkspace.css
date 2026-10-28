@@ -1,0 +1,86 @@
+/* Hallmark · shape: app screen · genre: modern-minimal · theme: Modern Clinical Standard (DESIGN.md) · redesign: full · scope: app · v2.0.0 */
+/* Critique: preserve real booking/reception controls, use the slot grid and appointment list as the main objects, and keep the shared shell outside this change. */
+/* finish-review: subagent · 2 findings · 2 resolved; authenticated Edge captures checked; Hallmark render tier not run. */
+:root {
+  --appt-accent: var(--primary, #005dac);
+  --appt-accent-hover: var(--primary-dark, #1565c0);
+  --appt-accent-soft: var(--info-light, #eff6ff);
+  --appt-canvas: var(--surface, #f6fafe);
+  --appt-paper: var(--surface-card, #ffffff);
+  --appt-ink: var(--on-surface, #171c1f);
+  --appt-body: var(--text-body, #374151);
+  --appt-muted: var(--on-surface-variant, #414752);
+  --appt-rule: var(--outline-variant, #c1c6d4);
+  --appt-rule-soft: var(--border-subtle, #e5e9f0);
+  --appt-success: #166534;
+  --appt-success-soft: #ecfdf5;
+  --appt-warning: #92400e;
+  --appt-warning-soft: #fffbeb;
+  --appt-danger: #b91c1c;
+  --appt-danger-soft: #fef2f2;
+  --appt-on-accent: var(--on-primary, #ffffff);
+  --appt-focus: var(--primary, #005dac);
+  --appt-font: var(--font-sans, system-ui);
+}
+
+.appointment-workspace,
+.appointment-dialog {
+  color: var(--appt-body);
+  font-family: var(--appt-font);
+  min-width: 0;
+}
+
+.appointment-workspace {
+  overflow-x: clip;
+}
+
+.appointment-workspace :is(h1, h2, h3),
+.appointment-dialog :is(h1, h2, h3) {
+  min-width: 0;
+  overflow-wrap: break-word;
+  text-wrap: balance;
+}
+
+.appointment-workspace :is(button, a, input, select, textarea, [tabindex]):focus-visible,
+.appointment-dialog :is(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--appt-focus);
+  outline-offset: 3px;
+}
+
+.appointment-workspace .MuiButton-root,
+.appointment-dialog .MuiButton-root {
+  min-height: 40px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.appointment-workspace .MuiButton-root:active:not(:disabled),
+.appointment-dialog .MuiButton-root:active:not(:disabled) {
+  filter: brightness(0.94);
+}
+
+.appointment-workspace .MuiButton-root:disabled,
+.appointment-dialog .MuiButton-root:disabled {
+  cursor: default;
+}
+
+.appointment-workspace :is(time, .appointment-numeric),
+.appointment-dialog :is(time, .appointment-numeric) {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 600px) {
+  .appointment-workspace .MuiButton-root,
+  .appointment-dialog .MuiButton-root {
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .appointment-workspace *,
+  .appointment-dialog * {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -4,6 +4,7 @@ using System.Text.Json.Nodes;
 using ClinicManagement.Commons;
 using ClinicManagement.Data;
 using ClinicManagement.Data.Entities;
+using ClinicManagement.Exceptions;
 using Microsoft.EntityFrameworkCore;
 
 internal static class C6C7Checks
@@ -26,7 +27,7 @@ internal static class C6C7Checks
                 + ((int)response.StatusCode == status ? "" : $" {text}"));
             return string.IsNullOrEmpty(text) ? null : JsonNode.Parse(text);
         }
-        async Task<JsonNode> Login(string name) => (await Send(HttpMethod.Post, "api/auth/login", body:
+        async Task<JsonNode> LoginAsync(string name) => (await Send(HttpMethod.Post, "api/auth/login", body:
             new { username = name, password }))!["result"]!;
         static HashSet<int> Ids(JsonNode result) => result["items"]!.AsArray()
             .Select(x => x!["appointmentId"]!.GetValue<int>()).ToHashSet();
@@ -38,11 +39,11 @@ internal static class C6C7Checks
         var otherProfile = new Patient { UserId = otherPatient.UserId, FullName = "C6 other patient", Phone = "0900111002", CreatedAt = DateTime.UtcNow };
         db.Patients.AddRange(profile, otherProfile);
         await db.SaveChangesAsync();
-        var patientLogin = await Login(patient.Username);
+        var patientLogin = await LoginAsync(patient.Username);
         var ownToken = patientLogin["accessToken"]!.GetValue<string>();
-        var otherToken = (await Login(otherPatient.Username))["accessToken"]!.GetValue<string>();
-        var reception = (await Login("testreceptionist"))["accessToken"]!.GetValue<string>();
-        var doctor = (await Login("testdoctor"))["accessToken"]!.GetValue<string>();
+        var otherToken = (await LoginAsync(otherPatient.Username))["accessToken"]!.GetValue<string>();
+        var reception = (await LoginAsync("testreceptionist"))["accessToken"]!.GetValue<string>();
+        var doctor = (await LoginAsync("testdoctor"))["accessToken"]!.GetValue<string>();
         check(patientLogin["permissions"]!.AsArray().Any(x => x!.GetValue<string>() == PermissionCodes.AppointmentsViewOwn),
             "Patient login includes the own-appointments permission");
         check(await db.Permissions.AnyAsync(x => x.Code == PermissionCodes.AppointmentsViewOwn && x.IsImplemented),
@@ -92,6 +93,7 @@ internal static class C6C7Checks
         var receptionFiltered = (await Send(HttpMethod.Get,
             $"api/appointments?dateFrom={Today:yyyy-MM-dd}&dateTo={Today:yyyy-MM-dd}&doctorId=1&status=Confirmed&search=C6", reception))!["result"]!;
         check(Ids(receptionFiltered).SetEquals(new[] { clinical.AppointmentId }), "Reception filters combine date, status, doctor and search");
+        await VerifyBookingInputBoundariesAsync(Send, check, ownToken, reception, linkedWalkIn.AppointmentId, profile);
 
         var invoiceId = (await Send(HttpMethod.Post, $"api/patients/{profile.PatientId}/book-invoices", reception,
             new { amount = 10000 }))!["result"]!["bookInvoiceId"]!.GetValue<int>();
@@ -176,6 +178,58 @@ internal static class C6C7Checks
                 && x.Status == "Issued" && x.PreviousBookId == lostBook.PatientBookId)
             && await db.PatientBooks.AsNoTracking().AnyAsync(x => x.PatientBookId == lostBook.PatientBookId && x.Status == "Lost"),
             "Paid Pending issuance preserves its existing Lost-book history when there is no Issued book to retire");
+
+        var staleInvoiceId = (await Send(HttpMethod.Post, $"api/patients/{lostProfile.PatientId}/book-invoices", reception,
+            new { amount = 15000 }))!["result"]!["bookInvoiceId"]!.GetValue<int>();
+        await Send(HttpMethod.Patch, $"api/book-invoices/{staleInvoiceId}/pay", reception);
+        var stalePendingBook = await db.PatientBooks.SingleAsync(x => x.BookInvoiceId == staleInvoiceId);
+        stalePendingBook.PreviousBookId = lostBook.PatientBookId;
+        await db.SaveChangesAsync();
+        var currentIssuedId = recovered["patientBookId"]!.GetValue<int>();
+        var newest = (await Send(HttpMethod.Post, $"api/book-invoices/{staleInvoiceId}/issue-book", reception,
+            new { bookNumber = "C6-LATEST-REISSUE" }))!["result"]!;
+        check(newest["previousBookId"]!.GetValue<int>() == currentIssuedId
+            && await db.PatientBooks.AsNoTracking().AnyAsync(x => x.PatientBookId == currentIssuedId && x.Status == "Replaced")
+            && await db.PatientBooks.AsNoTracking().AnyAsync(x => x.PatientBookId == lostBook.PatientBookId && x.Status == "Lost")
+            && await db.PatientBooks.CountAsync(x => x.PatientId == lostProfile.PatientId && x.Status == "Issued") == 1,
+            "A stale Pending request links the current Issued book it retires instead of skipping it in book history");
+    }
+
+    private static async Task VerifyBookingInputBoundariesAsync(
+        Func<HttpMethod, string, string, object?, int, Task<JsonNode?>> send,
+        Action<bool, string> check, string ownToken, string reception, int appointmentId, Patient profile)
+    {
+        foreach (var (path, token) in new[] { ("api/appointments/mine", ownToken), ("api/appointments", reception) })
+        {
+            var rejected = await send(HttpMethod.Get, path + "?pageNumber=2147483647&pageSize=100", token, null, 400);
+            check(rejected?["code"]?.GetValue<int>() == ErrorCode.INVALID_REQUEST.Code,
+                "Appointment pagination rejects an overflowing SQL offset with a business error");
+            var highestValidPage = int.MaxValue / 100 + 1;
+            var valid = await send(HttpMethod.Get, path + $"?pageNumber={highestValidPage}&pageSize=100", token, null, 200);
+            check(valid!["result"]!["items"]!.AsArray().Count == 0,
+                "A valid large appointment offset remains an empty page instead of an overflow rejection");
+        }
+
+        foreach (var boundary in new[]
+        {
+            (Date: DateTime.MinValue, Time: TimeSpan.FromSeconds(-1)),
+            (Date: DateTime.MaxValue.Date, Time: TimeSpan.FromDays(2))
+        })
+        {
+            var request = new { doctorId = 1, appointmentDate = boundary.Date, startTime = boundary.Time,
+                patientName = profile.FullName, patientPhone = profile.Phone, reason = "C6 invalid time boundary" };
+            foreach (var (path, token) in new[] { ("api/appointments", ownToken), ("api/appointments/direct", reception) })
+            {
+                var rejected = await send(HttpMethod.Post, path, token, request, 400);
+                check(rejected?["code"]?.GetValue<int>() == ErrorCode.INVALID_REQUEST.Code,
+                    "Web/walk-in booking rejects out-of-day times before DateTime arithmetic can overflow");
+            }
+
+            var reschedule = await send(HttpMethod.Patch, $"api/appointments/{appointmentId}/reschedule", reception,
+                new { doctorId = 1, appointmentDate = boundary.Date, startTime = boundary.Time }, 400);
+            check(reschedule?["code"]?.GetValue<int>() == ErrorCode.INVALID_REQUEST.Code,
+                "Rescheduling rejects invalid time boundaries with a business error instead of 500");
+        }
     }
 
     public static async Task<object> SeedUiAsync(ApplicationDbContext db, string password)

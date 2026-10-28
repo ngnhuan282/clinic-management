@@ -3,11 +3,14 @@ import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { mkdir } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
+import { checkReceptionRegressions } from "./appointment-ui-regressions.mjs";
 
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || "playwright");
 await mkdir(".tmp/c8c9", { recursive: true });
 const fixturePassword = "Test-" + randomBytes(12).toString("hex");
-const host = spawn("dotnet", [process.env.CLINIC_TEST_ASSEMBLY || ".tmp/c8c9-build/Week2Verification.dll", "--c8c9-ui"],
+const apiGroups = process.argv.slice(2);
+assert(apiGroups.length <= 1 && apiGroups.every(arg => arg === "--c9"), "Optional --c9 runs the C9 API subset; default still runs all C8/C9 checks");
+const host = spawn("dotnet", [process.env.CLINIC_TEST_ASSEMBLY || ".tmp/c8c9-build/Week2Verification.dll", "--c8c9-ui", ...apiGroups],
     { windowsHide: true, stdio: ["pipe", "pipe", "pipe"] });
 const hostFinished = new Promise(resolve => host.once("exit", resolve));
 let fixture, vite, browser;
@@ -73,7 +76,7 @@ try {
     }
     assert(listening, "C8/C9 Vite startup timed out");
     browser = await chromium.launch({ channel: process.env.BROWSER_CHANNEL || "msedge", headless: true });
-    async function open(session, path) {
+    async function open(session, path, { disableRealtime = false } = {}) {
         const context = await browser.newContext({ viewport: { width: 1440, height: 1050 }, timezoneId: "Asia/Bangkok" });
         await context.addInitScript(session => {
             sessionStorage.setItem("accessToken", session.accessToken);
@@ -96,11 +99,19 @@ try {
         signalRSockets.set(page, sockets);
         page.on("websocket", socket => {
             if (new URL(socket.url()).pathname !== "/hubs/notification") return;
-            const state = { socket, closed: false, handshaken: false };
+            const state = { socket, closed: false, handshaken: false, events: [] };
             sockets.push(state);
             socket.on("close", () => { state.closed = true; });
             socket.on("framereceived", frame => {
-                if (frame.payload.toString().split("\u001e").includes("{}")) state.handshaken = true;
+                for (const message of frame.payload.toString().split("\u001e").filter(Boolean)) {
+                    if (message === "{}") state.handshaken = true;
+                    else {
+                        try {
+                            const event = JSON.parse(message);
+                            if (event.target === "SlotAvailabilityChanged") state.events.push(event.arguments[0]);
+                        } catch { /* A fragmented frame is not a complete event. */ }
+                    }
+                }
             });
         });
         page.setDefaultTimeout(25000);
@@ -108,6 +119,7 @@ try {
         page.on("pageerror", error => runtimeErrors.push(error.message));
         await page.route("https://fonts.googleapis.com/**", route => route.abort());
         await page.route("https://fonts.gstatic.com/**", route => route.abort());
+        if (disableRealtime) await page.route("**/hubs/notification**", route => route.abort());
         await page.goto("http://127.0.0.1:5190" + path, { waitUntil: "domcontentloaded" });
         return page;
     }
@@ -141,7 +153,9 @@ try {
     const invoiceResponse = await createdInvoice;
     assert.equal(invoiceResponse.status(), 200);
     const invoice = (await invoiceResponse.json()).result;
-    await dialog.getByText(new RegExp(`#${invoice.bookInvoiceId}.*Unpaid`)).waitFor();
+    assert.equal(invoice.status, "Unpaid");
+    await dialog.getByRole("group", { name: `Hóa đơn sổ #${invoice.bookInvoiceId}`, exact: true })
+        .getByText("Chưa thanh toán", { exact: true }).waitFor();
     assert.equal(await dialog.getByRole("button", { name: "Phát / cấp lại sổ", exact: true }).count(), 0);
     assert(await checkIn.isDisabled());
     pass("Unpaid invoice exposes no issue-book action and cannot check in");
@@ -218,6 +232,12 @@ try {
     await waitForCondition(() => sockets.some(socket => socket.handshaken && !socket.closed),
         "Booking must have a real SignalR WebSocket handshake before testing the outage");
     const originalSocket = sockets.findLast(socket => socket.handshaken && !socket.closed);
+    await send("POST", "/appointments", otherPatient.accessToken, { doctorId: 2,
+        appointmentDate: fixture.FutureDate, startTime: "12:00:00", patientName: "C9 unrelated doctor slot",
+        patientPhone: "0909000986", reason: "C9 unrelated event before reconnect" });
+    await waitForCondition(() => sockets.some(socket => socket.events.some(event => event.doctorId === 2)),
+        "The booking page must receive an unrelated doctor event before testing reconnect");
+    const socketCountBeforeOutage = sockets.length;
     await booking.context().setOffline(true);
     await booking.evaluate(() => {
         const active = window.__c8c9SignalRSockets.filter(socket => socket.readyState === WebSocket.OPEN);
@@ -235,14 +255,32 @@ try {
             && url.searchParams.get("doctorId") === String(fixture.DoctorId) && response.status() === 200;
     }, { timeout: 45000 });
     await booking.context().setOffline(false);
-    await waitForCondition(() => sockets.some(socket => socket !== originalSocket && socket.handshaken && !socket.closed),
+    await waitForCondition(() => sockets.slice(socketCountBeforeOutage).some(socket => socket.handshaken && !socket.closed),
         "SignalR must establish and handshake a new WebSocket after the outage");
     await slotReload;
     await booking.getByRole("button", { name: "11:30 Đã kín chỗ", exact: true }).waitFor();
     assert(await booking.getByRole("button", { name: "11:30 Đã kín chỗ", exact: true }).isDisabled());
-    assert.deepEqual(runtimeErrors, []);
     assert(!fixtureOutput.includes(fixturePassword), "C8/C9 fixture must keep its password out of all test output");
     pass("a closed SignalR WebSocket reconnects, completes a new handshake and reloads the missed slot through the API");
+    await checkReceptionRegressions({ open, session: receptionSession, send,
+        fixture: { ...fixture, patientToken: otherPatient.accessToken }, pass });
+    await booking.getByRole("button", { name: "15:00 Còn chỗ", exact: true }).click();
+    await booking.getByRole("textbox", { name: /^Họ và tên bệnh nhân/ }).fill("C9 real patient UI");
+    await booking.getByRole("textbox", { name: /^Số điện thoại liên hệ/ }).fill("0909000998");
+    await booking.getByRole("textbox", { name: /^Mô tả lý do khám & triệu chứng bệnh lý/ }).fill("C9 browser form submission");
+    const submitted = booking.waitForResponse(response => response.request().method() === "POST"
+        && new URL(response.url()).pathname === "/api/appointments");
+    await booking.getByRole("button", { name: "Xác Nhận Đặt Lịch Khám", exact: true }).click();
+    const submittedResponse = await submitted;
+    assert.equal(submittedResponse.status(), 200);
+    const submittedAppointment = (await submittedResponse.json()).result;
+    assert.equal(submittedAppointment.startTime, "15:00:00");
+    assert.equal(submittedAppointment.appointmentDate.slice(0, 10), fixture.FutureDate);
+    assert.equal(submittedAppointment.status, "Pending");
+    assert.equal(submittedAppointment.patientName, "C9 real patient UI");
+    await booking.getByRole("dialog").getByText(`#${submittedAppointment.appointmentId}`, { exact: true }).waitFor();
+    pass("the compact patient form posts real booking fields and displays the saved Pending appointment");
+    assert.deepEqual(runtimeErrors, []);
     console.log(`SUCCESS: ${passed} C8/C9 browser checks passed.`);
 } catch (error) {
     for (let index = 0; index < pages.length; index++)

@@ -12,6 +12,7 @@ import useNotifications from "./useNotifications";
 export function useBooking() {
     const { availabilityRevision, slotEvent, appointmentEvent } = useNotifications();
     const slotRequest = useRef(0);
+    const lastAvailability = useRef({ revision: availabilityRevision, event: slotEvent });
     const [departments, setDepartments] = useState([]);
     const [doctors, setDoctors] = useState([]);
     const [slots, setSlots] = useState([]);
@@ -187,6 +188,7 @@ export function useBooking() {
             }
         } catch (apiError) {
             if (requestId === slotRequest.current) {
+                setSlots([]);
                 setSelectedSlot(null);
                 setError(getApiErrorMessage(apiError));
             }
@@ -206,8 +208,12 @@ export function useBooking() {
     }, [refreshSlots]);
 
     useEffect(() => {
+        const previous = lastAvailability.current;
+        lastAvailability.current = { revision: availabilityRevision, event: slotEvent };
+        if (availabilityRevision === previous.revision) return;
         if (!availabilityRevision || !selectedDoctorId || !selectedDate) return;
-        if (slotEvent && (slotEvent.doctorId !== Number(selectedDoctorId)
+        // A revision with no new slot event marks reconnect: reload even after an unrelated event.
+        if (slotEvent && slotEvent !== previous.event && (slotEvent.doctorId !== Number(selectedDoctorId)
             || slotEvent.appointmentDate.slice(0, 10) !== selectedDate)) return;
         const timer = setTimeout(() => { void refreshSlots(true); }, 0);
         return () => clearTimeout(timer);
@@ -291,6 +297,7 @@ export function useBooking() {
         setPatientPhone,
         setReason,
         resetForm,
+        refreshSlots,
         submitBooking,
     };
 }

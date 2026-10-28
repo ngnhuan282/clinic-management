@@ -2,11 +2,10 @@ import { Alert, Box, Button, Chip, LinearProgress, MenuItem, Pagination, Paper, 
 import { CalendarMonthOutlined, RefreshOutlined, RestartAltOutlined } from "@mui/icons-material";
 import { Link } from "react-router-dom";
 import useMyAppointments from "../../hooks/useMyAppointments";
-import ClinicPageHeader from "../../components/common/ClinicPageHeader";
 import EmptyState from "../../components/common/EmptyState";
 import StatusBadge from "../../components/common/StatusBadge";
 import AppointmentArrivalGuide from "../../components/patient/AppointmentArrivalGuide";
-import { clinicButtonSx, clinicColors, clinicFieldSx, clinicPrimaryButtonSx, clinicSecondaryButtonSx, clinicSurfaceSx } from "../../components/common/clinicUi";
+import { appointmentButtonSx as clinicButtonSx, appointmentColors as clinicColors, appointmentFieldSx as clinicFieldSx, appointmentHeadingSx, appointmentPageSx, appointmentPrimaryButtonSx as clinicPrimaryButtonSx, appointmentSecondaryButtonSx as clinicSecondaryButtonSx, appointmentSurfaceSx as clinicSurfaceSx } from "../../components/appointments/appointmentUi";
 
 const statuses = [
     ["Pending", "Chờ xác nhận"], ["Confirmed", "Đã xác nhận"],
@@ -29,12 +28,12 @@ function AppointmentCard({ appointment }) {
                         Lịch hẹn #{appointmentId}
                     </Typography>
                     <Typography sx={{ mt: 0.5, fontSize: 14, color: clinicColors.muted }}>
-                        {dateText(appointment.appointmentDate)} · {timeText(appointment.startTime)}–{timeText(appointment.endTime)}
+                        {dateText(appointment.appointmentDate)} từ {timeText(appointment.startTime)} đến {timeText(appointment.endTime)}
                     </Typography>
                 </Box>
                 <Box><StatusBadge status={status} /></Box>
             </Stack>
-            <Box component="dl" sx={{ m: 0, display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2,
+            <Box component="dl" sx={{ m: 0, display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, minmax(0, 1fr))" }, gap: 1.5,
                 "& dt": { fontSize: 12, color: clinicColors.muted, mb: 0.5 },
                 "& dd": { m: 0, fontSize: 14, color: clinicColors.heading, overflowWrap: "anywhere" } }}>
                 <Box><Box component="dt">Bác sĩ</Box><Box component="dd">{appointment.doctorName || "Đang cập nhật"}</Box></Box>
@@ -60,15 +59,16 @@ function AppointmentCard({ appointment }) {
 export default function MyAppointmentsPage() {
     const { filters, dateError, data, error, loading, setFilter, setPageNumber, resetFilters, refresh } = useMyAppointments();
     const filtered = Boolean(filters.dateFrom || filters.dateTo || filters.status);
-    return <Box sx={{ maxWidth: 1100, mx: "auto", px: { xs: 2, md: 3 }, py: { xs: 3, md: 4 } }}>
+    return <Box className="appointment-workspace" sx={{ ...appointmentPageSx, maxWidth: 1100 }}>
         <Stack spacing={2.5}>
-            <ClinicPageHeader title="Lịch hẹn của tôi" icon={CalendarMonthOutlined}
-                description="Theo dõi lịch đã đặt, trạng thái xác nhận và thủ tục check-in của bạn."
-                actions={<Button component={Link} to="/booking" variant="contained" startIcon={<CalendarMonthOutlined />} sx={clinicPrimaryButtonSx}>Đặt lịch khám</Button>} />
-            <AppointmentArrivalGuide />
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ justifyContent: "space-between", alignItems: { sm: "center" } }}>
+                <Box><Typography component="h1" sx={appointmentHeadingSx}>Lịch hẹn của tôi</Typography>
+                    <Typography sx={{ mt: 0.75, fontSize: 14, color: clinicColors.muted }}>Theo dõi lịch đã đặt, trạng thái xác nhận và thủ tục check-in của bạn.</Typography></Box>
+                <Button component={Link} to="/booking" variant="contained" startIcon={<CalendarMonthOutlined />} sx={{ ...clinicPrimaryButtonSx, flexShrink: 0 }}>Đặt lịch khám</Button>
+            </Stack>
             <Paper variant="outlined" sx={{ ...clinicSurfaceSx, p: 2.5 }}>
                 <Typography component="h2" sx={{ fontSize: 14, fontWeight: 600, mb: 2 }}>Tìm lịch hẹn</Typography>
-                <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
+                <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(3, minmax(0, 1fr))", lg: "repeat(3, minmax(0, 1fr)) auto auto" }, gap: 1.5, alignItems: "start" }}>
                     <TextField fullWidth size="small" type="date" label="Từ ngày" value={filters.dateFrom}
                         onChange={event => setFilter("dateFrom", event.target.value)}
                         sx={clinicFieldSx} slotProps={{ inputLabel: { shrink: true }, htmlInput: { max: filters.dateTo || undefined } }} />
@@ -82,7 +82,7 @@ export default function MyAppointmentsPage() {
                     </TextField>
                     <Button onClick={resetFilters} startIcon={<RestartAltOutlined />} sx={{ ...clinicButtonSx, whiteSpace: "nowrap" }}>Đặt lại</Button>
                     <Button variant="outlined" disabled={loading || Boolean(dateError)} onClick={refresh} startIcon={<RefreshOutlined />} sx={{ ...clinicSecondaryButtonSx, whiteSpace: "nowrap" }}>Làm mới</Button>
-                </Stack>
+                </Box>
             </Paper>
             {dateError && <Alert severity="warning">{dateError}</Alert>}
             {error && <Alert severity="error" action={<Button color="inherit" onClick={refresh}>Thử lại</Button>}>{error}</Alert>}
@@ -99,12 +99,13 @@ export default function MyAppointmentsPage() {
                     </Paper>}
                     {data?.items.map(appointment => <AppointmentCard key={appointment.appointmentId} appointment={appointment} />)}
                     {data?.totalPages > 1 && <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ justifyContent: "space-between", alignItems: { sm: "center" } }}>
-                        <Typography sx={{ fontSize: 13, color: clinicColors.muted }}>Trang {filters.pageNumber}/{data.totalPages} · {data.totalItems} lịch hẹn</Typography>
+                        <Typography sx={{ fontSize: 13, color: clinicColors.muted }}>Trang {filters.pageNumber}/{data.totalPages}, {data.totalItems} lịch hẹn</Typography>
                         <Pagination count={data.totalPages} page={filters.pageNumber} onChange={(_, value) => setPageNumber(value)} color="primary" shape="rounded" size="small"
                             getItemAriaLabel={(type, value) => type === "next" ? "Trang tiếp" : type === "previous" ? "Trang trước" : `Trang ${value}`} />
                     </Stack>}
                 </>}
             </Stack>
+            <AppointmentArrivalGuide />
         </Stack>
     </Box>;
 }

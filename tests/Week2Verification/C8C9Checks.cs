@@ -4,6 +4,7 @@ using System.Text.Json.Nodes;
 using ClinicManagement.Commons;
 using ClinicManagement.Data;
 using ClinicManagement.Data.Entities;
+using ClinicManagement.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
@@ -260,8 +261,10 @@ internal static class C8C9Checks
             check(await db.BookInvoices.AsNoTracking().AnyAsync(x => x.BookInvoiceId == invoiceId && x.Status == "Paid" && x.PaidAt != null),
                 "C8 cashier race commits the matching reception invoice as Paid");
             await signal.WaitAsync("BookInvoiceChanged", "bookInvoiceId", invoiceId, "status", "Paid");
-            check(replies.Count(x => x.Status == 200) == 1 && replies.Count(x => x.Status == 409) == 1,
-                "C8 concurrent POST /invoices returns one success and one business conflict, no 500: "
+            check(replies.Count(x => x.Status == 200) == 1
+                && replies.Count(x => x.Status == (int)ErrorCode.INVALID_REQUEST.StatusCode
+                    && x.Data?["code"]?.GetValue<int>() == ErrorCode.INVALID_REQUEST.Code) == 1,
+                "C8 concurrent POST /invoices returns one success and the documented 400 validation rejection, no 500: "
                 + string.Join(",", replies.Select(x => x.Status)));
         }
 
