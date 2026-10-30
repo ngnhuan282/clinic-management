@@ -3,6 +3,7 @@ import { confirmDispensing, getDispensingDetail, requestStockReview, recheckStoc
 import getApiErrorMessage from "../utils/errorHandler";
 import { buildStockReviewRecheckRequest } from "../utils/stockReviewWorkflow";
 import useDispensingAutoRefresh from "./useDispensingAutoRefresh";
+import { canKeepDispensingSnapshot } from "../utils/dispensingRefresh";
 
 function useDispensingDetail(prescriptionId, userId, autoRefresh = true) {
     const key = JSON.stringify([userId, prescriptionId]);
@@ -15,13 +16,14 @@ function useDispensingDetail(prescriptionId, userId, autoRefresh = true) {
     const reload = useCallback(async ({ background = false } = {}) => {
         if (!prescriptionId || !userId || mutating.current?.key === key) return;
         const request = ++sequence.current;
-        if (!background) setResult({ key, loading: true });
+        if (!background) setResult(previous => previous?.key === key ? { ...previous, loading: true } : { key, loading: true });
         try {
             const value = await getDispensingDetail(prescriptionId);
             if (request === sequence.current) setResult({ key, value });
         } catch (err) {
             const error = getApiErrorMessage(err, "Không tải được chi tiết cấp thuốc.");
-            if (request === sequence.current) setResult({ key, error });
+            if (request === sequence.current) setResult(previous => canKeepDispensingSnapshot(previous, key, err)
+                ? { ...previous, loading: false, error, stale: true } : { key, error });
             throw new Error(error, { cause: err });
         }
     }, [key, prescriptionId, userId]);
@@ -31,12 +33,12 @@ function useDispensingDetail(prescriptionId, userId, autoRefresh = true) {
 
     useEffect(() => {
         const activeSequence = sequence;
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         reload().catch(() => {});
         return () => { activeSequence.current++; };
     }, [reload]);
 
     const performMutation = useCallback(async (type, action, fallback) => {
+        if (current?.stale) throw new Error("Dữ liệu chưa được cập nhật. Vui lòng tải lại trước khi xử lý đơn.");
         if (mutating.current?.key === key) return null;
         const activeMutation = { key };
         mutating.current = activeMutation;
@@ -53,12 +55,13 @@ function useDispensingDetail(prescriptionId, userId, autoRefresh = true) {
             if (mutating.current === activeMutation) mutating.current = null;
             setMutation(currentMutation => currentMutation?.key === key ? null : currentMutation);
         }
-    }, [key]);
+    }, [key, current]);
 
     return {
         detail: current?.value,
         loading: Boolean(prescriptionId && userId && (!current || current.loading)),
-        error: current?.error || "",
+        error: current?.stale ? "" : current?.error || "",
+        refreshWarning: current?.stale ? current.error : "",
         confirming: mutation?.key === key && mutation.type === "dispense",
         reviewing: mutation?.key === key && mutation.type === "review",
         reload,

@@ -304,6 +304,9 @@ public sealed class ErrorCode
     public static readonly ErrorCode INVENTORY_HAS_DISPENSE_HISTORY =
         new(6019, "Inventory batch has dispensing history and cannot be removed or reassigned", HttpStatusCode.Conflict);
 
+    public static readonly ErrorCode PURCHASE_ORDER_CONFLICT =
+        new(6021, "Purchase order changed concurrently. Reload and try again", HttpStatusCode.Conflict);
+
     // =========================
     // Examination / Medical Record
     // =========================

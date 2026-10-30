@@ -16,7 +16,7 @@ import { getPrescriptionStockStatusConfig } from "./prescriptionStockStatus";
 
 function SummaryItem({ label, value, color = "#1F2937" }) {
     return (
-        <Stack direction="row" spacing={1.5} justifyContent="space-between">
+        <Stack sx={{ justifyContent: "space-between" }} direction="row" spacing={1.5}>
             <Typography variant="body2" sx={{ color: "#6B7280" }}>
                 {label}
             </Typography>
@@ -58,7 +58,7 @@ function MedicalRecordPrescriptionPanel({
             }}
         >
             <Stack spacing={2}>
-                <Stack direction="row" spacing={1.25} alignItems="center">
+                <Stack sx={{ alignItems: "center" }} direction="row" spacing={1.25}>
                     <Box
                         sx={{
                             width: 36,
@@ -97,10 +97,9 @@ function MedicalRecordPrescriptionPanel({
                 </Stack>
 
                 {loading && (
-                    <Stack
+                    <Stack sx={{ alignItems: "center" }}
                         direction="row"
                         spacing={1.25}
-                        alignItems="center"
                     >
                         <CircularProgress size={18} />
                         <Typography variant="body2" color="text.secondary">
@@ -176,10 +175,9 @@ function MedicalRecordPrescriptionPanel({
                                                     bgcolor: "#F8FAFC",
                                                 }}
                                             >
-                                                <Stack
+                                                <Stack sx={{ alignItems: "flex-start" }}
                                                     direction="row"
                                                     spacing={1}
-                                                    alignItems="flex-start"
                                                 >
                                                     <Box
                                                         sx={{

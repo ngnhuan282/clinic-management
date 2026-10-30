@@ -25,6 +25,7 @@ import MedicalRecordPatientSummary from "../../../components/internal/examinatio
 import MedicalRecordStatusPanel from "../../../components/internal/examinations/MedicalRecordStatusPanel";
 import MedicalRecordPrescriptionPanel from "../../../components/internal/prescriptions/MedicalRecordPrescriptionPanel";
 import useMedicalRecordForm from "../../../hooks/useMedicalRecordForm";
+import useClinicalLeaveGuard from "../../../hooks/useClinicalLeaveGuard";
 import getApiErrorMessage from "../../../utils/errorHandler";
 
 function MedicalRecordPage() {
@@ -50,6 +51,8 @@ function MedicalRecordPage() {
         successMessage,
         selectedDiagnoses,
         completionReady,
+        hasUnsavedChanges,
+        discardDraft,
         createDraft,
         updateField,
         addDiagnosisRow,
@@ -65,6 +68,13 @@ function MedicalRecordPage() {
         initialAppointment,
         initialDraft: location.state?.medicalRecordDraft,
     });
+    const discardCurrentDraft = useCallback(() => {
+        discardDraft();
+        if (location.state?.medicalRecordDraft) navigate(location.pathname, {
+            replace: true, state: { ...location.state, medicalRecordDraft: null },
+        });
+    }, [discardDraft, location, navigate]);
+    const confirmLeave = useClinicalLeaveGuard(hasUnsavedChanges, discardCurrentDraft);
 
     const [
         completeWithoutPrescriptionOpen,
@@ -257,7 +267,7 @@ function MedicalRecordPage() {
                             <Button
                                 variant="outlined"
                                 startIcon={<ArrowBackRoundedIcon />}
-                                onClick={() => navigate("/internal/examinations")}
+                                onClick={() => confirmLeave(() => navigate("/internal/examinations"))}
                                 sx={{ minHeight: 42 }}
                             >
                                 Quay lại

@@ -9,6 +9,7 @@ import getApiErrorMessage from "../utils/errorHandler";
 import { readDispensingFilters, writeDispensingFilters } from "../utils/dispensingFilters";
 import useAuth from "./useAuth";
 import useDispensingAutoRefresh from "./useDispensingAutoRefresh";
+import { canKeepDispensingSnapshot } from "../utils/dispensingRefresh";
 
 function normalizeFilters(filters) {
     return {
@@ -39,7 +40,7 @@ function useDispensing() {
     const loadQueue = useCallback(async ({ background = false } = {}) => {
         if (!userId) return;
         const sequence = ++queueSequence.current;
-        if (!background) setResult({ key, loading: true });
+        if (!background) setResult(previous => previous?.key === key ? { ...previous, loading: true } : { key, loading: true });
 
         try {
             const [queueResult, summaryResult] = await Promise.all([
@@ -50,10 +51,9 @@ function useDispensing() {
             setResult({ key, pagedData: queueResult, summary: summaryResult });
         } catch (err) {
             if (sequence !== queueSequence.current) return;
-            setResult({ key, error: getApiErrorMessage(
-                err,
-                "Không tải được danh sách cấp thuốc."
-            ) });
+            const error = getApiErrorMessage(err, "Không tải được danh sách cấp thuốc.");
+            setResult(previous => canKeepDispensingSnapshot(previous, key, err)
+                ? { ...previous, loading: false, error, stale: true } : { key, error });
         }
     }, [key, requestParams, userId]);
 
@@ -63,7 +63,6 @@ function useDispensing() {
     useEffect(() => {
         const queueRequest = queueSequence;
         // Fetch remote data when queue filters change.
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         loadQueue();
         return () => { queueRequest.current++; };
     }, [loadQueue]);
@@ -82,7 +81,8 @@ function useDispensing() {
         pagination: current?.pagedData,
         summary: current?.summary,
         loading: Boolean(userId && (!current || current.loading)),
-        error: current?.error || "",
+        error: current?.stale ? "" : current?.error || "",
+        refreshWarning: current?.stale ? current.error : "",
         updateFilters,
         resetFilters,
         loadQueue,

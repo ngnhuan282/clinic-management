@@ -61,16 +61,14 @@ function MedicalRecordPatientSummary({
                 bgcolor: "#FFFFFF",
             }}
         >
-            <Stack
+            <Stack sx={{ alignItems: { xs: "stretch", md: "center" } }}
                 direction={{ xs: "column", md: "row" }}
                 spacing={2}
-                alignItems={{ xs: "stretch", md: "center" }}
             >
                 <Stack
                     direction="row"
                     spacing={1.5}
-                    alignItems="center"
-                    sx={{ minWidth: 0, flex: 1 }}
+                    sx={{ alignItems: "center", minWidth: 0, flex: 1 }}
                 >
                     <Avatar
                         sx={{
@@ -87,11 +85,9 @@ function MedicalRecordPatientSummary({
                     </Avatar>
 
                     <Box sx={{ minWidth: 0 }}>
-                        <Stack
+                        <Stack sx={{ alignItems: "center", flexWrap: "wrap" }}
                             direction="row"
                             spacing={1}
-                            alignItems="center"
-                            flexWrap="wrap"
                             useFlexGap
                         >
                             <Typography

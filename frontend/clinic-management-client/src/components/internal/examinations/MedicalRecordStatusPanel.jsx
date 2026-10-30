@@ -19,7 +19,7 @@ function ChecklistItem({ checked, label }) {
         : RadioButtonUncheckedOutlinedIcon;
 
     return (
-        <Stack direction="row" spacing={1} alignItems="center">
+        <Stack sx={{ alignItems: "center" }} direction="row" spacing={1}>
             <Icon
                 fontSize="small"
                 sx={{ color: checked ? "#059669" : "#9CA3AF" }}
@@ -165,11 +165,9 @@ function MedicalRecordStatusPanel({
                                         : "#F8FAFC",
                                 }}
                             >
-                                <Stack
+                                <Stack sx={{ alignItems: "center", justifyContent: "space-between" }}
                                     direction="row"
                                     spacing={1}
-                                    alignItems="center"
-                                    justifyContent="space-between"
                                 >
                                     <Typography
                                         variant="body2"

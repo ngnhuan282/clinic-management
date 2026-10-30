@@ -1,4 +1,18 @@
 export const EXAMINATION_STATUSES = {
+    pendingConfirmation: {
+        label: "Chờ xác nhận",
+        shortLabel: "Chờ xác nhận",
+        color: "#475569",
+        backgroundColor: "#F1F5F9",
+        borderColor: "#CBD5E1",
+    },
+    awaitingReception: {
+        label: "Chờ tiếp nhận",
+        shortLabel: "Chờ tiếp nhận",
+        color: "#0369A1",
+        backgroundColor: "#F0F9FF",
+        borderColor: "#7DD3FC",
+    },
     waiting: {
         label: "Đang chờ khám",
         shortLabel: "Chờ khám",
@@ -74,4 +88,18 @@ export function getExaminationStatus(status) {
         backgroundColor: "#F8FAFC",
         borderColor: "#E5E9F0",
     };
+}
+
+// Queue-only presentation states; the backend keeps Pending/Confirmed unchanged.
+export function getExaminationQueueStatus(appointment) {
+    const status = String(appointment.status || "").trim().toLowerCase();
+
+    if (status === "pending") return "pendingConfirmation";
+    if (status === "confirmed") {
+        return appointment.patientBookId && appointment.bookVerifiedAt
+            ? "waiting"
+            : "awaitingReception";
+    }
+
+    return normalizeExaminationStatus(appointment.status);
 }

@@ -42,6 +42,7 @@ const API_ERROR_MESSAGES = {
     6017: "Không thể nhập lô thuốc đã hết hạn.",
     6018: "Thuốc trong phiếu phải thuộc nhà cung cấp đã chọn.",
     6019: "Lô thuốc đã có lịch sử cấp phát nên không thể xóa hoặc đổi thông tin nhận diện.",
+    6021: "Phiếu nhập vừa được xử lý ở phiên khác. Vui lòng tải lại và thử lại.",
     7001: "Không tìm thấy bệnh.",
     7002: "Mã bệnh đã tồn tại.",
     7003: "Tên bệnh đã tồn tại.",

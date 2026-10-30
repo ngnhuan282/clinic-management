@@ -73,7 +73,7 @@ function MedicalRecordAuditPanel({ record }) {
             }}
         >
             <Stack spacing={2}>
-                <Stack direction="row" spacing={1.25} alignItems="center">
+                <Stack sx={{ alignItems: "center" }} direction="row" spacing={1.25}>
                     <Box
                         sx={{
                             width: 36,

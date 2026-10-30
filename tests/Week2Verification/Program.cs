@@ -175,6 +175,12 @@ try
         }
         return;
     }
+    if (args.Contains("--d10"))
+    {
+        await StockTransactionChecks.RunAsync(client, db, password, Check);
+        Console.WriteLine($"SUCCESS: {checks} D10 stock transaction checks passed.");
+        return;
+    }
     if (args.Contains("--d9-clinical-ui"))
     {
         var clinicalUiCases = await ClinicJourneyChecks.PrepareClinicalUiAsync(db, Check);

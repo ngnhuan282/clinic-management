@@ -9,6 +9,8 @@ import {
 import { getDiseaseOptions } from "../api/diseaseApi";
 import { normalizeExaminationStatus } from "../components/internal/examinations/examinationStatus";
 import getApiErrorMessage from "../utils/errorHandler";
+import useAuth from "./useAuth";
+import { readClinicalDraft, writeClinicalDraft, clearClinicalDraft } from "../utils/clinicalDrafts";
 import {
     getMedicalRecordContentKey,
     normalizePayloadDiagnoses,
@@ -165,13 +167,18 @@ function useMedicalRecordForm({
     initialAppointment,
     initialDraft,
 }) {
+    const { userId, sessionRevision } = useAuth();
+    const draftSession = JSON.stringify([userId, sessionRevision]);
+    const draftKey = `record:${appointmentId}`;
+    const memoryDraft = readClinicalDraft(draftSession, draftKey);
+    const [cachedDraft] = useState(() => initialDraft || memoryDraft);
     const [appointment, setAppointment] = useState(
         initialAppointment || null
     );
     const [diseases, setDiseases] = useState([]);
     const [medicalRecord, setMedicalRecord] = useState(null);
-    const [form, setForm] = useState(() => initialDraft?.form || createEmptyForm());
-    const restoredDraft = useRef(initialDraft);
+    const [form, setForm] = useState(() => cachedDraft?.form || createEmptyForm());
+    const restoredDraft = useRef(cachedDraft);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
@@ -183,6 +190,17 @@ function useMedicalRecordForm({
         () => normalizePayloadDiagnoses(form.diagnoses),
         [form.diagnoses]
     );
+
+    const hasUnsavedChanges = !loading && (getMedicalRecordContentKey(form) !== getMedicalRecordContentKey(medicalRecord || {})
+        || form.paperBookConfirmed !== Boolean(medicalRecord?.paperBookUpdatedAt) || form.paperBookConfirmationPending);
+    const discardDraft = useCallback(() => clearClinicalDraft(draftSession, draftKey), [draftSession, draftKey]);
+    useEffect(() => {
+        if (loading || error) return;
+        if (!hasUnsavedChanges) { clearClinicalDraft(draftSession, draftKey); return; }
+        writeClinicalDraft(draftSession, draftKey, { form, updatedAt: medicalRecord?.updatedAt,
+            patientBookId: medicalRecord?.patientBookId,
+            recordContentKey: medicalRecord ? getMedicalRecordContentKey(medicalRecord) : null });
+    }, [draftSession, draftKey, form, medicalRecord, loading, error, hasUnsavedChanges]);
 
     const completionReady = Boolean(
         !recordConflict && !loading &&
@@ -416,6 +434,7 @@ function useMedicalRecordForm({
                 : await createMedicalRecord(payload);
 
             setMedicalRecord(savedRecord);
+            discardDraft();
             setForm(mapRecordForm(savedRecord));
             setAppointment((current) => ({
                 ...current,
@@ -459,6 +478,8 @@ function useMedicalRecordForm({
         successMessage,
         selectedDiagnoses,
         completionReady,
+        hasUnsavedChanges,
+        discardDraft,
         createDraft: () => ({
             form,
             updatedAt: medicalRecord?.updatedAt,

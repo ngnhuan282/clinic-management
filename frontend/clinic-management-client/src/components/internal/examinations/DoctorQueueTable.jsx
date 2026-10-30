@@ -24,6 +24,15 @@ import {
 function getActionConfig(status) {
     const normalizedStatus = normalizeExaminationStatus(status);
 
+    if (normalizedStatus === "pendingConfirmation" || normalizedStatus === "awaitingReception") {
+        return {
+            label: getExaminationStatus(normalizedStatus).shortLabel,
+            color: "primary",
+            variant: "outlined",
+            disabled: true,
+        };
+    }
+
     if (normalizedStatus === "inProgress") {
         return {
             label: "Tiếp tục khám",
@@ -126,6 +135,8 @@ function DoctorQueueTable({
                                 clinicalActionLoadingId ===
                                 appointment.appointmentId;
                             const isStartAction =
+                                normalizedStatus === "pendingConfirmation" ||
+                                normalizedStatus === "awaitingReception" ||
                                 normalizedStatus === "waiting" ||
                                 normalizedStatus === "priority";
                             const isStartBlocked =
@@ -155,7 +166,7 @@ function DoctorQueueTable({
                                     }}
                                 >
                                     <TableCell align="center">
-                                        <Stack spacing={0.5} alignItems="center">
+                                        <Stack sx={{ alignItems: "center" }} spacing={0.5}>
                                             <Typography
                                                 sx={{
                                                     color:
@@ -185,10 +196,9 @@ function DoctorQueueTable({
                                     </TableCell>
 
                                     <TableCell>
-                                        <Stack
+                                        <Stack sx={{ alignItems: "center" }}
                                             direction="row"
                                             spacing={1.5}
-                                            alignItems="center"
                                         >
                                             <Avatar
                                                 sx={{
@@ -282,9 +292,7 @@ function DoctorQueueTable({
                                         <Stack
                                             direction="row"
                                             spacing={1}
-                                            alignItems="center"
-                                            justifyContent="center"
-                                            sx={{ width: "100%" }}
+                                            sx={{ alignItems: "center", justifyContent: "center", width: "100%" }}
                                         >
                                             <Button
                                                 variant={action.variant}
@@ -297,7 +305,8 @@ function DoctorQueueTable({
                                                 }
                                                 disabled={
                                                     isClinicalActionLoading ||
-                                                    isStartBlocked
+                                                    isStartBlocked ||
+                                                    action.disabled
                                                 }
                                                 onClick={() =>
                                                     onClinicalAction(

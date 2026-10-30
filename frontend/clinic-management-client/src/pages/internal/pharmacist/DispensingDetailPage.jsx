@@ -24,24 +24,25 @@ function DispensingDetailPage() {
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [reviewOpen, setReviewOpen] = useState(false);
     const [recheckOpen, setRecheckOpen] = useState(false);
-    const { detail, loading, error, confirming, reviewing, reload, dispense, processReview } =
+    const { detail, loading, error, refreshWarning, confirming, reviewing, reload, dispense, processReview } =
         useDispensingDetail(recordId, userId, !confirmOpen && !reviewOpen && !recheckOpen);
     const [actionError, setActionError] = useState("");
     const [reviewError, setReviewError] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
-    const busy = confirming || reviewing;
+    const mutating = confirming || reviewing;
+    const busy = mutating || Boolean(refreshWarning);
     const status = detail && getDispensingStatusConfig(detail.workflowStatus);
 
     useEffect(() => { window.scrollTo({ top: 0, behavior: "instant" }); }, [prescriptionId]);
 
     const returnToQueue = () => {
-        if (busy) return;
+        if (mutating) return;
         if (location.state?.dispensingReturn?.userId === userId) navigate(-1);
         else navigate(`/internal/pharmacy/dispensing${location.search}`, { replace: true });
     };
 
     const refresh = async () => {
-        if (busy) return;
+        if (mutating) return;
         setActionError("");
         try { await reload(); } catch (err) { setActionError(err.message); }
     };
@@ -96,13 +97,16 @@ function DispensingDetailPage() {
                         </Stack>
                     </Box>
                     <Stack direction="row" spacing={1} sx={{ alignSelf: { xs: "flex-start", md: "center" }, flexShrink: 0 }}>
-                        <Tooltip title="Tải lại chi tiết"><span><IconButton aria-label="Tải lại chi tiết" onClick={refresh} disabled={busy || loading || !recordId}
+                        <Tooltip title="Tải lại chi tiết"><span><IconButton aria-label="Tải lại chi tiết" onClick={refresh} disabled={mutating || loading || !recordId}
                             sx={{ width: 42, height: 42, border: "1px solid #E5E9F0", borderRadius: 1, color: "primary.main" }}><RefreshOutlinedIcon /></IconButton></span></Tooltip>
-                        <Button variant="outlined" startIcon={<ArrowBackOutlinedIcon />} onClick={returnToQueue} disabled={busy}>Quay lại quầy thuốc</Button>
+                        <Button variant="outlined" startIcon={<ArrowBackOutlinedIcon />} onClick={returnToQueue} disabled={mutating}>Quay lại quầy thuốc</Button>
                     </Stack>
                 </Stack>
             </Box>
             {actionError && <Alert severity="error" onClose={() => setActionError("")}>{actionError}</Alert>}
+            {refreshWarning && <Alert severity="warning" action={<Button color="inherit" onClick={refresh}>Thử lại</Button>}>
+                Chưa cập nhật được đơn thuốc. Các thao tác xử lý tạm khóa. {refreshWarning}
+            </Alert>}
             {!recordId ? <ErrorState message="Mã đơn thuốc không hợp lệ." /> : loading ? <Loading /> : error ?
                 <ErrorState message={error} onRetry={refresh} /> : detail &&
                 <DispensingDetailContent detail={detail} busy={busy} onConfirm={() => setConfirmOpen(true)}

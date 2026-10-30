@@ -25,8 +25,7 @@ function SectionHeader({ icon, title, subtitle, sx = {} }) {
         <Stack
             direction="row"
             spacing={1.25}
-            alignItems="flex-start"
-            sx={{ mb: 2, ...sx }}
+            sx={{ alignItems: "flex-start", mb: 2, ...sx }}
         >
             <Box
                 sx={{
@@ -100,7 +99,7 @@ function MedicalRecordFormSections({
                     fullWidth
                     multiline
                     minRows={2}
-                    InputProps={{ readOnly: true }}
+                    slotProps={{ input: { readOnly: true } }}
                 />
             </Paper>
 

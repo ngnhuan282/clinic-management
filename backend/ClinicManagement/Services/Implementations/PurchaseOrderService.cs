@@ -7,6 +7,8 @@ using ClinicManagement.Exceptions;
 using ClinicManagement.Mappings;
 using ClinicManagement.Repositories.Interfaces;
 using ClinicManagement.Services.Interfaces;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 
 namespace ClinicManagement.Services.Implementations;
 
@@ -104,12 +106,11 @@ public class PurchaseOrderService : IPurchaseOrderService
         return await GetByIdAsync(purchaseOrder.PurchaseOrderId);
     }
 
-    public async Task<PurchaseOrderResponse> UpdateAsync(
+    public Task<PurchaseOrderResponse> UpdateAsync(
         int purchaseOrderId,
         UpdatePurchaseOrderRequest request)
+        => ChangeDraftAsync(purchaseOrderId, async purchaseOrder =>
     {
-        var purchaseOrder = await GetRequiredAsync(purchaseOrderId);
-        EnsureDraft(purchaseOrder);
         await ValidateRequestAsync(request);
 
         purchaseOrder.SupplierId = request.SupplierId;
@@ -122,21 +123,12 @@ public class PurchaseOrderService : IPurchaseOrderService
         purchaseOrder.Details.Clear();
         ReplaceDetails(purchaseOrder, request.Details);
 
-        await _purchaseOrderRepository.SaveChangesAsync();
-        return await GetByIdAsync(purchaseOrderId);
-    }
+    });
 
-    public async Task<PurchaseOrderResponse> ReceiveAsync(
+    public Task<PurchaseOrderResponse> ReceiveAsync(
         int purchaseOrderId)
+        => ChangeDraftAsync(purchaseOrderId, async purchaseOrder =>
     {
-        await using var transaction =
-            await _purchaseOrderRepository.BeginTransactionAsync(
-                IsolationLevel.Serializable
-            );
-
-        var purchaseOrder = await GetRequiredAsync(purchaseOrderId);
-        EnsureDraft(purchaseOrder);
-
         var today = DateOnly.FromDateTime(ClinicNow);
         if (purchaseOrder.Details.Any(x => x.ExpiryDate < today))
         {
@@ -187,23 +179,42 @@ public class PurchaseOrderService : IPurchaseOrderService
         purchaseOrder.ReceivedAt = now;
         purchaseOrder.UpdatedAt = now;
 
-        await _purchaseOrderRepository.SaveChangesAsync();
-        await transaction.CommitAsync();
+    });
 
-        return await GetByIdAsync(purchaseOrderId);
-    }
-
-    public async Task<PurchaseOrderResponse> CancelAsync(
+    public Task<PurchaseOrderResponse> CancelAsync(
         int purchaseOrderId)
+        => ChangeDraftAsync(purchaseOrderId, purchaseOrder =>
     {
-        var purchaseOrder = await GetRequiredAsync(purchaseOrderId);
-        EnsureDraft(purchaseOrder);
-
         purchaseOrder.Status = PurchaseOrderStatusConstants.Cancelled;
         purchaseOrder.UpdatedAt = ClinicNow;
+        return Task.CompletedTask;
+    });
 
-        await _purchaseOrderRepository.SaveChangesAsync();
-        return await GetByIdAsync(purchaseOrderId);
+    private async Task<PurchaseOrderResponse> ChangeDraftAsync(int purchaseOrderId, Func<PurchaseOrder, Task> change)
+    {
+        try
+        {
+            await using (var transaction = await _purchaseOrderRepository.BeginTransactionAsync(IsolationLevel.Serializable))
+            {
+                var purchaseOrder = await GetRequiredAsync(purchaseOrderId);
+                EnsureDraft(purchaseOrder);
+                await change(purchaseOrder);
+                await _purchaseOrderRepository.SaveChangesAsync();
+                await transaction.CommitAsync();
+            }
+            return await GetByIdAsync(purchaseOrderId);
+        }
+        catch (Exception exception) when (exception is DbUpdateConcurrencyException || IsWriteConflict(exception))
+        {
+            throw new AppException(ErrorCode.PURCHASE_ORDER_CONFLICT);
+        }
+    }
+
+    private static bool IsWriteConflict(Exception exception)
+    {
+        for (Exception? current = exception; current != null; current = current.InnerException)
+            if (current is SqlException { Number: 1205 or 2601 or 2627 }) return true;
+        return false;
     }
 
     private async Task ValidateRequestAsync(

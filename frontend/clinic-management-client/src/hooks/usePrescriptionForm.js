@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getMedicalRecordByAppointment } from "../api/examinationApi";
 import {
@@ -10,6 +10,8 @@ import {
 } from "../api/prescriptionApi";
 import getApiErrorMessage from "../utils/errorHandler";
 import { getPrescriptionTextError } from "../validators/prescriptionValidator";
+import useAuth from "./useAuth";
+import { readClinicalDraft, writeClinicalDraft, clearClinicalDraft, getPrescriptionFormKey } from "../utils/clinicalDrafts";
 
 function createLocalId() {
     return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -51,6 +53,10 @@ function buildStockStatus(medicine, quantity) {
 }
 
 function usePrescriptionForm({ appointmentId }) {
+    const { userId, sessionRevision } = useAuth();
+    const draftSession = JSON.stringify([userId, sessionRevision]);
+    const draftKey = `prescription:${appointmentId}`;
+    const cachedDraft = useRef(readClinicalDraft(draftSession, draftKey));
     const [medicalRecord, setMedicalRecord] = useState(null);
     const [prescription, setPrescription] = useState(null);
     const [medicineOptions, setMedicineOptions] = useState([]);
@@ -63,6 +69,15 @@ function usePrescriptionForm({ appointmentId }) {
     const [error, setError] = useState("");
     const [actionError, setActionError] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
+    const hasUnsavedChanges = !loading && getPrescriptionFormKey(form) !== getPrescriptionFormKey(prescription || {});
+    const discardDraft = useCallback(() => clearClinicalDraft(draftSession, draftKey), [draftSession, draftKey]);
+    useEffect(() => {
+        if (loading || !medicalRecord) return;
+        if (!hasUnsavedChanges) { clearClinicalDraft(draftSession, draftKey); return; }
+        writeClinicalDraft(draftSession, draftKey, { form, medicalRecordId: medicalRecord?.medicalRecordId,
+            recordVersion: medicalRecord?.updatedAt, prescriptionId: prescription?.prescriptionId,
+            prescriptionVersion: prescription?.updatedAt });
+    }, [draftSession, draftKey, loading, hasUnsavedChanges, form, medicalRecord, prescription]);
 
     const medicineById = useMemo(() => {
         return new Map(
@@ -132,7 +147,11 @@ function usePrescriptionForm({ appointmentId }) {
             setMedicalRecord(record);
             setMedicineOptions(medicines || []);
             setPrescription(existingPrescription || null);
-            setForm({
+            const draft = cachedDraft.current;
+            cachedDraft.current = null;
+            const canRestore = draft?.medicalRecordId === record.medicalRecordId && draft.recordVersion === record.updatedAt
+                && draft.prescriptionId === existingPrescription?.prescriptionId && draft.prescriptionVersion === existingPrescription?.updatedAt;
+            setForm(canRestore ? draft.form : {
                 notes: existingPrescription?.notes || "",
                 details: toLocalDetails(
                     existingPrescription?.details || []
@@ -305,6 +324,7 @@ function usePrescriptionForm({ appointmentId }) {
                 : await createPrescription(payload);
 
             setPrescription(saved);
+            discardDraft();
             setForm({
                 notes: saved.notes || "",
                 details: toLocalDetails(saved.details || []),
@@ -332,6 +352,7 @@ function usePrescriptionForm({ appointmentId }) {
         prescription,
         refreshMedicalRecord,
         validateForm,
+        discardDraft,
     ]);
 
     const cancelPrescriptionOrder = useCallback(async () => {
@@ -349,6 +370,7 @@ function usePrescriptionForm({ appointmentId }) {
             );
 
             setPrescription(null);
+            discardDraft();
             setForm({
                 notes: "",
                 details: [],
@@ -369,7 +391,7 @@ function usePrescriptionForm({ appointmentId }) {
         } finally {
             setSaving(false);
         }
-    }, [prescription, refreshMedicalRecord]);
+    }, [prescription, refreshMedicalRecord, discardDraft]);
 
     return {
         medicalRecord,
@@ -378,6 +400,8 @@ function usePrescriptionForm({ appointmentId }) {
         form,
         detailSummaries,
         totals,
+        hasUnsavedChanges,
+        discardDraft,
         loading,
         saving,
         error,
