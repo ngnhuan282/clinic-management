@@ -186,6 +186,9 @@ export function getApiErrorMessage(
         case 409:
             return "Thao tác bị trùng hoặc xung đột với dữ liệu hiện có.";
 
+        case 429:
+            return "Bạn đã gửi nhiều yêu cầu. Vui lòng chờ ít phút rồi thử lại hoặc liên hệ phòng khám.";
+
         case 500:
             return "Máy chủ đang gặp lỗi. Vui lòng thử lại sau.";
 

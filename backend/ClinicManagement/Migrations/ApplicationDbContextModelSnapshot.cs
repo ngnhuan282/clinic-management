@@ -199,7 +199,8 @@ namespace ClinicManagement.Migrations
                             Code = "NOI",
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             IsActive = true,
-                            Name = "Noi tong quat",
+                            Name = "Nội tổng quát",
+                            Description = "Khám và đánh giá sức khỏe tổng thể, tiếp nhận các triệu chứng chưa rõ chuyên khoa và theo dõi bệnh nội khoa thường gặp. Bác sĩ kết hợp tiền sử bệnh, thăm khám và kết quả cận lâm sàng để định hướng chăm sóc, tái khám hoặc chuyển chuyên khoa khi cần.",
                             UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
                         },
                         new
@@ -208,7 +209,8 @@ namespace ClinicManagement.Migrations
                             Code = "NHI",
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             IsActive = true,
-                            Name = "Nhi",
+                            Name = "Nhi khoa",
+                            Description = "Chăm sóc sức khỏe trẻ em, khám các bệnh thường gặp và theo dõi sự phát triển thể chất. Nội dung thăm khám có thể gồm vấn đề hô hấp, tiêu hóa, dinh dưỡng và hướng dẫn chăm sóc phù hợp với từng giai đoạn phát triển của trẻ.",
                             UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
                         },
                         new
@@ -217,7 +219,8 @@ namespace ClinicManagement.Migrations
                             Code = "RHM",
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             IsActive = true,
-                            Name = "Rang ham mat",
+                            Name = "Răng hàm mặt",
+                            Description = "Khám và đánh giá các vấn đề về răng, nướu và vùng hàm mặt; tư vấn vệ sinh răng miệng và theo dõi sức khỏe răng định kỳ. Bác sĩ trao đổi về tình trạng răng miệng, nhu cầu chăm sóc và hướng xử trí phù hợp sau khi thăm khám.",
                             UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
                         });
                 });
@@ -379,10 +382,10 @@ namespace ClinicManagement.Migrations
                         new
                         {
                             DoctorId = 1,
-                            Biography = "Chuyen sau sieu am tim va tang huyet ap",
+                            Biography = "Chuyên sâu siêu âm tim và tăng huyết áp",
                             DepartmentId = 1,
                             ExperienceYears = 12,
-                            FullName = "Nguyen Minh An",
+                            FullName = "Nguyễn Minh An",
                             IsActive = true,
                             SpecializationId = 1,
                             Title = "BS.CKII"
@@ -390,10 +393,10 @@ namespace ClinicManagement.Migrations
                         new
                         {
                             DoctorId = 2,
-                            Biography = "Tu van suc khoe tong quat va benh man tinh",
+                            Biography = "Tư vấn sức khỏe tổng quát và bệnh mạn tính",
                             DepartmentId = 2,
                             ExperienceYears = 9,
-                            FullName = "Tran Thu Ha",
+                            FullName = "Trần Thu Hà",
                             IsActive = true,
                             SpecializationId = 2,
                             Title = "ThS.BS"
@@ -401,10 +404,10 @@ namespace ClinicManagement.Migrations
                         new
                         {
                             DoctorId = 3,
-                            Biography = "Dieu tri viem da co dia, mun va di ung da",
+                            Biography = "Điều trị viêm da cơ địa, mụn và dị ứng da",
                             DepartmentId = 3,
                             ExperienceYears = 7,
-                            FullName = "Le Quang Huy",
+                            FullName = "Lê Quang Huy",
                             IsActive = true,
                             SpecializationId = 3,
                             Title = "BS.CKI"

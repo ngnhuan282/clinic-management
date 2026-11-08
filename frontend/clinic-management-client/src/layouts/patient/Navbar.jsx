@@ -1,392 +1,50 @@
-// src/layouts/patient/Navbar.jsx
-
 import { useState } from "react";
-import {
-    AppBar,
-    Box,
-    Button,
-    Container,
-    Divider,
-    Drawer,
-    IconButton,
-    List,
-    ListItem,
-    ListItemButton,
-    ListItemText,
-    Stack,
-    Toolbar,
-    Typography,
-} from "@mui/material";
-import LocalHospitalIcon from "@mui/icons-material/LocalHospital";
-import LocalPhoneIcon from "@mui/icons-material/LocalPhone";
-import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
-import AccountCircleIcon from "@mui/icons-material/AccountCircle";
-import MenuIcon from "@mui/icons-material/Menu";
-import CloseIcon from "@mui/icons-material/Close";
-import { useNavigate } from "react-router-dom";
+import { AppBar, Box, Button, Container, Divider, Drawer, IconButton, List, ListItemButton, ListItemText, Stack, Toolbar, Typography } from "@mui/material";
+import { AccountCircleOutlined, CalendarMonthOutlined, Close, LocalHospital, Menu, PhoneOutlined } from "@mui/icons-material";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
 import AccountMenu from "./AccountMenu";
+import { CLINIC } from "../../data/publicContent";
 
 const NAV_LINKS = [
-    { label: "Trang chủ", href: "/" },
-    { label: "Chuyên khoa", href: "/specialties" },
-    { label: "Đội ngũ bác sĩ", href: "/doctors" },
-    { label: "Dịch vụ y tế", href: "/services" },
-    { label: "Bảng giá viện phí", href: "/pricing" },
-    { label: "Cẩm nang sức khỏe", href: "/health-guide" },
+    ["Giới thiệu", "/about"], ["Chuyên khoa", "/specialties"], ["Bác sĩ", "/doctors"],
+    ["Dịch vụ", "/services"], ["Bảng giá", "/pricing"], ["Hướng dẫn", "/health-guide"], ["Liên hệ", "/contact"],
 ];
+const desktop = { display: "none", "@media (min-width: 1360px)": { display: "flex" } };
 
-const COLORS = {
-    primary: "#005dac",
-    primaryDark: "#004a8f",
-    primaryLight: "#eff6ff",
-    primaryBorder: "#bfdbfe",
-    textHeading: "#1f2937",
-    textMuted: "#6b7280",
-    borderSubtle: "#e5e9f0",
-};
-
-const NAVBAR_STYLES = {
-    appBar: {
-        backgroundColor: "#ffffff",
-        color: COLORS.textHeading,
-        boxShadow: `0 1px 0 0 ${COLORS.borderSubtle}`,
-        position: "sticky",
-        top: 0,
-        zIndex: 1100,
-    },
-    toolbar: {
-        gap: 1.5,
-        py: 0,
-        minHeight: { xs: "64px", md: "78px" },
-        alignItems: "center",
-    },
-    logoLink: {
-        display: "flex",
-        alignItems: "center",
-        gap: 1.25,
-        textDecoration: "none",
-        flexShrink: 0,
-        py: 1,
-    },
-    logoIconBox: {
-        width: 42,
-        height: 42,
-        backgroundColor: COLORS.primary,
-        borderRadius: "8px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        color: "#fff",
-        flexShrink: 0,
-    },
-    navLinksStack: {
-        flexGrow: 1,
-        display: "none",
-        "@media (min-width: 1360px)": { display: "flex" },
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 0.25,
-    },
-    navLinkBase: {
-        fontSize: "14px",
-        fontWeight: 500,
-        color: COLORS.textHeading,
-        px: 1,
-        py: 1,
-        borderRadius: "0px",
-        lineHeight: 1.3,
-        whiteSpace: "nowrap",
-        minWidth: 0,
-        flexShrink: 0,
-        textAlign: "center",
-        "&:hover": {
-            backgroundColor: COLORS.primaryLight,
-            color: COLORS.primary,
-            borderRadius: "6px",
-        },
-    },
-    navLinkActive: {
-        color: COLORS.primary,
-        fontWeight: 600,
-        borderBottom: `2px solid ${COLORS.primary}`,
-        "&:hover": {
-            backgroundColor: "transparent",
-        },
-    },
-    ctaStack: {
-        display: { xs: "none", md: "flex" },
-        flexDirection: "row",
-        flexShrink: 0,
-        ml: "auto",
-        gap: 1,
-        alignItems: "center",
-        py: 1,
-    },
-    patientPortalBtn: {
-        whiteSpace: "nowrap",
-        fontWeight: 700,
-        fontSize: "14px",
-        color: COLORS.primary,
-        border: `1.5px solid ${COLORS.primary}`,
-        borderRadius: "8px",
-        px: 2,
-        py: 1,
-        "&:hover": {
-            backgroundColor: COLORS.primaryLight,
-            border: `1.5px solid ${COLORS.primary}`,
-        },
-    },
-    bookingBtn: {
-        whiteSpace: "nowrap",
-        fontWeight: 600,
-        fontSize: "14px",
-        backgroundColor: COLORS.primary,
-        color: "#fff",
-        borderRadius: "8px",
-        px: 2.5,
-        py: 1,
-        boxShadow: "none",
-        "&:hover": {
-            backgroundColor: COLORS.primaryDark,
-            boxShadow: "none",
-        },
-    },
-    hotlinePill: {
-        display: "none",
-        "@media (min-width: 1600px)": { display: "flex" },
-        whiteSpace: "nowrap",
-        alignItems: "center",
-        gap: 1,
-        px: 1.75,
-        py: 1,
-        borderRadius: "999px",
-        backgroundColor: "#f3f7fb",
-        border: `1px solid ${COLORS.borderSubtle}`,
-        color: COLORS.textHeading,
-        fontWeight: 800,
-        fontSize: "14px",
-        lineHeight: 1.1,
-    },
-};
-
-function Navbar() {
-    const [mobileOpen, setMobileOpen] = useState(false);
+export default function Navbar() {
+    const [open, setOpen] = useState(false);
     const { isAuthenticated, user, role, sessionChecked, logout } = useAuth();
+    const location = useLocation();
     const navigate = useNavigate();
-    const handleAccountNavigate = path => { setMobileOpen(false); navigate(path); };
-
-    async function handleLogout() {
-        setMobileOpen(false);
-        try { await logout(); }
-        catch { /* Local credentials are cleared even if the server is unavailable. */ }
-        navigate("/login", { replace: true });
-    }
-
-    const handleDrawerToggle = () => {
-        setMobileOpen((prev) => !prev);
-    };
-
-    return (
-        <>
-            <AppBar sx={NAVBAR_STYLES.appBar} elevation={0}>
-                <Container maxWidth="xl">
-                    <Toolbar disableGutters sx={NAVBAR_STYLES.toolbar}>
-                        {/* Logo */}
-                        <Box component="a" href="/" sx={NAVBAR_STYLES.logoLink}>
-                            <Box sx={NAVBAR_STYLES.logoIconBox}>
-                                <LocalHospitalIcon sx={{ fontSize: "22px" }} />
-                            </Box>
-                            <Box sx={{ lineHeight: 1.1 }}>
-                                <Typography
-                                    noWrap
-                                    sx={{
-                                        fontSize: "16px",
-                                        fontWeight: 800,
-                                        color: COLORS.primary,
-                                        lineHeight: 1.2,
-                                    }}
-                                >
-                                    Clinic Management
-                                </Typography>
-                                <Typography
-                                    noWrap
-                                    sx={{
-                                        fontSize: "16px",
-                                        fontWeight: 800,
-                                        color: COLORS.primary,
-                                        lineHeight: 1.2,
-                                    }}
-                                >
-                                    System
-                                </Typography>
-                            </Box>
-                        </Box>
-
-                        {/* Navigation links — Desktop */}
-                        <Stack sx={NAVBAR_STYLES.navLinksStack}>
-                            {NAV_LINKS.map((link) => (
-                                <Button
-                                    key={link.href}
-                                    component="a"
-                                    href={link.href}
-                                    sx={{
-                                        ...NAVBAR_STYLES.navLinkBase,
-                                    }}
-                                >
-                                    {link.label}
-                                </Button>
-                            ))}
-                        </Stack>
-
-                        {/* CTA buttons — Desktop */}
-                        <Stack sx={NAVBAR_STYLES.ctaStack}>
-                            <Box sx={NAVBAR_STYLES.hotlinePill}>
-                                <LocalPhoneIcon sx={{ color: COLORS.primary, fontSize: 18 }} />
-                                <Box>1900 6868</Box>
-                            </Box>
-                            {isAuthenticated ? <AccountMenu key={user?.userId} user={user} role={role} sessionChecked={sessionChecked} onNavigate={handleAccountNavigate} onLogout={handleLogout} /> : <Button
-                                variant="outlined"
-                                component="a"
-                                href="/login"
-                                startIcon={<AccountCircleIcon sx={{ fontSize: "18px" }} />}
-                                sx={NAVBAR_STYLES.patientPortalBtn}
-                            >
-                                Cổng Bệnh Nhân
-                            </Button>}
-                            <Button
-                                variant="contained"
-                                component="a"
-                                href="/booking"
-                                startIcon={<CalendarMonthIcon sx={{ fontSize: "18px" }} />}
-                                sx={NAVBAR_STYLES.bookingBtn}
-                            >
-                                Đặt lịch khám
-                            </Button>
-                        </Stack>
-
-                        {/* Mobile toggle */}
-                        <IconButton
-                            onClick={handleDrawerToggle}
-                            sx={{
-                                display: "inline-flex",
-                                ml: { xs: "auto", md: 0 },
-                                "@media (min-width: 1360px)": { display: "none" },
-                            }}
-                            aria-label="Mở menu điều hướng"
-                        >
-                            <MenuIcon />
-                        </IconButton>
-                    </Toolbar>
-                </Container>
-            </AppBar>
-
-            {/* Mobile Drawer */}
-            <Drawer
-                anchor="right"
-                open={mobileOpen}
-                onClose={handleDrawerToggle}
-                slotProps={{ paper: { sx: { width: 280, maxWidth: "100vw" } } }}
-            >
-                <Box
-                    sx={{
-                        p: 2,
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                    }}
-                >
-                    <Typography
-                        sx={{
-                            fontWeight: 800,
-                            color: COLORS.primary,
-                            fontSize: "17px",
-                        }}
-                    >
-                        MedClinic
-                    </Typography>
-                    <IconButton onClick={handleDrawerToggle} aria-label="Đóng menu">
-                        <CloseIcon />
-                    </IconButton>
+    const active = href => location.pathname === href || location.pathname.startsWith(href + "/");
+    const close = () => setOpen(false);
+    const accountNavigate = path => { close(); navigate(path); };
+    const handleLogout = async () => { close(); try { await logout(); } finally { navigate("/"); } };
+    const account = fullWidth => isAuthenticated
+        ? <AccountMenu key={user?.userId} user={user} role={role} sessionChecked={sessionChecked} fullWidth={fullWidth} onNavigate={accountNavigate} onLogout={handleLogout} />
+        : <Button component={Link} to="/login" onClick={close} variant="outlined" fullWidth={fullWidth} startIcon={<AccountCircleOutlined />}>Cổng Bệnh Nhân</Button>;
+    return <>
+        <AppBar position="sticky" elevation={0} sx={{ bgcolor: "white", color: "text.primary", borderBottom: "1px solid #e5e9f0" }}>
+            <Container maxWidth="xl"><Toolbar disableGutters sx={{ minHeight: { xs: 68, md: 80 }, gap: 2 }}>
+                <Box component={Link} to="/" aria-label="Clinic Management System – Trang chủ" onClick={close} sx={{ display: "flex", gap: 1.25, alignItems: "center", textDecoration: "none", color: "primary.main", flexShrink: 0 }}>
+                    <Box sx={{ width: 42, height: 42, display: "grid", placeItems: "center", bgcolor: "primary.main", color: "white", borderRadius: 2 }}><LocalHospital /></Box>
+                    <Box><Typography sx={{ fontWeight: 800, fontSize: { xs: 15, sm: 17 }, lineHeight: 1.3 }}>Clinic Management</Typography><Typography sx={{ fontWeight: 650, fontSize: 13, lineHeight: 1.3 }}>System</Typography></Box>
                 </Box>
-                <Divider />
-                <List>
-                    {NAV_LINKS.map((link) => (
-                        <ListItem key={link.href} disablePadding>
-                            <ListItemButton
-                                component="a"
-                                href={link.href}
-                                sx={{
-                                    ...(link.isActive
-                                        ? { color: COLORS.primary, fontWeight: 700 }
-                                        : {}),
-                                }}
-                            >
-                                <ListItemText
-                                    primary={link.label}
-                                    primaryTypographyProps={{
-                                        fontSize: "14px",
-                                        fontWeight: link.isActive ? 700 : 500,
-                                        color: link.isActive ? COLORS.primary : COLORS.textHeading,
-                                    }}
-                                />
-                            </ListItemButton>
-                        </ListItem>
-                    ))}
-                </List>
-                <Divider />
-                <Box sx={{ p: 2, display: "flex", flexDirection: "column", gap: 1.5 }}>
-                    {isAuthenticated ? <AccountMenu key={user?.userId} user={user} role={role} sessionChecked={sessionChecked} fullWidth onNavigate={handleAccountNavigate} onLogout={handleLogout} /> : <Button
-                        fullWidth
-                        variant="outlined"
-                        component="a"
-                        href="/login"
-                        startIcon={<AccountCircleIcon />}
-                        sx={{
-                            ...NAVBAR_STYLES.patientPortalBtn,
-                            justifyContent: "flex-start",
-                        }}
-                    >
-                        Cổng Bệnh Nhân
-                    </Button>}
-                    <Button
-                        fullWidth
-                        variant="contained"
-                        component="a"
-                        href="/booking"
-                        startIcon={<CalendarMonthIcon />}
-                        sx={{
-                            ...NAVBAR_STYLES.bookingBtn,
-                            justifyContent: "flex-start",
-                        }}
-                    >
-                        Đặt lịch khám
-                    </Button>
-                    <Box
-                        sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 1,
-                            pt: 1,
-                            borderTop: `1px solid ${COLORS.borderSubtle}`,
-                        }}
-                    >
-                        <LocalPhoneIcon sx={{ color: COLORS.primary, fontSize: "18px" }} />
-                        <Typography
-                            sx={{
-                                fontSize: "14px",
-                                fontWeight: 700,
-                                color: COLORS.primary,
-                            }}
-                        >
-                            Hotline: 1900 6868
-                        </Typography>
-                    </Box>
-                </Box>
-            </Drawer>
-        </>
-    );
+                <Stack component="nav" aria-label="Điều hướng chính" direction="row" spacing={0.25} sx={{ ...desktop, flex: 1, justifyContent: "center" }}>
+                    {NAV_LINKS.map(([label, href]) => <Button key={href} component={Link} to={href} aria-current={active(href) ? "page" : undefined} sx={{ color: active(href) ? "primary.main" : "text.primary", bgcolor: active(href) ? "#eff6ff" : undefined, fontSize: 16, px: 1, minWidth: 0, whiteSpace: "nowrap", fontWeight: active(href) ? 750 : 550 }}>{label}</Button>)}
+                </Stack>
+                <Stack direction="row" spacing={1.25} sx={desktop}>{account(false)}<Button component={Link} to="/booking" variant="contained" startIcon={<CalendarMonthOutlined />}>Đặt lịch khám</Button></Stack>
+                <IconButton aria-label="Mở menu điều hướng" aria-expanded={open} aria-controls={open ? "patient-mobile-nav" : undefined} onClick={() => setOpen(true)} sx={{ ml: "auto", "@media (min-width: 1360px)": { display: "none" } }}><Menu /></IconButton>
+            </Toolbar></Container>
+        </AppBar>
+        <Drawer anchor="right" open={open} onClose={close} slotProps={{ paper: { sx: { width: 310, maxWidth: "100vw" } } }}>
+            <Stack direction="row"   sx={{ justifyContent: "space-between", alignItems: "center",  p: 2  }}><Typography  sx={{ fontWeight: 750 }}>Điều hướng</Typography><IconButton aria-label="Đóng menu" onClick={close}><Close /></IconButton></Stack><Divider />
+            <List id="patient-mobile-nav" component="nav" aria-label="Điều hướng trên điện thoại" sx={{ "& .MuiListItemText-primary": { fontSize: 18 } }}>
+                <ListItemButton component={Link} to="/" onClick={close} selected={location.pathname === "/"}><ListItemText primary="Trang chủ" /></ListItemButton>
+                {NAV_LINKS.map(([label, href]) => <ListItemButton key={href} component={Link} to={href} onClick={close} selected={active(href)} aria-current={active(href) ? "page" : undefined}><ListItemText primary={label} /></ListItemButton>)}
+            </List><Divider />
+            <Stack spacing={2} sx={{ p: 2 }}>{account(true)}<Button fullWidth component={Link} to="/booking" onClick={close} variant="contained" startIcon={<CalendarMonthOutlined />}>Đặt lịch khám</Button><Button component="a" href={CLINIC.phoneHref} startIcon={<PhoneOutlined />}>{CLINIC.phone}</Button></Stack>
+        </Drawer>
+    </>;
 }
-
-export default Navbar;

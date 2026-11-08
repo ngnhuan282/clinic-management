@@ -14,7 +14,17 @@ import InternalLayout from "../layouts/InternalLayout";
 import ProtectedRoute from "./ProtectedRoute";
 
 import HomePage from "../pages/patient/HomePage";
-const BookingPage = lazy(() => import("../pages/patient/BookingPage"));
+const BookingPage = lazy(() => import("../pages/patient/PublicBookingPage"));
+const PublicDoctorDetailPage = lazy(() => import("../pages/patient/PublicDoctorDetailPage"));
+const publicPage = name => lazy(() => import("../pages/patient/PublicClinicPages").then(module => ({ default: module[name] })));
+const AboutPage = publicPage("AboutPage");
+const SpecialtiesPage = publicPage("SpecialtiesPage");
+const SpecialtyDetailPage = publicPage("SpecialtyDetailPage");
+const ServicesPage = publicPage("ServicesPage");
+const PatientGuidePage = publicPage("PatientGuidePage");
+const GuideArticlePage = publicPage("GuideArticlePage");
+const ContactPage = publicPage("ContactPage");
+const PrivacyPage = publicPage("PrivacyPage");
 const MyAppointmentsPage = lazy(() => import("../pages/patient/MyAppointmentsPage"));
 const LabResultsPage = lazy(() => import("../pages/patient/LabResultsPage"));
 const DoctorSearchPage = lazy(() => import("../pages/patient/DoctorSearchPage"));
@@ -91,6 +101,18 @@ export default function AppRoutes() {
                 <Route element={<PatientLayout />}>
                     <Route path="/" element={<HomePage />} />
                     <Route path="/doctors" element={<DoctorSearchPage />} />
+                    <Route path="/doctors/:doctorId" element={<PublicDoctorDetailPage />} />
+                    <Route path="/about" element={<AboutPage />} />
+                    <Route path="/specialties" element={<SpecialtiesPage />} />
+                    <Route path="/specialties/:departmentId" element={<SpecialtyDetailPage />} />
+                    <Route path="/services" element={<ServicesPage />} />
+                    <Route path="/pricing" element={<ServicesPage pricing />} />
+                    <Route path="/health-guide" element={<PatientGuidePage />} />
+                    <Route path="/health-guide/:slug" element={<GuideArticlePage />} />
+                    <Route path="/patient-guide" element={<Navigate to="/health-guide" replace />} />
+                    <Route path="/contact" element={<ContactPage />} />
+                    <Route path="/privacy" element={<PrivacyPage />} />
+                    <Route path="/booking" element={<BookingPage />} />
                     <Route path="/reviews" element={<ReviewsPage />} />
                     <Route path="/login" element={<AuthPage key="login" />} />
                     <Route
@@ -112,7 +134,6 @@ export default function AppRoutes() {
                     <Route
                         element={<ProtectedRoute allowedRoles={["Patient"]} />}
                     >
-                        <Route path="/booking" element={<BookingPage />} />
                         <Route element={<ProtectedRoute allowedPermissions={["appointments.viewOwn"]} />}>
                             <Route path="/my-appointments" element={<MyAppointmentsPage />} />
                         </Route>

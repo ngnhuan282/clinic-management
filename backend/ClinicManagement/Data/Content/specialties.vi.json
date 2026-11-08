@@ -1,0 +1,383 @@
+[
+  {
+    "code": "NOI",
+    "name": "Nội tổng quát",
+    "legacyNames": [
+      "Noi tong quat"
+    ],
+    "summary": "Khám và đánh giá sức khỏe tổng thể, tiếp nhận các triệu chứng chưa rõ chuyên khoa và theo dõi bệnh nội khoa thường gặp. Bác sĩ kết hợp tiền sử bệnh, thăm khám và kết quả cận lâm sàng để định hướng chăm sóc, tái khám hoặc chuyển chuyên khoa khi cần.",
+    "overview": "Nội tổng quát là điểm tiếp nhận khi người bệnh cần kiểm tra sức khỏe định kỳ hoặc có nhiều biểu hiện chưa xác định được chuyên khoa phù hợp. Buổi khám tập trung vào tiền sử, thuốc đang sử dụng và tình trạng sức khỏe hiện tại, từ đó xây dựng kế hoạch theo dõi và phối hợp chuyên khoa.",
+    "focusAreas": [
+      "Đánh giá sức khỏe định kỳ và các triệu chứng nội khoa thường gặp.",
+      "Theo dõi bệnh mạn tính và đối chiếu kết quả khám trước đây.",
+      "Định hướng xét nghiệm, thăm dò hoặc khám chuyên khoa theo đánh giá của bác sĩ."
+    ],
+    "preparation": [
+      "Mang đơn thuốc đang dùng và các kết quả khám gần đây.",
+      "Ghi lại thời điểm xuất hiện triệu chứng và những vấn đề muốn trao đổi."
+    ],
+    "sourceUrl": null
+  },
+  {
+    "code": "NHI",
+    "name": "Nhi khoa",
+    "legacyNames": [
+      "Nhi khoa",
+      "Nhi"
+    ],
+    "summary": "Chăm sóc sức khỏe trẻ em, khám các bệnh thường gặp và theo dõi sự phát triển thể chất. Nội dung thăm khám có thể gồm vấn đề hô hấp, tiêu hóa, dinh dưỡng và hướng dẫn chăm sóc phù hợp với từng giai đoạn phát triển của trẻ.",
+    "overview": "Nhi khoa quan tâm đến sức khỏe và sự phát triển của trẻ theo từng độ tuổi. Ngoài các triệu chứng đang gặp, bác sĩ có thể trao đổi với gia đình về ăn uống, giấc ngủ, vận động và tiền sử tiêm chủng để có thông tin đầy đủ khi thăm khám.",
+    "focusAreas": [
+      "Các vấn đề hô hấp, tiêu hóa và bệnh thường gặp ở trẻ.",
+      "Khám định kỳ, theo dõi tăng trưởng và phát triển.",
+      "Trao đổi về dinh dưỡng, chăm sóc trẻ và lịch tiêm chủng."
+    ],
+    "preparation": [
+      "Mang sổ theo dõi sức khỏe, sổ tiêm chủng và đơn thuốc của trẻ.",
+      "Người chăm sóc nên ghi lại diễn biến triệu chứng, chế độ ăn và giấc ngủ."
+    ],
+    "sourceUrl": "https://umcclinic.com.vn/nhi-khoa"
+  },
+  {
+    "code": "RHM",
+    "name": "Răng hàm mặt",
+    "legacyNames": [
+      "Rang ham mat"
+    ],
+    "summary": "Khám và đánh giá các vấn đề về răng, nướu và vùng hàm mặt; tư vấn vệ sinh răng miệng và theo dõi sức khỏe răng định kỳ. Bác sĩ trao đổi về tình trạng răng miệng, nhu cầu chăm sóc và hướng xử trí phù hợp sau khi thăm khám.",
+    "overview": "Chuyên khoa Răng hàm mặt tiếp nhận các nhu cầu kiểm tra răng miệng và những khó chịu tại răng, nướu hoặc vùng hàm. Thông tin về bệnh nền, dị ứng và các can thiệp nha khoa trước đây giúp bác sĩ đánh giá và tư vấn kế hoạch chăm sóc.",
+    "focusAreas": [
+      "Kiểm tra răng, nướu và tình trạng vệ sinh răng miệng.",
+      "Đánh giá đau răng, chảy máu nướu hoặc khó chịu vùng hàm.",
+      "Tư vấn chăm sóc và lịch kiểm tra răng miệng."
+    ],
+    "preparation": [
+      "Mang phim chụp răng và hồ sơ nha khoa nếu có.",
+      "Thông báo bệnh nền, tiền sử dị ứng và các thuốc đang sử dụng."
+    ],
+    "sourceUrl": null
+  },
+  {
+    "code": "TIM",
+    "name": "Tim mạch",
+    "legacyNames": [
+      "Tim mach"
+    ],
+    "summary": "Khám và theo dõi các bệnh lý tim mạch như tăng huyết áp, rối loạn lipid máu, bệnh mạch vành và rối loạn nhịp tim. Đánh giá triệu chứng, yếu tố nguy cơ và kết quả thăm dò giúp bác sĩ xây dựng kế hoạch chăm sóc phù hợp.",
+    "overview": "Chuyên khoa Tim mạch quan tâm đến hoạt động của tim và hệ mạch máu. Bác sĩ khai thác tiền sử, các biểu hiện như hồi hộp hoặc khó thở và đối chiếu thông tin theo dõi tại nhà; các thăm dò được cân nhắc theo tình trạng cụ thể.",
+    "focusAreas": [
+      "Theo dõi tăng huyết áp và các yếu tố nguy cơ tim mạch.",
+      "Đánh giá các vấn đề nhịp tim, mạch vành hoặc van tim.",
+      "Đối chiếu điện tâm đồ, siêu âm tim và kết quả theo dõi đã có."
+    ],
+    "preparation": [
+      "Mang sổ theo dõi huyết áp, nhịp tim và đơn thuốc.",
+      "Chuẩn bị kết quả điện tâm đồ, siêu âm hoặc xét nghiệm trước đây nếu có."
+    ],
+    "sourceUrl": "https://umcclinic.com.vn/tim-mach"
+  },
+  {
+    "code": "HOHAP",
+    "name": "Hô hấp",
+    "legacyNames": [
+      "Ho hap"
+    ],
+    "summary": "Khám các vấn đề đường hô hấp như ho kéo dài, khò khè, hen phế quản và bệnh phổi tắc nghẽn mạn tính. Việc thăm khám kết hợp khai thác yếu tố dị ứng, môi trường sống và các kết quả thăm dò chức năng hô hấp đã có.",
+    "overview": "Chuyên khoa Hô hấp tập trung vào triệu chứng và chức năng của hệ hô hấp. Các yếu tố như tiền sử hút thuốc, tiếp xúc bụi, dị ứng và diễn biến triệu chứng được ghi nhận để bác sĩ định hướng đánh giá và theo dõi.",
+    "focusAreas": [
+      "Ho kéo dài, khò khè và những khó chịu đường hô hấp.",
+      "Theo dõi hen phế quản và bệnh phổi tắc nghẽn mạn tính.",
+      "Trao đổi về dị ứng hô hấp và các yếu tố môi trường liên quan."
+    ],
+    "preparation": [
+      "Mang phim chụp ngực, kết quả hô hấp ký và đơn thuốc nếu có.",
+      "Ghi lại thuốc hít đang dùng và các yếu tố thường làm xuất hiện triệu chứng."
+    ],
+    "sourceUrl": "https://umcclinic.com.vn/ho-hap-va-di-ung-mien-dich-lam-sang"
+  },
+  {
+    "code": "TIEUHOA",
+    "name": "Tiêu hóa",
+    "legacyNames": [
+      "Tieu hoa"
+    ],
+    "summary": "Khám các bệnh lý đường tiêu hóa, gan và mật; đánh giá đau bụng, rối loạn tiêu hóa, trào ngược và các vấn đề gan mạn tính. Bác sĩ xem xét tiền sử, kết quả xét nghiệm, siêu âm hoặc nội soi để định hướng theo dõi.",
+    "overview": "Chuyên khoa Tiêu hóa tiếp nhận những vấn đề liên quan đến thực quản, dạ dày, ruột, gan và đường mật. Buổi khám chú trọng diễn biến triệu chứng, thói quen ăn uống và hồ sơ cận lâm sàng; nhu cầu nội soi hoặc xét nghiệm được trao đổi sau khi bác sĩ đánh giá.",
+    "focusAreas": [
+      "Các vấn đề dạ dày, trào ngược và rối loạn tiêu hóa.",
+      "Theo dõi viêm gan, gan nhiễm mỡ và các bệnh lý gan mật.",
+      "Đối chiếu kết quả nội soi, siêu âm và xét nghiệm liên quan."
+    ],
+    "preparation": [
+      "Mang kết quả nội soi, siêu âm và xét nghiệm gan mật đã có.",
+      "Liên hệ phòng khám để xác nhận yêu cầu chuẩn bị riêng nếu có chỉ định thủ thuật."
+    ],
+    "sourceUrl": "https://umcclinic.com.vn/tieu-hoa-gan-mat-1"
+  },
+  {
+    "code": "NOITIET",
+    "name": "Nội tiết",
+    "legacyNames": [
+      "Noi tiet"
+    ],
+    "summary": "Khám và theo dõi rối loạn nội tiết, chuyển hóa như đái tháo đường, bệnh tuyến giáp và rối loạn lipid máu. Việc theo dõi lâu dài dựa trên triệu chứng, diễn biến chỉ số xét nghiệm và đáp ứng của từng người bệnh.",
+    "overview": "Nội tiết tập trung vào những thay đổi liên quan đến hormone và chuyển hóa. Bác sĩ đối chiếu chỉ số xét nghiệm, thuốc đang dùng và thông tin theo dõi hằng ngày để đánh giá tình trạng bệnh và kế hoạch tái khám.",
+    "focusAreas": [
+      "Theo dõi đái tháo đường và những thay đổi đường huyết.",
+      "Đánh giá bệnh tuyến giáp và các rối loạn nội tiết.",
+      "Theo dõi rối loạn lipid máu và chuyển hóa."
+    ],
+    "preparation": [
+      "Mang sổ theo dõi đường huyết và kết quả xét nghiệm gần đây.",
+      "Chuẩn bị danh sách thuốc, liều dùng và thời điểm sử dụng hiện tại."
+    ],
+    "sourceUrl": "https://umcclinic.com.vn/noi-tiet-1"
+  },
+  {
+    "code": "DALIEU",
+    "name": "Da liễu",
+    "legacyNames": [
+      "Da lieu"
+    ],
+    "summary": "Khám các vấn đề về da, tóc và móng; đánh giá tổn thương da, ngứa và những thay đổi kéo dài hoặc tái phát. Bác sĩ ghi nhận diễn biến, sản phẩm đang sử dụng và yếu tố tiếp xúc để tư vấn chăm sóc phù hợp.",
+    "overview": "Da liễu tiếp nhận những thay đổi tại da và các phần phụ của da. Lịch sử sử dụng thuốc, mỹ phẩm và hình ảnh tổn thương qua từng thời điểm giúp bổ sung thông tin cho buổi khám.",
+    "focusAreas": [
+      "Đánh giá các tổn thương da và tình trạng ngứa.",
+      "Các vấn đề về tóc, móng và da đầu.",
+      "Tư vấn chăm sóc da và theo dõi những thay đổi tái phát."
+    ],
+    "preparation": [
+      "Mang đơn thuốc và ghi lại các sản phẩm đang dùng trên da.",
+      "Có thể chuẩn bị ảnh tổn thương ở những thời điểm trước buổi khám."
+    ],
+    "sourceUrl": null
+  },
+  {
+    "code": "MAT",
+    "name": "Mắt",
+    "legacyNames": [
+      "Mat"
+    ],
+    "summary": "Khám và kiểm tra sức khỏe mắt, tiếp nhận các vấn đề về thị lực, khó chịu ở mắt và nhu cầu theo dõi định kỳ. Thông tin về kính đang sử dụng, bệnh nền và kết quả khám trước giúp bác sĩ đánh giá tình trạng hiện tại.",
+    "overview": "Chuyên khoa Mắt quan tâm đến thị lực và các thay đổi tại mắt. Buổi khám ghi nhận mức độ ảnh hưởng đến sinh hoạt, quá trình sử dụng kính và tiền sử điều trị để định hướng chăm sóc.",
+    "focusAreas": [
+      "Kiểm tra thị lực và nhu cầu theo dõi sức khỏe mắt.",
+      "Đánh giá khó chịu, đỏ mắt hoặc thay đổi khả năng nhìn.",
+      "Đối chiếu hồ sơ khám và các kết quả đo mắt trước đây."
+    ],
+    "preparation": [
+      "Mang kính đang dùng và hồ sơ khám mắt nếu có.",
+      "Ghi lại các thuốc nhỏ mắt và thuốc điều trị bệnh nền hiện tại."
+    ],
+    "sourceUrl": null
+  },
+  {
+    "code": "TMH",
+    "name": "Tai mũi họng",
+    "legacyNames": [
+      "Tai mui hong"
+    ],
+    "summary": "Khám các vấn đề tại tai, mũi, xoang và họng, bao gồm tình trạng khó chịu kéo dài hoặc tái phát. Bác sĩ đánh giá triệu chứng, khả năng nghe, giọng nói và tiền sử điều trị để định hướng thăm khám phù hợp.",
+    "overview": "Tai mũi họng tiếp nhận các nhu cầu khám và theo dõi sức khỏe vùng tai, mũi và họng. Diễn biến triệu chứng, yếu tố dị ứng và những lần điều trị trước được xem xét trong quá trình thăm khám.",
+    "focusAreas": [
+      "Các vấn đề tại tai và thay đổi khả năng nghe.",
+      "Khó chịu vùng mũi, xoang và những biểu hiện tái phát.",
+      "Các vấn đề tại họng, giọng nói và nuốt."
+    ],
+    "preparation": [
+      "Mang kết quả nội soi, đo thính lực hoặc phim chụp đã có.",
+      "Ghi lại thời gian xuất hiện triệu chứng và các thuốc từng sử dụng."
+    ],
+    "sourceUrl": null
+  },
+  {
+    "code": "CXYK",
+    "name": "Cơ xương khớp",
+    "legacyNames": [
+      "Co xuong khop"
+    ],
+    "summary": "Khám và theo dõi các bệnh lý cơ, xương, khớp như thoái hóa khớp, gout, viêm khớp và loãng xương. Việc đánh giá kết hợp mức độ đau, khả năng vận động và kết quả xét nghiệm hoặc chẩn đoán hình ảnh.",
+    "overview": "Chuyên khoa Cơ xương khớp quan tâm đến tình trạng đau và hạn chế vận động do bệnh lý khớp, cột sống hoặc mô mềm. Bác sĩ đối chiếu diễn biến triệu chứng với các kết quả thăm dò để định hướng theo dõi và chăm sóc.",
+    "focusAreas": [
+      "Các bệnh khớp thoái hóa và vấn đề cột sống.",
+      "Gout, viêm khớp và bệnh lý mô mềm quanh khớp.",
+      "Loãng xương và theo dõi sức khỏe xương."
+    ],
+    "preparation": [
+      "Mang phim chụp, kết quả đo mật độ xương và xét nghiệm liên quan.",
+      "Ghi lại vị trí đau, thời điểm đau và mức độ ảnh hưởng đến vận động."
+    ],
+    "sourceUrl": "https://umcclinic.com.vn/co-xuong-khop"
+  },
+  {
+    "code": "THANKINH",
+    "name": "Thần kinh",
+    "legacyNames": [
+      "Than kinh"
+    ],
+    "summary": "Khám và đánh giá các triệu chứng liên quan đến hệ thần kinh; theo dõi những thay đổi về cảm giác, vận động và sinh hoạt. Bác sĩ kết hợp tiền sử, thăm khám và kết quả cận lâm sàng để định hướng chăm sóc hoặc khám chuyên khoa sâu hơn.",
+    "overview": "Chuyên khoa Thần kinh tiếp nhận các vấn đề về chức năng của hệ thần kinh. Thông tin về thời điểm xuất hiện, tần suất và ảnh hưởng của triệu chứng giúp bác sĩ có cơ sở đánh giá khi thăm khám.",
+    "focusAreas": [
+      "Đánh giá những thay đổi về cảm giác và vận động.",
+      "Ghi nhận các triệu chứng thần kinh kéo dài hoặc tái phát.",
+      "Đối chiếu kết quả khám và thăm dò thần kinh trước đây."
+    ],
+    "preparation": [
+      "Mang phim chụp và hồ sơ điều trị trước đây nếu có.",
+      "Ghi lại thời gian, tần suất và những hoàn cảnh xuất hiện triệu chứng."
+    ],
+    "sourceUrl": null
+  },
+  {
+    "code": "SAN",
+    "name": "Sản phụ khoa",
+    "legacyNames": [
+      "San phu khoa"
+    ],
+    "summary": "Chăm sóc sức khỏe phụ nữ, khám và theo dõi thai kỳ, đánh giá các bệnh lý phụ khoa và sức khỏe sinh sản. Nội dung thăm khám được trao đổi theo độ tuổi, tiền sử và nhu cầu riêng của từng người bệnh.",
+    "overview": "Sản phụ khoa bao gồm theo dõi sức khỏe mẹ và thai nhi trong thai kỳ, cùng các vấn đề phụ khoa ở từng giai đoạn của cuộc sống. Bác sĩ khai thác tiền sử, thông tin chu kỳ và hồ sơ khám để tư vấn kế hoạch theo dõi.",
+    "focusAreas": [
+      "Khám thai và theo dõi sức khỏe trong thai kỳ.",
+      "Đánh giá rối loạn kinh nguyệt và các vấn đề phụ khoa.",
+      "Trao đổi về tầm soát và chăm sóc sức khỏe sinh sản."
+    ],
+    "preparation": [
+      "Mang sổ khám thai, kết quả siêu âm hoặc xét nghiệm đã có.",
+      "Chuẩn bị thông tin chu kỳ, tiền sử sản khoa và các thuốc đang sử dụng."
+    ],
+    "sourceUrl": "https://umcclinic.com.vn/san-phu-khoa"
+  },
+  {
+    "code": "NIEU",
+    "name": "Tiết niệu",
+    "legacyNames": [
+      "Tiet nieu"
+    ],
+    "summary": "Khám và đánh giá các vấn đề của hệ tiết niệu, tiếp nhận thay đổi khi đi tiểu và nhu cầu theo dõi bệnh đã được chẩn đoán. Bác sĩ đối chiếu triệu chứng, kết quả xét nghiệm nước tiểu và chẩn đoán hình ảnh khi có.",
+    "overview": "Chuyên khoa Tiết niệu quan tâm đến hoạt động của đường tiết niệu và những triệu chứng ảnh hưởng đến sinh hoạt. Tiền sử điều trị và các kết quả thăm dò cũ giúp bác sĩ đánh giá tình trạng hiện tại.",
+    "focusAreas": [
+      "Đánh giá những thay đổi về tiểu tiện.",
+      "Theo dõi các vấn đề tiết niệu đã được chẩn đoán.",
+      "Đối chiếu xét nghiệm nước tiểu và hình ảnh học liên quan."
+    ],
+    "preparation": [
+      "Mang kết quả xét nghiệm nước tiểu, siêu âm và hồ sơ trước đây.",
+      "Ghi lại biểu hiện khi đi tiểu và các thuốc đang sử dụng."
+    ],
+    "sourceUrl": null
+  },
+  {
+    "code": "DINHDUONG",
+    "name": "Dinh dưỡng",
+    "legacyNames": [
+      "Dinh duong"
+    ],
+    "summary": "Đánh giá tình trạng dinh dưỡng theo độ tuổi, thể trạng và nhu cầu sức khỏe; trao đổi về chế độ ăn và thói quen sinh hoạt. Nội dung tư vấn dựa trên thông tin ăn uống, diễn biến cân nặng và bệnh nền của từng người.",
+    "overview": "Chuyên khoa Dinh dưỡng tiếp nhận nhu cầu đánh giá khẩu phần và tình trạng dinh dưỡng. Người khám có thể trao đổi về mục tiêu chăm sóc, thay đổi cân nặng và những khó khăn trong ăn uống để được tư vấn phù hợp.",
+    "focusAreas": [
+      "Đánh giá khẩu phần và thói quen ăn uống.",
+      "Theo dõi thay đổi cân nặng và tình trạng dinh dưỡng.",
+      "Trao đổi về nhu cầu dinh dưỡng theo tuổi và bệnh nền."
+    ],
+    "preparation": [
+      "Chuẩn bị ghi chép về các bữa ăn và đồ uống thường dùng.",
+      "Mang kết quả khám, xét nghiệm và thông tin cân nặng gần đây nếu có."
+    ],
+    "sourceUrl": null
+  },
+  {
+    "code": "YHCT",
+    "name": "Y học cổ truyền",
+    "legacyNames": [
+      "Y hoc co truyen"
+    ],
+    "summary": "Thăm khám và tư vấn chăm sóc sức khỏe theo y học cổ truyền, kết hợp xem xét bệnh sử và các phương pháp đang điều trị. Bác sĩ đánh giá thể trạng, nhu cầu của người bệnh và khả năng phối hợp với các chuyên khoa liên quan.",
+    "overview": "Y học cổ truyền tiếp cận việc thăm khám dựa trên tình trạng sức khỏe tổng thể và những khó chịu của người bệnh. Các thuốc hoặc phương pháp đang sử dụng cần được trao đổi đầy đủ trước khi xây dựng kế hoạch chăm sóc.",
+    "focusAreas": [
+      "Đánh giá thể trạng và các vấn đề sức khỏe đang gặp.",
+      "Tư vấn về phương pháp chăm sóc phù hợp sau thăm khám.",
+      "Trao đổi việc phối hợp với kế hoạch điều trị hiện tại."
+    ],
+    "preparation": [
+      "Mang hồ sơ bệnh, đơn thuốc và danh sách sản phẩm đang sử dụng.",
+      "Thông báo rõ các phương pháp chăm sóc hoặc điều trị đã thực hiện."
+    ],
+    "sourceUrl": null
+  },
+  {
+    "code": "PHCN",
+    "name": "Phục hồi chức năng",
+    "legacyNames": [
+      "Phuc hoi chuc nang"
+    ],
+    "summary": "Đánh giá chức năng vận động và mức độ ảnh hưởng đến sinh hoạt, từ đó trao đổi mục tiêu phục hồi phù hợp. Bác sĩ xem xét tình trạng sau chấn thương, sau điều trị hoặc hạn chế vận động để xây dựng kế hoạch theo dõi.",
+    "overview": "Phục hồi chức năng tập trung vào khả năng thực hiện các hoạt động hằng ngày. Việc đánh giá ghi nhận những hoạt động còn khó khăn, mức độ hỗ trợ cần thiết và mục tiêu của người bệnh để định hướng chăm sóc.",
+    "focusAreas": [
+      "Đánh giá vận động và những hạn chế trong sinh hoạt.",
+      "Trao đổi mục tiêu phục hồi sau chấn thương hoặc điều trị.",
+      "Theo dõi sự thay đổi chức năng qua các lần tái khám."
+    ],
+    "preparation": [
+      "Mang hồ sơ chấn thương, phẫu thuật hoặc điều trị trước đây.",
+      "Chọn trang phục thuận tiện cho việc đánh giá vận động."
+    ],
+    "sourceUrl": null
+  },
+  {
+    "code": "CAPCUU",
+    "name": "Cấp cứu",
+    "legacyNames": [
+      "Cap cuu"
+    ],
+    "summary": "Tiếp nhận và đánh giá ban đầu những tình trạng cần hỗ trợ y tế khẩn, ưu tiên theo mức độ nghiêm trọng. Thông tin người bệnh, bệnh nền, thuốc đang dùng và diễn biến gần nhất giúp nhân viên y tế phối hợp xử trí hoặc chuyển tuyến.",
+    "overview": "Chuyên khoa Cấp cứu có đặc thù tiếp nhận theo tình trạng thực tế và mức độ ưu tiên, không theo thứ tự đăng ký khám thông thường. Khi cần hỗ trợ khẩn, người bệnh hoặc người đi cùng nên liên hệ trực tiếp cơ sở y tế để được hướng dẫn tiếp nhận.",
+    "focusAreas": [
+      "Đánh giá ban đầu và phân loại mức độ ưu tiên.",
+      "Ghi nhận diễn biến gần nhất, bệnh nền và thuốc đang dùng.",
+      "Phối hợp các chuyên khoa hoặc cơ sở tiếp nhận tiếp theo khi cần."
+    ],
+    "preparation": [
+      "Người đi cùng cung cấp thông tin bệnh nền, dị ứng và thuốc đang dùng nếu biết.",
+      "Không chờ phản hồi từ biểu mẫu đăng ký khám trực tuyến khi cần hỗ trợ y tế khẩn."
+    ],
+    "sourceUrl": null
+  },
+  {
+    "code": "XETNGHIEM",
+    "name": "Xét nghiệm",
+    "legacyNames": [
+      "Xet nghiem"
+    ],
+    "summary": "Cung cấp thông tin cận lâm sàng phục vụ đánh giá sức khỏe, hỗ trợ chẩn đoán và theo dõi điều trị. Các nhóm xét nghiệm thường liên quan đến huyết học, sinh hóa, miễn dịch và nước tiểu; danh mục, chi phí được công bố ở trang dịch vụ.",
+    "overview": "Xét nghiệm cung cấp các chỉ số để bác sĩ đối chiếu với triệu chứng và kết quả thăm khám. Việc chọn loại xét nghiệm, thời điểm lấy mẫu và cách chuẩn bị được hướng dẫn theo chỉ định và dịch vụ thực tế.",
+    "focusAreas": [
+      "Các nhóm xét nghiệm huyết học và sinh hóa.",
+      "Xét nghiệm nước tiểu và các chỉ số miễn dịch theo danh mục.",
+      "Theo dõi, đối chiếu kết quả qua các lần khám."
+    ],
+    "preparation": [
+      "Mang phiếu chỉ định và kết quả xét nghiệm trước đây nếu có.",
+      "Liên hệ phòng khám để xác nhận yêu cầu chuẩn bị, thời gian lấy mẫu và trả kết quả."
+    ],
+    "sourceUrl": "https://umcclinic.com.vn/xet-nghiem"
+  },
+  {
+    "code": "CDHA",
+    "name": "Chẩn đoán hình ảnh",
+    "legacyNames": [
+      "Chan doan hinh anh"
+    ],
+    "summary": "Sử dụng hình ảnh y học để hỗ trợ đánh giá cấu trúc cơ thể, chẩn đoán và theo dõi điều trị. Các nhóm kỹ thuật gồm siêu âm, X-quang và những thăm dò chuyên sâu theo chỉ định; dịch vụ thực hiện được xác nhận khi đăng ký.",
+    "overview": "Chẩn đoán hình ảnh phối hợp với các chuyên khoa lâm sàng để bổ sung thông tin cho quá trình thăm khám. Hình ảnh và kết luận cũ nên được mang theo để bác sĩ đối chiếu sự thay đổi và trao đổi về kỹ thuật phù hợp.",
+    "focusAreas": [
+      "Siêu âm và các kỹ thuật tạo ảnh theo chỉ định.",
+      "Khảo sát hình ảnh cơ quan, xương khớp và mô mềm.",
+      "Đối chiếu hình ảnh, kết luận qua các lần theo dõi."
+    ],
+    "preparation": [
+      "Mang phiếu chỉ định, phim chụp và kết quả trước đây.",
+      "Thông báo tình trạng mang thai, thiết bị cấy ghép hoặc tiền sử dị ứng trước khi thực hiện thăm dò."
+    ],
+    "sourceUrl": "https://umcclinic.com.vn/chan-doan-hinh-anh"
+  }
+]

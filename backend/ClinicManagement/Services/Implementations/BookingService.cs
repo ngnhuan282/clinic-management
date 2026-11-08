@@ -7,6 +7,7 @@ using ClinicManagement.Repositories.Interfaces;
 using ClinicManagement.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Data.SqlClient;
+using ClinicManagement.Helpers;
 
 namespace ClinicManagement.Services.Implementations;
 
@@ -92,6 +93,7 @@ public class BookingService : IBookingService
                 Code = x.Code,
                 Name = x.Name,
                 Description = x.Description,
+                PublicInformation = PublicSpecialtyContent.ForCode(x.Code),
                 IsActive = x.IsActive,
                 CreatedAt = x.CreatedAt,
                 UpdatedAt = x.UpdatedAt
@@ -171,6 +173,9 @@ public class BookingService : IBookingService
             AppointmentStatusConstants.Pending
         );
     }
+
+    public Task<AppointmentResponse> CreateGuestAppointmentAsync(CreateAppointmentRequest request) =>
+        CreateAppointmentInternalAsync(request, null, AppointmentStatusConstants.Pending);
 
     public async Task<AppointmentResponse> CreateDirectAppointmentAsync(
         CreateDirectAppointmentRequest request)

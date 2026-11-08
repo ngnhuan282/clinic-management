@@ -372,9 +372,9 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(x => x.Code).IsUnique();
             entity.HasIndex(x => x.Name).IsUnique();
             entity.HasData(
-                new Department { DepartmentId = 1, Code = "NOI", Name = "Noi tong quat", IsActive = true, CreatedAt = new DateTime(2026, 1, 1), UpdatedAt = new DateTime(2026, 1, 1) },
-                new Department { DepartmentId = 2, Code = "NHI", Name = "Nhi", IsActive = true, CreatedAt = new DateTime(2026, 1, 1), UpdatedAt = new DateTime(2026, 1, 1) },
-                new Department { DepartmentId = 3, Code = "RHM", Name = "Rang ham mat", IsActive = true, CreatedAt = new DateTime(2026, 1, 1), UpdatedAt = new DateTime(2026, 1, 1) });
+                new Department { DepartmentId = 1, Code = "NOI", Name = "Nội tổng quát", Description = "Khám và đánh giá sức khỏe tổng thể, tiếp nhận các triệu chứng chưa rõ chuyên khoa và theo dõi bệnh nội khoa thường gặp. Bác sĩ kết hợp tiền sử bệnh, thăm khám và kết quả cận lâm sàng để định hướng chăm sóc, tái khám hoặc chuyển chuyên khoa khi cần.", IsActive = true, CreatedAt = new DateTime(2026, 1, 1), UpdatedAt = new DateTime(2026, 1, 1) },
+                new Department { DepartmentId = 2, Code = "NHI", Name = "Nhi khoa", Description = "Chăm sóc sức khỏe trẻ em, khám các bệnh thường gặp và theo dõi sự phát triển thể chất. Nội dung thăm khám có thể gồm vấn đề hô hấp, tiêu hóa, dinh dưỡng và hướng dẫn chăm sóc phù hợp với từng giai đoạn phát triển của trẻ.", IsActive = true, CreatedAt = new DateTime(2026, 1, 1), UpdatedAt = new DateTime(2026, 1, 1) },
+                new Department { DepartmentId = 3, Code = "RHM", Name = "Răng hàm mặt", Description = "Khám và đánh giá các vấn đề về răng, nướu và vùng hàm mặt; tư vấn vệ sinh răng miệng và theo dõi sức khỏe răng định kỳ. Bác sĩ trao đổi về tình trạng răng miệng, nhu cầu chăm sóc và hướng xử trí phù hợp sau khi thăm khám.", IsActive = true, CreatedAt = new DateTime(2026, 1, 1), UpdatedAt = new DateTime(2026, 1, 1) });
         });
 
         modelBuilder.Entity<Specialization>(entity =>

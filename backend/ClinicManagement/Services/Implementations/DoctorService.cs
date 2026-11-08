@@ -52,6 +52,17 @@ public class DoctorService : IDoctorService
             total);
     }
 
+    public async Task<PublicDoctorResponse> GetPublicDoctorAsync(int doctorId)
+    {
+        var doctor = await _doctorRepository.GetActiveByIdAsync(doctorId)
+            ?? throw new AppException(ErrorCode.DOCTOR_NOT_FOUND);
+        var rooms = await _doctorRepository.GetUpcomingRoomsAsync([doctorId], ClinicClock.Today);
+        return MapPublicDoctor(doctor, rooms.Select(room => new DoctorRoomResponse
+        {
+            RoomId = room.RoomId, RoomCode = room.RoomCode, RoomName = room.RoomName
+        }).ToList());
+    }
+
     public async Task<DoctorProfileResponse> GetMyProfileAsync()
     {
         var doctor = await _doctorRepository.GetByUserIdAsync(_currentUser.GetRequiredUserId())

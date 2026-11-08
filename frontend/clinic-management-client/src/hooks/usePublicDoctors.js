@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { searchPublicDoctors } from "../api/doctorApi";
 import getApiErrorMessage from "../utils/errorHandler";
@@ -9,7 +9,9 @@ export const DOCTOR_PAGE_SIZE = 9;
  * @param {{ fullName?: string, departmentId?: string, roomId?: string, pageNumber: number }} filters
  */
 export function usePublicDoctors({ fullName = "", departmentId = "", roomId = "", pageNumber }) {
-    const requestKey = `${fullName}|${departmentId}|${roomId}|${pageNumber}`;
+    const [revision, setRevision] = useState(0);
+    const retry = useCallback(() => setRevision(value => value + 1), []);
+    const requestKey = `${fullName}|${departmentId}|${roomId}|${pageNumber}|${revision}`;
     const [result, setResult] = useState({ key: "", status: "ready", data: null, error: "" });
 
     useEffect(() => {
@@ -29,6 +31,6 @@ export function usePublicDoctors({ fullName = "", departmentId = "", roomId = ""
     }, [requestKey, fullName, departmentId, roomId, pageNumber]);
 
     // A result belongs to one filter set; until it arrives for the current filters, the page shows loading.
-    if (result.key !== requestKey) return { status: "loading", data: null, error: "" };
-    return { status: result.status, data: result.data, error: result.error };
+    if (result.key !== requestKey) return { status: "loading", data: null, error: "", retry };
+    return { status: result.status, data: result.data, error: result.error, retry };
 }

@@ -1,5 +1,13 @@
 # UI refresh verification fixture
 
+The guest portal can be verified separately with `node tests/guest-portal-ui.mjs`
+after building this fixture. Set `PLAYWRIGHT_MODULE` to an installed Playwright
+ESM module when necessary. It uses Edge headless, creates its own disposable
+database and Vite server, and cleans them up. It checks public routes, live prices,
+doctor filters and profiles, anonymous booking and staff confirmation, conflicts,
+validation, rate limiting, protected records, error retry, and responsive layouts.
+Screenshots are written to `.tmp/guest-portal/`.
+
 This disposable fixture runs the existing backend against a randomly named SQL Server LocalDB database. It calls `Database.MigrateAsync()` and checks the migration history; it never uses `EnsureCreated` or generates a replacement schema from the model.
 
 ```powershell

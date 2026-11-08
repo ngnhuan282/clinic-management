@@ -1,31 +1,35 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Alert, Box, Button, Grid, MenuItem, Pagination, Paper, Skeleton, Stack, TextField, Typography } from "@mui/material";
 
 import { getDepartments } from "../../api/bookingApi";
 import { getPublicRooms } from "../../api/roomApi";
 import PublicDoctorCard from "../../components/patient/PublicDoctorCard";
 import { DOCTOR_PAGE_SIZE, usePublicDoctors } from "../../hooks/usePublicDoctors";
-import getApiErrorMessage from "../../utils/errorHandler";
+import { useSearchParams } from "react-router-dom";
+import usePublicResource from "../../hooks/usePublicResource";
 
 const EMPTY_FILTERS = { fullName: "", departmentId: "", roomId: "" };
 
 export default function DoctorSearchPage() {
-    const [draft, setDraft] = useState(EMPTY_FILTERS);
-    const [filters, setFilters] = useState({ ...EMPTY_FILTERS, pageNumber: 1 });
-    const [departments, setDepartments] = useState([]);
-    const [departmentError, setDepartmentError] = useState("");
-    const [rooms, setRooms] = useState([]);
-    const [roomError, setRoomError] = useState("");
-    const { status, data, error } = usePublicDoctors(filters);
+    const [params, setParams] = useSearchParams();
+    const readId = name => /^[1-9]\d{0,9}$/.test(params.get(name) || "") && Number(params.get(name)) <= 2147483647 ? params.get(name) : "";
+    const filters = {
+        fullName: (params.get("fullName") || "").slice(0, 100), departmentId: readId("departmentId"),
+        roomId: readId("roomId"), pageNumber: Math.min(100000, Math.max(1, Math.floor(Number(params.get("page")) || 1))),
+    };
+    const [draftState, setDraftState] = useState(null);
+    const draft = draftState?.key === params.toString() ? draftState.values : { fullName: filters.fullName, departmentId: filters.departmentId, roomId: filters.roomId };
+    const setDraft = values => setDraftState({ key: params.toString(), values });
+    const departmentResource = usePublicResource(getDepartments);
+    const roomResource = usePublicResource(getPublicRooms);
+    const departments = departmentResource.data || [];
+    const rooms = roomResource.data || [];
+    const { status, data, error, retry } = usePublicDoctors(filters);
+    const setFilters = next => {
+        setDraftState(null);
+        setParams(Object.fromEntries(Object.entries({ fullName: next.fullName.trim(), departmentId: next.departmentId, roomId: next.roomId, page: next.pageNumber > 1 ? next.pageNumber : "" }).filter(([, value]) => value !== "")));
+    };
 
-    useEffect(() => {
-        getDepartments()
-            .then(setDepartments)
-            .catch(loadError => setDepartmentError(getApiErrorMessage(loadError)));
-        getPublicRooms()
-            .then(setRooms)
-            .catch(loadError => setRoomError(getApiErrorMessage(loadError)));
-    }, []);
 
     const applyFilters = event => {
         event.preventDefault();
@@ -42,7 +46,7 @@ export default function DoctorSearchPage() {
 
     return (
         <Box sx={{ maxWidth: 1200, mx: "auto", px: { xs: 2, md: 4 }, py: { xs: 3, md: 5 } }}>
-            <Typography variant="h4" fontWeight={700} sx={{ mb: 1 }}>Tra cứu bác sĩ</Typography>
+            <Typography component="h1" variant="h4"  sx={{ fontWeight: 700,  mb: 1  }}>Tra cứu bác sĩ</Typography>
             <Typography color="text.secondary" sx={{ mb: 3 }}>
                 Tìm bác sĩ theo tên hoặc chuyên khoa và xem phòng khám sắp tới của bác sĩ.
             </Typography>
@@ -62,8 +66,7 @@ export default function DoctorSearchPage() {
                         value={draft.departmentId}
                         onChange={event => setDraft({ ...draft, departmentId: event.target.value })}
                         sx={{ minWidth: 220 }}
-                        disabled={Boolean(departmentError)}
-                        helperText={departmentError || undefined}
+                        disabled={departmentResource.status !== "ready"}
                     >
                         <MenuItem value="">Tất cả</MenuItem>
                         {departments.map(department => (
@@ -78,8 +81,7 @@ export default function DoctorSearchPage() {
                         value={draft.roomId}
                         onChange={event => setDraft({ ...draft, roomId: event.target.value })}
                         sx={{ minWidth: 240 }}
-                        disabled={Boolean(roomError)}
-                        helperText={roomError || undefined}
+                        disabled={roomResource.status !== "ready"}
                     >
                         <MenuItem value="">Tất cả</MenuItem>
                         {rooms.map(room => (
@@ -95,6 +97,8 @@ export default function DoctorSearchPage() {
                 </Stack>
             </Paper>
 
+            {[departmentResource, roomResource].filter(resource => resource.status === "error").map((resource, index) => <Alert key={index} severity="error" sx={{ mb: 2 }} action={<Button color="inherit" onClick={resource.retry}>Thử lại</Button>}>{resource.error}</Alert>)}
+
             {status === "loading" && (
                 <Grid container spacing={2}>
                     {Array.from({ length: 3 }).map((_, index) => (
@@ -105,7 +109,7 @@ export default function DoctorSearchPage() {
                 </Grid>
             )}
 
-            {status === "error" && <Alert severity="error">{error}</Alert>}
+            {status === "error" && <Alert severity="error" action={<Button color="inherit" onClick={retry}>Thử lại</Button>}>{error}</Alert>}
 
             {status === "ready" && doctors.length === 0 && (
                 <Alert severity="info">Không tìm thấy bác sĩ phù hợp với bộ lọc hiện tại.</Alert>

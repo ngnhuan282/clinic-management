@@ -8,16 +8,20 @@ import {
 } from "../api/bookingApi";
 import getApiErrorMessage from "../utils/errorHandler";
 import useNotifications from "./useNotifications";
+import { useSearchParams } from "react-router-dom";
+import { clinicToday } from "../utils/publicBooking";
 
 export function useBooking() {
+    const [params] = useSearchParams();
+    const initialSelection = useRef({ departmentId: params.get("departmentId") || "", doctorId: params.get("doctorId") || "" });
     const { availabilityRevision, slotEvent, appointmentEvent } = useNotifications();
     const slotRequest = useRef(0);
     const [departments, setDepartments] = useState([]);
     const [doctors, setDoctors] = useState([]);
     const [slots, setSlots] = useState([]);
-    const [selectedDepartmentId, setSelectedDepartmentId] = useState("");
+    const [selectedDepartmentId, setSelectedDepartmentId] = useState(initialSelection.current.departmentId);
     const [selectedDoctorId, setSelectedDoctorId] = useState("");
-    const [selectedDate, setSelectedDate] = useState("");
+    const [selectedDate, setSelectedDate] = useState(() => params.get("date") >= clinicToday() ? params.get("date") : "");
     const [selectedSlot, setSelectedSlot] = useState(null);
     const [patientName, setPatientName] = useState("");
     const [patientPhone, setPatientPhone] = useState("");
@@ -135,6 +139,11 @@ export function useBooking() {
 
                 if (mounted) {
                     setDoctors(result || []);
+                    if (String(selectedDepartmentId) === initialSelection.current.departmentId) {
+                        const initialDoctor = result?.find(item => String(item.doctorId) === initialSelection.current.doctorId);
+                        if (initialDoctor) setSelectedDoctorId(String(initialDoctor.doctorId));
+                        initialSelection.current = { departmentId: "", doctorId: "" };
+                    }
                 }
             } catch (apiError) {
                 if (mounted) {

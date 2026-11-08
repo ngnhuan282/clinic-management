@@ -4,6 +4,7 @@ using ClinicManagement.DTOs.Responses;
 using ClinicManagement.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ClinicManagement.Controllers;
 
@@ -100,6 +101,20 @@ public class AppointmentsController : ControllerBase
                 "Appointment booked successfully"
             )
         );
+    }
+
+    [HttpPost("guest")]
+    [AllowAnonymous]
+    [EnableRateLimiting("guest-booking")]
+    public async Task<IActionResult> CreateGuestAppointment(CreateAppointmentRequest request)
+    {
+        var result = await _bookingService.CreateGuestAppointmentAsync(request);
+        // A receipt for this submission only. Guest appointments have no account ownership.
+        return Ok(ApiResponse<object>.Success(new
+        {
+            result.AppointmentId, result.DoctorId, result.DoctorName, result.DepartmentName,
+            result.AppointmentDate, result.StartTime, result.EndTime, result.Status
+        }, "Đã tiếp nhận đăng ký khám. Vui lòng chờ phòng khám xác nhận."));
     }
 
     [HttpPost("direct")]

@@ -23,6 +23,9 @@ public interface IBookingService
     Task<AppointmentResponse> CreateAppointmentAsync(
         CreateAppointmentRequest request);
 
+    Task<AppointmentResponse> CreateGuestAppointmentAsync(
+        CreateAppointmentRequest request);
+
     Task<AppointmentResponse> CreateDirectAppointmentAsync(
         CreateDirectAppointmentRequest request);
 

@@ -45,6 +45,11 @@ public class DoctorsController : ControllerBase
         return Ok(ApiResponse<PagedResponse<PublicDoctorResponse>>.Success(result));
     }
 
+    [HttpGet("public/{doctorId:int}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetPublicDoctor(int doctorId) =>
+        Ok(ApiResponse<PublicDoctorResponse>.Success(await _doctorService.GetPublicDoctorAsync(doctorId)));
+
     [HttpGet("me")]
     [Authorize(Roles = RoleConstants.Doctor)]
     public async Task<IActionResult> GetMyProfile()
