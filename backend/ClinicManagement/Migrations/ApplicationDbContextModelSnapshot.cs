@@ -1022,6 +1022,9 @@ namespace ClinicManagement.Migrations
                     b.Property<DateTime>("IssuedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<int?>("IssuedByUserId")
+                        .HasColumnType("int");
+
                     b.Property<int>("PatientId")
                         .HasColumnType("int");
 
@@ -1047,6 +1050,8 @@ namespace ClinicManagement.Migrations
                     b.HasIndex("BookNumber")
                         .IsUnique();
 
+                    b.HasIndex("IssuedByUserId");
+
                     b.HasIndex("PatientId")
                         .IsUnique()
                         .HasFilter("[PatientId] IS NOT NULL AND [Status] = 'Issued'");
@@ -1057,6 +1062,46 @@ namespace ClinicManagement.Migrations
                         {
                             t.HasCheckConstraint("CK_PatientBooks_Status", "[Status] IN ('Pending','Issued','Lost','Replaced')");
                         });
+                });
+
+            modelBuilder.Entity("ClinicManagement.Data.Entities.PatientBookRequest", b =>
+                {
+                    b.Property<int>("PatientBookRequestId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PatientBookRequestId"));
+
+                    b.Property<int?>("BookInvoiceId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("PatientId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<int>("RequestedByUserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("PatientBookRequestId");
+
+                    b.HasIndex("BookInvoiceId")
+                        .IsUnique()
+                        .HasFilter("[BookInvoiceId] IS NOT NULL");
+
+                    b.HasIndex("PatientId")
+                        .IsUnique()
+                        .HasFilter("[BookInvoiceId] IS NULL");
+
+                    b.HasIndex("RequestedByUserId");
+
+                    b.ToTable("PatientBookRequests");
                 });
 
             modelBuilder.Entity("ClinicManagement.Data.Entities.Permission", b =>
@@ -1203,10 +1248,11 @@ namespace ClinicManagement.Migrations
                         new
                         {
                             Code = "appointments.cancelOwn",
-                            IsImplemented = false,
+                            IsImplemented = true,
                             Kind = "Nghiệp vụ",
                             Module = "Lịch hẹn",
-                            Name = "Hủy lịch của bản thân"
+                            Name = "Hủy lịch của bản thân",
+                            Scope = "Chỉ lịch của bệnh nhân đăng nhập"
                         },
                         new
                         {
@@ -3023,6 +3069,11 @@ namespace ClinicManagement.Migrations
                         .HasForeignKey("ClinicManagement.Data.Entities.PatientBook", "BookInvoiceId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("ClinicManagement.Data.Entities.User", "IssuedByUser")
+                        .WithMany()
+                        .HasForeignKey("IssuedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("ClinicManagement.Data.Entities.Patient", "Patient")
                         .WithMany()
                         .HasForeignKey("PatientId")
@@ -3036,9 +3087,37 @@ namespace ClinicManagement.Migrations
 
                     b.Navigation("BookInvoice");
 
+                    b.Navigation("IssuedByUser");
+
                     b.Navigation("Patient");
 
                     b.Navigation("PreviousBook");
+                });
+
+            modelBuilder.Entity("ClinicManagement.Data.Entities.PatientBookRequest", b =>
+                {
+                    b.HasOne("ClinicManagement.Data.Entities.BookInvoice", "BookInvoice")
+                        .WithMany()
+                        .HasForeignKey("BookInvoiceId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ClinicManagement.Data.Entities.Patient", "Patient")
+                        .WithMany()
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ClinicManagement.Data.Entities.User", "RequestedByUser")
+                        .WithMany()
+                        .HasForeignKey("RequestedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("BookInvoice");
+
+                    b.Navigation("Patient");
+
+                    b.Navigation("RequestedByUser");
                 });
 
             modelBuilder.Entity("ClinicManagement.Data.Entities.Prescription", b =>

@@ -14,13 +14,17 @@ while (rootDirectory != null && !File.Exists(Path.Combine(rootDirectory.FullName
     rootDirectory = rootDirectory.Parent;
 var root = rootDirectory?.FullName ?? throw new DirectoryNotFoundException("Repository root not found");
 var database = "ClinicWeek2Test_" + Guid.NewGuid().ToString("N");
-var connection = $"Server=(localdb)\\MSSQLLocalDB;Database={database};Trusted_Connection=True;TrustServerCertificate=True";
+var testServer = Environment.GetEnvironmentVariable("CLINIC_TEST_SQL_SERVER") ?? "(localdb)\\MSSQLLocalDB";
+var connection = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder
+{
+    DataSource = testServer, InitialCatalog = database, IntegratedSecurity = true, TrustServerCertificate = true
+}.ConnectionString;
 var options = new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlServer(connection).Options;
 await using var db = new ApplicationDbContext(options);
 Process? server = null;
 var checks = 0;
 var password = "Test-" + Convert.ToHexString(RandomNumberGenerator.GetBytes(12));
-if (args.Contains("--c8c9-ui"))
+if (args.Contains("--c8c9-ui") || args.Contains("--c9-ui"))
 {
     // The browser runner sends its generated fixture password through the private stdin pipe.
     password = await Console.In.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(10))
@@ -110,12 +114,18 @@ try
         await Task.Delay(200);
     }
     await Send(HttpMethod.Get, "swagger/v1/swagger.json");
-    if (args.Any(arg => arg is "--c8" or "--c9" or "--c8c9" or "--c8c9-ui"))
+    if (args.Contains("--hoang"))
+    {
+        await AppointmentReceptionChecks.RunAsync(client, db, password, Check);
+        Console.WriteLine($"SUCCESS: {checks} appointment/reception checks passed.");
+        return;
+    }
+    if (args.Any(arg => arg is "--c8" or "--c9" or "--c8c9" or "--c8c9-ui" or "--c9-ui"))
     {
         var fixture = await C8C9Checks.RunAsync(client, db, password, Check,
-            runC8: !args.Contains("--c9"), runC9: !args.Contains("--c8"));
+            runC8: !args.Contains("--c9") && !args.Contains("--c9-ui"), runC9: !args.Contains("--c8"));
         Console.WriteLine($"SUCCESS: {checks} C8/C9 checks passed.");
-        if (args.Contains("--c8c9-ui"))
+        if (args.Contains("--c8c9-ui") || args.Contains("--c9-ui"))
         {
             Console.WriteLine("C8C9_UI_SESSION:" + System.Text.Json.JsonSerializer.Serialize(new
             {

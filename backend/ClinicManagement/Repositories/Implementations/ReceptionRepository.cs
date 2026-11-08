@@ -23,6 +23,10 @@ public class ReceptionRepository : IReceptionRepository
     public Task<Patient?> GetPatientAsync(int patientId) =>
         _context.Patients.SingleOrDefaultAsync(x => x.PatientId == patientId);
 
+    public Task<Patient?> GetPatientForUpdateAsync(int patientId) => _context.Patients
+        .FromSqlInterpolated($"SELECT * FROM Patients WITH (UPDLOCK, ROWLOCK) WHERE PatientId = {patientId}")
+        .SingleOrDefaultAsync();
+
     public Task<bool> HasMatchingPatientAsync(string fullName, string phone, string? identityNumber) =>
         _context.Patients.AnyAsync(x =>
             (x.FullName == fullName && x.Phone == phone) ||
@@ -96,6 +100,27 @@ public class ReceptionRepository : IReceptionRepository
             .SingleOrDefaultAsync(x => x.BookInvoiceId == invoiceId);
 
     public Task AddBookInvoiceAsync(BookInvoice invoice) => _context.BookInvoices.AddAsync(invoice).AsTask();
+
+    public Task AddBookRequestAsync(PatientBookRequest request) => _context.PatientBookRequests.AddAsync(request).AsTask();
+
+    public Task<PatientBookRequest?> GetOpenBookRequestAsync(int patientId) => _context.PatientBookRequests
+        .Include(x => x.Patient).Include(x => x.BookInvoice).ThenInclude(x => x!.PatientBook)
+        .Where(x => x.PatientId == patientId && (x.BookInvoice == null
+            || x.BookInvoice.PatientBook == null || x.BookInvoice.PatientBook.Status == PatientBookStatusConstants.Pending))
+        .OrderByDescending(x => x.PatientBookRequestId).FirstOrDefaultAsync();
+
+    public async Task<(List<PatientBookRequest> Items, int Total)> GetBookRequestPageAsync(PatientBookRequestQuery query)
+    {
+        var requests = _context.PatientBookRequests.AsNoTracking()
+            .Include(x => x.Patient).Include(x => x.BookInvoice).ThenInclude(x => x!.PatientBook)
+            .Where(x => x.BookInvoice == null || x.BookInvoice.PatientBook == null
+                || x.BookInvoice.PatientBook.Status == PatientBookStatusConstants.Pending);
+        if (query.PatientId.HasValue) requests = requests.Where(x => x.PatientId == query.PatientId.Value);
+        var total = await requests.CountAsync();
+        var items = await requests.OrderBy(x => x.CreatedAt).ThenBy(x => x.PatientBookRequestId)
+            .Skip((query.PageNumber - 1) * query.PageSize).Take(query.PageSize).ToListAsync();
+        return (items, total);
+    }
 
     public Task<IDbContextTransaction> BeginTransactionAsync(IsolationLevel isolationLevel = IsolationLevel.Serializable) =>
         _context.Database.BeginTransactionAsync(isolationLevel);

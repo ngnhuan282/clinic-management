@@ -38,6 +38,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Patient> Patients => Set<Patient>();
     public DbSet<PatientBook> PatientBooks => Set<PatientBook>();
     public DbSet<BookInvoice> BookInvoices => Set<BookInvoice>();
+    public DbSet<PatientBookRequest> PatientBookRequests => Set<PatientBookRequest>();
 
     public DbSet<MedicineCategory> MedicineCategories =>
         Set<MedicineCategory>();
@@ -303,6 +304,8 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<PatientBook>(entity =>
         {
             entity.HasKey(x => x.PatientBookId);
+            entity.HasOne(x => x.IssuedByUser).WithMany().HasForeignKey(x => x.IssuedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             entity.Property(x => x.BookNumber)
                 .HasMaxLength(40);
@@ -333,6 +336,20 @@ public class ApplicationDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(x => x.PreviousBookId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<PatientBookRequest>(entity =>
+        {
+            entity.HasKey(x => x.PatientBookRequestId);
+            entity.Property(x => x.Reason).HasMaxLength(10).IsRequired();
+            entity.HasOne(x => x.Patient).WithMany().HasForeignKey(x => x.PatientId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.RequestedByUser).WithMany().HasForeignKey(x => x.RequestedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.BookInvoice).WithMany().HasForeignKey(x => x.BookInvoiceId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(x => x.PatientId).IsUnique().HasFilter("[BookInvoiceId] IS NULL");
+            entity.HasIndex(x => x.BookInvoiceId).IsUnique().HasFilter("[BookInvoiceId] IS NOT NULL");
         });
 
         modelBuilder.Entity<Appointment>(entity =>

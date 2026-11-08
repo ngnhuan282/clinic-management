@@ -1,4 +1,5 @@
-import { Alert, Box, Button, Chip, LinearProgress, MenuItem, Pagination, Paper, Skeleton, Stack, TextField, Typography } from "@mui/material";
+import { useState } from "react";
+import { Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, LinearProgress, MenuItem, Pagination, Paper, Skeleton, Stack, TextField, Typography } from "@mui/material";
 import { CalendarMonthOutlined, RefreshOutlined, RestartAltOutlined } from "@mui/icons-material";
 import { Link } from "react-router-dom";
 import useMyAppointments from "../../hooks/useMyAppointments";
@@ -6,6 +7,9 @@ import ClinicPageHeader from "../../components/common/ClinicPageHeader";
 import EmptyState from "../../components/common/EmptyState";
 import StatusBadge from "../../components/common/StatusBadge";
 import AppointmentArrivalGuide from "../../components/patient/AppointmentArrivalGuide";
+import { cancelMyAppointment } from "../../api/patientAppointmentApi";
+import useAuth from "../../hooks/useAuth";
+import getApiErrorMessage from "../../utils/errorHandler";
 import { clinicButtonSx, clinicColors, clinicFieldSx, clinicPrimaryButtonSx, clinicSecondaryButtonSx, clinicSurfaceSx } from "../../components/common/clinicUi";
 
 const statuses = [
@@ -18,7 +22,7 @@ const dateText = value => {
 };
 const timeText = value => String(value || "").slice(0, 5);
 
-function AppointmentCard({ appointment }) {
+function AppointmentCard({ appointment, onCancel, canCancel }) {
     const { appointmentId, status, checkedInAt, bookVerifiedAt } = appointment;
     const awaitingArrival = !checkedInAt && !["Cancelled", "Completed", "InProgress"].includes(status);
     return <Paper component="article" aria-labelledby={`my-appointment-${appointmentId}`} variant="outlined" sx={{ ...clinicSurfaceSx, p: { xs: 2, sm: 3 } }}>
@@ -46,6 +50,10 @@ function AppointmentCard({ appointment }) {
                 {checkedInAt ? <Chip size="small" label="Đã check-in" color="success" variant="outlined" />
                     : awaitingArrival && <Chip size="small" label="Chưa check-in" variant="outlined" />}
                 {bookVerifiedAt && <Chip size="small" label="Đã xác minh sổ tại quầy" color="success" variant="outlined" />}
+                {canCancel && !checkedInAt && ["Pending", "Confirmed"].includes(status)
+                    && `${appointment.appointmentDate.slice(0, 10)}T${appointment.startTime}`
+                        > new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Ho_Chi_Minh", dateStyle: "short", timeStyle: "medium" }).format(new Date()).replace(" ", "T")
+                    && <Button color="error" size="small" onClick={() => onCancel(appointment)}>Hủy lịch hẹn</Button>}
             </Stack>
             {status === "Pending" && <Typography sx={{ fontSize: 13, lineHeight: 1.7, color: clinicColors.muted }}>
                 Lịch hẹn đang chờ lễ tân xác nhận. Bạn chưa hoàn tất thủ tục check-in tại quầy.
@@ -60,6 +68,22 @@ function AppointmentCard({ appointment }) {
 export default function MyAppointmentsPage() {
     const { filters, dateError, data, error, loading, setFilter, setPageNumber, resetFilters, refresh } = useMyAppointments();
     const filtered = Boolean(filters.dateFrom || filters.dateTo || filters.status);
+    const { permissions } = useAuth();
+    const [cancelTarget, setCancelTarget] = useState(null);
+    const [cancelling, setCancelling] = useState(false);
+    const [cancelError, setCancelError] = useState("");
+    async function confirmCancellation() {
+        setCancelling(true);
+        setCancelError("");
+        try {
+            await cancelMyAppointment(cancelTarget.appointmentId);
+            setCancelTarget(null);
+            refresh();
+        } catch (error) {
+            setCancelError(getApiErrorMessage(error));
+            refresh();
+        } finally { setCancelling(false); }
+    }
     return <Box sx={{ maxWidth: 1100, mx: "auto", px: { xs: 2, md: 3 }, py: { xs: 3, md: 4 } }}>
         <Stack spacing={2.5}>
             <ClinicPageHeader title="Lịch hẹn của tôi" icon={CalendarMonthOutlined}
@@ -97,7 +121,9 @@ export default function MyAppointmentsPage() {
                     {!data?.items.length && <Paper variant="outlined" sx={{ ...clinicSurfaceSx, p: 2 }}>
                         <EmptyState message={filtered ? "Không có lịch hẹn phù hợp với bộ lọc." : "Bạn chưa có lịch hẹn. Chọn Đặt lịch khám để đặt lịch mới."} />
                     </Paper>}
-                    {data?.items.map(appointment => <AppointmentCard key={appointment.appointmentId} appointment={appointment} />)}
+                    {data?.items.map(appointment => <AppointmentCard key={appointment.appointmentId} appointment={appointment}
+                        canCancel={permissions.includes("appointments.cancelOwn")}
+                        onCancel={value => { setCancelTarget(value); setCancelError(""); }} />)}
                     {data?.totalPages > 1 && <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ justifyContent: "space-between", alignItems: { sm: "center" } }}>
                         <Typography sx={{ fontSize: 13, color: clinicColors.muted }}>Trang {filters.pageNumber}/{data.totalPages} · {data.totalItems} lịch hẹn</Typography>
                         <Pagination count={data.totalPages} page={filters.pageNumber} onChange={(_, value) => setPageNumber(value)} color="primary" shape="rounded" size="small"
@@ -106,5 +132,18 @@ export default function MyAppointmentsPage() {
                 </>}
             </Stack>
         </Stack>
+        <Dialog open={Boolean(cancelTarget)} onClose={cancelling ? undefined : () => setCancelTarget(null)} fullWidth maxWidth="xs">
+            <DialogTitle>Hủy lịch hẹn #{cancelTarget?.appointmentId}</DialogTitle>
+            <DialogContent>
+                <Typography>Bạn muốn hủy lịch khám ngày {dateText(cancelTarget?.appointmentDate)} lúc {timeText(cancelTarget?.startTime)}?</Typography>
+                {cancelError && <Alert severity="error" sx={{ mt: 2 }}>{cancelError}</Alert>}
+            </DialogContent>
+            <DialogActions>
+                <Button disabled={cancelling} onClick={() => setCancelTarget(null)}>Giữ lịch hẹn</Button>
+                <Button color="error" variant="contained" disabled={cancelling} onClick={confirmCancellation}>
+                    {cancelling ? "Đang hủy..." : "Xác nhận hủy"}
+                </Button>
+            </DialogActions>
+        </Dialog>
     </Box>;
 }

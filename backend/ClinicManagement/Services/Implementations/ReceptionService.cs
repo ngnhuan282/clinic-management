@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ClinicManagement.Services.Implementations;
 
-public class ReceptionService : IReceptionService
+public partial class ReceptionService : IReceptionService
 {
     private static DateTime ClinicToday => TimeZoneInfo.ConvertTimeBySystemTimeZoneId(
         DateTime.UtcNow, "Asia/Ho_Chi_Minh").Date;
@@ -20,16 +20,18 @@ public class ReceptionService : IReceptionService
     private readonly ILogger<ReceptionService> _logger;
     private readonly INotificationService _notifications;
     private readonly IPatientRepository _patientRepository;
+    private readonly ICurrentUserService _currentUser;
 
     public ReceptionService(IReceptionRepository receptionRepository,
         IAppointmentRepository appointmentRepository, ILogger<ReceptionService> logger,
-        INotificationService notifications, IPatientRepository patientRepository)
+        INotificationService notifications, IPatientRepository patientRepository, ICurrentUserService currentUser)
     {
         _receptionRepository = receptionRepository;
         _appointmentRepository = appointmentRepository;
         _logger = logger;
         _notifications = notifications;
         _patientRepository = patientRepository;
+        _currentUser = currentUser;
     }
 
     public async Task<List<PatientMatchResponse>> FindPatientsAsync(string search)
@@ -222,9 +224,17 @@ public class ReceptionService : IReceptionService
         book.BookNumber = bookNumber.Trim();
         book.Status = PatientBookStatusConstants.Issued;
         book.IssuedAt = now;
+        book.IssuedByUserId = _currentUser.GetRequiredUserId();
         book.UpdatedAt = now;
         if (invoice.PatientBook == null) await _receptionRepository.AddBookAsync(book);
         await SaveBookAsync();
+
+        var bookRequest = await _receptionRepository.GetOpenBookRequestAsync(invoice.PatientId);
+        if (bookRequest is { BookInvoiceId: null })
+        {
+            bookRequest.BookInvoiceId = invoiceId;
+            await SaveBookAsync();
+        }
         await transaction.CommitAsync();
 
         if (previousBook != null) await _notifications.PublishPatientBookChangedAsync(previousBook);
@@ -299,7 +309,8 @@ public class ReceptionService : IReceptionService
     {
         PatientBookId = book.PatientBookId, PatientId = book.PatientId,
         BookInvoiceId = book.BookInvoiceId, PreviousBookId = book.PreviousBookId,
-        BookNumber = book.BookNumber, Status = book.Status, IssuedAt = book.IssuedAt
+        BookNumber = book.BookNumber, Status = book.Status, IssuedAt = book.IssuedAt,
+        IssuedByUserId = book.IssuedByUserId
     };
 
     // Placeholder for a paid book whose number has not been issued yet; unique per invoice.

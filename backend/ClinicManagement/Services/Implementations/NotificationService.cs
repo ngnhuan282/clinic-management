@@ -64,6 +64,29 @@ public class NotificationService(IHubContext<NotificationHub> hub, ApplicationDb
         && db.RolePermissions.Any(p => p.RoleId == x.RoleId && p.PermissionCode == PermissionCodes.AppointmentsCheckIn && p.Permission.IsImplemented))
         .Select(x => x.UserId).ToListAsync();
 
+    public Task<List<int>> CashierRecipientsAsync() => db.Users.Where(x => x.Status
+        && (x.Role.RoleName == RoleConstants.Cashier || x.Role.RoleName == RoleConstants.Admin)
+        && db.RolePermissions.Any(p => p.RoleId == x.RoleId
+            && p.PermissionCode == PermissionCodes.BillingView && p.Permission.IsImplemented))
+        .Select(x => x.UserId).ToListAsync();
+
+    public async Task<List<Notification>> StageAppointmentChangedAsync(Appointment appointment, string change,
+        int? previousDoctorId = null)
+    {
+        var title = change switch
+        {
+            "Created" => "Lịch hẹn mới",
+            "Confirmed" => "Lịch hẹn đã xác nhận",
+            "Rescheduled" => "Lịch hẹn đã thay đổi",
+            "Cancelled" => "Lịch hẹn đã hủy",
+            _ => "Cập nhật lịch hẹn"
+        };
+        return await StageAsync(await AppointmentRecipientsAsync(appointment, previousDoctorId),
+            $"appointment:{appointment.AppointmentId}:{change}:{Guid.NewGuid():N}", "Appointment", title,
+            $"{title}: #{appointment.AppointmentId}, ngày {appointment.AppointmentDate:dd/MM/yyyy}, "
+                + $"{appointment.StartTime:hh\\:mm}.");
+    }
+
     public Task<List<int>> DoctorRecipientsAsync(int doctorId, string? requiredPermission = null) =>
         db.Doctors.Where(x => x.DoctorId == doctorId && x.IsActive && x.User != null && x.User.Status
             && (requiredPermission == null

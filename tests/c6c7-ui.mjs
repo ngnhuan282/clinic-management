@@ -183,11 +183,12 @@ try {
 
     const withoutBook = await openCheckIn(fixture.noBookPatientName);
     await withoutBook.dialog.getByRole("radio", { name: "Chưa có sổ", exact: true }).check();
-    await withoutBook.dialog.getByLabel("Phí sổ khám (VNĐ)", { exact: true }).fill("20000");
-    const invoiceResponse = reception.waitForResponse(response => response.request().method() === "POST"
-        && new URL(response.url()).pathname === `/api/patients/${fixture.noBookPatientId}/book-invoices`);
-    await withoutBook.dialog.getByRole("button", { name: "Lập hóa đơn sổ", exact: true }).click();
-    const invoice = (await (await invoiceResponse).json()).result;
+    const requestResponse = reception.waitForResponse(response => response.request().method() === "POST"
+        && new URL(response.url()).pathname === `/api/patients/${fixture.noBookPatientId}/book-requests`);
+    await withoutBook.dialog.getByRole("button", { name: "Yêu cầu mua / cấp lại sổ", exact: true }).click();
+    const bookRequest = (await (await requestResponse).json()).result;
+    assert.equal(bookRequest.bookInvoiceId, null);
+    const invoice = await send("POST", `/patients/${fixture.noBookPatientId}/book-invoices`, externalReception.accessToken, { amount: 20000 });
     await withoutBook.dialog.getByText(new RegExp(`#${invoice.bookInvoiceId} .*Unpaid`)).waitFor();
     assert.equal(await withoutBook.dialog.getByRole("button", { name: "Check-in", exact: true }).isDisabled(), true);
     assert.equal(await withoutBook.dialog.getByRole("button", { name: "Phát / cấp lại sổ", exact: true }).count(), 0);
