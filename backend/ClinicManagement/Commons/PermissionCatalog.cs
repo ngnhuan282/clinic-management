@@ -69,7 +69,7 @@ public static class PermissionCatalog
         new(PermissionCodes.AppointmentsViewOwn, "Lịch hẹn", "Xem lịch của bản thân", "Xem", "Chỉ lịch của bệnh nhân đăng nhập"),
         new(PermissionCodes.AppointmentsBookSelf, "Lịch hẹn", "Đặt lịch cho bản thân", "Tạo", "Chỉ tạo lịch của bệnh nhân đăng nhập"),
         new(PermissionCodes.AppointmentsCreateWalkIn, "Lịch hẹn", "Tiếp nhận walk-in", "Tạo"),
-        new(PermissionCodes.AppointmentsCancelOwn, "Lịch hẹn", "Hủy lịch của bản thân", "Nghiệp vụ", IsImplemented: false),
+        new(PermissionCodes.AppointmentsCancelOwn, "Lịch hẹn", "Hủy lịch của bản thân", "Nghiệp vụ", "Chỉ lịch của bệnh nhân đăng nhập"),
         new(PermissionCodes.AppointmentsConfirm, "Lịch hẹn", "Xác nhận lịch", "Nghiệp vụ"),
         new(PermissionCodes.AppointmentsReschedule, "Lịch hẹn", "Đổi hoặc hủy lịch", "Nghiệp vụ"),
         new(PermissionCodes.AppointmentsCheckIn, "Lịch hẹn", "Check-in bệnh nhân", "Nghiệp vụ"),

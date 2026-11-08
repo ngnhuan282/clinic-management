@@ -10,6 +10,9 @@ public interface INotificationService
     Task PublishAsync(IEnumerable<Notification> notifications);
     Task<List<int>> ReviewRecipientsAsync(int doctorId);
     Task<List<int>> ReceptionRecipientsAsync();
+    Task<List<int>> CashierRecipientsAsync();
+    Task<List<Notification>> StageAppointmentChangedAsync(Appointment appointment, string change,
+        int? previousDoctorId = null);
     Task<List<int>> DoctorRecipientsAsync(int doctorId, string? requiredPermission = null);
     Task PublishDepartmentWorkflowChangedAsync(int doctorId, string area);
     Task PublishAppointmentChangedAsync(Appointment appointment, string change,

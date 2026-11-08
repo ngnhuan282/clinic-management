@@ -1,7 +1,8 @@
 import axiosClient from "./axiosClient";
 
 /** @typedef {{ patientId: number, fullName: string, phone: string, birthDate: string | null, identityNumber: string | null }} PatientMatch */
-/** @typedef {{ patientBookId: number, patientId: number, bookInvoiceId: number | null, bookNumber: string, status: string }} PatientBook */
+/** @typedef {{ patientBookId: number, patientId: number, bookInvoiceId: number | null, bookNumber: string, status: string, issuedAt: string, issuedByUserId: number | null }} PatientBook */
+/** @typedef {{ patientBookRequestId: number, patientId: number, patientName: string, patientPhone: string, reason: "New" | "Lost" | "Forgot", requestedByUserId: number, createdAt: string, bookInvoiceId: number | null, amount: number | null, status: "Pending" | "Unpaid" | "Paid" | "Issued" }} PatientBookRequest */
 /** @typedef {{ bookInvoiceId: number, patientId: number, amount: number, status: "Unpaid" | "Paid", paidAt: string | null }} BookInvoice */
 
 const result = response => response.data.result;
@@ -26,6 +27,14 @@ export async function registerExistingBook(patientId, bookNumber) {
 
 export async function getBookInvoices(patientId) {
     return result(await axiosClient.get(`/patients/${patientId}/book-invoices`));
+}
+
+export async function createBookRequest(patientId, reason) {
+    return result(await axiosClient.post(`/patients/${patientId}/book-requests`, { reason }));
+}
+
+export async function getPatientBookRequests(patientId) {
+    return result(await axiosClient.get(`/patients/${patientId}/book-requests`));
 }
 
 export async function createBookInvoice(patientId, amount) {

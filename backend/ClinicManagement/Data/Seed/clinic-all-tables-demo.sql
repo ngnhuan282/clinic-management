@@ -59,6 +59,8 @@ BEGIN TRY
     DELETE FROM dbo.RecordDiagnoses;
     DELETE FROM dbo.MedicalRecords;
     DELETE FROM dbo.Appointments;
+    IF OBJECT_ID(N'dbo.PatientBookRequests', N'U') IS NOT NULL
+        DELETE FROM dbo.PatientBookRequests;
     DELETE FROM dbo.PatientBooks;
     DELETE FROM dbo.BookInvoices;
     DELETE FROM dbo.Patients;

@@ -8,6 +8,7 @@ public interface IReceptionRepository
 {
     Task<List<Patient>> FindPatientsAsync(string search);
     Task<Patient?> GetPatientAsync(int patientId);
+    Task<Patient?> GetPatientForUpdateAsync(int patientId);
     Task<bool> HasMatchingPatientAsync(string fullName, string phone, string? identityNumber);
     Task AddPatientAsync(Patient patient);
     Task<List<PatientBook>> GetBooksAsync(int patientId);
@@ -19,6 +20,9 @@ public interface IReceptionRepository
     Task<List<BookInvoice>> GetBookInvoicesAsync(int patientId);
     Task<BookInvoice?> GetBookInvoiceAsync(int invoiceId);
     Task AddBookInvoiceAsync(BookInvoice invoice);
+    Task AddBookRequestAsync(PatientBookRequest request);
+    Task<PatientBookRequest?> GetOpenBookRequestAsync(int patientId);
+    Task<(List<PatientBookRequest> Items, int Total)> GetBookRequestPageAsync(PatientBookRequestQuery query);
     Task<IDbContextTransaction> BeginTransactionAsync(System.Data.IsolationLevel isolationLevel = System.Data.IsolationLevel.Serializable);
     Task SaveChangesAsync();
     Task<PatientBook?> GetLatestBookForPatientAsync(int patientId);

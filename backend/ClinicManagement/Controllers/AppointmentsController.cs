@@ -76,6 +76,14 @@ public class AppointmentsController : ControllerBase
         );
     }
 
+    [HttpPatch("mine/{id:int}/cancel")]
+    [Authorize(Roles = RoleConstants.Patient, Policy = PermissionCodes.AppointmentsCancelOwn)]
+    public async Task<IActionResult> CancelMyAppointment(int id)
+    {
+        var result = await _bookingService.CancelMyAppointmentAsync(id);
+        return Ok(ApiResponse<AppointmentResponse>.Success(result, "Appointment cancelled successfully"));
+    }
+
     [HttpPost]
     [Authorize(Policy = PermissionCodes.AppointmentsBookSelf)]
     public async Task<IActionResult> CreateAppointment(

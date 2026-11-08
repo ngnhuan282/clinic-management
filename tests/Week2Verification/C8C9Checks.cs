@@ -321,6 +321,9 @@ internal static class C8C9Checks
 
         private async Task<int> PayAndIssueAsync(Patient profile, string number, int appointmentId, bool viaCashier)
         {
+            var request = await ApiAsync("POST", $"patients/{profile.PatientId}/book-requests", reception,
+                new { reason = number.Contains("lost", StringComparison.OrdinalIgnoreCase) ? "Lost"
+                    : number.Contains("forgot", StringComparison.OrdinalIgnoreCase) ? "Forgot" : "New" });
             var invoice = await ApiAsync("POST", $"patients/{profile.PatientId}/book-invoices", reception, new { amount = 20000 });
             var invoiceId = invoice["bookInvoiceId"]!.GetValue<int>();
             await ApiAsync("POST", $"book-invoices/{invoiceId}/issue-book", reception, new { bookNumber = number }, 409, 4008);
@@ -343,6 +346,9 @@ internal static class C8C9Checks
             await ApiAsync("POST", $"book-invoices/{invoiceId}/issue-book", reception, new { bookNumber = number + "-again" }, 409, 4008);
             check(await db.PatientBooks.CountAsync(x => x.BookInvoiceId == invoiceId) == 1,
                 "C9 one Paid invoice issues exactly one numbered book");
+            var requestId = request["patientBookRequestId"]!.GetValue<int>();
+            check(await db.PatientBookRequests.AsNoTracking().AnyAsync(x => x.PatientBookRequestId == requestId
+                && x.BookInvoiceId == invoiceId), "C9 reception links the request to its Paid invoice when issuing the book");
             return book;
         }
 
