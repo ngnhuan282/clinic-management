@@ -61,6 +61,34 @@ public class DoctorsController : ControllerBase
         return Ok(ApiResponse<DoctorProfileResponse>.Success(result));
     }
 
+    [HttpGet("admin")]
+    [Authorize(Policy = PermissionCodes.StaffManage)]
+    public async Task<IActionResult> GetAdminDoctors([FromQuery] AdminDoctorQuery query) =>
+        Ok(ApiResponse<PagedResponse<AdminDoctorResponse>>.Success(await _doctorService.GetAdminDoctorsAsync(query)));
+
+    [HttpGet("admin/{id:int}")]
+    [Authorize(Policy = PermissionCodes.StaffManage)]
+    public async Task<IActionResult> GetAdminDoctor(int id) =>
+        Ok(ApiResponse<AdminDoctorResponse>.Success(await _doctorService.GetAdminDoctorByIdAsync(id)));
+
+    [HttpPost("admin")]
+    [Authorize(Policy = PermissionCodes.StaffManage)]
+    public async Task<IActionResult> CreateDoctor(CreateDoctorRequest request) =>
+        Ok(ApiResponse<AdminDoctorResponse>.Success(await _doctorService.CreateDoctorAsync(request), "Doctor profile created"));
+
+    [HttpPut("admin/{id:int}")]
+    [Authorize(Policy = PermissionCodes.StaffManage)]
+    public async Task<IActionResult> UpdateDoctor(int id, UpdateDoctorRequest request) =>
+        Ok(ApiResponse<AdminDoctorResponse>.Success(await _doctorService.UpdateDoctorAsync(id, request), "Doctor profile updated"));
+
+    [HttpPatch("admin/{id:int}/status")]
+    [Authorize(Policy = PermissionCodes.StaffManage)]
+    public async Task<IActionResult> UpdateDoctorStatus(int id, [FromBody] bool isActive)
+    {
+        await _doctorService.UpdateDoctorStatusAsync(id, isActive);
+        return Ok(ApiResponse<object>.Success(null, "Doctor status updated"));
+    }
+
     [HttpGet]
     public async Task<IActionResult> GetDoctors(
         [FromQuery] int departmentId)

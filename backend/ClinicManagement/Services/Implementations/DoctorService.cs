@@ -81,6 +81,75 @@ public class DoctorService : IDoctorService
         return MapProfile(doctor);
     }
 
+    public async Task<PagedResponse<AdminDoctorResponse>> GetAdminDoctorsAsync(AdminDoctorQuery query)
+    {
+        var (items, total) = await _doctorRepository.GetAdminPageAsync(query);
+        return new PagedResponse<AdminDoctorResponse>(items.Select(MapAdmin), query.PageNumber, query.PageSize, total);
+    }
+
+    public async Task<AdminDoctorResponse> GetAdminDoctorByIdAsync(int doctorId) =>
+        MapAdmin(await _doctorRepository.GetByIdForAdminAsync(doctorId) ?? throw new AppException(ErrorCode.DOCTOR_NOT_FOUND));
+
+    public async Task<AdminDoctorResponse> CreateDoctorAsync(CreateDoctorRequest request)
+    {
+        if (!await _doctorRepository.SpecializationBelongsToDepartmentAsync(request.SpecializationId, request.DepartmentId))
+            throw new AppException(ErrorCode.INVALID_DEPARTMENT);
+
+        var doctor = new Doctor
+        {
+            FullName = request.FullName.Trim(),
+            Title = request.Title.Trim(),
+            ExperienceYears = request.ExperienceYears ?? throw new AppException(ErrorCode.INVALID_REQUEST),
+            Biography = string.IsNullOrWhiteSpace(request.Biography) ? null : request.Biography.Trim(),
+            DepartmentId = request.DepartmentId,
+            SpecializationId = request.SpecializationId,
+            IsActive = true
+        };
+        await _doctorRepository.AddAsync(doctor);
+        await _doctorRepository.SaveChangesAsync();
+        return MapAdmin(await _doctorRepository.GetByIdForAdminAsync(doctor.DoctorId) ?? doctor);
+    }
+
+    public async Task<AdminDoctorResponse> UpdateDoctorAsync(int doctorId, UpdateDoctorRequest request)
+    {
+        var doctor = await _doctorRepository.GetByIdForAdminAsync(doctorId) ?? throw new AppException(ErrorCode.DOCTOR_NOT_FOUND);
+        if (!await _doctorRepository.SpecializationBelongsToDepartmentAsync(request.SpecializationId, request.DepartmentId))
+            throw new AppException(ErrorCode.INVALID_DEPARTMENT);
+
+        doctor.FullName = request.FullName.Trim();
+        doctor.Title = request.Title.Trim();
+        doctor.ExperienceYears = request.ExperienceYears ?? throw new AppException(ErrorCode.INVALID_REQUEST);
+        doctor.Biography = string.IsNullOrWhiteSpace(request.Biography) ? null : request.Biography.Trim();
+        doctor.DepartmentId = request.DepartmentId;
+        doctor.SpecializationId = request.SpecializationId;
+        doctor.IsActive = request.IsActive;
+
+        await _doctorRepository.SaveChangesAsync();
+        return MapAdmin(await _doctorRepository.GetByIdForAdminAsync(doctorId) ?? doctor);
+    }
+
+    public async Task UpdateDoctorStatusAsync(int doctorId, bool isActive)
+    {
+        var doctor = await _doctorRepository.GetByIdForAdminAsync(doctorId) ?? throw new AppException(ErrorCode.DOCTOR_NOT_FOUND);
+        doctor.IsActive = isActive;
+        await _doctorRepository.SaveChangesAsync();
+    }
+
+    private static AdminDoctorResponse MapAdmin(Doctor doctor) => new()
+    {
+        DoctorId = doctor.DoctorId,
+        FullName = doctor.FullName,
+        Title = doctor.Title,
+        ExperienceYears = doctor.ExperienceYears,
+        Biography = doctor.Biography,
+        DepartmentId = doctor.DepartmentId,
+        DepartmentName = doctor.Department.Name,
+        SpecializationId = doctor.SpecializationId,
+        SpecializationName = doctor.Specialization.Name,
+        UserId = doctor.UserId,
+        IsActive = doctor.IsActive
+    };
+
     private static PublicDoctorResponse MapPublicDoctor(
         Doctor doctor,
         List<DoctorRoomResponse> rooms) => new()

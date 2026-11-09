@@ -109,10 +109,13 @@ export default function AppRoutes() {
                     <Route element={<ProtectedRoute />}>
                         <Route path="/profile" element={<ProfilePage />} />
                     </Route>
+                    {/* Public: a guest can browse specialties, doctors and open time slots without
+                        logging in. BookingPage itself prompts for login/registration only when the
+                        guest tries to confirm a booking; the backend also still requires auth there. */}
+                    <Route path="/booking" element={<BookingPage />} />
                     <Route
                         element={<ProtectedRoute allowedRoles={["Patient"]} />}
                     >
-                        <Route path="/booking" element={<BookingPage />} />
                         <Route element={<ProtectedRoute allowedPermissions={["appointments.viewOwn"]} />}>
                             <Route path="/my-appointments" element={<MyAppointmentsPage />} />
                         </Route>

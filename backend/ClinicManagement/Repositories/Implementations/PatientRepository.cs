@@ -34,5 +34,11 @@ public class PatientRepository : IPatientRepository
         _context.Patients.AnyAsync(x =>
             x.IdentityNumber == identityNumber && x.PatientId != exceptPatientId);
 
+    public Task<Patient?> FindUnlinkedMatchAsync(string fullName, string phone, string? identityNumber) =>
+        _context.Patients.FirstOrDefaultAsync(x => x.UserId == null
+            && ((x.FullName == fullName && x.Phone == phone) || (identityNumber != null && x.IdentityNumber == identityNumber)));
+
+    public Task AddAsync(Patient patient) => _context.Patients.AddAsync(patient).AsTask();
+
     public Task SaveChangesAsync() => _context.SaveChangesAsync();
 }

@@ -19,4 +19,7 @@ public class PatientBook
 
     public int? BookInvoiceId { get; set; }
     public BookInvoice? BookInvoice { get; set; }
+
+    public int? IssuedByUserId { get; set; }
+    public User? IssuedBy { get; set; }
 }

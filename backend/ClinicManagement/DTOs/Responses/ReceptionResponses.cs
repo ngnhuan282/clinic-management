@@ -19,6 +19,7 @@ public class PatientBookResponse
     public string Status { get; set; } = string.Empty;
     public DateTime IssuedAt { get; set; }
     public int? PreviousBookId { get; set; }
+    public int? IssuedByUserId { get; set; }
 }
 
 public class BookInvoiceResponse

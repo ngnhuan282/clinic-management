@@ -12,4 +12,6 @@ public interface IDoctorScheduleService
     Task<PagedResponse<DoctorScheduleResponse>> GetSchedulesAsync(DoctorScheduleQuery query);
     Task<DoctorScheduleResponse> GetByIdAsync(Guid id);
     Task<List<AvailableSlotResponse>> GetAvailableSlotsAsync(int doctorId, int? specializationId, DateOnly date);
+    Task<DoctorScheduleResponse> UpdateScheduleAsync(Guid id, UpdateDoctorScheduleRequest request);
+    Task DeleteScheduleAsync(Guid id);
 }

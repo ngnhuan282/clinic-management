@@ -15,5 +15,8 @@ public interface IPatientRepository
         string identityNumber,
         int exceptPatientId);
 
+    Task<Patient?> FindUnlinkedMatchAsync(string fullName, string phone, string? identityNumber);
+    Task AddAsync(Patient patient);
+
     Task SaveChangesAsync();
 }

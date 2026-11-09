@@ -38,6 +38,7 @@ import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import { Link } from "react-router-dom";
 
+import useAuth from "../../hooks/useAuth";
 import useBooking from "../../hooks/useBooking";
 import AppointmentArrivalGuide from "../../components/patient/AppointmentArrivalGuide";
 import StatusBadge from "../../components/common/StatusBadge";
@@ -109,6 +110,7 @@ function getDateCards(selectedDate, slots) {
 }
 
 function BookingPage() {
+    const { isAuthenticated } = useAuth();
     const booking = useBooking();
     const [birthDate, setBirthDate] = useState("");
     const [gender, setGender] = useState("Nam");
@@ -607,6 +609,7 @@ function BookingPage() {
                                     booking={booking}
                                     currentStep={currentStep}
                                     onSubmit={booking.submitBooking}
+                                    isAuthenticated={isAuthenticated}
                                 />
                                 <SupportCard />
                             </Stack>
@@ -1066,6 +1069,7 @@ function SummaryPanel({
     booking,
     currentStep,
     onSubmit,
+    isAuthenticated,
 }) {
     const doctor = booking.selectedDoctor;
     const canSubmit =
@@ -1237,30 +1241,48 @@ function SummaryPanel({
                     </Typography>
                 </Stack>
 
-                <Button
-                    variant="contained"
-                    size="large"
-                    disabled={!canSubmit || booking.loading.submitting || booking.loading.slots || booking.loading.doctors}
-                    onClick={onSubmit}
-                    endIcon={
-                        booking.loading.submitting ? (
-                            <CircularProgress size={18} color="inherit" />
-                        ) : (
-                            <ArrowForwardIcon />
-                        )
-                    }
-                    sx={{
-                        py: 1.4,
-                        backgroundColor: COLORS.primary,
-                        fontWeight: 900,
-                        boxShadow: "0px 8px 18px rgba(25, 118, 210, 0.22)",
-                        "&:hover": {
-                            backgroundColor: COLORS.primaryDark,
-                        },
-                    }}
-                >
-                    Xác Nhận Đặt Lịch Khám
-                </Button>
+                {isAuthenticated ? (
+                    <Button
+                        variant="contained"
+                        size="large"
+                        disabled={!canSubmit || booking.loading.submitting || booking.loading.slots || booking.loading.doctors}
+                        onClick={onSubmit}
+                        endIcon={
+                            booking.loading.submitting ? (
+                                <CircularProgress size={18} color="inherit" />
+                            ) : (
+                                <ArrowForwardIcon />
+                            )
+                        }
+                        sx={{
+                            py: 1.4,
+                            backgroundColor: COLORS.primary,
+                            fontWeight: 900,
+                            boxShadow: "0px 8px 18px rgba(25, 118, 210, 0.22)",
+                            "&:hover": {
+                                backgroundColor: COLORS.primaryDark,
+                            },
+                        }}
+                    >
+                        Xác Nhận Đặt Lịch Khám
+                    </Button>
+                ) : (
+                    <Stack spacing={1}>
+                        <Alert severity="info" sx={{ borderRadius: 2 }}>
+                            Bạn đang xem khung giờ với vai trò khách. Đăng nhập hoặc đăng ký để hoàn tất đặt lịch.
+                        </Alert>
+                        <Stack direction="row" spacing={1.5}>
+                            <Button component={Link} to="/login" variant="contained" fullWidth
+                                sx={{ py: 1.2, backgroundColor: COLORS.primary, fontWeight: 900,
+                                    "&:hover": { backgroundColor: COLORS.primaryDark } }}>
+                                Đăng nhập
+                            </Button>
+                            <Button component={Link} to="/register" variant="outlined" fullWidth sx={{ py: 1.2, fontWeight: 800 }}>
+                                Đăng ký
+                            </Button>
+                        </Stack>
+                    </Stack>
+                )}
                 <Button
                     variant="outlined"
                     startIcon={<ArrowBackIcon />}

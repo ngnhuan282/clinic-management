@@ -20,16 +20,19 @@ public class ReceptionService : IReceptionService
     private readonly ILogger<ReceptionService> _logger;
     private readonly INotificationService _notifications;
     private readonly IPatientRepository _patientRepository;
+    private readonly ICurrentUserService _currentUser;
 
     public ReceptionService(IReceptionRepository receptionRepository,
         IAppointmentRepository appointmentRepository, ILogger<ReceptionService> logger,
-        INotificationService notifications, IPatientRepository patientRepository)
+        INotificationService notifications, IPatientRepository patientRepository,
+        ICurrentUserService currentUser)
     {
         _receptionRepository = receptionRepository;
         _appointmentRepository = appointmentRepository;
         _logger = logger;
         _notifications = notifications;
         _patientRepository = patientRepository;
+        _currentUser = currentUser;
     }
 
     public async Task<List<PatientMatchResponse>> FindPatientsAsync(string search)
@@ -105,7 +108,8 @@ public class ReceptionService : IReceptionService
             PatientId = patientId,
             BookNumber = request.BookNumber.Trim(),
             Status = "Issued",
-            IssuedAt = DateTime.UtcNow
+            IssuedAt = DateTime.UtcNow,
+            IssuedByUserId = _currentUser.GetRequiredUserId()
         };
         await _receptionRepository.AddBookAsync(book);
         await SaveBookAsync();
@@ -223,6 +227,7 @@ public class ReceptionService : IReceptionService
         book.Status = PatientBookStatusConstants.Issued;
         book.IssuedAt = now;
         book.UpdatedAt = now;
+        book.IssuedByUserId = _currentUser.GetRequiredUserId();
         if (invoice.PatientBook == null) await _receptionRepository.AddBookAsync(book);
         await SaveBookAsync();
         await transaction.CommitAsync();
@@ -267,6 +272,30 @@ public class ReceptionService : IReceptionService
         return MapAppointment(appointment);
     }
 
+    public async Task<PatientMatchResponse> UpdatePatientAsync(int patientId, UpdatePatientProfileRequest request)
+    {
+        var patient = await RequirePatientAsync(patientId);
+        if (request.BirthDate.HasValue && request.BirthDate.Value.Date > ClinicToday)
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+
+        var identityNumber = string.IsNullOrWhiteSpace(request.IdentityNumber) ? null : request.IdentityNumber.Trim();
+        if (identityNumber is not null && await _patientRepository.IdentityNumberInUseAsync(identityNumber, patient.PatientId))
+            throw new AppException(ErrorCode.PATIENT_IDENTITY_CONFLICT);
+
+        patient.FullName = request.FullName.Trim();
+        patient.Phone = request.Phone.Trim();
+        patient.BirthDate = request.BirthDate?.Date;
+        patient.IdentityNumber = identityNumber;
+        patient.InsuranceCode = string.IsNullOrWhiteSpace(request.InsuranceCode) ? null : request.InsuranceCode.Trim();
+
+        try { await _receptionRepository.SaveChangesAsync(); }
+        catch (DbUpdateException exception) when (exception.InnerException is SqlException { Number: 2601 or 2627 })
+        {
+            throw new AppException(ErrorCode.PATIENT_IDENTITY_CONFLICT);
+        }
+        return MapPatient(patient);
+    }
+
     private async Task<Appointment> RequireReceptionAppointmentAsync(int appointmentId) =>
         await _appointmentRepository.GetByIdForUpdateAsync(appointmentId)
             ?? throw new AppException(ErrorCode.APPOINTMENT_NOT_FOUND);
@@ -299,7 +328,8 @@ public class ReceptionService : IReceptionService
     {
         PatientBookId = book.PatientBookId, PatientId = book.PatientId,
         BookInvoiceId = book.BookInvoiceId, PreviousBookId = book.PreviousBookId,
-        BookNumber = book.BookNumber, Status = book.Status, IssuedAt = book.IssuedAt
+        BookNumber = book.BookNumber, Status = book.Status, IssuedAt = book.IssuedAt,
+        IssuedByUserId = book.IssuedByUserId
     };
 
     // Placeholder for a paid book whose number has not been issued yet; unique per invoice.

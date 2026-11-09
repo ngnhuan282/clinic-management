@@ -151,6 +151,97 @@ public class DoctorScheduleService(ApplicationDbContext context, ICurrentUserSer
         return MapSchedule(created);
     }
 
+    public async Task<DoctorScheduleResponse> UpdateScheduleAsync(Guid id, UpdateDoctorScheduleRequest request)
+    {
+        if (request.RoomId <= 0 || request.WorkDate == default || !Enum.IsDefined(request.Shift)
+            || request.SlotDurationMinutes is not (15 or 20 or 30) || request.MaxCapacity < 1)
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        if (!TimeSpan.TryParse(request.StartTime, out var start) ||
+            !TimeSpan.TryParse(request.EndTime, out var end) || start < TimeSpan.Zero
+            || start >= end || end >= TimeSpan.FromDays(1))
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+
+        var schedule = await _context.DoctorSchedules.Include(x => x.TimeSlots)
+            .SingleOrDefaultAsync(x => x.ScheduleId == id)
+            ?? throw new AppException(ErrorCode.DOCTOR_SCHEDULE_NOT_FOUND);
+
+        await scope.ValidateFiltersAsync(await scope.ForHeadAsync(), schedule.DoctorId, request.RoomId);
+
+        var departmentId = await _context.Doctors.Where(x => x.DoctorId == schedule.DoctorId && x.IsActive && x.Department.IsActive)
+            .Select(x => (int?)x.DepartmentId).SingleOrDefaultAsync();
+        var roomExists = await _context.Rooms.AnyAsync(x => x.RoomId == request.RoomId && x.IsActive
+            && x.Department.IsActive && x.DepartmentId == departmentId);
+        if (!departmentId.HasValue || !roomExists)
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+
+        await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        var overlaps = await _context.DoctorSchedules.AnyAsync(x => x.ScheduleId != id && x.WorkDate == request.WorkDate
+            && x.IsActive && (x.DoctorId == schedule.DoctorId || x.RoomId == request.RoomId)
+            && x.StartTime < end && start < x.EndTime);
+        if (overlaps) throw new AppException(ErrorCode.DOCTOR_SCHEDULE_CONFLICT);
+        if (await HasBookedAppointmentsAsync(schedule.TimeSlots.Select(x => x.SlotId)))
+            throw new AppException(ErrorCode.DOCTOR_SCHEDULE_IN_USE);
+
+        var slots = new List<TimeSlot>();
+        for (var cursor = start; cursor.Add(TimeSpan.FromMinutes(request.SlotDurationMinutes)) <= end;
+             cursor = cursor.Add(TimeSpan.FromMinutes(request.SlotDurationMinutes)))
+        {
+            slots.Add(new TimeSlot
+            {
+                StartTime = cursor,
+                EndTime = cursor.Add(TimeSpan.FromMinutes(request.SlotDurationMinutes)),
+                MaxCapacity = request.MaxCapacity
+            });
+        }
+        if (slots.Count == 0)
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+
+        // Bulk delete bypasses change tracking entirely, so the stale tracked slots from the
+        // Include above never conflict with the brand-new ones added below.
+        await _context.TimeSlots.Where(x => x.ScheduleId == id).ExecuteDeleteAsync();
+
+        schedule.RoomId = request.RoomId;
+        schedule.WorkDate = request.WorkDate;
+        schedule.StartTime = start;
+        schedule.EndTime = end;
+        schedule.Shift = request.Shift;
+        schedule.MaxPatients = slots.Count * request.MaxCapacity;
+        foreach (var slot in slots) slot.ScheduleId = id;
+        _context.TimeSlots.AddRange(slots);
+        await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
+        await notifications.PublishDepartmentWorkflowChangedAsync(schedule.DoctorId, DepartmentWorkflowChangedResponse.Schedules);
+        var updated = await GetScheduleQuery().SingleAsync(x => x.ScheduleId == id);
+        return MapSchedule(updated);
+    }
+
+    public async Task DeleteScheduleAsync(Guid id)
+    {
+        var schedule = await _context.DoctorSchedules.Include(x => x.TimeSlots)
+            .SingleOrDefaultAsync(x => x.ScheduleId == id)
+            ?? throw new AppException(ErrorCode.DOCTOR_SCHEDULE_NOT_FOUND);
+
+        await scope.ValidateFiltersAsync(await scope.ForHeadAsync(), schedule.DoctorId, schedule.RoomId);
+
+        await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        if (await HasBookedAppointmentsAsync(schedule.TimeSlots.Select(x => x.SlotId)))
+            throw new AppException(ErrorCode.DOCTOR_SCHEDULE_IN_USE);
+
+        schedule.IsActive = false;
+        await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
+        await notifications.PublishDepartmentWorkflowChangedAsync(schedule.DoctorId, DepartmentWorkflowChangedResponse.Schedules);
+    }
+
+    // TimeSlot.CurrentBooked is never incremented by the booking flow; a slot's real
+    // booking state is whether a non-cancelled Appointment references it.
+    private Task<bool> HasBookedAppointmentsAsync(IEnumerable<Guid> slotIds)
+    {
+        var ids = slotIds.ToList();
+        return _context.Appointments.AnyAsync(x => x.TimeSlotId.HasValue && ids.Contains(x.TimeSlotId.Value)
+            && x.Status != AppointmentStatusConstants.Cancelled);
+    }
+
     public async Task<PagedResponse<DoctorScheduleResponse>> GetSchedulesAsync(DoctorScheduleQuery query)
     {
         if (query.Date.HasValue && query.WeekStart.HasValue || query.Date == DateOnly.MinValue

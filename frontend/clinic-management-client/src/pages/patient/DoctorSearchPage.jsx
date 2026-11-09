@@ -58,7 +58,7 @@ export default function DoctorSearchPage() {
                     />
                     <TextField
                         select
-                        label="Chuyên khoa"
+                        label="Khoa"
                         value={draft.departmentId}
                         onChange={event => setDraft({ ...draft, departmentId: event.target.value })}
                         sx={{ minWidth: 220 }}

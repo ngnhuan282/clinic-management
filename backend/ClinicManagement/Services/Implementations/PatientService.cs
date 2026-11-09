@@ -76,6 +76,52 @@ public class PatientService : IPatientService
         return MapProfile(patient);
     }
 
+    public async Task<PatientProfileResponse> CreateMyProfileAsync(UpdatePatientProfileRequest request)
+    {
+        var userId = _currentUser.GetRequiredUserId();
+        if (await _patientRepository.HasProfileForUserAsync(userId))
+            throw new AppException(ErrorCode.PATIENT_PROFILE_EXISTS);
+
+        if (request.BirthDate.HasValue
+            && DateOnly.FromDateTime(request.BirthDate.Value) > ClinicClock.Today)
+        {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+
+        var fullName = request.FullName.Trim();
+        var phone = request.Phone.Trim();
+        var identityNumber = string.IsNullOrWhiteSpace(request.IdentityNumber)
+            ? null
+            : request.IdentityNumber.Trim();
+
+        // An existing unlinked Patient record is never auto-linked here: the caller has not been
+        // verified as that person (unlike the staff-mediated walk-in match flow), so matching only
+        // blocks self-service creation and sends them to reception to link their record in person.
+        if (await _patientRepository.FindUnlinkedMatchAsync(fullName, phone, identityNumber) != null)
+            throw new AppException(ErrorCode.PATIENT_MATCH_REQUIRED);
+
+        var patient = new Patient
+        {
+            FullName = fullName,
+            Phone = phone,
+            BirthDate = request.BirthDate?.Date,
+            IdentityNumber = identityNumber,
+            InsuranceCode = string.IsNullOrWhiteSpace(request.InsuranceCode) ? null : request.InsuranceCode.Trim(),
+            UserId = userId,
+            CreatedAt = DateTime.UtcNow
+        };
+        await _patientRepository.AddAsync(patient);
+        try
+        {
+            await _patientRepository.SaveChangesAsync();
+        }
+        catch (DbUpdateException exception) when (exception.InnerException is SqlException { Number: 2601 or 2627 })
+        {
+            throw new AppException(ErrorCode.PATIENT_IDENTITY_CONFLICT);
+        }
+        return MapProfile(patient);
+    }
+
     private static PatientProfileResponse MapProfile(Patient patient) => new()
     {
         PatientId = patient.PatientId,

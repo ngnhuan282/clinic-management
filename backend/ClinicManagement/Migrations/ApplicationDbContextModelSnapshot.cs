@@ -1022,6 +1022,9 @@ namespace ClinicManagement.Migrations
                     b.Property<DateTime>("IssuedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<int?>("IssuedByUserId")
+                        .HasColumnType("int");
+
                     b.Property<int>("PatientId")
                         .HasColumnType("int");
 
@@ -1046,6 +1049,8 @@ namespace ClinicManagement.Migrations
 
                     b.HasIndex("BookNumber")
                         .IsUnique();
+
+                    b.HasIndex("IssuedByUserId");
 
                     b.HasIndex("PatientId")
                         .IsUnique()
@@ -1462,6 +1467,14 @@ namespace ClinicManagement.Migrations
                             Kind = "Xem",
                             Module = "Báo cáo",
                             Name = "Xem báo cáo doanh thu"
+                        },
+                        new
+                        {
+                            Code = "staff.manage",
+                            IsImplemented = true,
+                            Kind = "Sửa",
+                            Module = "Nhân sự",
+                            Name = "Quản lý hồ sơ bác sĩ và nhân viên"
                         });
                 });
 
@@ -2215,6 +2228,11 @@ namespace ClinicManagement.Migrations
                         {
                             RoleId = 1,
                             PermissionCode = "reports.revenue"
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            PermissionCode = "staff.manage"
                         },
                         new
                         {
@@ -3023,6 +3041,11 @@ namespace ClinicManagement.Migrations
                         .HasForeignKey("ClinicManagement.Data.Entities.PatientBook", "BookInvoiceId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("ClinicManagement.Data.Entities.User", "IssuedBy")
+                        .WithMany()
+                        .HasForeignKey("IssuedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("ClinicManagement.Data.Entities.Patient", "Patient")
                         .WithMany()
                         .HasForeignKey("PatientId")
@@ -3035,6 +3058,8 @@ namespace ClinicManagement.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("BookInvoice");
+
+                    b.Navigation("IssuedBy");
 
                     b.Navigation("Patient");
 

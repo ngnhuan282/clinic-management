@@ -23,6 +23,14 @@ public class ReceptionPatientsController : ControllerBase
         return Ok(ApiResponse<List<PatientMatchResponse>>.Success(result));
     }
 
+    [HttpPut("{patientId:int}")]
+    [Authorize(Policy = PermissionCodes.AppointmentsCreateWalkIn)]
+    public async Task<IActionResult> UpdatePatient(int patientId, UpdatePatientProfileRequest request)
+    {
+        var result = await _service.UpdatePatientAsync(patientId, request);
+        return Ok(ApiResponse<PatientMatchResponse>.Success(result));
+    }
+
     [HttpGet("{patientId:int}/books")]
     [Authorize(Policy = PermissionCodes.AppointmentsCheckIn)]
     public async Task<IActionResult> GetBooks(int patientId)
