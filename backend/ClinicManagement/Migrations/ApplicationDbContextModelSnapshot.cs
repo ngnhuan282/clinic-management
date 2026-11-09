@@ -1169,7 +1169,7 @@ namespace ClinicManagement.Migrations
                         new
                         {
                             Code = "accounts.create",
-                            IsImplemented = false,
+                            IsImplemented = true,
                             Kind = "Tạo",
                             Module = "Tài khoản",
                             Name = "Tạo tài khoản nhân viên"
@@ -1180,7 +1180,7 @@ namespace ClinicManagement.Migrations
                             IsImplemented = true,
                             Kind = "Sửa",
                             Module = "Tài khoản",
-                            Name = "Khóa hoặc mở khóa tài khoản"
+                            Name = "Chỉnh sửa, khóa hoặc mở khóa tài khoản"
                         },
                         new
                         {

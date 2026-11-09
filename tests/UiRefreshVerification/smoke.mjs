@@ -1,7 +1,8 @@
 import { spawn } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
 
-const fixture = spawn("dotnet", ["run", "--no-build", "--no-restore", "-c", "Release", "--project", "tests/UiRefreshVerification"],
+const flags = process.argv.slice(2).filter(value => ["--admin-completion", "--remaining-roles"].includes(value));
+const fixture = spawn("dotnet", ["run", "--no-build", "--no-restore", "-c", "Release", "--project", "tests/UiRefreshVerification", "--", ...flags],
     { windowsHide: true, stdio: ["pipe", "pipe", "pipe"] });
 const finished = new Promise(resolve => fixture.once("exit", resolve));
 let ready = false;

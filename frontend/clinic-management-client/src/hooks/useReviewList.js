@@ -12,7 +12,7 @@ export function useReviewList(mode, doctorId) {
     useEffect(() => {
         const controller = new AbortController();
         reviewApi[mode]({ doctorId, pageNumber, pageSize: 10 }, controller.signal)
-            .then(data => setResult({ key, data }))
+            .then(data => { if (!controller.signal.aborted) setResult({ key, data }); })
             .catch(error => { if (!controller.signal.aborted) setResult({ key, error: getApiErrorMessage(error) }); });
         return () => controller.abort();
     }, [mode, doctorId, pageNumber, key]);

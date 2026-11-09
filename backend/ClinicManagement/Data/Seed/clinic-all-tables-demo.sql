@@ -101,11 +101,12 @@ BEGIN TRY
         (4, 'Patient', 'Patient', 1),
         (5, 'LabTechnician', 'Lab technician', 1),
         (6, 'DepartmentHead', 'Department head and doctor', 1),
-        (7, 'Pharmacist', 'Pharmacist', 1);
+        (7, 'Pharmacist', 'Pharmacist', 1),
+        (8, 'Cashier', 'Cashier', 1);
     INSERT INTO dbo.Roles (RoleId, RoleName, Description)
     SELECT 1000+n, CONCAT('DemoRole', RIGHT(CONCAT('0', n), 2)),
            'Reserved demo role; not assignable through the API'
-    FROM @n WHERE n BETWEEN 8 AND 20;
+    FROM @n WHERE n BETWEEN 9 AND 20;
     SET IDENTITY_INSERT dbo.Roles OFF;
 
     INSERT INTO dbo.RolePermissions (RoleId, PermissionCode)
@@ -137,6 +138,9 @@ BEGIN TRY
     INSERT INTO dbo.RolePermissions (RoleId, PermissionCode)
     SELECT 7, Code FROM dbo.Permissions WHERE Code IN
         ('pharmacy.viewInventory','pharmacy.viewCatalog','pharmacy.dispense');
+    INSERT INTO dbo.RolePermissions (RoleId, PermissionCode)
+    SELECT 8, Code FROM dbo.Permissions WHERE Code IN
+        ('billing.view','billing.create','billing.recordPayment');
 
     DECLARE @departmentNames TABLE (n int PRIMARY KEY, Code varchar(30), Name nvarchar(150), Description nvarchar(500));
     INSERT INTO @departmentNames VALUES

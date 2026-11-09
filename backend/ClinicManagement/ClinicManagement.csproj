@@ -10,6 +10,7 @@
   <ItemGroup>
     <EmbeddedResource Include="Data/Content/specialties.vi.json" WithCulture="false" />
     <EmbeddedResource Include="Data/Seed/20261108-vietnamese-content.sql" />
+    <EmbeddedResource Include="Data/Seed/20261109-cashier-role.sql" />
   </ItemGroup>
 
   <ItemGroup>

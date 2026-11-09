@@ -4,12 +4,13 @@ using ClinicManagement.Data.Entities;
 using ClinicManagement.DTOs.LabTests;
 using ClinicManagement.DTOs.LabTestResults;
 using ClinicManagement.Exceptions;
+using ClinicManagement.Services.Interfaces;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace ClinicManagement.Services;
 
-public class LabTestService(ApplicationDbContext context) : ILabTestService
+public class LabTestService(ApplicationDbContext context, INotificationService notifications) : ILabTestService
 {
     public async Task<LabTestResponseDto> CreateLabTestAsync(int doctorId, CreateLabTestDto request)
     {
@@ -88,35 +89,43 @@ public class LabTestService(ApplicationDbContext context) : ILabTestService
         if (request.LabTestId <= 0 || string.IsNullOrWhiteSpace(request.ResultSummary))
             throw new AppException(ErrorCode.INVALID_REQUEST);
 
-        var test = await context.LabTests.SingleOrDefaultAsync(x => x.Id == request.LabTestId);
-        if (test == null)
-            throw new AppException(ErrorCode.LAB_TEST_NOT_FOUND);
-
-        if (test.Status != "Pending" || await context.LabTestResults.AnyAsync(x => x.LabTestId == test.Id))
-            throw new AppException(ErrorCode.LAB_TEST_CONFLICT);
-
-        context.LabTestResults.Add(new LabTestResult
-        {
-            LabTestId = test.Id,
-            TechnicianId = technicianId,
-            ResultSummary = request.ResultSummary.Trim(),
-            Note = request.Note?.Trim(),
-            FileUrl = request.FileUrl?.Trim(),
-            PerformedAt = DateTime.UtcNow
-        });
-
-        test.Status = "Completed";
-
         try
         {
+            await using var transaction = await context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            var test = await context.LabTests.SingleOrDefaultAsync(x => x.Id == request.LabTestId)
+                ?? throw new AppException(ErrorCode.LAB_TEST_NOT_FOUND);
+            if (test.Status != "Pending" || await context.LabTestResults.AnyAsync(x => x.LabTestId == test.Id))
+                throw new AppException(ErrorCode.LAB_TEST_CONFLICT);
+            context.LabTestResults.Add(new LabTestResult
+            {
+                LabTestId = test.Id, TechnicianId = technicianId,
+                ResultSummary = request.ResultSummary.Trim(), Note = request.Note?.Trim(),
+                FileUrl = request.FileUrl?.Trim(), PerformedAt = DateTime.UtcNow
+            });
+            test.Status = "Completed";
+            var rows = await notifications.StageLabResultAsync(test);
             await context.SaveChangesAsync();
+            await transaction.CommitAsync();
+            await notifications.PublishAsync(rows);
+            await notifications.PublishLabResultChangedAsync(test);
         }
         catch (DbUpdateException error) when (error.InnerException is SqlException { Number: 2601 or 2627 })
         {
             throw new AppException(ErrorCode.LAB_TEST_CONFLICT);
         }
+        catch (Exception error) when (IsDeadlock(error))
+        {
+            throw new AppException(ErrorCode.LAB_TEST_CONFLICT);
+        }
 
         return true;
+    }
+
+    private static bool IsDeadlock(Exception error)
+    {
+        for (Exception? current = error; current != null; current = current.InnerException)
+            if (current is SqlException { Number: 1205 }) return true;
+        return false;
     }
 
     public async Task<LabTestResponseDto?> GetLabTestByIdAsync(int id, int currentUserId, string currentUserRole)

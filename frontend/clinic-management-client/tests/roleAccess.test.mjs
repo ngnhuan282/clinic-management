@@ -193,8 +193,9 @@ test("DepartmentHead, Cashier and Pharmacist can open their account profile but 
 });
 
 test("billing portal is accessible to Cashier and Admin; patient reviews stay in the patient portal", () => {
-    assert.equal(canAccessPath({ role: "Cashier", permissions: [] }, "/internal/cashier/billing"), true);
-    assert.equal(canAccessPath({ role: "Admin", permissions: [] }, "/internal/cashier/billing"), true);
+    assert.equal(canAccessPath({ role: "Cashier", permissions: ["billing.view"] }, "/internal/cashier/billing"), true);
+    assert.equal(canAccessPath({ role: "Admin", permissions: ["billing.view"] }, "/internal/cashier/billing"), true);
+    assert.equal(canAccessPath({ role: "Cashier", permissions: [] }, "/internal/cashier/billing"), false);
     assert.equal(canAccessPath({ role: "Pharmacist", permissions: [] }, "/internal/cashier/billing"), false);
     assert.equal(canAccessPath({ role: "Patient", permissions: [] }, "/my-reviews"), true);
     assert.equal(canAccessPath({ role: "Cashier", permissions: [] }, "/my-reviews"), false);

@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Box,
   Button,
@@ -24,6 +25,9 @@ import SendIcon from '@mui/icons-material/Send';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import labTestApi from '../../../api/labTestApi';
+import useLabOrders from '../../../hooks/useLabOrders';
+import LabResultDialog from '../../../components/common/LabResultDialog';
+import { positiveId } from '../../../utils/notificationNavigation';
 
 export default function DoctorLabOrdersPage() {
   const [patientId, setPatientId] = useState('');
@@ -31,28 +35,12 @@ export default function DoctorLabOrdersPage() {
   const [clinicalDiagnosis, setClinicalDiagnosis] = useState('');
 
   // Quản lý danh sách chỉ định đã tạo
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const { orders, loading, error, reload: fetchOrders } = useLabOrders();
+  const [params, setParams] = useSearchParams();
+  const selectedLabId = positiveId(params.get('labTestId'));
 
   // Quản lý thông báo (Snackbar)
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
-
-  const fetchOrders = async () => {
-    setLoading(true);
-    try {
-      const response = await labTestApi.getAll();
-      setOrders(response.data || []);
-    } catch (err) {
-      console.error('Lỗi khi tải danh sách chỉ định:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    const timer = setTimeout(() => { void fetchOrders(); }, 0);
-    return () => clearTimeout(timer);
-  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -98,17 +86,18 @@ export default function DoctorLabOrdersPage() {
     <Container maxWidth="xl" sx={{ py: 4 }}>
       {/* Header */}
       <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" component="h1" fontWeight="bold" color="primary" gutterBottom>
+        <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold' }} color="primary" gutterBottom>
           Bác sĩ: Chỉ định Xét nghiệm
         </Typography>
         <Typography variant="body1" color="text.secondary">
           Tạo y lệnh xét nghiệm mới cho bệnh nhân và theo dõi tiến độ xử lý từ phòng Lab.
         </Typography>
       </Box>
+      {error && <Alert severity="error" action={<Button onClick={fetchOrders}>Thử lại</Button>} sx={{ mb: 2 }}>{error}</Alert>}
 
       <Grid container spacing={3}>
         {/* Form Tạo chỉ định */}
-        <Grid xs={12} md={4}>
+        <Grid size={{ xs: 12, md: 4 }}>
           <Card elevation={3} sx={{ borderRadius: 2 }}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -173,7 +162,7 @@ export default function DoctorLabOrdersPage() {
         </Grid>
 
         {/* Danh sách Chỉ định đã phát */}
-        <Grid item xs={12} md={8}>
+        <Grid size={{ xs: 12, md: 8 }}>
           <Card elevation={3} sx={{ borderRadius: 2 }}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -212,6 +201,7 @@ export default function DoctorLabOrdersPage() {
                           <TableCell>{row.clinicalDiagnosis || '---'}</TableCell>
                           <TableCell>{getStatusChip(row.status)}</TableCell>
                           <TableCell sx={{ maxWidth: 200 }}>
+                            <Button size="small" aria-label={`Xem chi tiết xét nghiệm #${row.id}`} onClick={() => setParams(current => { current.set('labTestId', String(row.id)); return current; })}>Xem chi tiết</Button>
                             {row.result ? (
                               <Typography variant="body2" color="text.primary" noWrap>
                                 {row.result.resultSummary}
@@ -232,6 +222,7 @@ export default function DoctorLabOrdersPage() {
           </Card>
         </Grid>
       </Grid>
+      <LabResultDialog id={selectedLabId} onClose={() => setParams(current => { current.delete('labTestId'); return current; })} />
 
       {/* Thông báo Alert */}
       <Snackbar

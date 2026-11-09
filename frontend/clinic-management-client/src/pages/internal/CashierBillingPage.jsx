@@ -16,7 +16,8 @@ const { Title, Text } = Typography;
 const { Option } = Select;
 
 export default function CashierBillingPage() {
-  const { userId } = useAuth();
+  const { userId, permissions } = useAuth();
+  const canCollect = permissions.includes('billing.create') && permissions.includes('billing.recordPayment');
   const [activeTab, setActiveTab] = useState('1'); // Tab 1: Thu tiền, Tab 2: Lịch sử & Điều chỉnh
   
   // States cho Tab 1
@@ -85,7 +86,7 @@ export default function CashierBillingPage() {
   const finalPatientAmount = rawTotalAmount - insuranceAmount;
 
   const handleCreateInvoice = async () => {
-    if (!selectedRecord) return;
+    if (!selectedRecord || !canCollect || submitting) return;
     setSubmitting(true);
     try {
       const dto = {
@@ -128,7 +129,7 @@ export default function CashierBillingPage() {
 
   // Lập chứng từ điều chỉnh
   const handleCreateAdjustment = async (values) => {
-    if (!selectedInvoiceForAdjust) return;
+    if (!selectedInvoiceForAdjust || !canCollect) return;
     try {
       const dto = {
         originalInvoiceId: selectedInvoiceForAdjust.id,
@@ -190,6 +191,7 @@ export default function CashierBillingPage() {
           type="dashed" 
           icon={<EditOutlined />} 
           onClick={() => handleOpenAdjustmentModal(record)}
+          disabled={!canCollect}
         >
           Lập chứng từ điều chỉnh
         </Button>
@@ -290,7 +292,7 @@ export default function CashierBillingPage() {
                               </Space>
                             </Col>
                           </Row>
-                          <Button type="primary" icon={<CreditCardOutlined />} size="large" block loading={submitting} onClick={handleCreateInvoice} style={{ marginTop: 16, backgroundColor: '#52c41a', borderColor: '#52c41a' }}>
+                          <Button type="primary" icon={<CreditCardOutlined />} size="large" block loading={submitting} disabled={!canCollect} onClick={handleCreateInvoice} style={{ marginTop: 16, backgroundColor: '#52c41a', borderColor: '#52c41a' }}>
                             Xác Nhận Thu Tiền ({finalPatientAmount.toLocaleString()} VNĐ)
                           </Button>
                         </Space>
