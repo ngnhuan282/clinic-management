@@ -38,9 +38,16 @@ export default function NotificationProvider({ children }) {
             // Re-read scoped APIs on connection/reconnect to recover missed events.
             setClinic(value => ({ userId, availabilityRevision: (value.availabilityRevision || 0) + 1,
                 departmentCalendarRevision: (value.departmentCalendarRevision || 0) + 1,
-                departmentStatisticsRevision: (value.departmentStatisticsRevision || 0) + 1 }));
+                departmentStatisticsRevision: (value.departmentStatisticsRevision || 0) + 1,
+                labResultsRevision: (value.labResultsRevision || 0) + 1 }));
             refresh();
         }, (eventName, payload) => {
+            if (eventName === "LabResultChanged") {
+                if (!Number.isInteger(payload?.labTestId) || payload.labTestId <= 0) return;
+                setClinic(value => ({ ...(value.userId === userId ? value : {}), userId,
+                    labResultsRevision: (value.labResultsRevision || 0) + 1 }));
+                return;
+            }
             if (eventName === "DepartmentWorkflowChanged") {
                 if (!Number.isInteger(payload?.departmentId) || payload.departmentId <= 0
                     || !["Schedules", "Statistics"].includes(payload.area)) return;
@@ -69,6 +76,7 @@ export default function NotificationProvider({ children }) {
         patientBookEvent: realtime.PatientBookChanged, slotEvent: realtime.SlotAvailabilityChanged,
         availabilityRevision: realtime.availabilityRevision || 0,
         departmentCalendarRevision: realtime.departmentCalendarRevision || 0,
+        labResultsRevision: realtime.labResultsRevision || 0,
         departmentStatisticsRevision: realtime.departmentStatisticsRevision || 0 }}>
         {children}
     </NotificationContext.Provider>;

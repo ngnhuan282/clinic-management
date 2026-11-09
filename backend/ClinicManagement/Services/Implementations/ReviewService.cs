@@ -43,6 +43,12 @@ public class ReviewService(ReviewRepository repository, ICurrentUserService curr
         return new(items, query.PageNumber, query.PageSize, total);
     }
 
+    public Task<ReviewStatisticsResponse> GetAdminStatisticsAsync(ReviewQuery query)
+    {
+        RequireRole(RoleConstants.Admin);
+        return repository.GetAdminStatisticsAsync(query);
+    }
+
     public async Task<PagedResponse<ReviewAppointmentResponse>> MyAppointmentsAsync(PaginationRequest query)
     {
         RequireRole(RoleConstants.Patient);

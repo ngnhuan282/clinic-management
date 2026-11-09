@@ -5,6 +5,7 @@ import useNotifications from "../../hooks/useNotifications";
 import getApiErrorMessage from "../../utils/errorHandler";
 import { useNavigate } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
+import { notificationDestination } from "../../utils/notificationNavigation";
 
 export default function NotificationBell() {
     const navigate = useNavigate();
@@ -16,9 +17,10 @@ export default function NotificationBell() {
         setReadError("");
         try {
             await markRead(item.notificationId);
-            if (item.stockReviewId && ["Doctor", "DepartmentHead"].includes(user.role) && user.permissions?.includes("pharmacy.prescribe")) {
+            const destination = notificationDestination(item, user);
+            if (destination) {
                 setAnchor(null);
-                navigate(`/internal/doctor/stock-reviews/${item.stockReviewId}`);
+                navigate(destination);
             }
         } catch (failure) { setReadError(getApiErrorMessage(failure)); }
     }

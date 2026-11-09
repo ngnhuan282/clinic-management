@@ -49,12 +49,12 @@ internal static class RbacChecks
             && x["isImplemented"]!.GetValue<bool>()), "Book payment permission is implemented");
         var cashier = (await Send(HttpMethod.Post, "api/rbac/roles", new
         {
-            name = "Cashier", description = "Thu ngân", permissionCodes = new[] { "billing.view", "billing.recordPayment" }
+            name = "BillingClerk", description = "Custom billing role", permissionCodes = new[] { "billing.view", "billing.recordPayment" }
         }, 201, adminToken))!["result"]!;
         var cashierId = cashier["roleId"]!.GetValue<int>();
         check(!cashier["isSystem"]!.GetValue<bool>() && cashier["permissionCodes"]!.AsArray().Count == 2,
-            "Cashier persists as a custom role with separate billing rights");
-        await Send(HttpMethod.Post, "api/rbac/roles", new { name = "cashier", description = "Duplicate" },
+            "Custom billing role persists with separate billing rights");
+        await Send(HttpMethod.Post, "api/rbac/roles", new { name = "billingclerk", description = "Duplicate" },
             409, adminToken);
         await Send(HttpMethod.Post, "api/rbac/roles", new
         {

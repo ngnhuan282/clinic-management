@@ -378,6 +378,7 @@ export default function AppRoutes() {
                             element={
                                 <ProtectedRoute
                                     allowedRoles={["Admin", "Cashier"]}
+                                    allowedPermissions={["billing.view"]}
                                 />
                             }
                         >

@@ -64,6 +64,7 @@ export const INTERNAL_PAGES = [
 const ADDITIONAL_INTERNAL_ROUTES = [];
 
 const PAGE_PERMISSIONS = {
+    "/internal/cashier/billing": "billing.view",
     "/internal/department-statistics": "reports.departmentStatistics",
     "/internal/department-schedules": "schedules.viewDepartment",
     "/internal/appointments": "appointments.view",
@@ -134,6 +135,8 @@ export const homeForRole = (value) =>
         ? "/internal/pharmacy/dispensing"
         : asUser(value).role === "LabTechnician"
         ? "/internal/technician/lab-queue"
+        : asUser(value).role === "Cashier"
+        ? asUser(value).permissions?.includes("billing.view") ? "/internal/cashier/billing" : "/internal/profile"
         : (INTERNAL_ROLES.includes(asUser(value).role) || asUser(value).permissions?.length)
         ? "/internal/dashboard"
         : "/unauthorized";

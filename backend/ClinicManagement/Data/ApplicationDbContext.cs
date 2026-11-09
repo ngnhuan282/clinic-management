@@ -199,6 +199,8 @@ public class ApplicationDbContext : DbContext
                 [RoleConstants.Pharmacist] = 7
             };
             entity.HasData(PermissionCatalog.DefaultRoles
+                // Cashier is provisioned by name in its data migration to preserve existing custom IDs.
+                .Where(role => role.Key != RoleConstants.Cashier)
                 .SelectMany(role => role.Value.Select(code =>
                 new RolePermission { RoleId = roleIds[role.Key], PermissionCode = code })));
         });
