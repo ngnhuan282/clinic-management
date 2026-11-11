@@ -213,7 +213,7 @@ function Matrix({ permissions, selected, onChange, compare, roleName, system = f
                                     const adminOnly = !system && perm.code.startsWith("accounts.");
                                     const invalidForSystem = system && !perm.allowedSystemRoles?.includes(roleName);
                                     const pending = !perm.isImplemented;
-                                    const canSelect = !adminOnly && !invalidForSystem &&
+                                    const canSelect = selected.includes(perm.code) || !adminOnly && !invalidForSystem &&
                                         (!pending || perm.code.startsWith("billing.") || selected.includes(perm.code));
                                     const isChecked = selected.includes(perm.code);
                                     const compareChecked = compare?.permissionCodes.includes(perm.code);
@@ -240,7 +240,7 @@ function Matrix({ permissions, selected, onChange, compare, roleName, system = f
                                             <TableCell align="center" sx={{ verticalAlign: "middle" }}>
                                                 <Tooltip title={
                                                     adminOnly ? "Chỉ vai trò Admin được quản lý tài khoản và RBAC." :
-                                                    invalidForSystem ? "Thao tác này không thuộc phạm vi nghiệp vụ của vai trò hệ thống." :
+                                                    invalidForSystem ? "Quyền ngoài phạm vi vai trò; có thể bỏ quyền đang được gán." :
                                                     pending ? "Chưa có API; quyền này chưa mở truy cập chức năng." : ""
                                                 }>
                                                     <span>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, FormLabel, MenuItem, Radio, RadioGroup, Stack, TextField, Typography } from "@mui/material";
-import { checkInAppointment, createBookInvoice, findPatientMatches, getBookInvoices, getPatientBooks, issueBook, markBookInvoicePaid, matchAppointmentPatient, registerExistingBook } from "../../api/receptionApi";
+import { checkInAppointment, createBookRequest, findPatientMatches, getBookInvoices, getPatientBookRequests, getPatientBooks, issueBook, matchAppointmentPatient, registerExistingBook } from "../../api/receptionApi";
 import { getApiErrorMessage } from "../../utils/errorHandler";
 import useNotifications from "../../hooks/useNotifications";
 
@@ -13,16 +13,15 @@ export default function ReceptionCheckInDialog({ appointment, onClose, onChecked
     const [selectedPatientId, setSelectedPatientId] = useState("");
     const [bookRecords, setBooks] = useState([]);
     const [invoiceRecords, setInvoices] = useState([]);
+    const [bookRequests, setBookRequests] = useState([]);
     const [loadedPatientId, setLoadedPatientId] = useState(null);
     const [recordsLoading, setRecordsLoading] = useState(false);
     const recordRequest = useRef(0);
     const [bookId, setBookId] = useState("");
     const [existingBookNumber, setExistingBookNumber] = useState("");
     const [newBookNumber, setNewBookNumber] = useState("");
-    const [amount, setAmount] = useState("");
     const [checkedBookKey, setCheckedBookKey] = useState("");
     const [situation, setSituation] = useState(null);
-    const [paymentReceived, setPaymentReceived] = useState(false);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
 
@@ -31,10 +30,13 @@ export default function ReceptionCheckInDialog({ appointment, onClose, onChecked
         const requestId = ++recordRequest.current;
         setRecordsLoading(true);
         try {
-            const [bookList, invoiceList] = await Promise.all([getPatientBooks(patientId), getBookInvoices(patientId)]);
+            const [bookList, invoiceList, requestList] = await Promise.all([
+                getPatientBooks(patientId), getBookInvoices(patientId), getPatientBookRequests(patientId),
+            ]);
             if (requestId !== recordRequest.current) return;
             setBooks(bookList);
             setInvoices(invoiceList);
+            setBookRequests(requestList.items);
             setLoadedPatientId(patientId);
             setError("");
             setBookId(current => current && !bookList.some(book => book.patientBookId === Number(current) && book.status === "Issued") ? "" : current);
@@ -127,7 +129,7 @@ export default function ReceptionCheckInDialog({ appointment, onClose, onChecked
                     </Box>
                     {bookSituation !== "present" && <Alert severity="warning">
                         {bookSituation === "none" ? "Bệnh nhân chưa có sổ." : bookSituation === "lost" ? "Bệnh nhân báo mất sổ." : "Bệnh nhân quên mang sổ."}
-                        {" Lập hóa đơn sổ, xác nhận thanh toán rồi phát hoặc cấp lại sổ. Chỉ check-in sau khi đã kiểm tra sổ mới."}
+                        {" Tạo yêu cầu mua/cấp lại sổ và hướng dẫn bệnh nhân sang Thu ngân thanh toán. Phát sổ khi nhận được xác nhận Paid."}
                     </Alert>}
                     {recordsLoaded && books.length === 0 && <Typography variant="body2" color="text.secondary">Chưa có sổ khám. Ghi nhận sổ cũ mang theo hoặc cấp sổ mới sau thanh toán.</Typography>}
                     {bookSituation === "present" && <>
@@ -169,25 +171,20 @@ export default function ReceptionCheckInDialog({ appointment, onClose, onChecked
                             {books.some(book => book.status === "Issued") && " Cấp lại sẽ ngừng hiệu lực sổ cũ."}
                         </Alert>}
                         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 1 }}>
-                            <TextField size="small" label="Phí sổ khám (VNĐ)" type="number" value={amount} disabled={busy || !recordsLoaded}
-                                onChange={event => setAmount(event.target.value)} />
                             <TextField size="small" label="Số sổ mới" value={newBookNumber} disabled={busy || !recordsLoaded}
                                 onChange={event => setNewBookNumber(event.target.value)} slotProps={{ htmlInput: { maxLength: 40 } }} />
-                            <Button disabled={busy || !recordsLoaded || !Number.isFinite(Number(amount)) || Number(amount) <= 0} variant="outlined" onClick={() => run(async () => {
-                                await createBookInvoice(patientId, Number(amount));
+                            <Button disabled={busy || !recordsLoaded || bookSituation === "present" || bookRequests.length > 0} variant="outlined" onClick={() => run(async () => {
+                                await createBookRequest(patientId, { none: "New", lost: "Lost", forgot: "Forgot" }[bookSituation]);
                                 await refreshBooks();
-                                setAmount("");
-                            })}>Lập hóa đơn sổ</Button>
+                            })}>Yêu cầu mua / cấp lại sổ</Button>
                         </Stack>
+                        {recordsLoaded && bookRequests.map(request => <Alert key={request.patientBookRequestId} severity="info" sx={{ mt: 1 }}>
+                            Yêu cầu #{request.patientBookRequestId} · {request.status === "Pending" ? "Đã ghi nhận yêu cầu mua/cấp lại sổ. Theo dõi xác nhận thanh toán bên dưới" : request.status === "Unpaid" ? "Chờ thanh toán tại Thu ngân" : "Đã thanh toán, có thể phát sổ"}.
+                            {" Hồ sơ và lịch sử khám của bệnh nhân được giữ nguyên."}
+                        </Alert>)}
                         {invoices.map(invoice => <Stack key={invoice.bookInvoiceId} direction={{ xs: "column", sm: "row" }}
                             spacing={1} sx={{ mt: 1, alignItems: { sm: "center" } }}>
                             <Typography variant="body2">#{invoice.bookInvoiceId} · {invoice.amount.toLocaleString("vi-VN")} ₫ · {invoice.status}</Typography>
-                            {invoice.status === "Unpaid" && <Button size="small" disabled={busy || !recordsLoaded || !paymentReceived}
-                                onClick={() => run(async () => {
-                                    await markBookInvoicePaid(invoice.bookInvoiceId);
-                                    await refreshBooks();
-                                    setPaymentReceived(false);
-                                })}>Ghi Paid</Button>}
                             {readyInvoices.some(ready => ready.bookInvoiceId === invoice.bookInvoiceId) &&
                                 <Button size="small" disabled={busy || !recordsLoaded || !newBookNumber.trim()} onClick={() => run(async () => {
                                     const book = await issueBook(invoice.bookInvoiceId, newBookNumber.trim());
@@ -198,9 +195,9 @@ export default function ReceptionCheckInDialog({ appointment, onClose, onChecked
                                     setNewBookNumber("");
                                 })}>Phát / cấp lại sổ</Button>}
                         </Stack>)}
-                        <FormControlLabel control={<Checkbox checked={paymentReceived} disabled={busy || !recordsLoaded}
-                            onChange={event => setPaymentReceived(event.target.checked)} />}
-                            label="Đã nhận thanh toán thực tế cho hóa đơn sổ" />
+                        {selectedBook?.issuedByUserId && <Typography variant="caption">
+                            Người cấp: #{selectedBook.issuedByUserId} · {new Date(selectedBook.issuedAt).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })}
+                        </Typography>}
                     </Box>
                     {!canCheckIn && recordsLoaded && <Alert severity="info">Chưa thể check-in: cần sổ còn hiệu lực, hóa đơn sổ đã thanh toán nếu có, và xác nhận kiểm tra sổ thực tế.</Alert>}
                 </>}

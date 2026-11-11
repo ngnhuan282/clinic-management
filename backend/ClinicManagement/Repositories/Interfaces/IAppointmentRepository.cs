@@ -12,6 +12,7 @@ public interface IAppointmentRepository
 
     Task<Appointment?> GetByIdAsync(int appointmentId);
     Task<Appointment?> GetByIdForUpdateAsync(int appointmentId);
+    Task<bool> IsOwnedByPatientAsync(int appointmentId, int userId);
 
     Task<List<Appointment>> GetBookedSlotsAsync(
         int doctorId,

@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, InputAdornment, LinearProgress, MenuItem, Pagination, Paper, Skeleton, Stack, TextField, Typography } from "@mui/material";
+import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Alert, Box, Button, Chip, InputAdornment, LinearProgress, MenuItem, Pagination, Paper, Skeleton, Stack, TextField, Typography } from "@mui/material";
 import { FilterListOutlined, RefreshOutlined, RestartAltOutlined, ScienceOutlined, SearchOutlined, VisibilityOutlined } from "@mui/icons-material";
-import labTestApi from "../../api/labTestApi";
-import getApiErrorMessage from "../../utils/errorHandler";
+import useLabOrders from "../../hooks/useLabOrders";
+import LabResultDialog from "../../components/common/LabResultDialog";
+import { positiveId } from "../../utils/notificationNavigation";
 import ClinicPageHeader from "../../components/common/ClinicPageHeader";
 import EmptyState from "../../components/common/EmptyState";
-import { clinicButtonSx, clinicColors, clinicDialogActionsSx, clinicDialogPaperSx, clinicDialogTitleSx, clinicFieldSx, clinicSecondaryButtonSx, clinicSurfaceSx } from "../../components/common/clinicUi";
+import { clinicButtonSx, clinicColors, clinicFieldSx, clinicSecondaryButtonSx, clinicSurfaceSx } from "../../components/common/clinicUi";
 
 const dateText = value => value ? new Date(value).toLocaleDateString("vi-VN") : "–";
 const pageSize = 10;
@@ -29,30 +31,12 @@ function ResultContent({ order }) {
 }
 
 export default function LabResultsPage() {
-    const [orders, setOrders] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
+    const { orders, loading, error, reload: loadOrders } = useLabOrders();
+    const [params, setParams] = useSearchParams();
+    const selectedLabId = positiveId(params.get("labTestId"));
     const [search, setSearch] = useState("");
     const [status, setStatus] = useState("");
     const [page, setPage] = useState(0);
-    const [detail, setDetail] = useState(null);
-    const listRequest = useRef(0);
-    const detailRequest = useRef(0);
-    const invalidate = useCallback(() => { listRequest.current++; detailRequest.current++; }, []);
-    const loadOrders = useCallback(async () => {
-        const requestId = ++listRequest.current;
-        setLoading(true); setError("");
-        try {
-            const response = await labTestApi.getAll();
-            if (requestId === listRequest.current) setOrders(response.data);
-        } catch (requestError) {
-            if (requestId === listRequest.current) { setError(getApiErrorMessage(requestError, "Không thể tải kết quả xét nghiệm.")); setOrders([]); }
-        } finally { if (requestId === listRequest.current) setLoading(false); }
-    }, []);
-    useEffect(() => {
-        const timer = setTimeout(() => { void loadOrders(); }, 0);
-        return () => { clearTimeout(timer); invalidate(); };
-    }, [loadOrders, invalidate]);
 
     const filtered = useMemo(() => orders.filter(order => {
         const query = search.trim().toLocaleLowerCase("vi");
@@ -62,16 +46,8 @@ export default function LabResultsPage() {
     const currentPage = Math.min(page, Math.max(0, Math.ceil(filtered.length / pageSize) - 1));
     const visible = filtered.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
     const reset = () => { setSearch(""); setStatus(""); setPage(0); };
-    const openDetail = async id => {
-        const requestId = ++detailRequest.current;
-        setDetail({ id });
-        try {
-            const response = await labTestApi.getDetail(id);
-            if (requestId === detailRequest.current) setDetail({ id, data: response.data });
-        } catch (requestError) { if (requestId === detailRequest.current) setDetail({ id, error: getApiErrorMessage(requestError) }); }
-    };
-    const closeDetail = () => { detailRequest.current++; setDetail(null); };
-    const detailLoading = Boolean(detail && !detail.data && !detail.error);
+    const openDetail = id => setParams(current => { current.set("labTestId", String(id)); return current; });
+    const closeDetail = () => setParams(current => { current.delete("labTestId"); return current; });
 
     return <Box sx={{ maxWidth: 1100, mx: "auto", px: { xs: 2, md: 3 }, py: { xs: 3, md: 4 } }}>
         <Stack spacing={2.5}>
@@ -105,14 +81,6 @@ export default function LabResultsPage() {
             </Box>
             {!loading && !error && filtered.length > pageSize && <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ justifyContent: "space-between", alignItems: { sm: "center" } }}><Typography sx={{ fontSize: 13, color: clinicColors.muted }}>{currentPage * pageSize + 1}–{Math.min((currentPage + 1) * pageSize, filtered.length)} / {filtered.length} chỉ định</Typography><Pagination count={Math.ceil(filtered.length / pageSize)} page={currentPage + 1} onChange={(_, value) => setPage(value - 1)} shape="rounded" color="primary" size="small" getItemAriaLabel={(type, value) => type === "next" ? "Trang tiếp" : type === "previous" ? "Trang trước" : `Trang ${value}`} /></Stack>}
         </Stack>
-        <Dialog open={Boolean(detail)} onClose={closeDetail} fullWidth maxWidth="sm" aria-labelledby="lab-result-detail-title" slotProps={{ paper: { sx: clinicDialogPaperSx } }}>
-            <DialogTitle id="lab-result-detail-title" sx={clinicDialogTitleSx}>Chi tiết xét nghiệm</DialogTitle>
-            <DialogContent sx={{ px: 3, pb: 3 }}><Stack spacing={2.5} aria-busy={detailLoading}>
-                {detailLoading && <><LinearProgress /><Skeleton height={60} /><Skeleton variant="rounded" height={130} /></>}
-                {detail?.error && <Alert severity="error" action={<Button color="inherit" onClick={() => openDetail(detail.id)}>Thử lại</Button>}>{detail.error}</Alert>}
-                {detail?.data && <><Box><Typography sx={{ fontSize: 18, fontWeight: 600 }}>{detail.data.labTestTypeName}</Typography><Typography sx={{ mt: 0.75, mb: 1.5, fontSize: 13, color: clinicColors.muted }}>Chỉ định #{detail.data.id} · {dateText(detail.data.createdAt)}</Typography><LabStatus status={detail.data.status} /></Box>{detail.data.clinicalDiagnosis && <Typography sx={{ fontSize: 14, color: clinicColors.muted, lineHeight: 1.7, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>Chẩn đoán lâm sàng: {detail.data.clinicalDiagnosis}</Typography>}<ResultContent order={detail.data} /></>}
-            </Stack></DialogContent>
-            <DialogActions sx={clinicDialogActionsSx}><Button onClick={closeDetail} sx={clinicSecondaryButtonSx}>Đóng</Button></DialogActions>
-        </Dialog>
+        <LabResultDialog id={selectedLabId} onClose={closeDetail} />
     </Box>;
 }

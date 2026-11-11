@@ -9,6 +9,8 @@ using ClinicManagement.Services.Interfaces;
 using ClinicManagement.Services.Implementations;
 using ClinicManagement.Hubs;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
 
 namespace ClinicManagement
 {
@@ -31,6 +33,16 @@ namespace ClinicManagement
             // Controllers
             // =========================
             builder.Services.AddControllers().AddDepartmentStatisticsValidation();
+            builder.Services.AddRateLimiter(options =>
+            {
+                options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+                options.AddPolicy("guest-booking", context => RateLimitPartition.GetFixedWindowLimiter(
+                    context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 5, Window = TimeSpan.FromMinutes(10), QueueLimit = 0
+                    }));
+            });
 
             // =========================
             // Global Exception Handler
@@ -139,6 +151,7 @@ namespace ClinicManagement
             // Authorization
             // =========================
             app.UseAuthorization();
+            app.UseRateLimiter();
 
             app.MapControllers();
             app.MapHub<NotificationHub>("/hubs/notification", options => options.CloseOnAuthenticationExpiration = true);

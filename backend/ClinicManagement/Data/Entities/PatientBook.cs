@@ -8,6 +8,8 @@ public class PatientBook
     public PatientBook? PreviousBook { get; set; }
 
     public DateTime IssuedAt { get; set; }
+    public int? IssuedByUserId { get; set; }
+    public User? IssuedByUser { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 
@@ -19,7 +21,4 @@ public class PatientBook
 
     public int? BookInvoiceId { get; set; }
     public BookInvoice? BookInvoice { get; set; }
-
-    public int? IssuedByUserId { get; set; }
-    public User? IssuedBy { get; set; }
 }

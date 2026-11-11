@@ -1,6 +1,22 @@
 # Hệ thống Quản lý Phòng khám Đa khoa
 
-Ứng dụng quản lý phòng khám đa khoa: đặt lịch khám, khám bệnh, kê đơn thuốc, quản lý kho thuốc, xét nghiệm, hóa đơn – thanh toán và báo cáo thống kê. Hệ thống phục vụ 5 vai trò người dùng (Admin, Bác sĩ, Lễ tân, Bệnh nhân, Kỹ thuật viên xét nghiệm) qua hai giao diện: **Patient Portal** (công khai, dành cho bệnh nhân) và **Internal Portal** (dashboard nội bộ cho Admin/Bác sĩ/Lễ tân/Kỹ thuật viên xét nghiệm).
+### Cổng dành cho khách chưa đăng nhập
+
+- Xem giới thiệu, chuyên khoa và chi tiết chuyên khoa, tìm bác sĩ, xem hồ sơ và giờ khám trống.
+- Xem dịch vụ và bảng giá xét nghiệm từ danh mục đang hoạt động trong cơ sở dữ liệu.
+- Đăng ký khám tại `/booking` không cần tài khoản; nhận mã lịch hẹn ở trạng thái chờ xác nhận để lễ tân tiếp nhận, xác nhận và liên hệ.
+- Đọc hướng dẫn đặt lịch, chuẩn bị hồ sơ, câu hỏi thường gặp; xem địa chỉ, gọi tổng đài, gửi email và mở đường đi.
+- Hồ sơ cá nhân, lịch hẹn theo tài khoản và kết quả xét nghiệm vẫn yêu cầu đăng nhập. Lịch đăng ký với tư cách khách không tự động gắn với tài khoản tạo sau đó.
+
+Các API bổ sung: `GET /api/doctors/public/{doctorId}`, `GET /api/public/services`, `POST /api/appointments/guest`. Endpoint đăng ký khách dùng lại quy trình lịch hẹn và giới hạn 5 yêu cầu / 10 phút cho mỗi địa chỉ IP.
+
+Thông tin liên hệ dùng chung nằm tại `frontend/clinic-management-client/src/data/publicContent.js`, kế thừa thông tin hiển thị trước đây của dự án; cập nhật theo phòng khám thực tế trước khi đưa vào sử dụng.
+
+Tên chuyên khoa, bác sĩ và dịch vụ được lưu bằng Unicode có dấu. Nội dung chi tiết của 20 chuyên khoa nằm tại `backend/ClinicManagement/Data/Content/specialties.vi.json`, gồm phần giới thiệu, nhóm vấn đề thường gặp, hướng dẫn chuẩn bị và liên kết tham khảo UMC Clinic ở những mục tương ứng. API chuyên khoa trả thêm `publicInformation`; tên và mô tả ngắn vẫn lấy từ cơ sở dữ liệu.
+
+Migration `20261108120000_LocalizeVietnameseContent` sửa các giá trị mẫu thiếu dấu và điền mô tả đang trống hoặc còn là nội dung mẫu. Nội dung đã biên soạn riêng, mã định danh, tên đăng nhập và số bản ghi được giữ nguyên. Bản SQL đi kèm tại `Data/Seed/20261108-vietnamese-content.sql` cần chạy trong giao dịch nếu áp dụng riêng; migration đã quản lý giao dịch. Không chạy lại toàn bộ seed để sửa nội dung của database đang sử dụng.
+
+Ứng dụng quản lý phòng khám đa khoa: đặt lịch khám, khám bệnh, kê đơn thuốc, quản lý kho thuốc, xét nghiệm, hóa đơn – thanh toán và báo cáo thống kê. Hệ thống phục vụ 8 vai trò người dùng (Admin, Trưởng khoa, Bác sĩ, Lễ tân, Bệnh nhân, Thu ngân, Dược sĩ, Kỹ thuật viên xét nghiệm) qua hai giao diện: **Patient Portal** (công khai, dành cho bệnh nhân) và **Internal Portal** (cổng nội bộ cho nhân viên).
 
 > Đồ án môn học Lập trình .NET.
 
@@ -34,6 +50,10 @@
 - Quản lý kho thuốc: nhập kho, kiểm tồn, cảnh báo hết hạn/sắp hết hàng
 - Xem báo cáo, thống kê: doanh thu, lượt khám, top thuốc/dịch vụ sử dụng nhiều
 - Cấu hình hệ thống (giá khám, giá dịch vụ xét nghiệm...)
+
+Phần Admin của Nguyễn Văn Nhuận được bổ sung ngày 09/11/2026: tạo tài khoản nhân viên bằng API quản trị riêng, lưu sửa thông tin tài khoản, liên kết hồ sơ bác sĩ, thống kê tài khoản từ dữ liệu thật và tổng hợp điểm đánh giá theo bác sĩ. Xem [phạm vi phân công, API, cập nhật quyền và kiểm thử](docs/admin-nhuan-completion-2026-11-09.md). CRUD hồ sơ nhân sự đầy đủ, cấu hình phòng khám và báo cáo thuộc các đầu việc riêng được nêu trong tài liệu này.
+
+Các vai trò còn lại trong phần Nhuận phụ trách được bổ sung thông báo kết quả xét nghiệm cho Bệnh nhân/Bác sĩ/Trưởng khoa, cập nhật dữ liệu qua SignalR, mở chi tiết từ thông báo và vai trò/quyền Thu ngân mặc định. Xem [phạm vi, cập nhật database và kiểm thử các vai trò còn lại](docs/remaining-roles-nhuan-2026-11-09.md).
 
 ## Công nghệ sử dụng
 
@@ -178,7 +198,7 @@ sqlcmd -S "(localdb)\MSSQLLocalDB" -d ClinicManagementDb -E -b -i "backend/Clini
 
 Nếu `sqlcmd` không có trong PATH, dùng đường dẫn đầy đủ tới `SQLCMD.EXE` hoặc mở file SQL trong SSMS, chọn đúng database `ClinicManagementDb` rồi Execute. Nếu dùng SQL Server khác, thay `-S`, `-d` và kiểu xác thực theo connection string trong `appsettings.json`.
 
-**Lưu ý:** File này xóa toàn bộ dữ liệu ứng dụng hiện có rồi nạp lại dữ liệu mẫu trong một giao dịch; chỉ chạy trên database phát triển khi đã sao lưu dữ liệu cần giữ. Lịch sử migration được giữ nguyên. Chạy lại file sẽ tạo lại cùng bộ dữ liệu. Hai mươi bảng ứng dụng đều có khoảng 20 dòng: 24 lịch hẹn và 25 chỉ định xét nghiệm để có cả hồ sơ đã khám, hàng đợi tiếp đón và xét nghiệm đang chờ; các bảng khác có 20 dòng. Năm role sử dụng là Admin, Doctor, Receptionist, Patient, LabTechnician; 15 role mẫu còn lại không được phép gán qua API.
+**Lưu ý:** File này xóa toàn bộ dữ liệu ứng dụng hiện có rồi nạp lại dữ liệu mẫu trong một giao dịch; chỉ chạy trên database phát triển khi đã sao lưu dữ liệu cần giữ. Lịch sử migration được giữ nguyên. Chạy lại file sẽ tạo lại cùng bộ dữ liệu. Hai mươi bảng ứng dụng đều có khoảng 20 dòng: 24 lịch hẹn và 25 chỉ định xét nghiệm để có cả hồ sơ đã khám, hàng đợi tiếp đón và xét nghiệm đang chờ; các bảng khác có 20 dòng. Tám vai trò nghiệp vụ là Admin, DepartmentHead, Doctor, Receptionist, Patient, Cashier, Pharmacist, LabTechnician; 12 vai trò DemoRole còn lại chỉ là dữ liệu mẫu.
 
 Tài khoản quản trị: `admin` / `admin123`, đăng nhập tại `/internal/login`. Các tài khoản mẫu `demo_doctor`, `demo_reception`, `demo_labtech`, `demo_patient04` cũng dùng mật khẩu `admin123` để thử từng vai trò. Mật khẩu mẫu chỉ dành cho môi trường phát triển.
 

@@ -1,5 +1,34 @@
 # UI refresh verification fixture
 
+Remaining-role notification and Cashier access checks can be run with
+`node tests/UiRefreshVerification/smoke.mjs --remaining-roles` for API/SignalR
+or `node tests/remaining-roles-ui.mjs` for Edge workflows after a Release build.
+The UI runner also runs the optional Admin API checks. It checks live Patient,
+Doctor and DepartmentHead result dialogs, notification navigation, offline
+history, owner isolation, retry, and Cashier permissions. The API checks exercise
+concurrent completion and a fixture-only notification persistence failure to
+verify transaction rollback. The role upgrade is tested with an existing custom
+Cashier ID and an occupied seed ID. Screenshots: `.tmp/remaining-roles/`.
+
+Admin account completion and doctor rating summaries can be verified with
+`node tests/admin-completion-ui.mjs` after building this fixture in Release.
+The runner passes `--admin-completion` to enable additional API checks and
+fixture-only records, then checks create/edit persistence, staff roles and doctor
+profile linking, Admin refresh-cookie preservation, moderation aggregates,
+CSV export, error retry and desktop/mobile bounds through Edge headless.
+Set `PLAYWRIGHT_MODULE` to an installed Playwright ESM module if necessary.
+It owns and cleans up its API, Vite server and randomly named LocalDB database.
+Screenshots are written to `.tmp/admin-completion/`. The default fixture dataset
+is unchanged when the flag is absent.
+
+The guest portal can be verified separately with `node tests/guest-portal-ui.mjs`
+after building this fixture. Set `PLAYWRIGHT_MODULE` to an installed Playwright
+ESM module when necessary. It uses Edge headless, creates its own disposable
+database and Vite server, and cleans them up. It checks public routes, live prices,
+doctor filters and profiles, anonymous booking and staff confirmation, conflicts,
+validation, rate limiting, protected records, error retry, and responsive layouts.
+Screenshots are written to `.tmp/guest-portal/`.
+
 This disposable fixture runs the existing backend against a randomly named SQL Server LocalDB database. It calls `Database.MigrateAsync()` and checks the migration history; it never uses `EnsureCreated` or generates a replacement schema from the model.
 
 ```powershell

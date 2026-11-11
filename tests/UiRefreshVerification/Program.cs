@@ -120,6 +120,9 @@ try
     await Api(HttpMethod.Patch, "api/doctors/1/account", new { userId = staff["uidoctor"].UserId }, admin.Access);
     await Api(HttpMethod.Patch, "api/doctors/2/account", new { userId = staff["uihead"].UserId }, admin.Access);
     await Api(HttpMethod.Patch, "api/doctors/3/account", new { userId = staff["uiforeign"].UserId }, admin.Access);
+    // Linking a doctor increments the linked user's SecurityVersion and revokes previous tokens.
+    foreach (var username in new[] { "uidoctor", "uihead", "uiforeign" })
+        staff[username] = await Login(username);
     // No create-doctor API exists; this fixture-only profile exercises Admin self-review protection.
     var adminDoctor = new Doctor { FullName = "Quản trị viên kiêm bác sĩ", DepartmentId = 1, SpecializationId = 1, UserId = admin.UserId,
         Title = "BS.CKI", ExperienceYears = 10, IsActive = true };
@@ -231,9 +234,19 @@ try
     var publicReviews = (await Api(HttpMethod.Get, "api/reviews?doctorId=3"))!;
     Check(publicReviews["totalItems"]!.GetValue<int>() == 0, "Review ownership/Completed/duplicate rules hold and hidden review stays absent from public API");
     Check(await db.Database.GetAppliedMigrationsAsync() is { } applied && applied.Any(), "Verification uses persisted migration history, without EnsureCreated");
+    AdminCompletionMetadata? adminCompletion = null;
+    RemainingRoleMetadata? remainingRoles = null;
+    if (args.Contains("--admin-completion"))
+        adminCompletion = await AdminCompletionChecks.RunAsync(http, db, password, admin.UserId,
+            admin.Access, patient.UserId, patient.Access, patientProfileId, Check);
+    if (args.Contains("--remaining-roles"))
+        remainingRoles = await RemainingRoleChecks.RunAsync(http, db, password, admin.Access,
+            staff["uidoctor"].Access, staff["uihead"].Access, staff["uilab"].Access,
+            patient.Access, other.Access, staff["uiforeign"].Access, Check);
+
     Console.WriteLine("UI_FIXTURE:" + JsonSerializer.Serialize(new
     {
-        baseUrl = http.BaseAddress, password,
+        baseUrl = http.BaseAddress, password, adminCompletion, remainingRoles,
         usernames = new { admin = "uiadmin", patient = "uipatient", other = "uiother", doctor = "uidoctor", head = "uihead", lab = "uilab" },
         today = today.ToString("yyyy-MM-dd"), bookingDate = bookingDate.ToString("yyyy-MM-dd"), createScheduleDate = today.AddDays(7).ToString("yyyy-MM-dd"),
         doctorId = 1, doctorName = await db.Doctors.Where(x => x.DoctorId == 1).Select(x => x.FullName).SingleAsync(),

@@ -38,6 +38,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Patient> Patients => Set<Patient>();
     public DbSet<PatientBook> PatientBooks => Set<PatientBook>();
     public DbSet<BookInvoice> BookInvoices => Set<BookInvoice>();
+    public DbSet<PatientBookRequest> PatientBookRequests => Set<PatientBookRequest>();
 
     public DbSet<MedicineCategory> MedicineCategories =>
         Set<MedicineCategory>();
@@ -198,6 +199,8 @@ public class ApplicationDbContext : DbContext
                 [RoleConstants.Pharmacist] = 7
             };
             entity.HasData(PermissionCatalog.DefaultRoles
+                // Cashier is provisioned by name in its data migration to preserve existing custom IDs.
+                .Where(role => role.Key != RoleConstants.Cashier)
                 .SelectMany(role => role.Value.Select(code =>
                 new RolePermission { RoleId = roleIds[role.Key], PermissionCode = code })));
         });
@@ -303,6 +306,8 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<PatientBook>(entity =>
         {
             entity.HasKey(x => x.PatientBookId);
+            entity.HasOne(x => x.IssuedByUser).WithMany().HasForeignKey(x => x.IssuedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             entity.Property(x => x.BookNumber)
                 .HasMaxLength(40);
@@ -335,6 +340,20 @@ public class ApplicationDbContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
+        modelBuilder.Entity<PatientBookRequest>(entity =>
+        {
+            entity.HasKey(x => x.PatientBookRequestId);
+            entity.Property(x => x.Reason).HasMaxLength(10).IsRequired();
+            entity.HasOne(x => x.Patient).WithMany().HasForeignKey(x => x.PatientId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.RequestedByUser).WithMany().HasForeignKey(x => x.RequestedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.BookInvoice).WithMany().HasForeignKey(x => x.BookInvoiceId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(x => x.PatientId).IsUnique().HasFilter("[BookInvoiceId] IS NULL");
+            entity.HasIndex(x => x.BookInvoiceId).IsUnique().HasFilter("[BookInvoiceId] IS NOT NULL");
+        });
+
         modelBuilder.Entity<Appointment>(entity =>
         {
             entity.HasOne(x => x.PatientBook)
@@ -355,9 +374,9 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(x => x.Code).IsUnique();
             entity.HasIndex(x => x.Name).IsUnique();
             entity.HasData(
-                new Department { DepartmentId = 1, Code = "NOI", Name = "Noi tong quat", IsActive = true, CreatedAt = new DateTime(2026, 1, 1), UpdatedAt = new DateTime(2026, 1, 1) },
-                new Department { DepartmentId = 2, Code = "NHI", Name = "Nhi", IsActive = true, CreatedAt = new DateTime(2026, 1, 1), UpdatedAt = new DateTime(2026, 1, 1) },
-                new Department { DepartmentId = 3, Code = "RHM", Name = "Rang ham mat", IsActive = true, CreatedAt = new DateTime(2026, 1, 1), UpdatedAt = new DateTime(2026, 1, 1) });
+                new Department { DepartmentId = 1, Code = "NOI", Name = "Nội tổng quát", Description = "Khám và đánh giá sức khỏe tổng thể, tiếp nhận các triệu chứng chưa rõ chuyên khoa và theo dõi bệnh nội khoa thường gặp. Bác sĩ kết hợp tiền sử bệnh, thăm khám và kết quả cận lâm sàng để định hướng chăm sóc, tái khám hoặc chuyển chuyên khoa khi cần.", IsActive = true, CreatedAt = new DateTime(2026, 1, 1), UpdatedAt = new DateTime(2026, 1, 1) },
+                new Department { DepartmentId = 2, Code = "NHI", Name = "Nhi khoa", Description = "Chăm sóc sức khỏe trẻ em, khám các bệnh thường gặp và theo dõi sự phát triển thể chất. Nội dung thăm khám có thể gồm vấn đề hô hấp, tiêu hóa, dinh dưỡng và hướng dẫn chăm sóc phù hợp với từng giai đoạn phát triển của trẻ.", IsActive = true, CreatedAt = new DateTime(2026, 1, 1), UpdatedAt = new DateTime(2026, 1, 1) },
+                new Department { DepartmentId = 3, Code = "RHM", Name = "Răng hàm mặt", Description = "Khám và đánh giá các vấn đề về răng, nướu và vùng hàm mặt; tư vấn vệ sinh răng miệng và theo dõi sức khỏe răng định kỳ. Bác sĩ trao đổi về tình trạng răng miệng, nhu cầu chăm sóc và hướng xử trí phù hợp sau khi thăm khám.", IsActive = true, CreatedAt = new DateTime(2026, 1, 1), UpdatedAt = new DateTime(2026, 1, 1) });
         });
 
         modelBuilder.Entity<Specialization>(entity =>

@@ -59,6 +59,8 @@ BEGIN TRY
     DELETE FROM dbo.RecordDiagnoses;
     DELETE FROM dbo.MedicalRecords;
     DELETE FROM dbo.Appointments;
+    IF OBJECT_ID(N'dbo.PatientBookRequests', N'U') IS NOT NULL
+        DELETE FROM dbo.PatientBookRequests;
     DELETE FROM dbo.PatientBooks;
     DELETE FROM dbo.BookInvoices;
     DELETE FROM dbo.Patients;
@@ -99,11 +101,12 @@ BEGIN TRY
         (4, 'Patient', 'Patient', 1),
         (5, 'LabTechnician', 'Lab technician', 1),
         (6, 'DepartmentHead', 'Department head and doctor', 1),
-        (7, 'Pharmacist', 'Pharmacist', 1);
+        (7, 'Pharmacist', 'Pharmacist', 1),
+        (8, 'Cashier', 'Cashier', 1);
     INSERT INTO dbo.Roles (RoleId, RoleName, Description)
     SELECT 1000+n, CONCAT('DemoRole', RIGHT(CONCAT('0', n), 2)),
            'Reserved demo role; not assignable through the API'
-    FROM @n WHERE n BETWEEN 8 AND 20;
+    FROM @n WHERE n BETWEEN 9 AND 20;
     SET IDENTITY_INSERT dbo.Roles OFF;
 
     INSERT INTO dbo.RolePermissions (RoleId, PermissionCode)
@@ -135,39 +138,55 @@ BEGIN TRY
     INSERT INTO dbo.RolePermissions (RoleId, PermissionCode)
     SELECT 7, Code FROM dbo.Permissions WHERE Code IN
         ('pharmacy.viewInventory','pharmacy.viewCatalog','pharmacy.dispense');
+    INSERT INTO dbo.RolePermissions (RoleId, PermissionCode)
+    SELECT 8, Code FROM dbo.Permissions WHERE Code IN
+        ('billing.view','billing.create','billing.recordPayment');
 
-    DECLARE @departmentNames TABLE (n int PRIMARY KEY, Code varchar(30), Name nvarchar(150));
+    DECLARE @departmentNames TABLE (n int PRIMARY KEY, Code varchar(30), Name nvarchar(150), Description nvarchar(500));
     INSERT INTO @departmentNames VALUES
-        (1,'NOI',N'Noi tong quat'),(2,'NHI',N'Nhi khoa'),(3,'RHM',N'Rang ham mat'),
-        (4,'TIM',N'Tim mach'),(5,'HOHAP',N'Ho hap'),(6,'TIEUHOA',N'Tieu hoa'),
-        (7,'NOITIET',N'Noi tiet'),(8,'DALIEU',N'Da lieu'),(9,'MAT',N'Mat'),
-        (10,'TMH',N'Tai mui hong'),(11,'CXYK',N'Co xuong khop'),(12,'THANKINH',N'Than kinh'),
-        (13,'SAN',N'San phu khoa'),(14,'NIEU',N'Tiet nieu'),(15,'DINHDUONG',N'Dinh duong'),
-        (16,'YHCT',N'Y hoc co truyen'),(17,'PHCN',N'Phuc hoi chuc nang'),
-        (18,'CAPCUU',N'Cap cuu'),(19,'XETNGHIEM',N'Xet nghiem'),(20,'CDHA',N'Chan doan hinh anh');
+        (1,'NOI',N'Nội tổng quát',N'Khám và đánh giá sức khỏe tổng thể, tiếp nhận các triệu chứng chưa rõ chuyên khoa và theo dõi bệnh nội khoa thường gặp. Bác sĩ kết hợp tiền sử bệnh, thăm khám và kết quả cận lâm sàng để định hướng chăm sóc, tái khám hoặc chuyển chuyên khoa khi cần.'),
+        (2,'NHI',N'Nhi khoa',N'Chăm sóc sức khỏe trẻ em, khám các bệnh thường gặp và theo dõi sự phát triển thể chất. Nội dung thăm khám có thể gồm vấn đề hô hấp, tiêu hóa, dinh dưỡng và hướng dẫn chăm sóc phù hợp với từng giai đoạn phát triển của trẻ.'),
+        (3,'RHM',N'Răng hàm mặt',N'Khám và đánh giá các vấn đề về răng, nướu và vùng hàm mặt; tư vấn vệ sinh răng miệng và theo dõi sức khỏe răng định kỳ. Bác sĩ trao đổi về tình trạng răng miệng, nhu cầu chăm sóc và hướng xử trí phù hợp sau khi thăm khám.'),
+        (4,'TIM',N'Tim mạch',N'Khám và theo dõi các bệnh lý tim mạch như tăng huyết áp, rối loạn lipid máu, bệnh mạch vành và rối loạn nhịp tim. Đánh giá triệu chứng, yếu tố nguy cơ và kết quả thăm dò giúp bác sĩ xây dựng kế hoạch chăm sóc phù hợp.'),
+        (5,'HOHAP',N'Hô hấp',N'Khám các vấn đề đường hô hấp như ho kéo dài, khò khè, hen phế quản và bệnh phổi tắc nghẽn mạn tính. Việc thăm khám kết hợp khai thác yếu tố dị ứng, môi trường sống và các kết quả thăm dò chức năng hô hấp đã có.'),
+        (6,'TIEUHOA',N'Tiêu hóa',N'Khám các bệnh lý đường tiêu hóa, gan và mật; đánh giá đau bụng, rối loạn tiêu hóa, trào ngược và các vấn đề gan mạn tính. Bác sĩ xem xét tiền sử, kết quả xét nghiệm, siêu âm hoặc nội soi để định hướng theo dõi.'),
+        (7,'NOITIET',N'Nội tiết',N'Khám và theo dõi rối loạn nội tiết, chuyển hóa như đái tháo đường, bệnh tuyến giáp và rối loạn lipid máu. Việc theo dõi lâu dài dựa trên triệu chứng, diễn biến chỉ số xét nghiệm và đáp ứng của từng người bệnh.'),
+        (8,'DALIEU',N'Da liễu',N'Khám các vấn đề về da, tóc và móng; đánh giá tổn thương da, ngứa và những thay đổi kéo dài hoặc tái phát. Bác sĩ ghi nhận diễn biến, sản phẩm đang sử dụng và yếu tố tiếp xúc để tư vấn chăm sóc phù hợp.'),
+        (9,'MAT',N'Mắt',N'Khám và kiểm tra sức khỏe mắt, tiếp nhận các vấn đề về thị lực, khó chịu ở mắt và nhu cầu theo dõi định kỳ. Thông tin về kính đang sử dụng, bệnh nền và kết quả khám trước giúp bác sĩ đánh giá tình trạng hiện tại.'),
+        (10,'TMH',N'Tai mũi họng',N'Khám các vấn đề tại tai, mũi, xoang và họng, bao gồm tình trạng khó chịu kéo dài hoặc tái phát. Bác sĩ đánh giá triệu chứng, khả năng nghe, giọng nói và tiền sử điều trị để định hướng thăm khám phù hợp.'),
+        (11,'CXYK',N'Cơ xương khớp',N'Khám và theo dõi các bệnh lý cơ, xương, khớp như thoái hóa khớp, gout, viêm khớp và loãng xương. Việc đánh giá kết hợp mức độ đau, khả năng vận động và kết quả xét nghiệm hoặc chẩn đoán hình ảnh.'),
+        (12,'THANKINH',N'Thần kinh',N'Khám và đánh giá các triệu chứng liên quan đến hệ thần kinh; theo dõi những thay đổi về cảm giác, vận động và sinh hoạt. Bác sĩ kết hợp tiền sử, thăm khám và kết quả cận lâm sàng để định hướng chăm sóc hoặc khám chuyên khoa sâu hơn.'),
+        (13,'SAN',N'Sản phụ khoa',N'Chăm sóc sức khỏe phụ nữ, khám và theo dõi thai kỳ, đánh giá các bệnh lý phụ khoa và sức khỏe sinh sản. Nội dung thăm khám được trao đổi theo độ tuổi, tiền sử và nhu cầu riêng của từng người bệnh.'),
+        (14,'NIEU',N'Tiết niệu',N'Khám và đánh giá các vấn đề của hệ tiết niệu, tiếp nhận thay đổi khi đi tiểu và nhu cầu theo dõi bệnh đã được chẩn đoán. Bác sĩ đối chiếu triệu chứng, kết quả xét nghiệm nước tiểu và chẩn đoán hình ảnh khi có.'),
+        (15,'DINHDUONG',N'Dinh dưỡng',N'Đánh giá tình trạng dinh dưỡng theo độ tuổi, thể trạng và nhu cầu sức khỏe; trao đổi về chế độ ăn và thói quen sinh hoạt. Nội dung tư vấn dựa trên thông tin ăn uống, diễn biến cân nặng và bệnh nền của từng người.'),
+        (16,'YHCT',N'Y học cổ truyền',N'Thăm khám và tư vấn chăm sóc sức khỏe theo y học cổ truyền, kết hợp xem xét bệnh sử và các phương pháp đang điều trị. Bác sĩ đánh giá thể trạng, nhu cầu của người bệnh và khả năng phối hợp với các chuyên khoa liên quan.'),
+        (17,'PHCN',N'Phục hồi chức năng',N'Đánh giá chức năng vận động và mức độ ảnh hưởng đến sinh hoạt, từ đó trao đổi mục tiêu phục hồi phù hợp. Bác sĩ xem xét tình trạng sau chấn thương, sau điều trị hoặc hạn chế vận động để xây dựng kế hoạch theo dõi.'),
+        (18,'CAPCUU',N'Cấp cứu',N'Tiếp nhận và đánh giá ban đầu những tình trạng cần hỗ trợ y tế khẩn, ưu tiên theo mức độ nghiêm trọng. Thông tin người bệnh, bệnh nền, thuốc đang dùng và diễn biến gần nhất giúp nhân viên y tế phối hợp xử trí hoặc chuyển tuyến.'),
+        (19,'XETNGHIEM',N'Xét nghiệm',N'Cung cấp thông tin cận lâm sàng phục vụ đánh giá sức khỏe, hỗ trợ chẩn đoán và theo dõi điều trị. Các nhóm xét nghiệm thường liên quan đến huyết học, sinh hóa, miễn dịch và nước tiểu; danh mục, chi phí được công bố ở trang dịch vụ.'),
+        (20,'CDHA',N'Chẩn đoán hình ảnh',N'Sử dụng hình ảnh y học để hỗ trợ đánh giá cấu trúc cơ thể, chẩn đoán và theo dõi điều trị. Các nhóm kỹ thuật gồm siêu âm, X-quang và những thăm dò chuyên sâu theo chỉ định; dịch vụ thực hiện được xác nhận khi đăng ký.');
     SET IDENTITY_INSERT dbo.Departments ON;
     INSERT INTO dbo.Departments (DepartmentId, Code, Name, Description, IsActive, CreatedAt, UpdatedAt)
-    SELECT 1000+n, Code, Name, N'Khoa mau cho phong kham', 1, @now, @now FROM @departmentNames;
+    SELECT 1000+n, Code, Name, Description, 1, @now, @now FROM @departmentNames;
     SET IDENTITY_INSERT dbo.Departments OFF;
 
     SET IDENTITY_INSERT dbo.Specializations ON;
     INSERT INTO dbo.Specializations (SpecializationId, Code, Name, Description, DepartmentId, IsActive, CreatedAt, UpdatedAt)
-    SELECT 1000+n, CONCAT('CK-', Code), CONCAT(N'Chuyen khoa ', Name), N'Chuyen khoa mau',
+    SELECT 1000+n, CONCAT('CK-', Code), CONCAT(N'Chuyên khoa ', Name), Description,
            1000+n, 1, @now, @now FROM @departmentNames;
     SET IDENTITY_INSERT dbo.Specializations OFF;
 
     SET IDENTITY_INSERT dbo.Rooms ON;
     INSERT INTO dbo.Rooms (RoomId, RoomNumber, Name, RoomType, DepartmentId, Location, IsActive, CreatedAt, UpdatedAt)
-    SELECT 1000+n, CONCAT('P', 100+n), CONCAT(N'Phong kham ', Name),
-           N'Kham benh', 1000+n, CONCAT(N'Tang ', 1+(n-1)/5), 1, @now, @now
+    SELECT 1000+n, CONCAT('P', 100+n), CONCAT(N'Phòng khám ', Name),
+           N'Khám bệnh', 1000+n, CONCAT(N'Tầng ', 1+(n-1)/5), 1, @now, @now
     FROM @departmentNames;
     SET IDENTITY_INSERT dbo.Rooms OFF;
 
     SET IDENTITY_INSERT dbo.Doctors ON;
     INSERT INTO dbo.Doctors (DoctorId, FullName, Title, ExperienceYears, Biography, IsActive, DepartmentId, SpecializationId)
-    SELECT 1000+n, CONCAT(N'Bac si mau ', RIGHT(CONCAT('0', n), 2)),
+    SELECT 1000+n, CONCAT(N'Bác sĩ mẫu ', RIGHT(CONCAT('0', n), 2)),
            CASE WHEN n%3=0 THEN 'ThS.BS' ELSE 'BS.CKI' END, 4+n%16,
-           CONCAT(N'Kham va dieu tri ', Name), 1, 1000+n, 1000+n
+           CONCAT(N'Khám và điều trị ', Name), 1, 1000+n, 1000+n
     FROM @departmentNames;
     SET IDENTITY_INSERT dbo.Doctors OFF;
 
@@ -206,9 +225,9 @@ BEGIN TRY
                   WHEN 3 THEN 'demo_reception' WHEN 5 THEN 'demo_labtech'
                   ELSE CONCAT('demo_patient', RIGHT(CONCAT('0', n), 2)) END,
            @hash,
-           CASE n WHEN 1 THEN N'Demo Administrator' WHEN 2 THEN N'Demo Doctor'
-                  WHEN 3 THEN N'Demo Receptionist' WHEN 5 THEN N'Demo Lab Technician'
-                  ELSE CONCAT(N'Demo Patient ', RIGHT(CONCAT('0', n), 2)) END,
+           CASE n WHEN 1 THEN N'Quản trị viên mẫu' WHEN 2 THEN N'Bác sĩ mẫu'
+                  WHEN 3 THEN N'Lễ tân mẫu' WHEN 5 THEN N'Kỹ thuật viên xét nghiệm mẫu'
+                  ELSE CONCAT(N'Bệnh nhân mẫu ', RIGHT(CONCAT('0', n), 2)) END,
            CONCAT('demo-user', RIGHT(CONCAT('0', n), 2), '@example.test'),
            CONCAT('090000', RIGHT(CONCAT('0000', n), 4)),
            CASE n WHEN 1 THEN 1 WHEN 2 THEN 2 WHEN 3 THEN 3 WHEN 5 THEN 5 ELSE 4 END,
@@ -218,7 +237,7 @@ BEGIN TRY
         (UserId, Username, PasswordHash, FullName, Email, Phone,
          RoleId, Status, SecurityVersion, CreatedAt)
     VALUES
-        (1021, 'demo_pharmacist', @hash, N'Demo Pharmacist',
+        (1021, 'demo_pharmacist', @hash, N'Dược sĩ mẫu',
          'demo-pharmacist@example.test', '0900001021',
          7, 1, @securityVersion, @now);
     SET IDENTITY_INSERT dbo.Users OFF;
@@ -262,7 +281,7 @@ BEGIN TRY
            CASE WHEN a.n <= 16 THEN DATEADD(day, -1-(a.n-1)%5, @today) ELSE @today END,
            CASE WHEN a.n > 20 THEN CAST('09:00:00' AS time) ELSE CAST('08:00:00' AS time) END,
            CASE WHEN a.n > 20 THEN CAST('09:30:00' AS time) ELSE CAST('08:30:00' AS time) END,
-           N'Kham va tu van suc khoe',
+           N'Khám và tư vấn sức khỏe',
            CASE WHEN a.n <= 16 THEN 'Completed' WHEN a.n <= 20 THEN 'InProgress'
                 WHEN a.n%2=1 THEN 'Pending' ELSE 'Confirmed' END,
            DATEADD(day, -7, @now)
@@ -278,49 +297,49 @@ BEGIN TRY
     SELECT 1025, 1005, UserId, FullName, Phone,
            UserId, UserId, @clinicNow, @clinicNow, @today,
            CAST('08:30:00' AS time), CAST('08:45:00' AS time),
-           N'Kham dau dau va met moi', 'Confirmed', @clinicNow
+           N'Khám đau đầu và mệt mỏi', 'Confirmed', @clinicNow
     FROM dbo.Users WHERE UserId = 1006
     UNION ALL
     SELECT 1026, 1005, UserId, FullName, Phone,
            UserId, UserId, @clinicNow, @clinicNow, @today,
            CAST('09:00:00' AS time), CAST('09:15:00' AS time),
-           N'Tai kham huyet ap', 'Confirmed', @clinicNow
+           N'Tái khám huyết áp', 'Confirmed', @clinicNow
     FROM dbo.Users WHERE UserId = 1007
     UNION ALL
     SELECT 1027, 1005, UserId, FullName, Phone,
            UserId, UserId, @clinicNow, @clinicNow, @today,
            CAST('09:30:00' AS time), CAST('09:45:00' AS time),
-           N'Kham ho va dau hong', 'InProgress', @clinicNow
+           N'Khám ho và đau họng', 'InProgress', @clinicNow
     FROM dbo.Users WHERE UserId = 1008
     UNION ALL
     SELECT 1028, 1005, UserId, FullName, Phone,
            UserId, UserId, @clinicNow, @clinicNow, @today,
            CAST('10:00:00' AS time), CAST('10:15:00' AS time),
-           N'Kham dau bung', 'Completed', @clinicNow
+           N'Khám đau bụng', 'Completed', @clinicNow
     FROM dbo.Users WHERE UserId = 1009;
     SET IDENTITY_INSERT dbo.Appointments OFF;
 
     DECLARE @medicineNames TABLE (n int PRIMARY KEY, Name nvarchar(150), Unit nvarchar(20));
     INSERT INTO @medicineNames VALUES
-        (1,N'Paracetamol 500mg',N'Vien'),(2,N'Amoxicillin 500mg',N'Vien'),
-        (3,N'Amlodipine 5mg',N'Vien'),(4,N'Metformin 500mg',N'Vien'),
-        (5,N'Omeprazole 20mg',N'Vien'),(6,N'Cetirizine 10mg',N'Vien'),
-        (7,N'Ibuprofen 400mg',N'Vien'),(8,N'Azithromycin 250mg',N'Vien'),
-        (9,N'Losartan 50mg',N'Vien'),(10,N'Salbutamol 100mcg',N'Binh'),
-        (11,N'Vitamin C 500mg',N'Vien'),(12,N'ORS 5.6g',N'Goi'),
-        (13,N'Insulin glargine',N'But'),(14,N'Chlorpheniramine 4mg',N'Vien'),
-        (15,N'Diclofenac 50mg',N'Vien'),(16,N'Atorvastatin 20mg',N'Vien'),
-        (17,N'Cefuroxime 500mg',N'Vien'),(18,N'Prednisolone 5mg',N'Vien'),
-        (19,N'Folic acid 5mg',N'Vien'),(20,N'B-complex',N'Vien');
+        (1,N'Paracetamol 500mg',N'Viên'),(2,N'Amoxicillin 500mg',N'Viên'),
+        (3,N'Amlodipine 5mg',N'Viên'),(4,N'Metformin 500mg',N'Viên'),
+        (5,N'Omeprazole 20mg',N'Viên'),(6,N'Cetirizine 10mg',N'Viên'),
+        (7,N'Ibuprofen 400mg',N'Viên'),(8,N'Azithromycin 250mg',N'Viên'),
+        (9,N'Losartan 50mg',N'Viên'),(10,N'Salbutamol 100mcg',N'Bình'),
+        (11,N'Vitamin C 500mg',N'Viên'),(12,N'ORS 5.6g',N'Gói'),
+        (13,N'Insulin glargine',N'Bút'),(14,N'Chlorpheniramine 4mg',N'Viên'),
+        (15,N'Diclofenac 50mg',N'Viên'),(16,N'Atorvastatin 20mg',N'Viên'),
+        (17,N'Cefuroxime 500mg',N'Viên'),(18,N'Prednisolone 5mg',N'Viên'),
+        (19,N'Folic acid 5mg',N'Viên'),(20,N'B-complex',N'Viên');
     DECLARE @categoryNames TABLE (n int PRIMARY KEY, Name nvarchar(100));
     INSERT INTO @categoryNames VALUES
-        (1,N'Giam dau ha sot'),(2,N'Khang sinh Penicillin'),(3,N'Tim mach'),
-        (4,N'Dieu tri dai thao duong'),(5,N'Da day'),(6,N'Di ung'),
-        (7,N'Khang viem khong steroid'),(8,N'Khang sinh Macrolide'),
-        (9,N'Dieu tri tang huyet ap'),(10,N'Ho hap'),(11,N'Vitamin C'),
-        (12,N'Bu nuoc dien giai'),(13,N'Insulin'),(14,N'Khang histamine'),
-        (15,N'Co xuong khop'),(16,N'Ha lipid mau'),(17,N'Khang sinh Cephalosporin'),
-        (18,N'Corticosteroid'),(19,N'Acid folic'),(20,N'Vitamin tong hop');
+        (1,N'Giảm đau hạ sốt'),(2,N'Kháng sinh Penicillin'),(3,N'Tim mạch'),
+        (4,N'Điều trị đái tháo đường'),(5,N'Dạ dày'),(6,N'Dị ứng'),
+        (7,N'Kháng viêm không steroid'),(8,N'Kháng sinh Macrolide'),
+        (9,N'Điều trị tăng huyết áp'),(10,N'Hô hấp'),(11,N'Vitamin C'),
+        (12,N'Bù nước điện giải'),(13,N'Insulin'),(14,N'Kháng histamine'),
+        (15,N'Cơ xương khớp'),(16,N'Hạ lipid máu'),(17,N'Kháng sinh Cephalosporin'),
+        (18,N'Corticosteroid'),(19,N'Acid folic'),(20,N'Vitamin tổng hợp');
     SET IDENTITY_INSERT dbo.MedicineCategories ON;
     INSERT INTO dbo.MedicineCategories (CategoryId, CategoryName)
     SELECT 1000+n, Name FROM @categoryNames;
@@ -328,15 +347,15 @@ BEGIN TRY
 
     SET IDENTITY_INSERT dbo.Suppliers ON;
     INSERT INTO dbo.Suppliers (SupplierId, SupplierName, ContactInfo, Address)
-    SELECT 1000+n, CONCAT('Demo supplier ', n),
-           CONCAT('090000', RIGHT(CONCAT('0000', n), 4)), 'Demo address'
+    SELECT 1000+n, CONCAT(N'Nhà cung cấp mẫu ', n),
+           CONCAT('090000', RIGHT(CONCAT('0000', n), 4)), N'Địa chỉ nhà cung cấp mẫu'
     FROM @n;
     SET IDENTITY_INSERT dbo.Suppliers OFF;
 
     SET IDENTITY_INSERT dbo.Medicines ON;
     INSERT INTO dbo.Medicines (MedicineId, MedicineName, CategoryId, SupplierId, Unit, UnitPrice, Description)
     SELECT 1000+n, Name, 1000+n, 1000+n, Unit,
-           CAST(5000+n*2500 AS decimal(18,2)), N'Thuoc mau cho moi truong phat trien'
+           CAST(5000+n*2500 AS decimal(18,2)), N'Thuốc mẫu cho môi trường phát triển'
     FROM @medicineNames;
     SET IDENTITY_INSERT dbo.Medicines OFF;
 
@@ -359,13 +378,13 @@ BEGIN TRY
          CreatedByUserId, ReceivedByUserId, ReceivedAt, CreatedAt, UpdatedAt)
     VALUES
         (1001, 1001, DATEADD(day, -1, @today), 150000, 'Draft',
-         N'Phieu mau dang cho xac nhan nhap kho', 1001, NULL, NULL,
+         N'Phiếu mẫu đang chờ xác nhận nhập kho', 1001, NULL, NULL,
          DATEADD(day, -1, @now), DATEADD(day, -1, @now)),
         (1002, 1002, DATEADD(day, -3, @today), 150000, 'Received',
-         N'Phieu mau da nhap kho', 1001, 1001, DATEADD(day, -2, @now),
+         N'Phiếu mẫu đã nhập kho', 1001, 1001, DATEADD(day, -2, @now),
          DATEADD(day, -3, @now), DATEADD(day, -2, @now)),
         (1003, 1003, DATEADD(day, -5, @today), 100000, 'Cancelled',
-         N'Phieu mau da huy', 1001, NULL, NULL,
+         N'Phiếu mẫu đã hủy', 1001, NULL, NULL,
          DATEADD(day, -5, @now), DATEADD(day, -4, @now));
     SET IDENTITY_INSERT dbo.PurchaseOrders OFF;
 
@@ -381,33 +400,33 @@ BEGIN TRY
 
     DECLARE @labNames TABLE (n int PRIMARY KEY, Name nvarchar(200));
     INSERT INTO @labNames VALUES
-        (1,N'Cong thuc mau'),(2,N'Duong huyet'),(3,N'HbA1c'),(4,N'Mo mau'),
-        (5,N'Chuc nang gan'),(6,N'Chuc nang than'),(7,N'Tong phan nuoc tieu'),
-        (8,N'CRP'),(9,N'Acid uric'),(10,N'Dien giai do'),(11,N'TSH'),
+        (1,N'Công thức máu'),(2,N'Đường huyết'),(3,N'HbA1c'),(4,N'Mỡ máu'),
+        (5,N'Chức năng gan'),(6,N'Chức năng thận'),(7,N'Tổng phân tích nước tiểu'),
+        (8,N'CRP'),(9,N'Acid uric'),(10,N'Điện giải đồ'),(11,N'TSH'),
         (12,N'FT4'),(13,N'Ferritin'),(14,N'Vitamin D'),(15,N'HBsAg'),
         (16,N'Anti HCV'),(17,N'Troponin I'),(18,N'PSA'),(19,N'Beta hCG'),
-        (20,N'Mau lang');
+        (20,N'Máu lắng');
     SET IDENTITY_INSERT dbo.LabTestTypes ON;
     INSERT INTO dbo.LabTestTypes (Id, Name, Description, Price, IsActive, CreatedAt, UpdatedAt)
-    SELECT 1000+n, Name, N'Xet nghiem mau cho phong kham',
+    SELECT 1000+n, Name, N'Xét nghiệm trong danh mục dịch vụ của phòng khám.',
            CAST(40000+n*7500 AS decimal(18,2)), 1, @now, NULL FROM @labNames;
     SET IDENTITY_INSERT dbo.LabTestTypes OFF;
 
     DECLARE @diseases TABLE (n int PRIMARY KEY, Code varchar(30), Name nvarchar(150));
     INSERT INTO @diseases VALUES
-        (1,'I10',N'Tang huyet ap'),(2,'E11',N'Dai thao duong type 2'),
-        (3,'J06',N'Nhiem khuan ho hap tren'),(4,'J45',N'Hen phe quan'),
-        (5,'K29',N'Viem da day'),(6,'M54',N'Dau lung'),
-        (7,'E78',N'Roi loan lipid mau'),(8,'J02',N'Viem hong cap'),
-        (9,'K21',N'Trao nguoc da day'),(10,'N39',N'Nhiem trung tiet nieu'),
-        (11,'L20',N'Viem da co dia'),(12,'H10',N'Viem ket mac'),
-        (13,'G43',N'Dau nua dau'),(14,'M17',N'Thoai hoa khop goi'),
-        (15,'D50',N'Thieu mau thieu sat'),(16,'B18',N'Viem gan virus man'),
-        (17,'R07',N'Dau nguc'),(18,'R51',N'Dau dau'),
-        (19,'A09',N'Tieu chay cap'),(20,'I25',N'Benh mach vanh');
+        (1,'I10',N'Tăng huyết áp'),(2,'E11',N'Đái tháo đường type 2'),
+        (3,'J06',N'Nhiễm khuẩn hô hấp trên'),(4,'J45',N'Hen phế quản'),
+        (5,'K29',N'Viêm dạ dày'),(6,'M54',N'Đau lưng'),
+        (7,'E78',N'Rối loạn lipid máu'),(8,'J02',N'Viêm họng cấp'),
+        (9,'K21',N'Trào ngược dạ dày'),(10,'N39',N'Nhiễm trùng tiết niệu'),
+        (11,'L20',N'Viêm da cơ địa'),(12,'H10',N'Viêm kết mạc'),
+        (13,'G43',N'Đau nửa đầu'),(14,'M17',N'Thoái hóa khớp gối'),
+        (15,'D50',N'Thiếu máu thiếu sắt'),(16,'B18',N'Viêm gan virus mạn'),
+        (17,'R07',N'Đau ngực'),(18,'R51',N'Đau đầu'),
+        (19,'A09',N'Tiêu chảy cấp'),(20,'I25',N'Bệnh mạch vành');
     SET IDENTITY_INSERT dbo.Diseases ON;
     INSERT INTO dbo.Diseases (DiseaseId, DiseaseCode, DiseaseName, Description, IsActive, CreatedAt)
-    SELECT 1000+n, Code, Name, N'Chan doan mau cho ho so kham', 1, @now FROM @diseases;
+    SELECT 1000+n, Code, Name, N'Chẩn đoán mẫu cho hồ sơ khám', 1, @now FROM @diseases;
     SET IDENTITY_INSERT dbo.Diseases OFF;
 
     SET IDENTITY_INSERT dbo.MedicalRecords ON;
@@ -415,8 +434,8 @@ BEGIN TRY
         (MedicalRecordId, AppointmentId, DoctorId, PatientId, ExaminationDate,
          Symptoms, Conclusion, CreatedAt, UpdatedAt)
     SELECT 1000+n, 1000+n, a.DoctorId, a.PatientId, a.AppointmentDate,
-           CONCAT(N'Trieu chung can danh gia lan ', n),
-           CASE WHEN n <= 16 THEN N'Da kham va huong dan theo doi' ELSE NULL END,
+           CONCAT(N'Triệu chứng cần đánh giá lần ', n),
+           CASE WHEN n <= 16 THEN N'Đã khám và hướng dẫn theo dõi' ELSE NULL END,
            @now, @now
     FROM @n JOIN dbo.Appointments AS a ON a.AppointmentId = 1000+n;
 
@@ -426,10 +445,10 @@ BEGIN TRY
          CreatedAt, UpdatedAt)
     VALUES
         (1021, 1027, 1005, 1008, @today,
-         N'Ho, dau hong va met moi trong hai ngay', NULL, 1008, NULL,
+         N'Ho, đau họng và mệt mỏi trong hai ngày', NULL, 1008, NULL,
          @clinicNow, @clinicNow),
         (1022, 1028, 1005, 1009, @today,
-         N'Dau bung nhe sau bua an', N'Roi loan tieu hoa nhe, theo doi tai nha',
+         N'Đau bụng nhẹ sau bữa ăn', N'Rối loạn tiêu hóa nhẹ, theo dõi tại nhà',
          1009, @clinicNow, @clinicNow, @clinicNow);
     SET IDENTITY_INSERT dbo.MedicalRecords OFF;
 
@@ -441,13 +460,13 @@ BEGIN TRY
          DispensedAt, DispensedByUserId, Notes, CreatedAt, UpdatedAt)
     VALUES
         (1001, 1017, @clinicNow, 'Issued', NULL, NULL,
-         N'Don cho thanh toan de kiem tra khoa cap thuoc.', @clinicNow, @clinicNow),
+         N'Đơn chờ thanh toán để kiểm tra khóa cấp thuốc.', @clinicNow, @clinicNow),
         (1002, 1018, @clinicNow, 'Issued', NULL, NULL,
-         N'Uong thuoc dung gio va dung lieu da ke.', @clinicNow, @clinicNow),
+         N'Uống thuốc đúng giờ và đúng liều đã kê.', @clinicNow, @clinicNow),
         (1003, 1019, @clinicNow, 'Issued', NULL, NULL,
-         N'Don da thanh toan nhung ton kho chua dap ung.', @clinicNow, @clinicNow),
+         N'Đơn đã thanh toán nhưng tồn kho chưa đáp ứng.', @clinicNow, @clinicNow),
         (1004, 1020, @clinicNow, 'Dispensed', @clinicNow, 1021,
-         N'Don mau da giao thuoc va ghi nhan lo xuat.', @clinicNow, @clinicNow);
+         N'Đơn mẫu đã giao thuốc và ghi nhận lô xuất.', @clinicNow, @clinicNow);
     SET IDENTITY_INSERT dbo.Prescriptions OFF;
 
     SET IDENTITY_INSERT dbo.PrescriptionDetails ON;
@@ -455,21 +474,22 @@ BEGIN TRY
         (PrescriptionDetailId, PrescriptionId, MedicineId, Dosage,
          Quantity, Instructions)
     VALUES
-        (1001, 1001, 1005, N'Sang 1 vien', 3, N'Uong truoc bua sang 30 phut'),
-        (1002, 1002, 1002, N'Sang 1 vien', 5, N'Uong sau an'),
-        (1003, 1002, 1003, N'Toi 1 vien', 2, N'Uong sau an toi'),
-        (1004, 1003, 1001, N'Khi dau 1 vien', 10, N'Khong qua lieu chi dinh'),
-        (1005, 1004, 1006, N'Toi 1 vien', 2, N'Uong sau an');
+        (1001, 1001, 1005, N'Sáng 1 viên', 3, N'Uống trước bữa sáng 30 phút'),
+        (1002, 1002, 1002, N'Sáng 1 viên', 5, N'Uống sau ăn'),
+        (1003, 1002, 1003, N'Tối 1 viên', 2, N'Uống sau ăn tối'),
+        (1004, 1003, 1001, N'Khi đau 1 viên', 10, N'Không quá liều chỉ định'),
+        (1005, 1004, 1006, N'Tối 1 viên', 2, N'Uống sau ăn');
     SET IDENTITY_INSERT dbo.PrescriptionDetails OFF;
 
     SET IDENTITY_INSERT dbo.Invoices ON;
     INSERT INTO dbo.Invoices
         (Id, AppointmentId, PatientId, CashierId, BillingStage,
-         TotalAmount, PaymentMethod, Status, CreatedAt)
+         TotalAmount, InsuranceDiscountPercent, InsuranceAmount, PatientAmount,
+         PaymentMethod, Status, CreatedAt)
     VALUES
-        (1001, 1018, 1006, 1001, 'Medicine', 75000, 'Cash', 'Paid', @clinicNow),
-        (1002, 1019, 1007, 1001, 'Final', 75000, 'Transfer', 'Paid', @clinicNow),
-        (1003, 1020, 1008, 1001, 'Medicine', 40000, 'Cash', 'Paid', @clinicNow);
+        (1001, 1018, 1006, 1001, 'Medicine', 75000, 0, 0, 75000, 'Cash', 'Paid', @clinicNow),
+        (1002, 1019, 1007, 1001, 'Final', 75000, 0, 0, 75000, 'Transfer', 'Paid', @clinicNow),
+        (1003, 1020, 1008, 1001, 'Medicine', 40000, 0, 0, 40000, 'Cash', 'Paid', @clinicNow);
     SET IDENTITY_INSERT dbo.Invoices OFF;
 
     SET IDENTITY_INSERT dbo.InvoiceDetails ON;
@@ -497,9 +517,9 @@ BEGIN TRY
 
     SET IDENTITY_INSERT dbo.RecordDiagnoses ON;
     INSERT INTO dbo.RecordDiagnoses (RecordDiagnosisId, MedicalRecordId, DiseaseId, IsPrimary, Note)
-    SELECT 1000+n, 1000+n, 1000+n, 1, N'Chan doan chinh' FROM @n;
+    SELECT 1000+n, 1000+n, 1000+n, 1, N'Chẩn đoán chính' FROM @n;
     INSERT INTO dbo.RecordDiagnoses (RecordDiagnosisId, MedicalRecordId, DiseaseId, IsPrimary, Note)
-    VALUES (1021, 1022, 1005, 1, N'Chan doan mau cho luot kham hoan tat hom nay');
+    VALUES (1021, 1022, 1005, 1, N'Chẩn đoán mẫu cho lượt khám hoàn tất hôm nay');
     SET IDENTITY_INSERT dbo.RecordDiagnoses OFF;
 
     DECLARE @orders TABLE (n int PRIMARY KEY);
@@ -511,15 +531,15 @@ BEGIN TRY
            CASE WHEN (o.n-1)%16=0 THEN 1004 ELSE 1005+(o.n-1)%16 END,
            1002, 1001+(o.n-1)%20,
            CASE WHEN o.n <= 20 THEN 'Completed' ELSE 'Pending' END,
-           N'Kiem tra theo chi dinh bac si', DATEADD(day, -1-(o.n%5), @now)
+           N'Kiểm tra theo chỉ định bác sĩ', DATEADD(day, -1-(o.n%5), @now)
     FROM @orders AS o;
     SET IDENTITY_INSERT dbo.LabTests OFF;
 
     SET IDENTITY_INSERT dbo.LabTestResults ON;
     INSERT INTO dbo.LabTestResults (Id, LabTestId, TechnicianId, ResultSummary, Note, FileUrl, PerformedAt)
     SELECT 1000+n, 1000+n, 1005,
-           CONCAT(N'Ket qua mau ', RIGHT(CONCAT('0', n), 2), N': trong gioi han tham chieu'),
-           N'Da kiem tra', NULL, DATEADD(hour, 2, DATEADD(day, -1-(n%5), @now))
+           CONCAT(N'Kết quả mẫu ', RIGHT(CONCAT('0', n), 2), N': trong giới hạn tham chiếu'),
+           N'Đã kiểm tra', NULL, DATEADD(hour, 2, DATEADD(day, -1-(n%5), @now))
     FROM @n;
     SET IDENTITY_INSERT dbo.LabTestResults OFF;
 

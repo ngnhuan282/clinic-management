@@ -23,6 +23,9 @@ public interface IBookingService
     Task<AppointmentResponse> CreateAppointmentAsync(
         CreateAppointmentRequest request);
 
+    Task<AppointmentResponse> CreateGuestAppointmentAsync(
+        CreateAppointmentRequest request);
+
     Task<AppointmentResponse> CreateDirectAppointmentAsync(
         CreateDirectAppointmentRequest request);
 
@@ -35,6 +38,8 @@ public interface IBookingService
 
     Task<AppointmentResponse> CancelAppointmentAsync(
         int appointmentId);
+
+    Task<AppointmentResponse> CancelMyAppointmentAsync(int appointmentId);
 
     Task<AppointmentResponse> StartExaminationAsync(
         int appointmentId);

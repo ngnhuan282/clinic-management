@@ -8,8 +8,13 @@ public interface INotificationService
     Task SendToUserAsync(int userId, NotificationResponse notification, CancellationToken cancellationToken = default);
     Task<List<Notification>> StageAsync(IEnumerable<int> userIds, string eventKey, string type, string title, string message);
     Task PublishAsync(IEnumerable<Notification> notifications);
+    Task<List<Notification>> StageLabResultAsync(LabTest test);
+    Task PublishLabResultChangedAsync(LabTest test);
     Task<List<int>> ReviewRecipientsAsync(int doctorId);
     Task<List<int>> ReceptionRecipientsAsync();
+    Task<List<int>> CashierRecipientsAsync();
+    Task<List<Notification>> StageAppointmentChangedAsync(Appointment appointment, string change,
+        int? previousDoctorId = null);
     Task<List<int>> DoctorRecipientsAsync(int doctorId, string? requiredPermission = null);
     Task PublishDepartmentWorkflowChangedAsync(int doctorId, string area);
     Task PublishAppointmentChangedAsync(Appointment appointment, string change,

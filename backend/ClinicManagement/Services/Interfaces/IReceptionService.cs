@@ -10,6 +10,8 @@ public interface IReceptionService
     Task<List<PatientBookResponse>> GetBooksAsync(int patientId);
     Task<PatientBookResponse> RegisterExistingBookAsync(int patientId, RegisterExistingBookRequest request);
     Task<List<BookInvoiceResponse>> GetBookInvoicesAsync(int patientId);
+    Task<PatientBookRequestResponse> CreateBookRequestAsync(int patientId, CreatePatientBookRequest request);
+    Task<PagedResponse<PatientBookRequestResponse>> GetBookRequestsAsync(PatientBookRequestQuery query);
     Task<BookInvoiceResponse> CreateBookInvoiceAsync(int patientId, CreateBookInvoiceRequest request);
     Task<BookInvoiceResponse> MarkBookInvoicePaidAsync(int invoiceId);
     Task<PatientBookResponse> IssueBookAsync(int invoiceId, string bookNumber);

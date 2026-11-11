@@ -21,6 +21,11 @@ public class ReviewsController(IReviewService service) : ControllerBase
     public async Task<IActionResult> Admin([FromQuery] ReviewQuery query) =>
         Ok(ApiResponse<PagedResponse<AdminReviewResponse>>.Success(await service.ListAdminAsync(query)));
 
+    [HttpGet("admin/statistics")]
+    [Authorize(Roles = RoleConstants.Admin)]
+    public async Task<IActionResult> Statistics([FromQuery] ReviewQuery query) =>
+        Ok(ApiResponse<ReviewStatisticsResponse>.Success(await service.GetAdminStatisticsAsync(query)));
+
     [HttpGet("my-appointments")]
     [Authorize(Roles = RoleConstants.Patient)]
     public async Task<IActionResult> MyAppointments([FromQuery] PaginationRequest query) =>

@@ -25,6 +25,7 @@ namespace ClinicManagement.Controllers
 
         // Lấy danh sách sổ chờ thu tiền theo BillingStage ("Pending" hoặc "LabAndConsultation")
         [HttpGet("pending")]
+        [Authorize(Policy = PermissionCodes.BillingView)]
         public async Task<IActionResult> GetPendingBillings([FromQuery] string stage = "Pending")
         {
             var data = await _invoiceService.GetPendingBillingsAsync(stage);
@@ -33,6 +34,8 @@ namespace ClinicManagement.Controllers
 
         // Thu ngân lập Hóa đơn
         [HttpPost]
+        [Authorize(Policy = PermissionCodes.BillingCreate)]
+        [Authorize(Policy = PermissionCodes.BillingRecordPayment)]
 public async Task<IActionResult> CreateInvoice([FromBody] CreateInvoiceDto dto)
 {
     // 1. Lấy claim UserId/NameIdentifier từ JWT Token an toàn
@@ -45,6 +48,7 @@ public async Task<IActionResult> CreateInvoice([FromBody] CreateInvoiceDto dto)
 
         // Xem chi tiết hóa đơn đã lập
         [HttpGet("{id}")]
+        [Authorize(Policy = PermissionCodes.BillingView)]
         public async Task<IActionResult> GetById(int id)
         {
             var invoice = await _invoiceService.GetInvoiceByIdAsync(id);
@@ -54,6 +58,7 @@ public async Task<IActionResult> CreateInvoice([FromBody] CreateInvoiceDto dto)
 
 // Tra cứu lịch sử hóa đơn đã lập
 [HttpGet("history")]
+[Authorize(Policy = PermissionCodes.BillingView)]
 public async Task<IActionResult> GetInvoiceHistory([FromQuery] string? search)
 {
     var data = await _invoiceService.GetInvoiceHistoryAsync(search);
@@ -62,16 +67,11 @@ public async Task<IActionResult> GetInvoiceHistory([FromQuery] string? search)
 
 // Lập chứng từ điều chỉnh (Adjustment Invoice)
 [HttpPost("adjustment")]
+[Authorize(Policy = PermissionCodes.BillingCreate)]
+[Authorize(Policy = PermissionCodes.BillingRecordPayment)]
 public async Task<IActionResult> CreateAdjustmentInvoice([FromBody] CreateAdjustmentInvoiceDto dto)
 {
-    var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
-                   ?? User.FindFirst("sub")?.Value 
-                   ?? User.FindFirst("UserId")?.Value;
-
-    if (!int.TryParse(userIdClaim, out int cashierId))
-    {
-        cashierId = 1;
-    }
+    var cashierId = _currentUser.GetRequiredUserId();
 
     try
     {

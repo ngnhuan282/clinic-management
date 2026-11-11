@@ -62,6 +62,17 @@ public class ReceptionPatientsController : ControllerBase
         var result = await _service.CreateBookInvoiceAsync(patientId, request);
         return Ok(ApiResponse<BookInvoiceResponse>.Success(result));
     }
+
+    [HttpPost("{patientId:int}/book-requests")]
+    [Authorize(Policy = PermissionCodes.AppointmentsCheckIn)]
+    public async Task<IActionResult> CreateBookRequest(int patientId, CreatePatientBookRequest request) =>
+        Ok(ApiResponse<PatientBookRequestResponse>.Success(await _service.CreateBookRequestAsync(patientId, request)));
+
+    [HttpGet("{patientId:int}/book-requests")]
+    [Authorize(Policy = PermissionCodes.AppointmentsCheckIn)]
+    public async Task<IActionResult> GetBookRequests(int patientId, [FromQuery] PaginationRequest query) =>
+        Ok(ApiResponse<PagedResponse<PatientBookRequestResponse>>.Success(await _service.GetBookRequestsAsync(
+            new PatientBookRequestQuery { PatientId = patientId, PageNumber = query.PageNumber, PageSize = query.PageSize })));
 }
 
 [ApiController]

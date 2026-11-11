@@ -21,8 +21,10 @@ public class NotificationService(IHubContext<NotificationHub> hub, ApplicationDb
         string type, string title, string message)
     {
         var ids = userIds.Distinct().ToArray();
+        if (ids.Length == 0) return [];
         var recipients = await db.Users.Where(x => ids.Contains(x.UserId) && x.Status)
             .Select(x => x.UserId).ToListAsync();
+        if (recipients.Count == 0) return [];
         var existing = await db.Notifications.Where(x => x.EventKey == eventKey && recipients.Contains(x.UserId))
             .Select(x => x.UserId).ToListAsync();
         var rows = recipients.Except(existing).Select(id => new Notification
@@ -59,10 +61,52 @@ public class NotificationService(IHubContext<NotificationHub> hub, ApplicationDb
             .Select(x => x.UserId).ToListAsync();
     }
 
+    public async Task<List<Notification>> StageLabResultAsync(LabTest test) =>
+        await StageAsync(await LabResultRecipientsAsync(test), $"lab-result:{test.Id}:Completed",
+            "LabResult", "Đã có kết quả xét nghiệm",
+            $"Chỉ định xét nghiệm #{test.Id} đã có kết quả. Mở hồ sơ xét nghiệm để xem chi tiết.");
+
+    public Task PublishLabResultChangedAsync(LabTest test) => PublishEventAsync("LabResultChanged",
+        () => LabResultRecipientsAsync(test), new LabResultChangedResponse(test.Id));
+
+    private Task<List<int>> LabResultRecipientsAsync(LabTest test) => db.Users.AsNoTracking()
+        .Where(user => user.Status
+            && user.Role.RolePermissions.Any(p => p.PermissionCode == PermissionCodes.LabsViewOrders && p.Permission.IsImplemented)
+            // LabTest.DoctorId/PatientId currently store account IDs, not profile IDs.
+            && (user.UserId == test.DoctorId
+                && (user.Role.RoleName == RoleConstants.Doctor || user.Role.RoleName == RoleConstants.DepartmentHead)
+                && user.Role.RolePermissions.Any(p => p.PermissionCode == PermissionCodes.LabsOrder && p.Permission.IsImplemented)
+                || user.UserId == test.PatientId && user.Role.RoleName == RoleConstants.Patient
+                && user.Role.RolePermissions.Any(p => p.PermissionCode == PermissionCodes.LabsViewOwnResult && p.Permission.IsImplemented)))
+        .Select(user => user.UserId).ToListAsync();
+
     public Task<List<int>> ReceptionRecipientsAsync() => db.Users.Where(x => x.Status
         && x.Role.RoleName == RoleConstants.Receptionist
         && db.RolePermissions.Any(p => p.RoleId == x.RoleId && p.PermissionCode == PermissionCodes.AppointmentsCheckIn && p.Permission.IsImplemented))
         .Select(x => x.UserId).ToListAsync();
+
+    public Task<List<int>> CashierRecipientsAsync() => db.Users.Where(x => x.Status
+        && (x.Role.RoleName == RoleConstants.Cashier || x.Role.RoleName == RoleConstants.Admin)
+        && db.RolePermissions.Any(p => p.RoleId == x.RoleId
+            && p.PermissionCode == PermissionCodes.BillingView && p.Permission.IsImplemented))
+        .Select(x => x.UserId).ToListAsync();
+
+    public async Task<List<Notification>> StageAppointmentChangedAsync(Appointment appointment, string change,
+        int? previousDoctorId = null)
+    {
+        var title = change switch
+        {
+            "Created" => "Lịch hẹn mới",
+            "Confirmed" => "Lịch hẹn đã xác nhận",
+            "Rescheduled" => "Lịch hẹn đã thay đổi",
+            "Cancelled" => "Lịch hẹn đã hủy",
+            _ => "Cập nhật lịch hẹn"
+        };
+        return await StageAsync(await AppointmentRecipientsAsync(appointment, previousDoctorId),
+            $"appointment:{appointment.AppointmentId}:{change}:{Guid.NewGuid():N}", "Appointment", title,
+            $"{title}: #{appointment.AppointmentId}, ngày {appointment.AppointmentDate:dd/MM/yyyy}, "
+                + $"{appointment.StartTime:hh\\:mm}.");
+    }
 
     public Task<List<int>> DoctorRecipientsAsync(int doctorId, string? requiredPermission = null) =>
         db.Doctors.Where(x => x.DoctorId == doctorId && x.IsActive && x.User != null && x.User.Status
@@ -204,13 +248,14 @@ public class NotificationService(IHubContext<NotificationHub> hub, ApplicationDb
             .Select(x => new { x.NotificationId, x.Title, x.Content, x.Type, x.IsRead, x.CreatedAt, x.EventKey })
             .ToListAsync();
         return new(items.Select(x => new NotificationHistoryResponse(x.NotificationId, x.Title, x.Content,
-            x.Type, x.IsRead, x.CreatedAt, StockReviewId(x.EventKey))), pageNumber, pageSize, total);
+            x.Type, x.IsRead, x.CreatedAt, EventEntityId(x.EventKey, "stock-review"),
+            EventEntityId(x.EventKey, "lab-result"))), pageNumber, pageSize, total);
     }
 
-    private static int? StockReviewId(string? eventKey)
+    private static int? EventEntityId(string? eventKey, string prefix)
     {
         var parts = eventKey?.Split(':');
-        return parts is { Length: >= 3 } && parts[0] == "stock-review" && int.TryParse(parts[1], out var id) && id > 0 ? id : null;
+        return parts is { Length: >= 3 } && parts[0] == prefix && int.TryParse(parts[1], out var id) && id > 0 ? id : null;
     }
 
     public async Task MarkReadAsync(int id)

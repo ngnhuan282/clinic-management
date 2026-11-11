@@ -15,9 +15,9 @@ public class DoctorConfiguration : IEntityTypeConfiguration<Doctor>
         entity.HasOne(x => x.Department).WithMany().HasForeignKey(x => x.DepartmentId).OnDelete(DeleteBehavior.Restrict);
         entity.HasOne(x => x.Specialization).WithMany().HasForeignKey(x => x.SpecializationId).OnDelete(DeleteBehavior.Restrict);
         entity.HasData(
-            new Doctor { DoctorId = 1, DepartmentId = 1, SpecializationId = 1, FullName = "Nguyen Minh An", Title = "BS.CKII", ExperienceYears = 12, Biography = "Chuyen sau sieu am tim va tang huyet ap" },
-            new Doctor { DoctorId = 2, DepartmentId = 2, SpecializationId = 2, FullName = "Tran Thu Ha", Title = "ThS.BS", ExperienceYears = 9, Biography = "Tu van suc khoe tong quat va benh man tinh" },
-            new Doctor { DoctorId = 3, DepartmentId = 3, SpecializationId = 3, FullName = "Le Quang Huy", Title = "BS.CKI", ExperienceYears = 7, Biography = "Dieu tri viem da co dia, mun va di ung da" });
+            new Doctor { DoctorId = 1, DepartmentId = 1, SpecializationId = 1, FullName = "Nguyễn Minh An", Title = "BS.CKII", ExperienceYears = 12, Biography = "Chuyên sâu siêu âm tim và tăng huyết áp" },
+            new Doctor { DoctorId = 2, DepartmentId = 2, SpecializationId = 2, FullName = "Trần Thu Hà", Title = "ThS.BS", ExperienceYears = 9, Biography = "Tư vấn sức khỏe tổng quát và bệnh mạn tính" },
+            new Doctor { DoctorId = 3, DepartmentId = 3, SpecializationId = 3, FullName = "Lê Quang Huy", Title = "BS.CKI", ExperienceYears = 7, Biography = "Điều trị viêm da cơ địa, mụn và dị ứng da" });
     }
 }
 

@@ -7,6 +7,7 @@ using ClinicManagement.Repositories.Interfaces;
 using ClinicManagement.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Data.SqlClient;
+using ClinicManagement.Helpers;
 
 namespace ClinicManagement.Services.Implementations;
 
@@ -92,6 +93,7 @@ public class BookingService : IBookingService
                 Code = x.Code,
                 Name = x.Name,
                 Description = x.Description,
+                PublicInformation = PublicSpecialtyContent.ForCode(x.Code),
                 IsActive = x.IsActive,
                 CreatedAt = x.CreatedAt,
                 UpdatedAt = x.UpdatedAt
@@ -172,6 +174,9 @@ public class BookingService : IBookingService
         );
     }
 
+    public Task<AppointmentResponse> CreateGuestAppointmentAsync(CreateAppointmentRequest request) =>
+        CreateAppointmentInternalAsync(request, null, AppointmentStatusConstants.Pending);
+
     public async Task<AppointmentResponse> CreateDirectAppointmentAsync(
         CreateDirectAppointmentRequest request)
     {
@@ -245,9 +250,7 @@ public class BookingService : IBookingService
             CreatedAt = DateTime.UtcNow
         };
 
-        await using var transaction = request is CreateDirectAppointmentRequest
-            ? await _receptionRepository.BeginTransactionAsync()
-            : null;
+        await using var transaction = await _receptionRepository.BeginTransactionAsync();
         if (request is CreateDirectAppointmentRequest directRequest)
             appointment.PatientProfileId = await ResolveDirectPatientAsync(directRequest);
 
@@ -272,7 +275,10 @@ public class BookingService : IBookingService
         }
 
         appointment.Doctor = doctor;
-        if (transaction != null) await transaction.CommitAsync();
+        var notifications = await _notifications.StageAppointmentChangedAsync(appointment, "Created");
+        await _appointmentRepository.SaveChangesAsync();
+        await transaction.CommitAsync();
+        await _notifications.PublishAsync(notifications);
         await _notifications.PublishAppointmentChangedAsync(appointment, "Created");
         _logger.LogInformation("Appointment {AppointmentId} created with status {Status}",
             appointment.AppointmentId, appointment.Status);
@@ -340,8 +346,10 @@ public class BookingService : IBookingService
         appointment.Status =
             AppointmentStatusConstants.Confirmed;
 
+        var notifications = await _notifications.StageAppointmentChangedAsync(appointment, "Confirmed");
         await _appointmentRepository.SaveChangesAsync();
         await transaction.CommitAsync();
+        await _notifications.PublishAsync(notifications);
         await _notifications.PublishAppointmentChangedAsync(appointment, "Confirmed");
         _logger.LogInformation("Appointment {AppointmentId} confirmed", appointmentId);
 
@@ -428,6 +436,8 @@ public class BookingService : IBookingService
         appointment.EndTime = startTime.Add(SlotDuration);
         appointment.Status = AppointmentStatusConstants.Confirmed;
 
+        var notifications = await _notifications.StageAppointmentChangedAsync(appointment, "Rescheduled", previousDoctorId);
+
         try
         {
             await _appointmentRepository.SaveChangesAsync();
@@ -447,6 +457,7 @@ public class BookingService : IBookingService
 
         appointment.Doctor = doctor;
         await transaction.CommitAsync();
+        await _notifications.PublishAsync(notifications);
         await _notifications.PublishAppointmentChangedAsync(appointment, "Rescheduled", previousDoctorId, previousDate);
         _logger.LogInformation("Appointment {AppointmentId} rescheduled", appointmentId);
 
@@ -454,7 +465,12 @@ public class BookingService : IBookingService
     }
 
     public async Task<AppointmentResponse> CancelAppointmentAsync(
-        int appointmentId)
+        int appointmentId) => await CancelAppointmentInternalAsync(appointmentId, ownOnly: false);
+
+    public async Task<AppointmentResponse> CancelMyAppointmentAsync(int appointmentId) =>
+        await CancelAppointmentInternalAsync(appointmentId, ownOnly: true);
+
+    private async Task<AppointmentResponse> CancelAppointmentInternalAsync(int appointmentId, bool ownOnly)
     {
         await using var transaction = await _receptionRepository.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
         var appointment =
@@ -462,9 +478,13 @@ public class BookingService : IBookingService
                 appointmentId
             );
 
-        if (appointment.Status is AppointmentStatusConstants.Cancelled
-            or AppointmentStatusConstants.Completed
-            or AppointmentStatusConstants.InProgress || appointment.CheckedInAt.HasValue)
+        if (ownOnly && (_currentUser.Role != RoleConstants.Patient
+            || !await _appointmentRepository.IsOwnedByPatientAsync(appointmentId, _currentUser.GetRequiredUserId())))
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+
+        if (appointment.Status is not (AppointmentStatusConstants.Pending or AppointmentStatusConstants.Confirmed)
+            || appointment.CheckedInAt.HasValue
+            || ownOnly && appointment.AppointmentDate.Date.Add(appointment.StartTime) <= ClinicNow)
         {
             throw new AppException(
                 ErrorCode.APPOINTMENT_INVALID_STATUS
@@ -474,8 +494,10 @@ public class BookingService : IBookingService
         appointment.Status =
             AppointmentStatusConstants.Cancelled;
 
+        var notifications = await _notifications.StageAppointmentChangedAsync(appointment, "Cancelled");
         await _appointmentRepository.SaveChangesAsync();
         await transaction.CommitAsync();
+        await _notifications.PublishAsync(notifications);
         await _notifications.PublishAppointmentChangedAsync(appointment, "Cancelled");
         _logger.LogInformation("Appointment {AppointmentId} cancelled", appointmentId);
 

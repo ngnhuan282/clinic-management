@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdir } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
 
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || "playwright");
 await mkdir(".tmp/c8c9", { recursive: true });
 const fixturePassword = "Test-" + randomBytes(12).toString("hex");
-const host = spawn("dotnet", [process.env.CLINIC_TEST_ASSEMBLY || ".tmp/c8c9-build/Week2Verification.dll", "--c8c9-ui"],
+const host = spawn("dotnet", [process.env.CLINIC_TEST_ASSEMBLY || ".tmp/c8c9-build/Week2Verification.dll", process.argv.includes("--c9") ? "--c9-ui" : "--c8c9-ui"],
     { windowsHide: true, stdio: ["pipe", "pipe", "pipe"] });
 const hostFinished = new Promise(resolve => host.once("exit", resolve));
 let fixture, vite, browser;
@@ -117,6 +117,19 @@ try {
         assert(predicate(), message);
     }
     const patient = await open(patientSession, "/my-appointments");
+    const cancellable = await send("POST", "/appointments", patientSession.accessToken,
+        { doctorId: fixture.DoctorId, appointmentDate: fixture.FutureDate, startTime: "22:30:00",
+            patientName: "C6 UI cancellation", patientPhone: "0908007099", reason: "Own cancellation UI" });
+    await patient.getByLabel("Đến ngày", { exact: true }).fill(fixture.FutureDate);
+    await patient.getByLabel("Từ ngày", { exact: true }).fill(fixture.FutureDate);
+    const cancellableCard = patient.getByRole("article", { name: `Lịch hẹn #${cancellable.appointmentId}`, exact: true });
+    await cancellableCard.getByRole("button", { name: "Hủy lịch hẹn", exact: true }).click();
+    const cancellation = patient.waitForResponse(response => response.request().method() === "PATCH"
+        && new URL(response.url()).pathname.endsWith(`/appointments/mine/${cancellable.appointmentId}/cancel`));
+    await patient.getByRole("dialog").getByRole("button", { name: "Xác nhận hủy", exact: true }).click();
+    assert.equal((await cancellation).status(), 200);
+    await cancellableCard.getByText("Đã hủy", { exact: true }).waitFor();
+    pass("patient cancels their own upcoming appointment after confirmation and retains its cancelled history");
     const reception = await open(receptionSession, "/internal/appointments");
     const doctor = await open(doctorSession, "/internal/examinations");
     await doctor.getByPlaceholder(/Tìm theo tên bệnh nhân/).fill(fixture.UiPatientName);
@@ -134,13 +147,14 @@ try {
     assert(await checkIn.isDisabled());
     pass("new web arrival is blocked until a real paid and verified book exists");
 
-    await dialog.getByLabel("Phí sổ khám (VNĐ)").fill("20000");
-    const createdInvoice = reception.waitForResponse(response => response.request().method() === "POST"
-        && new URL(response.url()).pathname.endsWith(`/patients/${fixture.UiPatientId}/book-invoices`));
-    await dialog.getByRole("button", { name: "Lập hóa đơn sổ", exact: true }).click();
-    const invoiceResponse = await createdInvoice;
-    assert.equal(invoiceResponse.status(), 200);
-    const invoice = (await invoiceResponse.json()).result;
+    const createdRequest = reception.waitForResponse(response => response.request().method() === "POST"
+        && new URL(response.url()).pathname.endsWith(`/patients/${fixture.UiPatientId}/book-requests`));
+    await dialog.getByRole("button", { name: "Yêu cầu mua / cấp lại sổ", exact: true }).click();
+    const bookRequest = (await (await createdRequest).json()).result;
+    assert.equal(bookRequest.bookInvoiceId, null);
+    assert.equal(await dialog.getByRole("button", { name: "Ghi Paid", exact: true }).count(), 0);
+    // Billing is an existing API prerequisite; this suite exercises reception's request/issue/check-in UI.
+    const invoice = await send("POST", `/patients/${fixture.UiPatientId}/book-invoices`, cashierSession.accessToken, { amount: 20000 });
     await dialog.getByText(new RegExp(`#${invoice.bookInvoiceId}.*Unpaid`)).waitFor();
     assert.equal(await dialog.getByRole("button", { name: "Phát / cấp lại sổ", exact: true }).count(), 0);
     assert(await checkIn.isDisabled());
@@ -245,6 +259,7 @@ try {
     pass("a closed SignalR WebSocket reconnects, completes a new handshake and reloads the missed slot through the API");
     console.log(`SUCCESS: ${passed} C8/C9 browser checks passed.`);
 } catch (error) {
+    await writeFile(".tmp/c8c9/fixture-failure.log", fixtureOutput.replaceAll(fixturePassword, "[redacted]"));
     for (let index = 0; index < pages.length; index++)
         await pages[index].screenshot({ path: `.tmp/c8c9/failure-${index}.png`, fullPage: true }).catch(() => {});
     const message = String(error?.stack || error).replaceAll(fixturePassword, "[redacted]");

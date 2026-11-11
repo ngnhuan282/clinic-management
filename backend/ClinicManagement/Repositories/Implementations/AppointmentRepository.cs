@@ -92,6 +92,11 @@ public class AppointmentRepository : IAppointmentRepository
             .SingleOrDefaultAsync(x => x.AppointmentId == appointmentId);
     }
 
+    public Task<bool> IsOwnedByPatientAsync(int appointmentId, int userId) =>
+        _context.Appointments.AnyAsync(x => x.AppointmentId == appointmentId
+            && (x.PatientId == userId || (x.PatientId == null
+                && x.PatientProfile != null && x.PatientProfile.UserId == userId)));
+
     public Task<Appointment?> GetByIdForUpdateAsync(int appointmentId)
     {
         if (_context.Database.CurrentTransaction == null)

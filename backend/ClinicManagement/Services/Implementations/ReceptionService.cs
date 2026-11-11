@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ClinicManagement.Services.Implementations;
 
-public class ReceptionService : IReceptionService
+public partial class ReceptionService : IReceptionService
 {
     private static DateTime ClinicToday => TimeZoneInfo.ConvertTimeBySystemTimeZoneId(
         DateTime.UtcNow, "Asia/Ho_Chi_Minh").Date;
@@ -24,8 +24,7 @@ public class ReceptionService : IReceptionService
 
     public ReceptionService(IReceptionRepository receptionRepository,
         IAppointmentRepository appointmentRepository, ILogger<ReceptionService> logger,
-        INotificationService notifications, IPatientRepository patientRepository,
-        ICurrentUserService currentUser)
+        INotificationService notifications, IPatientRepository patientRepository, ICurrentUserService currentUser)
     {
         _receptionRepository = receptionRepository;
         _appointmentRepository = appointmentRepository;
@@ -226,10 +225,18 @@ public class ReceptionService : IReceptionService
         book.BookNumber = bookNumber.Trim();
         book.Status = PatientBookStatusConstants.Issued;
         book.IssuedAt = now;
+        book.IssuedByUserId = _currentUser.GetRequiredUserId();
         book.UpdatedAt = now;
         book.IssuedByUserId = _currentUser.GetRequiredUserId();
         if (invoice.PatientBook == null) await _receptionRepository.AddBookAsync(book);
         await SaveBookAsync();
+
+        var bookRequest = await _receptionRepository.GetOpenBookRequestAsync(invoice.PatientId);
+        if (bookRequest is { BookInvoiceId: null })
+        {
+            bookRequest.BookInvoiceId = invoiceId;
+            await SaveBookAsync();
+        }
         await transaction.CommitAsync();
 
         if (previousBook != null) await _notifications.PublishPatientBookChangedAsync(previousBook);

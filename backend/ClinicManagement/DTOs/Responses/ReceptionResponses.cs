@@ -18,8 +18,22 @@ public class PatientBookResponse
     public string BookNumber { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public DateTime IssuedAt { get; set; }
-    public int? PreviousBookId { get; set; }
     public int? IssuedByUserId { get; set; }
+    public int? PreviousBookId { get; set; }
+}
+
+public class PatientBookRequestResponse
+{
+    public int PatientBookRequestId { get; set; }
+    public int PatientId { get; set; }
+    public string PatientName { get; set; } = string.Empty;
+    public string PatientPhone { get; set; } = string.Empty;
+    public string Reason { get; set; } = string.Empty;
+    public int RequestedByUserId { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public int? BookInvoiceId { get; set; }
+    public decimal? Amount { get; set; }
+    public string Status { get; set; } = string.Empty;
 }
 
 public class BookInvoiceResponse

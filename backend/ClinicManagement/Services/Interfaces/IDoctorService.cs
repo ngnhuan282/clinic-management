@@ -5,6 +5,8 @@ namespace ClinicManagement.Services.Interfaces;
 
 public interface IDoctorService
 {
+    Task<PublicDoctorResponse> GetPublicDoctorAsync(int doctorId);
+
     Task<PagedResponse<PublicDoctorResponse>> SearchPublicDoctorsAsync(
         PublicDoctorQuery query);
 
