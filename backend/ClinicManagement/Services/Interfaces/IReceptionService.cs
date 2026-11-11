@@ -16,4 +16,5 @@ public interface IReceptionService
     Task<BookInvoiceResponse> MarkBookInvoicePaidAsync(int invoiceId);
     Task<PatientBookResponse> IssueBookAsync(int invoiceId, string bookNumber);
     Task<AppointmentResponse> CheckInAsync(int appointmentId, CheckInAppointmentRequest request);
+    Task<PatientMatchResponse> UpdatePatientAsync(int patientId, UpdatePatientProfileRequest request);
 }

@@ -22,11 +22,14 @@ public class PatientBookService : IPatientBookService
 
     private readonly IReceptionRepository _receptionRepository;
     private readonly ILogger<PatientBookService> _logger;
+    private readonly ICurrentUserService _currentUser;
 
-    public PatientBookService(IReceptionRepository receptionRepository, ILogger<PatientBookService> logger)
+    public PatientBookService(IReceptionRepository receptionRepository, ILogger<PatientBookService> logger,
+        ICurrentUserService currentUser)
     {
         _receptionRepository = receptionRepository;
         _logger = logger;
+        _currentUser = currentUser;
     }
 
     public async Task<PagedResponse<PatientBookListItemResponse>> GetBookPageAsync(PatientBookQuery query)
@@ -56,29 +59,47 @@ public class PatientBookService : IPatientBookService
             book.Status = PatientBookStatusConstants.Issued;
             book.IssuedAt = now;
             book.UpdatedAt = now;
+            book.IssuedByUserId = _currentUser.GetRequiredUserId();
             await SaveAsync();
             result = book;
         }
         else if (book.Status == PatientBookStatusConstants.Issued
             && (target == PatientBookStatusConstants.Lost || target == PatientBookStatusConstants.Replaced))
         {
+            if (await _receptionRepository.IsBookInUseAsync(book.PatientBookId))
+                throw new AppException(ErrorCode.BOOK_IN_USE);
+
             var newBookNumber = RequireNewBookNumber(request.NewBookNumber);
+            // Reissuing a book is treated the same as the first issuance: it must be backed by a paid
+            // invoice whose placeholder book (created by MarkBookInvoicePaidAsync) is still Pending, so
+            // staff cannot hand out a replacement for free.
+            var invoice = await _receptionRepository.GetBookInvoiceAsync(
+                request.BookInvoiceId ?? throw new AppException(ErrorCode.INVALID_REQUEST))
+                ?? throw new AppException(ErrorCode.BOOK_INVOICE_NOT_FOUND);
+            if (invoice.PatientId != book.PatientId || invoice.Status != "Paid"
+                || invoice.PatientBook is { Status: not PatientBookStatusConstants.Pending })
+                throw new AppException(ErrorCode.BOOK_INVOICE_INVALID_STATUS);
+
             book.Status = target;
             book.UpdatedAt = now;
             // Retire the old book before inserting the replacement: only one Issued book per patient is allowed.
             await SaveAsync();
 
-            result = new PatientBook
+            // Reuse the invoice's own placeholder book row when present (BookInvoiceId is unique per book);
+            // only a brand-new invoice with no placeholder yet needs a brand-new row.
+            result = invoice.PatientBook ?? new PatientBook
             {
                 PatientId = book.PatientId,
-                PreviousBookId = book.PatientBookId,
-                BookNumber = newBookNumber,
-                Status = PatientBookStatusConstants.Issued,
-                IssuedAt = now,
-                CreatedAt = now,
-                UpdatedAt = now
+                BookInvoiceId = invoice.BookInvoiceId,
+                CreatedAt = now
             };
-            await _receptionRepository.AddBookAsync(result);
+            result.PreviousBookId = book.PatientBookId;
+            result.BookNumber = newBookNumber;
+            result.Status = PatientBookStatusConstants.Issued;
+            result.IssuedAt = now;
+            result.UpdatedAt = now;
+            result.IssuedByUserId = _currentUser.GetRequiredUserId();
+            if (invoice.PatientBook == null) await _receptionRepository.AddBookAsync(result);
             await SaveAsync();
         }
         else
@@ -149,7 +170,8 @@ public class PatientBookService : IPatientBookService
         PreviousBookId = book.PreviousBookId,
         BookNumber = book.BookNumber,
         Status = book.Status,
-        IssuedAt = book.IssuedAt
+        IssuedAt = book.IssuedAt,
+        IssuedByUserId = book.IssuedByUserId
     };
 
     private static PatientBookResponse MapBook(PatientBook book) => new()
@@ -160,6 +182,7 @@ public class PatientBookService : IPatientBookService
         PreviousBookId = book.PreviousBookId,
         BookNumber = book.BookNumber,
         Status = book.Status,
-        IssuedAt = book.IssuedAt
+        IssuedAt = book.IssuedAt,
+        IssuedByUserId = book.IssuedByUserId
     };
 }

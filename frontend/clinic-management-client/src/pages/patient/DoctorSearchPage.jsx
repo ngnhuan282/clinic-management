@@ -124,100 +124,51 @@ export default function DoctorSearchPage() {
                             </Typography>
                         </Box>
 
-                        <Grid container spacing={2} sx={{ alignItems: "center" }}>
-                            <Grid size={{ xs: 12, md: 4.5 }}>
-                                <TextField
-                                    label="Tên bác sĩ"
-                                    placeholder="Nhập tên bác sĩ..."
-                                    value={draft.fullName}
-                                    onChange={event => setDraft({ ...draft, fullName: event.target.value })}
-                                    slotProps={{
-                                        htmlInput: { maxLength: 100 },
-                                        input: {
-                                            startAdornment: (
-                                                <InputAdornment position="start">
-                                                    <Search sx={{ color: "text.secondary", fontSize: 20 }} />
-                                                </InputAdornment>
-                                            ),
-                                        },
-                                    }}
-                                    fullWidth
-                                    size="small"
-                                />
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                                <TextField
-                                    select
-                                    label="Chuyên khoa"
-                                    value={draft.departmentId}
-                                    onChange={event => setDraft({ ...draft, departmentId: event.target.value })}
-                                    fullWidth
-                                    size="small"
-                                    disabled={departmentResource.status !== "ready"}
-                                >
-                                    <MenuItem value="">Tất cả chuyên khoa</MenuItem>
-                                    {departments.map(department => (
-                                        <MenuItem key={department.departmentId} value={String(department.departmentId)}>
-                                            {department.name}
-                                        </MenuItem>
-                                    ))}
-                                </TextField>
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 6, md: 2.5 }}>
-                                <TextField
-                                    select
-                                    label="Phòng khám"
-                                    value={draft.roomId}
-                                    onChange={event => setDraft({ ...draft, roomId: event.target.value })}
-                                    fullWidth
-                                    size="small"
-                                    disabled={roomResource.status !== "ready"}
-                                >
-                                    <MenuItem value="">Tất cả phòng</MenuItem>
-                                    {rooms.map(room => (
-                                        <MenuItem key={room.roomId} value={String(room.roomId)}>
-                                            {`${room.roomCode} - ${room.roomName}`}
-                                        </MenuItem>
-                                    ))}
-                                </TextField>
-                            </Grid>
-                            <Grid size={{ xs: 12, md: 2 }}>
-                                <Stack direction="row" spacing={1} sx={{ justifyContent: { xs: "stretch", md: "flex-end" } }}>
-                                    <Button
-                                        type="submit"
-                                        variant="contained"
-                                        startIcon={<Search sx={{ fontSize: 18 }} />}
-                                        sx={{
-                                            borderRadius: "8px",
-                                            fontWeight: 700,
-                                            flex: { xs: 1, md: "initial" },
-                                            minHeight: 40,
-                                            textTransform: "none",
-                                        }}
-                                    >
-                                        Tìm
-                                    </Button>
-                                    <Button
-                                        variant="outlined"
-                                        startIcon={<RestartAltOutlined />}
-                                        onClick={resetFilters}
-                                        title="Xóa bộ lọc"
-                                        sx={{
-                                            borderRadius: "8px",
-                                            fontWeight: 600,
-                                            minHeight: 40,
-                                            borderColor: "#cbd5e1",
-                                            color: "#475569",
-                                            textTransform: "none",
-                                        }}
-                                    >
-                                        Xóa lọc
-                                    </Button>
-                                </Stack>
-                            </Grid>
-                        </Grid>
+            <Paper component="form" onSubmit={applyFilters} variant="outlined" sx={{ p: 2, mb: 3, borderRadius: 3 }}>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ alignItems: { md: "center" } }}>
+                    <TextField
+                        label="Tên bác sĩ"
+                        value={draft.fullName}
+                        onChange={event => setDraft({ ...draft, fullName: event.target.value })}
+                        slotProps={{ htmlInput: { maxLength: 100 } }}
+                        fullWidth
+                    />
+                    <TextField
+                        select
+                        label="Chuyên khoa"
+                        value={draft.departmentId}
+                        onChange={event => setDraft({ ...draft, departmentId: event.target.value })}
+                        sx={{ minWidth: 220 }}
+                        disabled={departmentResource.status !== "ready"}
+                    >
+                        <MenuItem value="">Tất cả</MenuItem>
+                        {departments.map(department => (
+                            <MenuItem key={department.departmentId} value={String(department.departmentId)}>
+                                {department.name}
+                            </MenuItem>
+                        ))}
+                    </TextField>
+                    <TextField
+                        select
+                        label="Phòng khám"
+                        value={draft.roomId}
+                        onChange={event => setDraft({ ...draft, roomId: event.target.value })}
+                        sx={{ minWidth: 240 }}
+                        disabled={roomResource.status !== "ready"}
+                    >
+                        <MenuItem value="">Tất cả</MenuItem>
+                        {rooms.map(room => (
+                            <MenuItem key={room.roomId} value={String(room.roomId)}>
+                                {`${room.roomCode} - ${room.roomName}`}
+                            </MenuItem>
+                        ))}
+                    </TextField>
+                    <Stack direction="row" spacing={1}>
+                        <Button type="submit" variant="contained">Tìm kiếm</Button>
+                        <Button variant="outlined" onClick={resetFilters}>Xóa lọc</Button>
                     </Stack>
-                </Paper>
+                </Stack>
+            </Paper>
 
                 {/* Resource errors */}
                 {[departmentResource, roomResource]

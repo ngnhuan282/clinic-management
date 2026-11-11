@@ -1511,6 +1511,14 @@ namespace ClinicManagement.Migrations
                             Kind = "Xem",
                             Module = "Báo cáo",
                             Name = "Xem báo cáo doanh thu"
+                        },
+                        new
+                        {
+                            Code = "staff.manage",
+                            IsImplemented = true,
+                            Kind = "Sửa",
+                            Module = "Nhân sự",
+                            Name = "Quản lý hồ sơ bác sĩ và nhân viên"
                         });
                 });
 
@@ -2264,6 +2272,11 @@ namespace ClinicManagement.Migrations
                         {
                             RoleId = 1,
                             PermissionCode = "reports.revenue"
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            PermissionCode = "staff.manage"
                         },
                         new
                         {

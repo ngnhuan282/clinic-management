@@ -9,4 +9,6 @@ public interface IPatientService
 
     Task<PatientProfileResponse> UpdatePatientProfileAsync(
         UpdatePatientProfileRequest request);
+
+    Task<PatientProfileResponse> CreateMyProfileAsync(UpdatePatientProfileRequest request);
 }

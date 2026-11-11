@@ -58,6 +58,19 @@ public class DoctorSchedulesController(IDoctorScheduleService service, ISchedule
     public async Task<IActionResult> Create(CreateDoctorScheduleRequest request) =>
         Ok(ApiResponse<object>.Success(await service.CreateScheduleAsync(request), "Doctor schedule created"));
 
+    [HttpPut("{id:guid}")]
+    [Authorize(Policy = PermissionCodes.SchedulesManage)]
+    public async Task<IActionResult> Update(Guid id, UpdateDoctorScheduleRequest request) =>
+        Ok(ApiResponse<DoctorScheduleResponse>.Success(await service.UpdateScheduleAsync(id, request), "Doctor schedule updated"));
+
+    [HttpDelete("{id:guid}")]
+    [Authorize(Policy = PermissionCodes.SchedulesManage)]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        await service.DeleteScheduleAsync(id);
+        return Ok(ApiResponse<object>.Success(null, "Doctor schedule removed"));
+    }
+
     [HttpGet]
     public async Task<IActionResult> Get([FromQuery] DoctorScheduleQuery query) =>
         Ok(ApiResponse<PagedResponse<DoctorScheduleResponse>>.Success(await service.GetSchedulesAsync(query)));

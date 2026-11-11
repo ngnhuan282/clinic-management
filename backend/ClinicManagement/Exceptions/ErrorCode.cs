@@ -173,6 +173,8 @@ public sealed class ErrorCode
         new(4009, "Identity number is already used by another patient", HttpStatusCode.Conflict);
     public static readonly ErrorCode BOOK_IN_USE =
         new(4010, "The current book is being used by an unfinished examination", HttpStatusCode.Conflict);
+    public static readonly ErrorCode PATIENT_PROFILE_EXISTS =
+        new(4011, "This account already has a patient profile", HttpStatusCode.Conflict);
 
     // =========================
     // Appointment
@@ -382,6 +384,8 @@ public sealed class ErrorCode
         new(7301, "Doctor or room already has a schedule at this time", HttpStatusCode.Conflict);
     public static readonly ErrorCode DOCTOR_SCHEDULE_NOT_FOUND =
         new(7304, "Doctor schedule not found", HttpStatusCode.NotFound);
+    public static readonly ErrorCode DOCTOR_SCHEDULE_IN_USE =
+        new(7305, "Doctor schedule already has booked slots and cannot be changed", HttpStatusCode.Conflict);
     public static readonly ErrorCode SCHEDULE_REQUEST_NOT_FOUND =
         new(7302, "Schedule request not found", HttpStatusCode.NotFound);
     public static readonly ErrorCode SCHEDULE_REQUEST_INVALID_STATUS =

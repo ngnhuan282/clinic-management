@@ -107,7 +107,8 @@ public partial class ReceptionService : IReceptionService
             PatientId = patientId,
             BookNumber = request.BookNumber.Trim(),
             Status = "Issued",
-            IssuedAt = DateTime.UtcNow
+            IssuedAt = DateTime.UtcNow,
+            IssuedByUserId = _currentUser.GetRequiredUserId()
         };
         await _receptionRepository.AddBookAsync(book);
         await SaveBookAsync();
@@ -226,6 +227,7 @@ public partial class ReceptionService : IReceptionService
         book.IssuedAt = now;
         book.IssuedByUserId = _currentUser.GetRequiredUserId();
         book.UpdatedAt = now;
+        book.IssuedByUserId = _currentUser.GetRequiredUserId();
         if (invoice.PatientBook == null) await _receptionRepository.AddBookAsync(book);
         await SaveBookAsync();
 
@@ -275,6 +277,30 @@ public partial class ReceptionService : IReceptionService
         _logger.LogInformation("Appointment {AppointmentId} checked in with book {PatientBookId}",
             appointmentId, book.PatientBookId);
         return MapAppointment(appointment);
+    }
+
+    public async Task<PatientMatchResponse> UpdatePatientAsync(int patientId, UpdatePatientProfileRequest request)
+    {
+        var patient = await RequirePatientAsync(patientId);
+        if (request.BirthDate.HasValue && request.BirthDate.Value.Date > ClinicToday)
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+
+        var identityNumber = string.IsNullOrWhiteSpace(request.IdentityNumber) ? null : request.IdentityNumber.Trim();
+        if (identityNumber is not null && await _patientRepository.IdentityNumberInUseAsync(identityNumber, patient.PatientId))
+            throw new AppException(ErrorCode.PATIENT_IDENTITY_CONFLICT);
+
+        patient.FullName = request.FullName.Trim();
+        patient.Phone = request.Phone.Trim();
+        patient.BirthDate = request.BirthDate?.Date;
+        patient.IdentityNumber = identityNumber;
+        patient.InsuranceCode = string.IsNullOrWhiteSpace(request.InsuranceCode) ? null : request.InsuranceCode.Trim();
+
+        try { await _receptionRepository.SaveChangesAsync(); }
+        catch (DbUpdateException exception) when (exception.InnerException is SqlException { Number: 2601 or 2627 })
+        {
+            throw new AppException(ErrorCode.PATIENT_IDENTITY_CONFLICT);
+        }
+        return MapPatient(patient);
     }
 
     private async Task<Appointment> RequireReceptionAppointmentAsync(int appointmentId) =>

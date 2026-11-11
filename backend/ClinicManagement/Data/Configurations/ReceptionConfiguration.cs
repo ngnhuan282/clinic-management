@@ -32,6 +32,7 @@ public class PatientBookConfiguration : IEntityTypeConfiguration<PatientBook>
         entity.HasOne(x => x.Patient).WithMany().HasForeignKey(x => x.PatientId).OnDelete(DeleteBehavior.Restrict);
         entity.HasOne(x => x.BookInvoice).WithOne(x => x.PatientBook).HasForeignKey<PatientBook>(x => x.BookInvoiceId)
             .OnDelete(DeleteBehavior.Restrict);
+        entity.HasOne(x => x.IssuedByUser).WithMany().HasForeignKey(x => x.IssuedByUserId).OnDelete(DeleteBehavior.Restrict);
         entity.ToTable(x => x.HasCheckConstraint("CK_PatientBooks_Status", "[Status] IN ('Pending','Issued','Lost','Replaced')"));
     }
 }
