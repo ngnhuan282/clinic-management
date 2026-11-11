@@ -17,6 +17,8 @@ const NAV_LINKS = [
     { label: "Liên hệ", href: "/contact" },
 ];
 
+const DESKTOP_NAV_QUERY = "@media (min-width: 1360px)";
+
 export default function Navbar() {
     const [open, setOpen] = useState(false);
     const { isAuthenticated, user, role, sessionChecked, logout } = useAuth();
@@ -115,7 +117,8 @@ export default function Navbar() {
                             direction="row"
                             spacing={0.5}
                             sx={{
-                                display: { xs: "none", lg: "flex" },
+                                display: "none",
+                                [DESKTOP_NAV_QUERY]: { display: "flex" },
                                 flex: 1,
                                 justifyContent: "center",
                                 px: 1,
@@ -156,7 +159,7 @@ export default function Navbar() {
 
                         {/* Right Actions */}
                         {isAuthenticated && (
-                            <Box sx={{ ml: { xs: "auto", lg: 0 }, display: "flex", alignItems: "center" }}>
+                            <Box sx={{ ml: "auto", [DESKTOP_NAV_QUERY]: { ml: 0 }, display: "flex", alignItems: "center" }}>
                                 <NotificationBell />
                             </Box>
                         )}
@@ -165,7 +168,8 @@ export default function Navbar() {
                             direction="row"
                             spacing={1.5}
                             sx={{
-                                display: { xs: "none", lg: "flex" },
+                                display: "none",
+                                [DESKTOP_NAV_QUERY]: { display: "flex" },
                                 alignItems: "center",
                                 ml: isAuthenticated ? 0 : "auto",
                             }}
@@ -200,7 +204,8 @@ export default function Navbar() {
                             onClick={() => setOpen(true)}
                             sx={{
                                 ml: isAuthenticated ? 0 : "auto",
-                                display: { xs: "flex", lg: "none" },
+                                display: "flex",
+                                [DESKTOP_NAV_QUERY]: { display: "none" },
                                 border: "1px solid #e2e8f0",
                                 borderRadius: "8px",
                                 p: 1,

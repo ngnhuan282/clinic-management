@@ -1,5 +1,14 @@
 # UI refresh verification fixture
 
+For isolated UI regression checks after a frontend production build, run
+`node tests/ui-regressions.mjs` from the repository root. It uses Edge headless
+and mocked API responses without starting the backend or accessing a database.
+It checks public routes, doctor search and browser history, patient profile
+creation and retry, laboratory detail dialogs, booking preselection, mobile
+navigation, and viewport bounds from 320 to 1440 pixels. Set `PLAYWRIGHT_MODULE`
+when Playwright is installed outside the repository. Screenshots are written to
+`.tmp/ui-regressions/`.
+
 Remaining-role notification and Cashier access checks can be run with
 `node tests/UiRefreshVerification/smoke.mjs --remaining-roles` for API/SignalR
 or `node tests/remaining-roles-ui.mjs` for Edge workflows after a Release build.

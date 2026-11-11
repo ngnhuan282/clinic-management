@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, LinearProgress, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, LinearProgress, Stack, Typography } from "@mui/material";
 import useAuth from "../../hooks/useAuth";
 import useNotifications from "../../hooks/useNotifications";
 import labTestApi from "../../api/labTestApi";

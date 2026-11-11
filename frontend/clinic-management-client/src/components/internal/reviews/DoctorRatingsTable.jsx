@@ -1,6 +1,5 @@
 import { Alert, Button, Paper, Rating, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from "@mui/material";
-
-export const formatRating = value => value == null ? "Chưa có" : new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 2 }).format(value) + " / 5";
+import { formatRating } from "../../../utils/formatRating";
 
 export default function DoctorRatingsTable({ data, onSelect }) {
     if (!data?.items.length) return <Alert severity="info">Chưa có điểm đánh giá để tổng hợp.</Alert>;

@@ -19,7 +19,7 @@ export function useBooking() {
     const [departments, setDepartments] = useState([]);
     const [doctors, setDoctors] = useState([]);
     const [slots, setSlots] = useState([]);
-    const [selectedDepartmentId, setSelectedDepartmentId] = useState(initialSelection.current.departmentId);
+    const [selectedDepartmentId, setSelectedDepartmentId] = useState(() => params.get("departmentId") || "");
     const [selectedDoctorId, setSelectedDoctorId] = useState("");
     const [selectedDate, setSelectedDate] = useState(() => params.get("date") >= clinicToday() ? params.get("date") : "");
     const [selectedSlot, setSelectedSlot] = useState(null);

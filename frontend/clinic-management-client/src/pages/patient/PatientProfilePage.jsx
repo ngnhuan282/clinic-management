@@ -24,7 +24,7 @@ const toPayload = form => ({
     insuranceCode: form.insuranceCode.trim() || null,
 });
 
-function PatientProfileForm({ profile, saving, error, onSave, saved, onEdit }) {
+function PatientProfileForm({ profile, saving, error, onSave, saved, onEdit, createMode = false }) {
     const [form, setForm] = useState(() => toForm(profile));
     const pending = useRef(false);
 
@@ -138,7 +138,7 @@ function PatientProfileForm({ profile, saving, error, onSave, saved, onEdit }) {
                             width: { xs: "100%", sm: "auto" },
                         }}
                     >
-                        {saving ? "Đang lưu thông tin..." : "Lưu thay đổi hồ sơ"}
+                        {saving ? "Đang lưu thông tin..." : createMode ? "Tạo hồ sơ khám bệnh" : "Lưu thay đổi hồ sơ"}
                     </Button>
                 </Box>
             </Stack>
@@ -165,7 +165,7 @@ function CreateProfileSection({ onCreated }) {
             setCreating(false);
         }
     };
-    return <PatientProfileForm profile={EMPTY_PROFILE} saving={creating} error={error} onSave={create} saved={false} onEdit={() => setError("")} />;
+    return <PatientProfileForm profile={EMPTY_PROFILE} saving={creating} error={error} onSave={create} saved={false} onEdit={() => setError("")} createMode />;
 }
 
 function PatientProfileSection({ onRetry }) {
@@ -184,12 +184,11 @@ function PatientProfileSection({ onRetry }) {
     };
 
     if (status === "loading") return <ProfileLoadingState title="Hồ sơ khám bệnh" />;
-    if (status === "error" && errorStatus === 404 && errorCode === 4001) return <Paper variant="outlined" sx={{ ...clinicSurfaceSx, p: { xs: 2.5, sm: 3 } }}><Stack spacing={2}>
-        <Typography component="h2" sx={{ fontSize: 18, fontWeight: 600 }}>Hồ sơ khám bệnh</Typography>
-        <Alert severity="info" sx={{ borderRadius: 2 }}>Bạn chưa có hồ sơ khám bệnh tại phòng khám. Bạn vẫn có thể cập nhật thông tin tài khoản ở trên.</Alert>
-        <Typography sx={{ fontSize: 13.5, color: clinicColors.muted, lineHeight: 1.65 }}>Hồ sơ khám bệnh được cập nhật sau khi phòng khám tiếp nhận và xác nhận thông tin của bạn.</Typography>
+    if (status === "error" && errorStatus === 404 && errorCode === 4001) return <Stack spacing={2}>
+        <Alert severity="info" sx={{ borderRadius: 2 }}>Bạn chưa có hồ sơ khám bệnh tại phòng khám. Hãy điền thông tin bên dưới để tạo hồ sơ.</Alert>
+        <CreateProfileSection onCreated={onRetry} />
         <Box><Button onClick={onRetry}>Kiểm tra lại hồ sơ</Button></Box>
-    </Stack></Paper>;
+    </Stack>;
     if (status === "error") return <Alert severity="error" action={<Button color="inherit" onClick={onRetry}>Thử lại</Button>}>{error}</Alert>;
     return <PatientProfileForm key={`${JSON.stringify(profile)}-${saveRevision}`} profile={profile} saving={saving} error={error} onSave={save} saved={saved} onEdit={() => setSaved(false)} />;
 }
