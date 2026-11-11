@@ -20,3 +20,8 @@ export async function updateMyPatientProfile(payload) {
     const response = await axiosClient.put("/patients/me", payload);
     return response.data.result;
 }
+
+export async function createMyPatientProfile(payload) {
+    const response = await axiosClient.post("/patients/me", payload);
+    return response.data.result;
+}

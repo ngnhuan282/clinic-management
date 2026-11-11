@@ -11,4 +11,5 @@ public class PatientBookListItemResponse
     public string BookNumber { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public DateTime IssuedAt { get; set; }
+    public int? IssuedByUserId { get; set; }
 }

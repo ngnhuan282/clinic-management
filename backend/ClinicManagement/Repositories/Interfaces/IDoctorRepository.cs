@@ -26,5 +26,10 @@ public interface IDoctorRepository
         int userId,
         bool trackChanges = false);
 
+    Task<(List<Doctor> Items, int Total)> GetAdminPageAsync(AdminDoctorQuery query);
+    Task<Doctor?> GetByIdForAdminAsync(int doctorId);
+    Task<bool> SpecializationBelongsToDepartmentAsync(int specializationId, int departmentId);
+    Task AddAsync(Doctor doctor);
+
     Task SaveChangesAsync();
 }

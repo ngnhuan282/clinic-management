@@ -13,4 +13,5 @@ public class UpdatePatientBookStatusRequest
 {
     [Required, MaxLength(20)] public string Status { get; set; } = string.Empty;
     [MaxLength(40)] public string? NewBookNumber { get; set; }
+    [Range(1, int.MaxValue)] public int? BookInvoiceId { get; set; }
 }

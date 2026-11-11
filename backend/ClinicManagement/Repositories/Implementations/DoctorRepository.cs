@@ -142,5 +142,34 @@ public class DoctorRepository : IDoctorRepository
         return query.FirstOrDefaultAsync();
     }
 
+    public async Task<(List<Doctor> Items, int Total)> GetAdminPageAsync(AdminDoctorQuery query)
+    {
+        var doctors = _context.Doctors.AsNoTracking()
+            .Include(x => x.Department).Include(x => x.Specialization).AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var search = query.Search.Trim();
+            doctors = doctors.Where(x => x.FullName.Contains(search));
+        }
+        if (query.DepartmentId.HasValue)
+            doctors = doctors.Where(x => x.DepartmentId == query.DepartmentId.Value);
+
+        var total = await doctors.CountAsync();
+        var items = await doctors.OrderBy(x => x.FullName).ThenBy(x => x.DoctorId)
+            .Skip((query.PageNumber - 1) * query.PageSize).Take(query.PageSize).ToListAsync();
+        return (items, total);
+    }
+
+    public Task<Doctor?> GetByIdForAdminAsync(int doctorId) =>
+        _context.Doctors.Include(x => x.Department).Include(x => x.Specialization)
+            .FirstOrDefaultAsync(x => x.DoctorId == doctorId);
+
+    public Task<bool> SpecializationBelongsToDepartmentAsync(int specializationId, int departmentId) =>
+        _context.Specializations.AnyAsync(x => x.SpecializationId == specializationId
+            && x.DepartmentId == departmentId && x.IsActive);
+
+    public Task AddAsync(Doctor doctor) => _context.Doctors.AddAsync(doctor).AsTask();
+
     public Task SaveChangesAsync() => _context.SaveChangesAsync();
 }

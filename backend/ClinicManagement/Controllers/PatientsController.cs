@@ -30,4 +30,12 @@ public class PatientsController : ControllerBase
         var result = await _patientService.UpdatePatientProfileAsync(request);
         return Ok(ApiResponse<PatientProfileResponse>.Success(result));
     }
+
+    [HttpPost("me")]
+    [Authorize(Roles = RoleConstants.Patient)]
+    public async Task<IActionResult> CreateMyProfile(UpdatePatientProfileRequest request)
+    {
+        var result = await _patientService.CreateMyProfileAsync(request);
+        return Ok(ApiResponse<PatientProfileResponse>.Success(result, "Patient profile created"));
+    }
 }

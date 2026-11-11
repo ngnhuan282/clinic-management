@@ -47,6 +47,7 @@ public static class PermissionCodes
     public const string ReportsOperations = "reports.operations";
     public const string ReportsDepartmentStatistics = "reports.departmentStatistics";
     public const string ReportsRevenue = "reports.revenue";
+    public const string StaffManage = "staff.manage";
 }
 
 public record PermissionDefinition(string Code, string Module, string Name, string Kind, string? Scope = null,
@@ -101,6 +102,7 @@ public static class PermissionCatalog
         new(PermissionCodes.ReportsDepartmentStatistics, "Báo cáo", "Thống kê khoa", "Xem", "Chỉ khoa của Trưởng khoa đăng nhập"),
         new(PermissionCodes.ReportsOperations, "Báo cáo", "Xem báo cáo lượt khám", "Xem", IsImplemented: false),
         new(PermissionCodes.ReportsRevenue, "Báo cáo", "Xem báo cáo doanh thu", "Xem", IsImplemented: false),
+        new(PermissionCodes.StaffManage, "Nhân sự", "Quản lý hồ sơ bác sĩ và nhân viên", "Sửa"),
     ];
 
     public static readonly IReadOnlyDictionary<string, string[]> DefaultRoles = new Dictionary<string, string[]>

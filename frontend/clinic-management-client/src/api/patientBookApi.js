@@ -35,7 +35,7 @@ export async function getPatientBooks(params) {
 
 /**
  * @param {number} patientBookId
- * @param {{ status: PatientBookStatus, newBookNumber?: string }} payload
+ * @param {{ status: PatientBookStatus, newBookNumber?: string, bookInvoiceId?: number }} payload
  */
 export async function updatePatientBookStatus(patientBookId, payload) {
     const response = await axiosClient.put(`/PatientBooks/${patientBookId}/status`, payload);
