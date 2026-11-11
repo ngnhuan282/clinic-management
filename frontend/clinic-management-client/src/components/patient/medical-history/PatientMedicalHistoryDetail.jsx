@@ -39,7 +39,7 @@ function PatientMedicalHistoryDetail({ detail }) {
 
     return (
         <Paper component="section" aria-labelledby="patient-record-title" elevation={0}
-            sx={{ border: "1px solid #E5E9F0", borderRadius: 2, overflow: "hidden" }}>
+            sx={{ border: "1px solid #E5E9F0", borderRadius: "14px", overflow: "hidden", boxShadow: "0 1px 4px rgba(15, 23, 42, 0.04)" }}>
             <Stack direction={{ xs: "column", sm: "row" }}
                 sx={{ p: 2.5, gap: 2, alignItems: { sm: "center" }, justifyContent: "space-between", borderBottom: "1px solid #E5E9F0" }}>
                 <Stack direction="row" sx={{ gap: 1.25, alignItems: "center", minWidth: 0 }}>
@@ -48,7 +48,7 @@ function PatientMedicalHistoryDetail({ detail }) {
                         sx={{ color: "#111827", fontWeight: 800, overflowWrap: "anywhere" }}>Hồ sơ {code}</Typography>
                 </Stack>
                 <Button variant="outlined" startIcon={<PrintOutlinedIcon />} onClick={() => window.print()} className="medical-history-no-print"
-                    sx={{ flexShrink: 0, alignSelf: { xs: "flex-start", sm: "center" } }}>In hồ sơ / Đơn thuốc</Button>
+                    sx={{ flexShrink: 0, alignSelf: { xs: "flex-start", sm: "center" }, borderRadius: "8px", textTransform: "none", fontWeight: 650 }}>In hồ sơ / Đơn thuốc</Button>
             </Stack>
 
             <Box className="medical-history-detail-identity" sx={{ p: 2.5, display: "grid", alignItems: "center", gap: 3,
@@ -96,7 +96,7 @@ function PatientMedicalHistoryDetail({ detail }) {
             <MedicalHistoryPrescriptionSection prescription={prescription} embedded />
             {prescription && <PatientMedicineBillingSection billing={detail.medicineBilling} prescriptionCode={prescription.prescriptionCode} />}
             <Box className="medical-history-no-print" sx={{ p: 2.5, borderTop: "1px solid #E5E9F0", display: "flex", gap: 1.5, justifyContent: "flex-end", flexWrap: "wrap" }}>
-                <Button component={Link} to="/booking" variant="contained" startIcon={<CalendarMonthOutlinedIcon />}>Đặt lịch khám mới</Button>
+                <Button component={Link} to="/booking" variant="contained" startIcon={<CalendarMonthOutlinedIcon />} sx={{ borderRadius: "10px", fontWeight: 700, textTransform: "none" }}>Đặt lịch khám mới</Button>
             </Box>
         </Paper>
     );

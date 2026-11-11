@@ -21,23 +21,25 @@ export default function LabResultDialog({ id, onClose }) {
     }, [id, key]);
     const current = result?.key === key ? result : null;
     const order = current?.data;
-    return <Dialog open={Boolean(id)} onClose={onClose} fullWidth maxWidth="sm" aria-labelledby="lab-result-detail-title">
-        <DialogTitle id="lab-result-detail-title">Chi tiết xét nghiệm</DialogTitle>
+    return <Dialog open={Boolean(id)} onClose={onClose} fullWidth maxWidth="sm" aria-labelledby="lab-result-detail-title" slotProps={{ paper: { sx: { borderRadius: "16px", p: 1 } } }}>
+        <DialogTitle id="lab-result-detail-title" sx={{ fontWeight: 800, fontSize: 19, color: "#0f2c4d", pt: 2.5 }}>Chi tiết xét nghiệm</DialogTitle>
         <DialogContent><Stack spacing={2} sx={{ pt: 1, overflowWrap: "anywhere" }} aria-busy={!current}>
-            {!current && <LinearProgress aria-label="Đang tải chi tiết xét nghiệm" />}
-            {current?.error && <Alert severity="error" action={<Button onClick={() => setRevision(value => value + 1)}>Thử lại</Button>}>{current.error}</Alert>}
+            {!current && <LinearProgress aria-label="Đang tải chi tiết xét nghiệm" sx={{ borderRadius: 1 }} />}
+            {current?.error && <Alert severity="error" sx={{ borderRadius: "10px" }} action={<Button color="inherit" onClick={() => setRevision(value => value + 1)}>Thử lại</Button>}>{current.error}</Alert>}
             {order && <>
-                <Typography component="h2" variant="h6">{order.labTestTypeName}</Typography>
-                <Typography color="text.secondary">Chỉ định #{order.id} · {order.status === "Completed" ? "Đã có kết quả" : order.status === "Cancelled" ? "Đã hủy" : "Đang chờ"}</Typography>
-                {order.clinicalDiagnosis && <Typography sx={{ whiteSpace: "pre-wrap" }}>Chẩn đoán lâm sàng: {order.clinicalDiagnosis}</Typography>}
-                {order.result ? <>
-                    <Typography sx={{ fontWeight: 650 }}>Kết quả xét nghiệm</Typography>
-                    <Typography sx={{ whiteSpace: "pre-wrap" }}>{order.result.resultSummary}</Typography>
-                    {order.result.note && <Typography sx={{ whiteSpace: "pre-wrap" }}>Ghi chú: {order.result.note}</Typography>}
-                    <Typography variant="caption" color="text.secondary">{new Date(order.result.performedAt + (order.result.performedAt.endsWith("Z") ? "" : "Z")).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })}</Typography>
-                </> : <Typography>Chưa có kết quả.</Typography>}
+                <Box>
+                    <Typography component="h2" variant="h6" sx={{ fontWeight: 750, color: "#1f2937" }}>{order.labTestTypeName}</Typography>
+                    <Typography color="text.secondary" sx={{ mt: 0.5, fontSize: 13.5 }}>Chỉ định #{order.id} · {order.status === "Completed" ? "Đã có kết quả" : order.status === "Cancelled" ? "Đã hủy" : "Đang chờ kết quả"}</Typography>
+                </Box>
+                {order.clinicalDiagnosis && <Typography sx={{ whiteSpace: "pre-wrap", fontSize: 14, color: "#374151" }}>Chẩn đoán lâm sàng: <strong>{order.clinicalDiagnosis}</strong></Typography>}
+                {order.result ? <Box sx={{ p: 2.5, bgcolor: "#F8FAFC", borderRadius: "12px", border: "1px solid #E2E8F0" }}>
+                    <Typography sx={{ fontWeight: 700, color: "primary.main", mb: 1, fontSize: 14 }}>Kết luận xét nghiệm</Typography>
+                    <Typography sx={{ whiteSpace: "pre-wrap", lineHeight: 1.75, fontSize: 14.5, color: "#1f2937", mb: 1.5 }}>{order.result.resultSummary}</Typography>
+                    {order.result.note && <Typography sx={{ whiteSpace: "pre-wrap", fontSize: 13, color: "text.secondary", mb: 1 }}>Ghi chú: {order.result.note}</Typography>}
+                    <Typography variant="caption" color="text.secondary" sx={{ display: "block", fontSize: 12 }}>Thời gian thực hiện: {new Date(order.result.performedAt + (order.result.performedAt.endsWith("Z") ? "" : "Z")).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })}</Typography>
+                </Box> : <Typography sx={{ p: 2, bgcolor: "#F8FAFC", borderRadius: "10px", color: "text.secondary", fontSize: 14 }}>Chưa có kết quả xét nghiệm.</Typography>}
             </>}
         </Stack></DialogContent>
-        <DialogActions sx={{ p: 3 }}><Button onClick={onClose}>Đóng</Button></DialogActions>
+        <DialogActions sx={{ px: 3, pb: 2.5 }}><Button onClick={onClose} variant="contained" sx={{ borderRadius: "8px", textTransform: "none", fontWeight: 650, px: 2.5 }}>Đóng</Button></DialogActions>
     </Dialog>;
 }

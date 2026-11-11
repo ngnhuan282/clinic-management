@@ -10,7 +10,8 @@ function PatientMedicalHistorySummary({ summary }) {
     ];
 
     return (
-        <Box sx={{ bgcolor: "#FFFFFF", borderBlock: "1px solid #E5E9F0", p: { xs: 2.5, md: 3 },
+        <Box sx={{ bgcolor: "#FFFFFF", border: "1px solid #E5E9F0", borderRadius: "14px", p: { xs: 2.5, md: 3 },
+            boxShadow: "0 1px 3px rgba(15, 23, 42, 0.03)",
             display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "minmax(0, 1.1fr) minmax(0, 1fr)" }, gap: 3 }}>
             <Stack direction="row" sx={{ gap: 2, alignItems: "center", minWidth: 0 }}>
                 <Avatar sx={{ width: 56, height: 56, bgcolor: "#EFF6FF", color: "#005DAC", fontWeight: 800 }}>{initials}</Avatar>

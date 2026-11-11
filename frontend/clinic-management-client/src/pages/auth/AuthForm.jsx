@@ -11,7 +11,7 @@ import { canAccessPath, homeForRole } from "../../routes/roleAccess";
 function AuthField({ name, label, icon: Icon, error, password = false, ...props }) {
     const [visible, setVisible] = useState(false);
     return <Box sx={{ minWidth: 0 }}>
-        <Typography component="label" htmlFor={`auth-${name}`} sx={{ display: "block", mb: 0.9, fontSize: 14, fontWeight: 600, color: "#374151" }}>
+        <Typography component="label" htmlFor={`auth-${name}`} sx={{ display: "block", mb: 0.9, fontSize: 13.5, fontWeight: 650, color: "#1f2937" }}>
             {label} <Box component="span" sx={{ color: "error.main" }} aria-hidden="true">*</Box>
         </Typography>
         <TextField {...props} id={`auth-${name}`} name={name} required fullWidth
@@ -20,13 +20,24 @@ function AuthField({ name, label, icon: Icon, error, password = false, ...props 
             slotProps={{
                 htmlInput: { ...props.slotProps?.htmlInput, "aria-label": label },
                 input: {
-                    startAdornment: <InputAdornment position="start"><Icon sx={{ color: "#8490a0", fontSize: 21 }} /></InputAdornment>,
+                    startAdornment: <InputAdornment position="start"><Icon sx={{ color: "#94a3b8", fontSize: 20 }} /></InputAdornment>,
                     endAdornment: password ? <InputAdornment position="end"><IconButton size="small" aria-label={`${visible ? "Ẩn" : "Hiện"} ${label.toLowerCase()}`} aria-pressed={visible} onClick={() => setVisible(!visible)} edge="end">
                         {visible ? <VisibilityOffOutlined fontSize="small" /> : <VisibilityOutlined fontSize="small" />}
                     </IconButton></InputAdornment> : undefined,
                 },
             }}
-            sx={{ "& .MuiOutlinedInput-root": { minHeight: 50 }, "& input": { py: 1.5, fontSize: 14 }, "& .MuiOutlinedInput-notchedOutline": { borderColor: "#dfe5ed" } }} />
+            sx={{
+                "& .MuiOutlinedInput-root": {
+                    minHeight: 46,
+                    borderRadius: "10px",
+                    bgcolor: "#ffffff",
+                    borderColor: "#cbd5e1",
+                    transition: "all 0.15s ease",
+                    "&:hover": { borderColor: "#94a3b8" },
+                    "&.Mui-focused": { borderColor: "primary.main", boxShadow: "0 0 0 3px rgba(25, 118, 210, 0.12)" },
+                },
+                "& input": { py: 1.25, fontSize: 14.5 },
+            }} />
     </Box>;
 }
 
@@ -122,15 +133,15 @@ export default function AuthForm({ register }) {
                     <FormControlLabel sx={{ m: 0, "& .MuiCheckbox-root": { p: 0, mr: 1 } }} control={<Checkbox checked={remember} disabled={busy} onChange={e => setRemember(e.target.checked)} size="small" />} label={<Typography sx={{ fontSize: 13 }}>Ghi nhớ đăng nhập trên thiết bị này</Typography>} />
                     <Link component="button" type="button" onClick={() => setHelpOpen(true)} sx={{ fontSize: 13, fontWeight: 600 }}>Quên mật khẩu?</Link>
                 </Stack>}
-                <Button variant="contained" type="submit" disabled={busy} fullWidth endIcon={busy ? <CircularProgress size={18} color="inherit" /> : <ArrowForward />} sx={{ minHeight: 56, fontSize: 16, fontWeight: 700, bgcolor: register ? "#1976d2" : "#0064b4", boxShadow: "0 2px 4px rgba(0,93,172,.15)" }}>
+                <Button variant="contained" type="submit" disabled={busy} fullWidth endIcon={busy ? <CircularProgress size={18} color="inherit" /> : <ArrowForward />} sx={{ minHeight: 48, borderRadius: "10px", fontSize: 15, fontWeight: 750, textTransform: "none", bgcolor: register ? "primary.main" : "#0f4c81", boxShadow: "0 3px 10px rgba(25, 118, 210, 0.25)", "&:hover": { bgcolor: register ? "primary.dark" : "#093358", boxShadow: "0 4px 14px rgba(25, 118, 210, 0.35)" } }}>
                     {busy ? "Đang xử lý…" : register ? "Đăng ký tài khoản" : "Đăng nhập"}
                 </Button>
             </Stack>
         </Box>
-        <Dialog open={helpOpen} onClose={() => setHelpOpen(false)} maxWidth="xs" fullWidth aria-labelledby="auth-help-title">
-            <DialogTitle id="auth-help-title">Hỗ trợ đăng nhập</DialogTitle>
-            <DialogContent><Typography variant="body2" sx={{ lineHeight: 1.8 }}>Nếu bạn quên mật khẩu, vui lòng liên hệ quầy tiếp nhận của phòng khám để được hỗ trợ xác minh tài khoản. Chuẩn bị tên đăng nhập và thông tin liên hệ đã đăng ký.</Typography></DialogContent>
-            <DialogActions><Button onClick={() => setHelpOpen(false)}>Đã hiểu</Button></DialogActions>
+        <Dialog open={helpOpen} onClose={() => setHelpOpen(false)} maxWidth="xs" fullWidth aria-labelledby="auth-help-title" slotProps={{ paper: { sx: { borderRadius: "16px", p: 1 } } }}>
+            <DialogTitle id="auth-help-title" sx={{ fontWeight: 750 }}>Hỗ trợ đăng nhập</DialogTitle>
+            <DialogContent><Typography variant="body2" sx={{ lineHeight: 1.8, color: "text.secondary" }}>Nếu bạn quên mật khẩu, vui lòng liên hệ quầy tiếp nhận của phòng khám để được hỗ trợ xác minh tài khoản. Chuẩn bị tên đăng nhập và thông tin liên hệ đã đăng ký.</Typography></DialogContent>
+            <DialogActions sx={{ pb: 2, px: 3 }}><Button onClick={() => setHelpOpen(false)} variant="contained" sx={{ borderRadius: "8px", textTransform: "none", fontWeight: 650 }}>Đã hiểu</Button></DialogActions>
         </Dialog>
     </>;
 }

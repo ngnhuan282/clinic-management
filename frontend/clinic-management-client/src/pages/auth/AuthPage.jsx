@@ -1,5 +1,17 @@
 import { Box, Breadcrumbs, Container, Divider, Link, Paper, Stack, Tab, Tabs, Typography } from "@mui/material";
-import { BadgeOutlined, CalendarMonthOutlined, CheckCircleOutlined, ChevronRight, HomeOutlined, LockOutlined, LoginOutlined, PersonAddAltOutlined, PersonOutlined, PhoneOutlined, ShieldOutlined } from "@mui/icons-material";
+import {
+    BadgeOutlined,
+    CalendarMonthOutlined,
+    CheckCircleOutlined,
+    ChevronRight,
+    HomeOutlined,
+    LockOutlined,
+    LoginOutlined,
+    PersonAddAltOutlined,
+    PersonOutlined,
+    PhoneOutlined,
+    ShieldOutlined,
+} from "@mui/icons-material";
 import { Link as RouterLink, useLocation } from "react-router-dom";
 import AuthForm from "./AuthForm";
 
@@ -17,67 +29,310 @@ const SUPPORT_CARDS = [
 ];
 
 function Introduction({ register, internal }) {
-    return <Box sx={{
-        position: "relative", overflow: "hidden", color: "white", p: { xs: 3, md: 4, lg: 5.5 },
-        background: register ? "linear-gradient(145deg, #1976d2, #1675ca)" : "linear-gradient(145deg, #124da9, #006da7)",
-        display: "flex", flexDirection: "column",
-        "&::before": { content: '""', position: "absolute", width: 310, height: 310, borderRadius: "50%", bgcolor: "rgba(255,255,255,.045)", right: -130, top: -100 },
-        "&::after": { content: '""', position: "absolute", width: 220, height: 220, borderRadius: "50%", bgcolor: "rgba(255,255,255,.045)", right: 35, bottom: 40, pointerEvents: "none" },
-    }}>
-        <Stack direction="row" spacing={1} sx={{ alignItems: "center", alignSelf: "flex-start", borderRadius: 10, px: 1.75, py: 0.8, bgcolor: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.2)", mb: 3 }}>
-            <ShieldOutlined sx={{ fontSize: 18, color: "#a5e6ff" }} />
-            <Typography sx={{ fontSize: 12, fontWeight: 700, letterSpacing: ".04em" }}>{internal ? "CỔNG NỘI BỘ MEDICLINIC" : "CỔNG DỊCH VỤ BỆNH NHÂN MEDICLINIC"}</Typography>
-        </Stack>
-        <Typography component="h1" sx={{ color: "#fff", fontSize: { xs: 27, lg: 34 }, lineHeight: 1.35, fontWeight: 750, letterSpacing: "-.025em", maxWidth: 440 }}>
-            {register ? "Tạo tài khoản sức khỏe số MediClinic" : internal ? "Kết nối đội ngũ, chăm sóc tận tâm" : "Chăm sóc sức khỏe bắt đầu từ kết nối"}
-        </Typography>
-        <Typography sx={{ mt: 2, fontSize: 15, lineHeight: 1.75, color: "#daebff", maxWidth: 435 }}>
-            {register ? "Đồng hành cùng bạn và gia đình. Tạo tài khoản để chủ động lựa chọn bác sĩ và đặt lịch khám phù hợp." : "Chào mừng bạn trở lại. Đăng nhập để kết nối với phòng khám và sắp xếp lịch khám thuận tiện hơn."}
-        </Typography>
-        <Stack spacing={3} sx={{ my: 4.5, display: { xs: "none", md: "flex" } }}>
-            {FEATURES.map(({ icon: Icon, title, description }) => <Stack key={title} direction="row" spacing={1.75} sx={{ alignItems: "flex-start" }}>
-                <Box sx={{ p: 0.9, display: "flex", borderRadius: 1.5, bgcolor: "rgba(255,255,255,.12)", color: "#a2e7ff" }}><Icon sx={{ fontSize: 22 }} /></Box>
-                <Box><Typography sx={{ fontSize: 16, fontWeight: 650, mb: 0.4 }}>{title}</Typography><Typography sx={{ fontSize: 14, lineHeight: 1.6, color: "#d1e5ff" }}>{description}</Typography></Box>
-            </Stack>)}
-        </Stack>
-        <Stack direction="row" spacing={1} sx={{ alignItems: "center", mt: "auto", pt: 2.5, borderTop: "1px solid rgba(255,255,255,.18)", display: { xs: "none", md: "flex" }, color: "#d1e5ff" }}>
-            <LockOutlined sx={{ fontSize: 18 }} /><Typography variant="body2">An tâm kết nối, chủ động chăm sóc sức khỏe.</Typography>
-        </Stack>
-    </Box>;
+    return (
+        <Box
+            sx={{
+                position: "relative",
+                overflow: "hidden",
+                color: "white",
+                p: { xs: 3, md: 4.5, lg: 5.5 },
+                background: register
+                    ? "linear-gradient(145deg, #0f4c81 0%, #1976d2 100%)"
+                    : "linear-gradient(145deg, #0c3d69 0%, #1565c0 100%)",
+                display: "flex",
+                flexDirection: "column",
+                "&::before": {
+                    content: '""',
+                    position: "absolute",
+                    width: 320,
+                    height: 320,
+                    borderRadius: "50%",
+                    bgcolor: "rgba(255,255,255,.05)",
+                    right: -120,
+                    top: -100,
+                    pointerEvents: "none",
+                },
+                "&::after": {
+                    content: '""',
+                    position: "absolute",
+                    width: 240,
+                    height: 240,
+                    borderRadius: "50%",
+                    bgcolor: "rgba(255,255,255,.04)",
+                    right: 40,
+                    bottom: 30,
+                    pointerEvents: "none",
+                },
+            }}
+        >
+            <Stack
+                direction="row"
+                spacing={1}
+                sx={{
+                    alignItems: "center",
+                    alignSelf: "flex-start",
+                    borderRadius: 10,
+                    px: 1.75,
+                    py: 0.75,
+                    bgcolor: "rgba(255,255,255,.12)",
+                    border: "1px solid rgba(255,255,255,.25)",
+                    mb: 3,
+                }}
+            >
+                <ShieldOutlined sx={{ fontSize: 18, color: "#a5e6ff" }} />
+                <Typography sx={{ fontSize: 12, fontWeight: 700, letterSpacing: ".04em" }}>
+                    {internal ? "CỔNG NỘI BỘ PHÒNG KHÁM" : "CỔNG DỊCH VỤ BỆNH NHÂN"}
+                </Typography>
+            </Stack>
+
+            <Typography
+                component="h1"
+                sx={{
+                    color: "#fff",
+                    fontSize: { xs: 26, lg: 32 },
+                    lineHeight: 1.35,
+                    fontWeight: 800,
+                    letterSpacing: "-.02em",
+                    maxWidth: 440,
+                }}
+            >
+                {register
+                    ? "Tạo tài khoản sức khỏe số tiện lợi"
+                    : internal
+                    ? "Kết nối đội ngũ y tế, chăm sóc tận tâm"
+                    : "Chăm sóc sức khỏe bắt đầu từ kết nối"}
+            </Typography>
+
+            <Typography sx={{ mt: 2, fontSize: 14.5, lineHeight: 1.75, color: "#dbeafe", maxWidth: 440 }}>
+                {register
+                    ? "Đồng hành cùng bạn và gia đình. Tạo tài khoản để chủ động lựa chọn bác sĩ và sắp xếp lịch khám phù hợp."
+                    : "Chào mừng bạn trở lại. Đăng nhập để kết nối với phòng khám và quản lý lịch hẹn thuận tiện hơn."}
+            </Typography>
+
+            <Stack spacing={2.5} sx={{ my: 4, display: { xs: "none", md: "flex" } }}>
+                {FEATURES.map(({ icon: Icon, title, description }) => (
+                    <Stack key={title} direction="row" spacing={1.75} sx={{ alignItems: "flex-start" }}>
+                        <Box
+                            sx={{
+                                p: 1,
+                                display: "flex",
+                                borderRadius: "10px",
+                                bgcolor: "rgba(255,255,255,.12)",
+                                color: "#93c5fd",
+                                flexShrink: 0,
+                            }}
+                        >
+                            <Icon sx={{ fontSize: 20 }} />
+                        </Box>
+                        <Box>
+                            <Typography sx={{ fontSize: 15, fontWeight: 700, mb: 0.3, color: "#ffffff" }}>
+                                {title}
+                            </Typography>
+                            <Typography sx={{ fontSize: 13, lineHeight: 1.6, color: "#bfdbfe" }}>
+                                {description}
+                            </Typography>
+                        </Box>
+                    </Stack>
+                ))}
+            </Stack>
+
+            <Stack
+                direction="row"
+                spacing={1}
+                sx={{
+                    alignItems: "center",
+                    mt: "auto",
+                    pt: 2.5,
+                    borderTop: "1px solid rgba(255,255,255,.18)",
+                    display: { xs: "none", md: "flex" },
+                    color: "#dbeafe",
+                }}
+            >
+                <LockOutlined sx={{ fontSize: 18 }} />
+                <Typography variant="body2" sx={{ fontSize: 13 }}>
+                    An tâm kết nối, thông tin được bảo mật chuẩn mực y tế.
+                </Typography>
+            </Stack>
+        </Box>
+    );
 }
 
 export default function AuthPage({ register = false, internal = false }) {
     const location = useLocation();
-    return <Box sx={{ bgcolor: register ? "#f5f9fd" : "#f0f5fa", py: { xs: 3, md: 5.5 } }}>
-        <Container maxWidth="xl">
-            <Breadcrumbs separator={<ChevronRight sx={{ fontSize: 17 }} />} sx={{ mb: { xs: 3, md: 4 }, fontSize: 14 }}>
-                <Link component={RouterLink} to="/" underline="hover" color="text.secondary" sx={{ display: "flex", alignItems: "center", gap: 0.75 }}><HomeOutlined sx={{ fontSize: 17 }} />Trang chủ</Link>
-                <Typography sx={{ fontSize: 14, display: { xs: "none", sm: "block" } }} color="text.secondary">{internal ? "Cổng nội bộ" : "Cổng dịch vụ bệnh nhân"}</Typography>
-                <Typography color="primary" sx={{ fontSize: 14, fontWeight: 600 }}>{register ? "Đăng ký tài khoản" : "Đăng nhập"}</Typography>
-            </Breadcrumbs>
-            <Paper variant="outlined" sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "5fr 7fr" }, borderRadius: 2.5, overflow: "hidden", borderColor: "#e2e8f0", boxShadow: "0 2px 4px rgba(15,23,42,.03)" }}>
-                <Introduction register={register} internal={internal} />
-                <Box sx={{ p: { xs: 2.5, sm: 4, lg: 6 }, minWidth: 0 }}>
-                    <Tabs value={register ? 1 : 0} aria-label="Đăng nhập hoặc đăng ký" sx={{ mb: { xs: 3, md: 4 }, borderBottom: "1px solid #e5e9f0", minHeight: 56, "& .MuiTab-root": { minHeight: 56, fontSize: { xs: 14, lg: 16 }, fontWeight: 650, px: { xs: 1.5, sm: 3 }, textTransform: "none", minWidth: 0 } }}>
-                        <Tab component={RouterLink} to={internal ? "/internal/login" : "/login"} state={location.state} icon={<LoginOutlined sx={{ fontSize: 21 }} />} iconPosition="start" label="Đăng nhập" />
-                        {!internal && <Tab component={RouterLink} to="/register" state={location.state} icon={<PersonAddAltOutlined sx={{ fontSize: 21 }} />} iconPosition="start" label="Đăng ký tài khoản" />}
-                    </Tabs>
-                    <Typography component="h2" sx={{ fontSize: { xs: 23, lg: 28 }, lineHeight: 1.35, fontWeight: 700, letterSpacing: "-.02em" }}>{register ? "Đăng ký tài khoản mới" : internal ? "Đăng nhập Cổng Nội Bộ" : "Đăng nhập Cổng Bệnh Nhân"}</Typography>
-                    <Typography sx={{ mt: 1, mb: 3.5, fontSize: 14, lineHeight: 1.7 }} color="text.secondary">{register ? "Điền thông tin bên dưới để tạo tài khoản và bắt đầu đặt lịch khám trực tuyến." : "Sử dụng tên đăng nhập và mật khẩu bạn đã đăng ký với phòng khám."}</Typography>
-                    <AuthForm key={register ? "register" : "login"} register={register} />
-                    <Divider sx={{ my: 3.5 }} />
-                    <Typography sx={{ fontSize: 14, textAlign: "center", lineHeight: 1.9 }} color="text.secondary">
-                        {internal ? "Liên hệ quản trị viên để được cấp quyền truy cập nội bộ. " : register ? "Đã có tài khoản tại MediClinic? " : "Bạn chưa có tài khoản tại MediClinic? "}
-                        <Link component={RouterLink} to={internal || register ? "/login" : "/register"} state={location.state} sx={{ fontWeight: 650, whiteSpace: "nowrap" }}>{internal ? "Cổng bệnh nhân" : register ? "Đăng nhập ngay" : "Đăng ký ngay"}</Link>
+
+    return (
+        <Box sx={{ bgcolor: "#f8fafc", minHeight: "85vh", py: { xs: 3.5, md: 5.5 } }}>
+            <Container maxWidth="xl">
+                {/* Breadcrumbs */}
+                <Breadcrumbs
+                    separator={<ChevronRight sx={{ fontSize: 16, color: "#94a3b8" }} />}
+                    sx={{ mb: { xs: 2.5, md: 3.5 }, fontSize: 13.5 }}
+                >
+                    <Link
+                        component={RouterLink}
+                        to="/"
+                        underline="hover"
+                        color="text.secondary"
+                        sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
+                    >
+                        <HomeOutlined sx={{ fontSize: 16 }} />
+                        Trang chủ
+                    </Link>
+                    <Typography sx={{ fontSize: 13.5, display: { xs: "none", sm: "block" } }} color="text.secondary">
+                        {internal ? "Cổng nội bộ" : "Cổng dịch vụ bệnh nhân"}
                     </Typography>
+                    <Typography color="primary.main" sx={{ fontSize: 13.5, fontWeight: 650 }}>
+                        {register ? "Đăng ký tài khoản" : "Đăng nhập"}
+                    </Typography>
+                </Breadcrumbs>
+
+                {/* Main Auth Container */}
+                <Paper
+                    variant="outlined"
+                    sx={{
+                        display: "grid",
+                        gridTemplateColumns: { xs: "1fr", md: "5fr 7fr" },
+                        borderRadius: "18px",
+                        overflow: "hidden",
+                        borderColor: "#e2e8f0",
+                        bgcolor: "#ffffff",
+                        boxShadow: "0 4px 20px rgba(15, 23, 42, 0.05)",
+                    }}
+                >
+                    <Introduction register={register} internal={internal} />
+
+                    <Box sx={{ p: { xs: 3, sm: 4.5, lg: 6 }, minWidth: 0 }}>
+                        <Tabs
+                            value={register ? 1 : 0}
+                            aria-label="Đăng nhập hoặc đăng ký"
+                            sx={{
+                                mb: { xs: 3, md: 4 },
+                                borderBottom: "1px solid #e5e9f0",
+                                minHeight: 52,
+                                "& .MuiTab-root": {
+                                    minHeight: 52,
+                                    fontSize: { xs: 14, sm: 15 },
+                                    fontWeight: 700,
+                                    px: { xs: 1.5, sm: 2.5 },
+                                    textTransform: "none",
+                                },
+                            }}
+                        >
+                            <Tab
+                                component={RouterLink}
+                                to={internal ? "/internal/login" : "/login"}
+                                state={location.state}
+                                icon={<LoginOutlined sx={{ fontSize: 20 }} />}
+                                iconPosition="start"
+                                label="Đăng nhập"
+                            />
+                            {!internal && (
+                                <Tab
+                                    component={RouterLink}
+                                    to="/register"
+                                    state={location.state}
+                                    icon={<PersonAddAltOutlined sx={{ fontSize: 20 }} />}
+                                    iconPosition="start"
+                                    label="Đăng ký tài khoản"
+                                />
+                            )}
+                        </Tabs>
+
+                        <Typography
+                            component="h2"
+                            sx={{
+                                fontSize: { xs: 22, lg: 26 },
+                                lineHeight: 1.3,
+                                fontWeight: 800,
+                                color: "#0f2c4d",
+                                letterSpacing: "-.02em",
+                            }}
+                        >
+                            {register
+                                ? "Đăng ký tài khoản mới"
+                                : internal
+                                ? "Đăng nhập Cổng Nội Bộ"
+                                : "Đăng nhập Cổng Bệnh Nhân"}
+                        </Typography>
+
+                        <Typography sx={{ mt: 1, mb: 3.5, fontSize: 14, lineHeight: 1.6 }} color="text.secondary">
+                            {register
+                                ? "Điền thông tin bên dưới để tạo tài khoản và bắt đầu đặt lịch khám trực tuyến."
+                                : "Sử dụng tên đăng nhập và mật khẩu bạn đã đăng ký với phòng khám."}
+                        </Typography>
+
+                        <AuthForm key={register ? "register" : "login"} register={register} />
+
+                        <Divider sx={{ my: 3.5, borderColor: "#e5e9f0" }} />
+
+                        <Typography sx={{ fontSize: 14, textAlign: "center", lineHeight: 1.8 }} color="text.secondary">
+                            {internal
+                                ? "Liên hệ quản trị viên để được cấp quyền truy cập nội bộ. "
+                                : register
+                                ? "Đã có tài khoản tại phòng khám? "
+                                : "Bạn chưa có tài khoản? "}
+                            <Link
+                                component={RouterLink}
+                                to={internal || register ? "/login" : "/register"}
+                                state={location.state}
+                                sx={{ fontWeight: 700, whiteSpace: "nowrap" }}
+                            >
+                                {internal ? "Cổng bệnh nhân" : register ? "Đăng nhập ngay" : "Đăng ký ngay"}
+                            </Link>
+                        </Typography>
+                    </Box>
+                </Paper>
+
+                {/* Support Cards */}
+                <Box
+                    sx={{
+                        display: "grid",
+                        gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" },
+                        gap: 2.5,
+                        mt: 4,
+                    }}
+                >
+                    {SUPPORT_CARDS.map(({ icon: Icon, title, description, color, background }) => (
+                        <Paper
+                            key={title}
+                            variant="outlined"
+                            sx={{
+                                p: 2.5,
+                                display: "flex",
+                                alignItems: "flex-start",
+                                gap: 2,
+                                borderRadius: "14px",
+                                borderColor: "#e2e8f0",
+                                bgcolor: "#ffffff",
+                                boxShadow: "0 1px 3px rgba(15, 23, 42, 0.03)",
+                            }}
+                        >
+                            <Box
+                                sx={{
+                                    width: 44,
+                                    height: 44,
+                                    display: "grid",
+                                    placeItems: "center",
+                                    flexShrink: 0,
+                                    borderRadius: "10px",
+                                    color,
+                                    bgcolor: background,
+                                }}
+                            >
+                                <Icon sx={{ fontSize: 22 }} />
+                            </Box>
+                            <Box>
+                                <Typography sx={{ fontSize: 14.5, fontWeight: 700, mb: 0.5, color: "#1f2937" }}>
+                                    {title}
+                                </Typography>
+                                <Typography sx={{ fontSize: 13, lineHeight: 1.6 }} color="text.secondary">
+                                    {description}
+                                </Typography>
+                            </Box>
+                        </Paper>
+                    ))}
                 </Box>
-            </Paper>
-            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" }, gap: 3, mt: 4, mb: { xs: 0, md: 2 } }}>
-                {SUPPORT_CARDS.map(({ icon: Icon, title, description, color, background }) => <Paper key={title} variant="outlined" sx={{ p: { xs: 2.5, lg: 3 }, display: "flex", alignItems: "flex-start", gap: 2, borderRadius: 2, borderColor: "#e2e8f0" }}>
-                    <Box sx={{ width: 44, height: 44, display: "grid", placeItems: "center", flexShrink: 0, borderRadius: 1.5, color, bgcolor: background }}><Icon /></Box>
-                    <Box><Typography sx={{ fontSize: 15, fontWeight: 650, mb: 0.75 }}>{title}</Typography><Typography sx={{ fontSize: 13, lineHeight: 1.7 }} color="text.secondary">{description}</Typography></Box>
-                </Paper>)}
-            </Box>
-        </Container>
-    </Box>;
+            </Container>
+        </Box>
+    );
 }

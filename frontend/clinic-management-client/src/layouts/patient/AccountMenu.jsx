@@ -1,6 +1,6 @@
 import { useId, useState } from "react";
 import { Avatar, Box, Button, Divider, ListItemIcon, ListSubheader, Menu, MenuItem, Skeleton, Tooltip, Typography } from "@mui/material";
-import { CalendarMonthOutlined, DashboardOutlined, KeyboardArrowDownRounded, LogoutOutlined, PersonOutlineOutlined, ScienceOutlined, StarOutlineRounded } from "@mui/icons-material";
+import { CalendarMonthOutlined, DashboardOutlined, HistoryOutlined, KeyboardArrowDownRounded, LogoutOutlined, PersonOutlineOutlined, ScienceOutlined, StarOutlineRounded } from "@mui/icons-material";
 
 const triggerSx = {
     width: 220,
@@ -57,6 +57,7 @@ export default function AccountMenu({ user, role, sessionChecked, fullWidth = fa
             ? { label: "Đặt lịch khám", path: "/booking", icon: CalendarMonthOutlined }
             : { label: "Trang quản lý", path: "/internal/dashboard", icon: DashboardOutlined },
         ...(patient ? [{ label: "Lịch hẹn của tôi", path: "/my-appointments", icon: CalendarMonthOutlined }] : []),
+        ...(patient ? [{ label: "Lịch sử khám", path: "/medical-records", icon: HistoryOutlined }] : []),
         ...(patient ? [{ label: "Kết quả xét nghiệm", path: "/lab-results", icon: ScienceOutlined }] : []),
         { label: "Hồ sơ cá nhân", path: "/profile", icon: PersonOutlineOutlined },
         ...(patient ? [{ label: "Đánh giá sau khám", path: "/my-reviews", icon: StarOutlineRounded }] : []),
