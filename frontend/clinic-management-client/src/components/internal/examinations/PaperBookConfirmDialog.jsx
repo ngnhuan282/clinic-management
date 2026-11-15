@@ -12,6 +12,8 @@ import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import NotesOutlinedIcon from "@mui/icons-material/NotesOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
 import { getDiseaseLabel } from "./diseaseLabel";
+import MedicalRecordVitalSigns from "./MedicalRecordVitalSigns";
+import { getVitalSignsError } from "../../../utils/medicalRecordVitals";
 
 function ClinicalSummaryField({ label, children }) {
     return <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "132px minmax(0, 1fr)" }, minWidth: 0 }}>
@@ -32,8 +34,9 @@ function PaperBookConfirmDialog({
     prescription, checkingPrescription, prescriptionError, onPrescriptionRetry, saving, onClose, onConfirm,
 }) {
     const [checked, setChecked] = useState(false);
+    const vitalSignsError = getVitalSignsError(form);
     const clinicalReady = Boolean(form.symptoms.trim() && form.conclusion.trim() && selectedDiagnoses.length);
-    const canConfirm = isBookVerified && clinicalReady && !checkingPrescription && !prescriptionError && !saving;
+    const canConfirm = isBookVerified && clinicalReady && !vitalSignsError && !checkingPrescription && !prescriptionError && !saving;
     const activePrescription = prescription?.status !== "Cancelled" ? prescription : null;
 
     return (
@@ -81,6 +84,7 @@ function PaperBookConfirmDialog({
                     <Box component="dl" sx={{ m: 0, border: "1px solid #E5E9F0", borderRadius: 1, overflow: "hidden",
                         "& > div + div": { borderTop: "1px solid #E5E9F0" } }}>
                         <ClinicalSummaryField label="Triệu chứng"><Typography variant="body2" sx={{ lineHeight: 1.7 }}>{form.symptoms.trim() || "Chưa nhập triệu chứng."}</Typography></ClinicalSummaryField>
+                        <ClinicalSummaryField label="Chỉ số sinh tồn"><MedicalRecordVitalSigns record={form} /></ClinicalSummaryField>
                         <ClinicalSummaryField label="Chẩn đoán">
                             <Stack sx={{ gap: 1 }}>
                                 {selectedDiagnoses.length ? selectedDiagnoses.map((diagnosis) => {
@@ -135,6 +139,7 @@ function PaperBookConfirmDialog({
                         </>}
                 </Box>
                 {!clinicalReady && <Alert severity="warning" sx={{ mx: { xs: 2, sm: 2.5 }, mt: 2 }}>Chưa đủ triệu chứng, chẩn đoán và kết luận để xác nhận cập nhật sổ.</Alert>}
+                {vitalSignsError && <Alert severity="warning" sx={{ mx: { xs: 2, sm: 2.5 }, mt: 2 }}>{vitalSignsError}</Alert>}
                 <Box sx={{ m: { xs: 2, sm: 2.5 }, p: 1.5, border: "1px solid #FDE68A", borderRadius: 1, bgcolor: "#FFFBEB" }}>
                     <FormControlLabel sx={{ m: 0, gap: 1, alignItems: "flex-start", "& .MuiCheckbox-root": { p: 0, mt: 0.25 } }}
                         control={<Checkbox checked={checked} disabled={!canConfirm} onChange={(event) => setChecked(event.target.checked)} />}

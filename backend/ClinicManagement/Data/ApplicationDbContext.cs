@@ -688,6 +688,18 @@ public class ApplicationDbContext : DbContext
             entity.Property(x => x.Conclusion)
                 .HasMaxLength(1000);
 
+            entity.Property(x => x.Temperature)
+                .HasPrecision(4, 1);
+
+            entity.Property(x => x.BloodPressure)
+                .HasMaxLength(20);
+
+            entity.Property(x => x.WeightKg)
+                .HasPrecision(5, 2);
+
+            entity.Property(x => x.HeightCm)
+                .HasPrecision(5, 2);
+
             entity.Property(x => x.CreatedAt)
                 .HasDefaultValueSql("GETDATE()");
 

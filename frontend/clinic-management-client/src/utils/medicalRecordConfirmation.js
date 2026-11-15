@@ -1,3 +1,5 @@
+import { normalizeVitalSigns } from "./medicalRecordVitals.js";
+
 export function normalizePayloadDiagnoses(diagnoses = []) {
     const selected = diagnoses.filter((diagnosis) => diagnosis.diseaseId).map((diagnosis) => ({
         diseaseId: Number(diagnosis.diseaseId),
@@ -16,6 +18,7 @@ export function getMedicalRecordContentKey(record) {
     return JSON.stringify({
         symptoms: record.symptoms?.trim() || "",
         conclusion: record.conclusion?.trim() || "",
+        ...normalizeVitalSigns(record),
         diagnoses: normalizePayloadDiagnoses(record.diagnoses)
             .sort((a, b) => a.diseaseId - b.diseaseId),
     });

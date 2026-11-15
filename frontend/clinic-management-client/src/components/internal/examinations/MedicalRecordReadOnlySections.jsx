@@ -8,6 +8,7 @@ import {
 import AssignmentTurnedInOutlinedIcon from "@mui/icons-material/AssignmentTurnedInOutlined";
 import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
 import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
+import MedicalRecordVitalSigns from "./MedicalRecordVitalSigns";
 
 function SectionHeader({ icon, title }) {
     const Icon = icon;
@@ -97,6 +98,8 @@ function MedicalRecordReadOnlySections({ record }) {
                 <ReadOnlyText muted={!record?.symptoms}>
                     {record?.symptoms || "Chưa ghi nhận triệu chứng."}
                 </ReadOnlyText>
+                <Typography variant="subtitle2" sx={{ mt: 2.5, mb: 1.5, fontWeight: 700 }}>Chỉ số sinh tồn</Typography>
+                <MedicalRecordVitalSigns record={record} />
             </Paper>
 
             <Paper

@@ -17,6 +17,7 @@ import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined
 import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
 
 import { getDiseaseLabel } from "./diseaseLabel";
+import { VITAL_SIGN_FIELDS, getVitalSignError } from "../../../utils/medicalRecordVitals";
 
 function SectionHeader({ icon, title, subtitle, sx = {} }) {
     const Icon = icon;
@@ -130,6 +131,19 @@ function MedicalRecordFormSections({
                     minRows={5}
                     placeholder="Nhập triệu chứng, diễn tiến, dấu hiệu lâm sàng..."
                 />
+                <Typography variant="subtitle2" sx={{ mt: 2.5, mb: 2, fontWeight: 700 }}>Chỉ số sinh tồn</Typography>
+                <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, minmax(0, 1fr))" } }}>
+                    {VITAL_SIGN_FIELDS.map(({ key, label, unit, step, max }) => {
+                        const error = getVitalSignError(key, form[key]);
+                        return <TextField key={key} label={`${label} (${unit})`} fullWidth
+                            type={key === "bloodPressure" ? "text" : "number"}
+                            value={form[key] ?? ""} onChange={event => updateField(key, event.target.value)}
+                            error={Boolean(error)} helperText={error || " "}
+                            placeholder={key === "bloodPressure" ? "120/80" : undefined}
+                            slotProps={{ htmlInput: key === "bloodPressure" ? { maxLength: 20 }
+                                : { min: step, max, step } }} />;
+                    })}
+                </Box>
             </Paper>
 
             <Paper

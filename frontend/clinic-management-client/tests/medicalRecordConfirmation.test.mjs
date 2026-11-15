@@ -24,6 +24,7 @@ test("clinical changes invalidate pending and saved confirmation", () => {
     for (const pending of [true, false]) {
         for (const changes of [
             { symptoms: "New symptoms" }, { conclusion: "New conclusion" },
+            { temperature: "37.5" }, { bloodPressure: "120/80" }, { weightKg: "60.25" }, { heightCm: "170" },
             { diagnoses: form.diagnoses.slice(1) },
             { diagnoses: form.diagnoses.map((item) => ({ ...item, note: "Changed note" })) },
             { diagnoses: form.diagnoses.map((item) => ({ ...item, isPrimary: !item.isPrimary })) },
@@ -72,4 +73,13 @@ test("prescription revision preserves clinical draft but requires new confirmati
 test("concurrent clinical or book changes cannot be overwritten by an old draft", () => {
     assert.equal(restoreMedicalRecordDraft(draft, { ...record, symptoms: "Other edit", updatedAt: "version-two" }), null);
     assert.equal(restoreMedicalRecordDraft(draft, { ...record, patientBookId: 11, updatedAt: "version-two" }), null);
+    assert.equal(restoreMedicalRecordDraft(draft, { ...record, temperature: 37.5, updatedAt: "version-two" }), null);
+});
+
+test("equivalent measured values preserve confirmation but clearing any measurement invalidates it", () => {
+    const measured = { ...form, temperature: 36.5, bloodPressure: "120/80", weightKg: 60.25, heightCm: 170 };
+    assert.equal(updateMedicalRecordForm(measured, { temperature: "36.50", bloodPressure: " 120 / 80 ", weightKg: "60.250", heightCm: "170.00" }).paperBookConfirmed, true);
+    for (const key of ["temperature", "bloodPressure", "weightKg", "heightCm"]) {
+        assert.equal(updateMedicalRecordForm(measured, { [key]: "" }).paperBookConfirmed, false);
+    }
 });

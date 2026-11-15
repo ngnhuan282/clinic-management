@@ -24,6 +24,14 @@ public class MedicalRecord
 
     public string Symptoms { get; set; } = string.Empty;
 
+    public decimal? Temperature { get; set; }
+
+    public string? BloodPressure { get; set; }
+
+    public decimal? WeightKg { get; set; }
+
+    public decimal? HeightCm { get; set; }
+
     public string? Conclusion { get; set; }
 
     public DateTime? PaperBookUpdatedAt { get; set; }
