@@ -185,6 +185,12 @@ try
         }
         return;
     }
+    if (args.Contains("--medical-record-vitals"))
+    {
+        await MedicalRecordVitalSignsChecks.RunAsync(client, db, password, Check);
+        Console.WriteLine($"SUCCESS: {checks} medical record vital signs checks passed.");
+        return;
+    }
     if (args.Contains("--d9-clinical-ui"))
     {
         var clinicalUiCases = await ClinicJourneyChecks.PrepareClinicalUiAsync(db, Check);

@@ -9,6 +9,7 @@ import {
 import { getDiseaseOptions } from "../api/diseaseApi";
 import { normalizeExaminationStatus } from "../components/internal/examinations/examinationStatus";
 import getApiErrorMessage from "../utils/errorHandler";
+import { getVitalSignsError, normalizeVitalSigns } from "../utils/medicalRecordVitals";
 import {
     getMedicalRecordContentKey,
     normalizePayloadDiagnoses,
@@ -30,6 +31,10 @@ function createDiagnosisRow(diagnosis = {}) {
 function createEmptyForm() {
     return {
         symptoms: "",
+        temperature: "",
+        bloodPressure: "",
+        weightKg: "",
+        heightCm: "",
         conclusion: "",
         paperBookConfirmed: false,
         paperBookConfirmationPending: false,
@@ -136,6 +141,10 @@ function mapRecordForm(record) {
 
     return {
         symptoms: record.symptoms || "",
+        temperature: record.temperature ?? "",
+        bloodPressure: record.bloodPressure ?? "",
+        weightKg: record.weightKg ?? "",
+        heightCm: record.heightCm ?? "",
         conclusion: record.conclusion || "",
         paperBookConfirmed: Boolean(record.paperBookUpdatedAt),
         paperBookConfirmationPending: false,
@@ -145,19 +154,6 @@ function mapRecordForm(record) {
 
 function isNotFound(error) {
     return error?.response?.status === 404;
-}
-
-function getErrorMessage(error, fallback) {
-    if (error?.response?.data?.code === 7107) return getApiErrorMessage(error, fallback);
-    const message = error?.response?.data?.message ||
-        error?.message ||
-        fallback;
-
-    if (message === "Appointment not found") {
-        return "Không tìm thấy lượt khám trong database. Vui lòng mở hồ sơ từ một lượt khám thật đã tải từ backend.";
-    }
-
-    return message;
 }
 
 function useMedicalRecordForm({
@@ -186,6 +182,7 @@ function useMedicalRecordForm({
 
     const completionReady = Boolean(
         !recordConflict && !loading &&
+        !getVitalSignsError(form) &&
         form.symptoms.trim() &&
         form.conclusion.trim() &&
         selectedDiagnoses.length > 0 &&
@@ -235,7 +232,7 @@ function useMedicalRecordForm({
         } catch (recordError) {
             if (!isNotFound(recordError)) {
                 setError(
-                    getErrorMessage(
+                    getApiErrorMessage(
                         recordError,
                         "Không thể tải hồ sơ bệnh án."
                     )
@@ -263,7 +260,7 @@ function useMedicalRecordForm({
                 }
             } catch (queueError) {
                 setError(
-                    getErrorMessage(
+                    getApiErrorMessage(
                         queueError,
                         "Không thể tải thông tin lượt khám."
                     )
@@ -343,6 +340,8 @@ function useMedicalRecordForm({
     };
 
     const validateBeforeSubmit = (markCompleted) => {
+        const vitalSignsError = getVitalSignsError(form);
+        if (vitalSignsError) return vitalSignsError;
         if (!form.symptoms.trim()) {
             return "Vui lòng nhập triệu chứng trước khi lưu hồ sơ.";
         }
@@ -392,6 +391,7 @@ function useMedicalRecordForm({
         const payload = {
             appointmentId: Number(appointmentId),
             symptoms: form.symptoms.trim(),
+            ...normalizeVitalSigns(form),
             conclusion: form.conclusion.trim() || null,
             patientBookId:
                 medicalRecord?.patientBookId ||
@@ -435,7 +435,7 @@ function useMedicalRecordForm({
                 setForm((current) => updateMedicalRecordForm(current, { paperBookConfirmed: false }));
             }
             setActionError(
-                getErrorMessage(
+                getApiErrorMessage(
                     submitError,
                     "Không thể lưu hồ sơ khám."
                 )

@@ -789,6 +789,10 @@ namespace ClinicManagement.Migrations
                     b.Property<int>("AppointmentId")
                         .HasColumnType("int");
 
+                    b.Property<string>("BloodPressure")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<string>("Conclusion")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
@@ -804,6 +808,10 @@ namespace ClinicManagement.Migrations
                     b.Property<DateTime>("ExaminationDate")
                         .HasColumnType("date");
 
+                    b.Property<decimal?>("HeightCm")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
                     b.Property<DateTime?>("PaperBookUpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -818,10 +826,18 @@ namespace ClinicManagement.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
+                    b.Property<decimal?>("Temperature")
+                        .HasPrecision(4, 1)
+                        .HasColumnType("decimal(4,1)");
+
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("GETDATE()");
+
+                    b.Property<decimal?>("WeightKg")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
 
                     b.HasKey("MedicalRecordId");
 

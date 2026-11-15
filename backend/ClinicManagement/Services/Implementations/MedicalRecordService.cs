@@ -8,6 +8,7 @@ using ClinicManagement.Repositories.Interfaces;
 using ClinicManagement.Services.Interfaces;
 using ClinicManagement.Data;
 using Microsoft.EntityFrameworkCore;
+using System.Text.RegularExpressions;
 
 namespace ClinicManagement.Services.Implementations;
 
@@ -96,6 +97,8 @@ public class MedicalRecordService : IMedicalRecordService
     public async Task<MedicalRecordResponse> CreateAsync(
         CreateMedicalRecordRequest request)
     {
+        var bloodPressure = NormalizeBloodPressure(request.BloodPressure);
+        ValidateVitalSigns(request.Temperature, bloodPressure, request.WeightKg, request.HeightCm);
         ValidateMedicalRecord(
             request.AppointmentId,
             request.Symptoms,
@@ -168,6 +171,10 @@ public class MedicalRecordService : IMedicalRecordService
             PatientBookId = patientBook?.PatientBookId,
             ExaminationDate = appointment.AppointmentDate.Date,
             Symptoms = request.Symptoms.Trim(),
+            Temperature = request.Temperature,
+            BloodPressure = bloodPressure,
+            WeightKg = request.WeightKg,
+            HeightCm = request.HeightCm,
             Conclusion = NormalizeOptionalText(request.Conclusion),
             PaperBookUpdatedAt = paperBookUpdatedAt,
             CreatedAt = DateTime.UtcNow,
@@ -196,6 +203,8 @@ public class MedicalRecordService : IMedicalRecordService
     {
         if (!request.ExpectedUpdatedAt.HasValue)
             throw new AppException(ErrorCode.INVALID_REQUEST);
+        var bloodPressure = NormalizeBloodPressure(request.BloodPressure);
+        ValidateVitalSigns(request.Temperature, bloodPressure, request.WeightKg, request.HeightCm);
         ValidateMedicalRecord(
             medicalRecordId,
             request.Symptoms,
@@ -228,6 +237,10 @@ public class MedicalRecordService : IMedicalRecordService
 
         var patientBookId = patientBook?.PatientBookId ?? record.PatientBookId;
         var contentChanged = record.Symptoms.Trim() != request.Symptoms.Trim()
+            || record.Temperature != request.Temperature
+            || record.BloodPressure != bloodPressure
+            || record.WeightKg != request.WeightKg
+            || record.HeightCm != request.HeightCm
             || NormalizeOptionalText(record.Conclusion) != NormalizeOptionalText(request.Conclusion)
             || record.PatientBookId != patientBookId
             || !record.Diagnoses.OrderBy(x => x.DiseaseId)
@@ -246,6 +259,10 @@ public class MedicalRecordService : IMedicalRecordService
             throw new AppException(ErrorCode.MEDICAL_RECORD_CONFLICT);
 
         record.Symptoms = request.Symptoms.Trim();
+        record.Temperature = request.Temperature;
+        record.BloodPressure = bloodPressure;
+        record.WeightKg = request.WeightKg;
+        record.HeightCm = request.HeightCm;
         record.Conclusion = NormalizeOptionalText(request.Conclusion);
         record.PatientBookId = patientBookId;
         record.PaperBookUpdatedAt = paperBookUpdatedAt;
@@ -270,6 +287,22 @@ public class MedicalRecordService : IMedicalRecordService
 
         return await GetByIdAsync(medicalRecordId);
     }
+
+    private static void ValidateVitalSigns(decimal? temperature, string? bloodPressure, decimal? weightKg, decimal? heightCm)
+    {
+        // Validate storage precision, not clinical normality; all measurements are optional.
+        if (!IsValidMeasurement(temperature, 999.9m, 1)
+            || !IsValidMeasurement(weightKg, 999.99m, 2)
+            || !IsValidMeasurement(heightCm, 999.99m, 2)
+            || (bloodPressure != null && !Regex.IsMatch(bloodPressure, @"\A[1-9][0-9]{0,2}/[1-9][0-9]{0,2}\z")))
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+    }
+
+    private static bool IsValidMeasurement(decimal? value, decimal max, int decimals)
+        => !value.HasValue || (value > 0 && value <= max && decimal.Round(value.Value, decimals) == value.Value);
+
+    private static string? NormalizeBloodPressure(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : string.Join("/", value.Split('/', StringSplitOptions.TrimEntries));
 
     private static void ValidateMedicalRecord(
         int id,

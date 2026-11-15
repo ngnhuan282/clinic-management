@@ -18,6 +18,7 @@ const API_ERROR_MESSAGES = {
     3001: "Không tìm thấy bác sĩ.",
     4001: "Không tìm thấy bệnh nhân.",
     4002: "Thông tin này khớp với một hồ sơ bệnh nhân đã có sẵn. Vui lòng đến quầy lễ tân để được liên kết hồ sơ.",
+    4005: "Cần hoàn tất tiếp nhận và đối chiếu sổ khám tại quầy lễ tân trước khi bắt đầu khám.",
     4006: "Số sổ đã được sử dụng hoặc bệnh nhân đã có sổ đang sử dụng.",
     4009: "Số CCCD này đã thuộc về bệnh nhân khác.",
     4010: "Sổ đang dùng cho lượt khám chưa hoàn tất. Hãy hoàn tất lượt khám trước khi cấp lại sổ.",
@@ -80,6 +81,8 @@ const API_MESSAGE_TRANSLATIONS = {
     "Cannot connect to the server.":
         "Không thể kết nối tới máy chủ.",
     "Invalid request.": "Yêu cầu không hợp lệ.",
+    "One or more validation errors occurred.":
+        "Dữ liệu nhập chưa hợp lệ. Vui lòng kiểm tra lại các trường thông tin.",
     "You are not authenticated.": "Bạn chưa đăng nhập.",
     "You do not have permission.":
         "Bạn không có quyền thực hiện thao tác này.",
@@ -106,6 +109,8 @@ const API_MESSAGE_TRANSLATIONS = {
     "Medical record already exists for this appointment":
         "Lượt khám này đã có hồ sơ bệnh án.",
     "Patient book not found": "Không tìm thấy sổ khám giấy.",
+    "An issued patient book must be verified before check-in":
+        "Cần hoàn tất tiếp nhận và đối chiếu sổ khám tại quầy lễ tân trước khi bắt đầu khám.",
     "Patient book is required before completing the examination":
         "Cần có sổ khám giấy trước khi hoàn tất khám.",
     "Paper book update confirmation is required before completing the examination":

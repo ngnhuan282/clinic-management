@@ -5,7 +5,9 @@ import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
 import AssignmentTurnedInOutlinedIcon from "@mui/icons-material/AssignmentTurnedInOutlined";
 import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
 import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
+import MonitorHeartOutlinedIcon from "@mui/icons-material/MonitorHeartOutlined";
 import MedicalHistoryPrescriptionSection from "../../internal/examinations/MedicalHistoryPrescriptionSection";
+import MedicalRecordVitalSigns from "../../internal/examinations/MedicalRecordVitalSigns";
 import PatientMedicineBillingSection from "./PatientMedicineBillingSection";
 import formatDate from "../../../utils/formatDate";
 import { Link } from "react-router-dom";
@@ -91,6 +93,11 @@ function PatientMedicalHistoryDetail({ detail }) {
                 </ClinicalSection>
                 <ClinicalSection id="patient-record-conclusion" title="Kết luận" icon={CheckCircleOutlineOutlinedIcon}>
                     <Typography variant="body2" sx={{ color: "#374151", whiteSpace: "pre-wrap", overflowWrap: "anywhere", lineHeight: 1.7 }}>{record.conclusion || "Chưa có kết luận."}</Typography>
+                </ClinicalSection>
+            </Box>
+            <Box sx={{ borderBottom: "1px solid #E5E9F0" }}>
+                <ClinicalSection id="patient-record-vital-signs" title="Chỉ số sinh tồn" icon={MonitorHeartOutlinedIcon}>
+                    <MedicalRecordVitalSigns record={record} />
                 </ClinicalSection>
             </Box>
             <MedicalHistoryPrescriptionSection prescription={prescription} embedded />
