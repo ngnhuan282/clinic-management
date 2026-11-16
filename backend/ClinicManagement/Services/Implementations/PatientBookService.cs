@@ -55,6 +55,9 @@ public class PatientBookService : IPatientBookService
         PatientBook result;
         if (book.Status == PatientBookStatusConstants.Pending && target == PatientBookStatusConstants.Issued)
         {
+            if (book.BookInvoice is not { Status: "Paid" } || book.BookInvoice.PatientId != book.PatientId)
+                throw new AppException(ErrorCode.BOOK_INVOICE_INVALID_STATUS);
+
             book.BookNumber = RequireNewBookNumber(request.NewBookNumber);
             book.Status = PatientBookStatusConstants.Issued;
             book.IssuedAt = now;

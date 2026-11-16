@@ -273,7 +273,7 @@ export default function AppRoutes() {
                             <Route path="patient-books" element={<PatientBooksPage />} />
                         </Route>
 
-                        <Route element={<ProtectedRoute allowedRoles={["Doctor"]} />}>
+                        <Route element={<ProtectedRoute allowedRoles={["Doctor", "DepartmentHead"]} />}>
                             <Route path="doctor/profile" element={<DoctorProfilePage />} />
                         </Route>
 

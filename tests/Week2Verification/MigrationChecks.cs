@@ -71,12 +71,29 @@ UPDATE MedicalRecords SET PatientBookId = 9002, PaperBookUpdatedAt = '2026-10-05
             await db.Database.ExecuteSqlRawAsync("DELETE FROM PatientBooks WHERE PatientBookId = 9003");
             await db.Database.MigrateAsync();
             await VerifyPreservedAsync(db, check);
+            check(await CountAsync(db, "SELECT COUNT(*) AS Value FROM PatientBooks WHERE PatientBookId = 9001 AND Status = 'Replaced'") == 1,
+                "Legacy Voided books upgrade to Replaced without deleting their history");
             check(!((await db.Database.GetPendingMigrationsAsync()).Any()), "Populated legacy database upgrades through every migration");
             await db.Database.MigrateAsync();
             check(await db.DoctorScheduleRequests.CountAsync() == 1 && await db.PatientBooks.CountAsync() == 2,
                 "Repeated migration update does not duplicate requests or books");
 
+            await db.Database.ExecuteSqlRawAsync("UPDATE PatientBooks SET IssuedByUserId = 9002 WHERE PatientBookId = 9002");
+            await migrator.MigrateAsync("20261107081923_AddMedicalRecordVitalSigns");
+            check(await CountAsync(db, "SELECT COUNT(*) AS Value FROM PatientBooks WHERE PatientBookId = 9002 AND IssuedByUserId = 9002") == 1,
+                "Reception workflow rollback preserves issuer data owned by AddPatientBookIssuer");
+            await db.Database.MigrateAsync();
+            // The reception branch could already have created the issuer objects before the other branch was merged.
+            await db.Database.ExecuteSqlRawAsync("DELETE FROM __EFMigrationsHistory WHERE MigrationId = '20261105090000_AddPatientBookIssuer'");
+            await db.Database.MigrateAsync();
+            check(await CountAsync(db, "SELECT COUNT(*) AS Value FROM PatientBooks WHERE PatientBookId = 9002 AND IssuedByUserId = 9002") == 1
+                && await CountAsync(db, "SELECT COUNT(*) AS Value FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.PatientBooks') AND name = N'IX_PatientBooks_IssuedByUserId'") == 1
+                && await CountAsync(db, "SELECT COUNT(*) AS Value FROM sys.foreign_keys WHERE parent_object_id = OBJECT_ID(N'dbo.PatientBooks') AND name = N'FK_PatientBooks_Users_IssuedByUserId'") == 1,
+                "Merged issuer migration adopts existing column, index and FK without losing issuer data");
+
             await migrator.MigrateAsync(review);
+            check(await CountAsync(db, "SELECT COUNT(*) AS Value FROM PatientBooks WHERE PatientBookId = 9001 AND Status = 'Voided'") == 1,
+                "Book status rollback restores the legacy inactive status");
             check(await CountAsync(db, "SELECT COUNT(*) AS Value FROM PatientBooks WHERE PatientBookId IN (9001,9002)") == 2
                 && await CountAsync(db, "SELECT COUNT(*) AS Value FROM Appointments WHERE PatientBookId = 9002") == 1,
                 "Downgrade keeps paper-book table, IDs and appointment references");
@@ -98,6 +115,7 @@ UPDATE MedicalRecords SET PatientBookId = 9002, PaperBookUpdatedAt = '2026-10-05
         var head = await db.Users.Include(x => x.Role).SingleAsync(x => x.UserId == 9002);
         check(head.RoleId == 42 && head.Role.IsSystem
             && await db.Roles.AnyAsync(x => x.RoleId == 6 && x.RoleName == "CustomRole")
+            && !await db.RolePermissions.AnyAsync(x => x.RoleId == 6)
             && await db.Doctors.AnyAsync(x => x.DoctorId == 1 && x.UserId == head.UserId)
             && await db.RolePermissions.AnyAsync(x => x.RoleId == 42 && x.PermissionCode == "schedules.review"),
             "Existing DepartmentHead account, custom role, doctor linkage and review permissions survive");

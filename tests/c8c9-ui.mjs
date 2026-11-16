@@ -4,10 +4,11 @@ import { randomBytes } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
 
+// Build tests/Week2Verification in Release before running; PLAYWRIGHT_MODULE can select an external installation.
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || "playwright");
 await mkdir(".tmp/c8c9", { recursive: true });
 const fixturePassword = "Test-" + randomBytes(12).toString("hex");
-const host = spawn("dotnet", [process.env.CLINIC_TEST_ASSEMBLY || ".tmp/c8c9-build/Week2Verification.dll", process.argv.includes("--c9") ? "--c9-ui" : "--c8c9-ui"],
+const host = spawn("dotnet", [process.env.CLINIC_TEST_ASSEMBLY || "tests/Week2Verification/bin/Release/net8.0/Week2Verification.dll", process.argv.includes("--c9") ? "--c9-ui" : "--c8c9-ui"],
     { windowsHide: true, stdio: ["pipe", "pipe", "pipe"] });
 const hostFinished = new Promise(resolve => host.once("exit", resolve));
 let fixture, vite, browser;
@@ -177,6 +178,8 @@ try {
     for (const label of ["Mất sổ", "Quên sổ"]) {
         await dialog.getByRole("radio", { name: label, exact: true }).check();
         assert(await checkIn.isDisabled());
+        assert(await dialog.getByRole("button", { name: "Yêu cầu mua / cấp lại sổ", exact: true }).isEnabled(),
+            "An issued historical request must allow a new lost/forgotten-book request");
     }
     await dialog.getByRole("radio", { name: "Có sổ mang theo", exact: true }).check();
     await dialog.getByRole("combobox", { name: "Sổ khám còn hiệu lực", exact: true }).click();
@@ -194,7 +197,7 @@ try {
     await checkIn.click();
     assert.equal((await checked).status(), 200);
     await dialog.waitFor({ state: "hidden" });
-    await article.getByText("Đã check-in", { exact: true }).waitFor();
+    await article.getByText("Đã check-in tại quầy", { exact: true }).waitFor();
     await article.getByText("Đã xác minh sổ tại quầy", { exact: true }).waitFor();
     const doctorRow = doctor.getByRole("row").filter({ hasText: fixture.UiPatientName });
     const start = doctorRow.getByRole("button", { name: "Bắt đầu khám", exact: true });

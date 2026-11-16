@@ -227,7 +227,6 @@ public partial class ReceptionService : IReceptionService
         book.IssuedAt = now;
         book.IssuedByUserId = _currentUser.GetRequiredUserId();
         book.UpdatedAt = now;
-        book.IssuedByUserId = _currentUser.GetRequiredUserId();
         if (invoice.PatientBook == null) await _receptionRepository.AddBookAsync(book);
         await SaveBookAsync();
 

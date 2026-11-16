@@ -13,11 +13,7 @@ namespace ClinicManagement.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<int>(
-                name: "IssuedByUserId",
-                table: "PatientBooks",
-                type: "int",
-                nullable: true);
+            // Issuer column, index and FK belong to AddPatientBookIssuer after merging the branches.
 
             migrationBuilder.CreateTable(
                 name: "PatientBookRequests",
@@ -60,11 +56,6 @@ namespace ClinicManagement.Migrations
                 """);
 
             migrationBuilder.CreateIndex(
-                name: "IX_PatientBooks_IssuedByUserId",
-                table: "PatientBooks",
-                column: "IssuedByUserId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_PatientBookRequests_BookInvoiceId",
                 table: "PatientBookRequests",
                 column: "BookInvoiceId",
@@ -82,33 +73,13 @@ namespace ClinicManagement.Migrations
                 name: "IX_PatientBookRequests_RequestedByUserId",
                 table: "PatientBookRequests",
                 column: "RequestedByUserId");
-
-            migrationBuilder.AddForeignKey(
-                name: "FK_PatientBooks_Users_IssuedByUserId",
-                table: "PatientBooks",
-                column: "IssuedByUserId",
-                principalTable: "Users",
-                principalColumn: "UserId",
-                onDelete: ReferentialAction.Restrict);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropForeignKey(
-                name: "FK_PatientBooks_Users_IssuedByUserId",
-                table: "PatientBooks");
-
             migrationBuilder.DropTable(
                 name: "PatientBookRequests");
-
-            migrationBuilder.DropIndex(
-                name: "IX_PatientBooks_IssuedByUserId",
-                table: "PatientBooks");
-
-            migrationBuilder.DropColumn(
-                name: "IssuedByUserId",
-                table: "PatientBooks");
 
             migrationBuilder.Sql("""
                 UPDATE [Permissions] SET [IsImplemented] = 0, [Scope] = NULL

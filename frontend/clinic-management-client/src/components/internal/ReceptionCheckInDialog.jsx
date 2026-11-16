@@ -66,6 +66,7 @@ export default function ReceptionCheckInDialog({ appointment, onClose, onChecked
     const recordsLoaded = loadedPatientId === patientId && !recordsLoading;
     const books = loadedPatientId === patientId ? bookRecords : [];
     const invoices = loadedPatientId === patientId ? invoiceRecords : [];
+    const hasOpenBookRequest = bookRequests.some(request => request.status !== "Issued");
     const selectedBook = recordsLoaded ? books.find(book => book.patientBookId === Number(bookId) && book.status === "Issued" && book.patientId === patientId) : null;
     const selectedInvoice = selectedBook?.bookInvoiceId ? invoices.find(invoice => invoice.bookInvoiceId === selectedBook.bookInvoiceId) : null;
     const bookPaid = Boolean(selectedBook && (!selectedBook.bookInvoiceId || selectedInvoice?.status === "Paid"));
@@ -173,13 +174,13 @@ export default function ReceptionCheckInDialog({ appointment, onClose, onChecked
                         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 1 }}>
                             <TextField size="small" label="Số sổ mới" value={newBookNumber} disabled={busy || !recordsLoaded}
                                 onChange={event => setNewBookNumber(event.target.value)} slotProps={{ htmlInput: { maxLength: 40 } }} />
-                            <Button disabled={busy || !recordsLoaded || bookSituation === "present" || bookRequests.length > 0} variant="outlined" onClick={() => run(async () => {
+                            <Button disabled={busy || !recordsLoaded || bookSituation === "present" || hasOpenBookRequest} variant="outlined" onClick={() => run(async () => {
                                 await createBookRequest(patientId, { none: "New", lost: "Lost", forgot: "Forgot" }[bookSituation]);
                                 await refreshBooks();
                             })}>Yêu cầu mua / cấp lại sổ</Button>
                         </Stack>
                         {recordsLoaded && bookRequests.map(request => <Alert key={request.patientBookRequestId} severity="info" sx={{ mt: 1 }}>
-                            Yêu cầu #{request.patientBookRequestId} · {request.status === "Pending" ? "Đã ghi nhận yêu cầu mua/cấp lại sổ. Theo dõi xác nhận thanh toán bên dưới" : request.status === "Unpaid" ? "Chờ thanh toán tại Thu ngân" : "Đã thanh toán, có thể phát sổ"}.
+                            Yêu cầu #{request.patientBookRequestId} · {request.status === "Pending" ? "Đã ghi nhận yêu cầu mua/cấp lại sổ. Theo dõi xác nhận thanh toán bên dưới" : request.status === "Unpaid" ? "Chờ thanh toán tại Thu ngân" : request.status === "Issued" ? "Đã phát sổ" : "Đã thanh toán, có thể phát sổ"}.
                             {" Hồ sơ và lịch sử khám của bệnh nhân được giữ nguyên."}
                         </Alert>)}
                         {invoices.map(invoice => <Stack key={invoice.bookInvoiceId} direction={{ xs: "column", sm: "row" }}

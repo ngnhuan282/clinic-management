@@ -26,8 +26,8 @@ internal static class AppointmentReceptionChecks
         static string Token(JsonNode login) => login["accessToken"]!.GetValue<string>();
         static int Id(JsonNode item, string field) => item[field]!.GetValue<int>();
 
-        check(!await db.Roles.AnyAsync(x => x.RoleName == RoleConstants.Cashier),
-            "Hoang migration does not seed a Cashier role or its grants");
+        check(await db.Roles.AnyAsync(x => x.RoleName == RoleConstants.Cashier),
+            "Merged migrations seed the Cashier role for the reception-to-cashier workflow");
         var users = new[] { ("hoangpatient", 4), ("hoangother", 4) }
             .Select(x => new User { Username = x.Item1, FullName = x.Item1, RoleId = x.Item2,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(password), CreatedAt = DateTime.UtcNow }).ToArray();

@@ -10,22 +10,19 @@ namespace ClinicManagement.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // Idempotent: the demo seed script (clinic-all-tables-demo.sql) inserts RoleId 6
-            // and its permissions directly via raw SQL, bypassing EF's migration history, so
-            // this must not assume a bare table on databases that already ran that script.
+            // AddScheduleReview already owns this role. Existing databases may use a different ID.
             migrationBuilder.Sql(@"
-IF NOT EXISTS (SELECT 1 FROM dbo.Roles WHERE RoleId = 6)
+IF NOT EXISTS (SELECT 1 FROM dbo.Roles WHERE RoleName = N'DepartmentHead')
 BEGIN
-    SET IDENTITY_INSERT dbo.Roles ON;
-    INSERT INTO dbo.Roles (RoleId, RoleName, Description, IsSystem)
-    VALUES (6, N'DepartmentHead', N'Department head and doctor', 1);
-    SET IDENTITY_INSERT dbo.Roles OFF;
+    INSERT INTO dbo.Roles (RoleName, Description, IsSystem)
+    VALUES (N'DepartmentHead', N'Department head and doctor', 1);
 END
+UPDATE dbo.Roles SET IsSystem = 1 WHERE RoleName = N'DepartmentHead';
 ");
 
             migrationBuilder.Sql(@"
 INSERT INTO dbo.RolePermissions (RoleId, PermissionCode)
-SELECT 6, v.PermissionCode
+SELECT r.RoleId, v.PermissionCode
 FROM (VALUES
     ('appointments.startExamination'),
     ('clinical.editDiagnosis'),
@@ -40,8 +37,10 @@ FROM (VALUES
     ('pharmacy.viewInventory'),
     ('schedules.review')
 ) AS v(PermissionCode)
-WHERE NOT EXISTS (
-    SELECT 1 FROM dbo.RolePermissions rp WHERE rp.RoleId = 6 AND rp.PermissionCode = v.PermissionCode
+CROSS JOIN dbo.Roles r
+WHERE r.RoleName = N'DepartmentHead'
+AND NOT EXISTS (
+    SELECT 1 FROM dbo.RolePermissions rp WHERE rp.RoleId = r.RoleId AND rp.PermissionCode = v.PermissionCode
 );
 ");
         }
@@ -49,8 +48,7 @@ WHERE NOT EXISTS (
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.Sql("DELETE FROM dbo.RolePermissions WHERE RoleId = 6;");
-            migrationBuilder.Sql("DELETE FROM dbo.Roles WHERE RoleId = 6;");
+            // Keep the role and permissions owned by AddScheduleReview, including custom role IDs.
         }
     }
 }

@@ -36,12 +36,8 @@ internal static class C8C9Checks
 
         public async Task InitializeAsync(string password)
         {
-            var admin = await ApiAsync("POST", "auth/login", "", new { username = "testadmin", password });
-            await ApiAsync("POST", "rbac/roles", admin["accessToken"]!.GetValue<string>(), new
-            {
-                name = RoleConstants.Cashier, description = "C8/C9 disposable cashier",
-                permissionCodes = new[] { PermissionCodes.BillingView, PermissionCodes.BillingCreate, PermissionCodes.BillingRecordPayment }
-            }, 201);
+            check(await db.Roles.AnyAsync(x => x.RoleName == RoleConstants.Cashier),
+                "C8/C9 uses the Cashier role provided by the merged migrations");
             foreach (var (name, role) in new[] { ("c8patient", RoleConstants.Patient), ("c8other", RoleConstants.Patient),
                          ("c8cashier", RoleConstants.Cashier), ("c8doctor2", RoleConstants.Doctor) })
             {
@@ -81,7 +77,7 @@ internal static class C8C9Checks
             diseaseId = disease.DiseaseId;
             var cashierRoleId = await db.Users.Where(x => x.UserId == cashierUserId).Select(x => x.RoleId).SingleAsync();
             check(await db.RolePermissions.AnyAsync(x => x.RoleId == cashierRoleId
-                    && x.PermissionCode == PermissionCodes.BillingRecordPayment), "C8/C9 uses a real Cashier role created through the RBAC API");
+                    && x.PermissionCode == PermissionCodes.BillingRecordPayment), "C8/C9 seeded Cashier has payment rights");
         }
 
         public async Task RaceAndStateChecksAsync()

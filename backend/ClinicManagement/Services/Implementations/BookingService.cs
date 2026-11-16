@@ -187,7 +187,28 @@ public class BookingService : IBookingService
         );
     }
 
-    private async Task<AppointmentResponse> CreateAppointmentInternalAsync(
+    private Task<AppointmentResponse> CreateAppointmentInternalAsync(
+        CreateAppointmentRequest request, int? patientId, string status) =>
+        HandleBookingConflictAsync(() => CreateAppointmentCoreAsync(request, patientId, status));
+
+    private async Task<AppointmentResponse> HandleBookingConflictAsync(Func<Task<AppointmentResponse>> operation)
+    {
+        try { return await operation(); }
+        catch (Exception error) when (IsDeadlock(error))
+        {
+            _logger.LogWarning(error, "Concurrent appointment operation conflicted.");
+            throw new AppException(ErrorCode.APPOINTMENT_CONFLICT);
+        }
+    }
+
+    private static bool IsDeadlock(Exception error)
+    {
+        for (Exception? current = error; current != null; current = current.InnerException)
+            if (current is SqlException { Number: 1205 }) return true;
+        return false;
+    }
+
+    private async Task<AppointmentResponse> CreateAppointmentCoreAsync(
         CreateAppointmentRequest request,
         int? patientId,
         string status)
@@ -356,7 +377,10 @@ public class BookingService : IBookingService
         return MapAppointment(appointment);
     }
 
-    public async Task<AppointmentResponse> RescheduleAppointmentAsync(
+    public Task<AppointmentResponse> RescheduleAppointmentAsync(int appointmentId, RescheduleAppointmentRequest request) =>
+        HandleBookingConflictAsync(() => RescheduleAppointmentCoreAsync(appointmentId, request));
+
+    private async Task<AppointmentResponse> RescheduleAppointmentCoreAsync(
         int appointmentId,
         RescheduleAppointmentRequest request)
     {

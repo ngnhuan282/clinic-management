@@ -38,7 +38,7 @@ export const INTERNAL_PAGES = [
     { label: "Phòng", path: "/internal/rooms", roles: ["Admin"] },
     { label: "Lịch bác sĩ", path: "/internal/doctor-schedules", roles: ["Admin"] },
     { label: "Đăng ký ca làm việc", path: "/internal/doctor/schedule-requests", roles: ["Doctor", "DepartmentHead"] },
-    { label: "Hồ sơ bác sĩ", path: "/internal/doctor/profile", roles: ["Doctor"] },
+    { label: "Hồ sơ bác sĩ", path: "/internal/doctor/profile", roles: ["Doctor", "DepartmentHead"] },
     { label: "Duyệt ca khám", path: "/internal/schedule-requests", roles: ["Admin", "DepartmentHead"] },
     {
         label: "Kho dược & Vật tư",
@@ -120,6 +120,7 @@ export function canSeePage(value, page) {
         if (page.path === "/internal/diseases" && !page.roles.includes(user.role)) return false;
         if (page.path === "/internal/pharmacy/inventory" && !page.roles.includes(user.role)) return false;
         if (page.path === "/internal/doctor/stock-reviews" && !page.roles.includes(user.role)) return false;
+        if (page.path === "/internal/doctor/profile" && !page.roles.includes(user.role)) return false;
         return user.role !== "Patient" && (
             requiredPermissions.length === 0 ||
             requiredPermissions.some(code => user.permissions.includes(code))

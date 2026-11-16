@@ -4,6 +4,7 @@ using ClinicManagement.Exceptions;
 using ClinicManagement.DTOs.Invoices;
 using ClinicManagement.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.SqlClient;
 
 namespace ClinicManagement.Services.Implementations;
 
@@ -87,6 +88,22 @@ public class InvoiceService(
 
     public async Task<InvoiceResponseDto> CreateInvoiceAsync(int cashierId, CreateInvoiceDto dto)
     {
+        try { return await CreateInvoiceCoreAsync(cashierId, dto); }
+        catch (Exception error) when (dto?.BillingStage == "Book" && IsPaymentConflict(error))
+        {
+            throw new AppException(ErrorCode.BOOK_INVOICE_INVALID_STATUS);
+        }
+    }
+
+    private static bool IsPaymentConflict(Exception error)
+    {
+        for (Exception? current = error; current != null; current = current.InnerException)
+            if (current is SqlException { Number: 1205 or 2601 or 2627 }) return true;
+        return false;
+    }
+
+    private async Task<InvoiceResponseDto> CreateInvoiceCoreAsync(int cashierId, CreateInvoiceDto dto)
+    {
         ArgumentNullException.ThrowIfNull(dto);
         if (dto.Items is not { Count: > 0 })
             throw new AppException(ErrorCode.INVALID_REQUEST, "Hóa đơn phải có ít nhất một khoản mục.");
@@ -100,6 +117,8 @@ public class InvoiceService(
             if (await context.InvoiceDetails.AnyAsync(detail =>
                     detail.SourceType == item.SourceType && detail.SourceId == item.SourceId))
             {
+                if (dto.BillingStage == "Book")
+                    throw new AppException(ErrorCode.BOOK_INVOICE_INVALID_STATUS);
                 throw new AppException(ErrorCode.INVALID_REQUEST,
                     $"Khoản phí '{item.ItemName}' (Mã: {item.SourceId}) đã được thanh toán trước đó!");
             }
@@ -120,7 +139,7 @@ public class InvoiceService(
         foreach (var bookInvoice in bookInvoices)
         {
             if (bookInvoice.PatientId != dto.PatientId || bookInvoice.Status != "Unpaid")
-                throw new AppException(ErrorCode.INVALID_REQUEST, "Hóa đơn sổ không thuộc bệnh nhân hoặc đã được thanh toán.");
+                throw new AppException(ErrorCode.BOOK_INVOICE_INVALID_STATUS);
 
             var sources = dto.Items
                 .Where(item => item.SourceType == "Book" && item.SourceId == bookInvoice.BookInvoiceId)

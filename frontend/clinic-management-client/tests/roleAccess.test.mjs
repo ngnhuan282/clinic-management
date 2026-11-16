@@ -2,6 +2,19 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { canAccessPath, canSeePage, homeForRole, INTERNAL_PAGES, redirectForProtectedRoute } from "../src/routes/roleAccess.js";
 
+test("doctor profile navigation and access include DepartmentHead and exclude other staff", () => {
+    const path = "/internal/doctor/profile";
+    const page = INTERNAL_PAGES.find(item => item.path === path);
+    for (const role of ["Doctor", "DepartmentHead", "Receptionist", "Cashier", "Patient"]) {
+        const user = { isAuthenticated: true, role, permissions: [] };
+        const allowed = ["Doctor", "DepartmentHead"].includes(role);
+        assert.equal(canSeePage(user, page), allowed);
+        assert.equal(canAccessPath(user, path), allowed);
+        assert.equal(redirectForProtectedRoute(user, path, { allowedRoles: ["Doctor", "DepartmentHead"] }),
+            allowed ? null : "/403");
+    }
+});
+
 test("all eight department permission combinations agree between navigation and route guards", () => {
     const policies = [["/internal/department-schedules", "schedules.viewDepartment"],
         ["/internal/department-statistics", "reports.departmentStatistics"],

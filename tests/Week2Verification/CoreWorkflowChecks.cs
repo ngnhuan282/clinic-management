@@ -114,6 +114,14 @@ internal static class CoreWorkflowChecks
         db.ChangeTracker.Clear();
         check((await db.Doctors.AsNoTracking().SingleAsync(x => x.DoctorId == doctor.DoctorId)).FullName == "Dr. Core Workflow Updated",
             "Profile update by the doctor is persisted to the database");
+        var headProfile = (await Send(HttpMethod.Get, "api/doctors/me", token: headToken))!["result"]!;
+        var updatedHead = (await Send(HttpMethod.Put, "api/doctors/me", new
+        {
+            fullName = "CW head updated", title = "BS", experienceYears = 10, biography = "Head profile"
+        }, token: headToken))!["result"]!;
+        check(updatedHead["doctorId"]!.GetValue<int>() == headProfile["doctorId"]!.GetValue<int>()
+            && updatedHead["doctorId"]!.GetValue<int>() != doctor.DoctorId,
+            "DepartmentHead can read and update only their own doctor profile");
 
         // === Walk-in booking deduplicates the Patient by phone/identity ===
         var phone = "09" + Random.Shared.Next(10000000, 99999999);
@@ -125,6 +133,10 @@ internal static class CoreWorkflowChecks
         }, token: receptionToken))!["result"]!;
         var patientProfileId = firstWalkIn["patientProfileId"]!.GetValue<int>();
         check(await db.Patients.CountAsync(x => x.Phone == phone) == 1, "Walk-in creates exactly one Patient record");
+        var publishedSlots = (await Send(HttpMethod.Get,
+            $"api/doctor-schedules/available-slots?doctorId={doctor.DoctorId}&date={date:yyyy-MM-dd}"))!["result"]!.AsArray();
+        check(publishedSlots.Any(x => x!["startTime"]!.GetValue<string>() == "09:00:00"
+            && !x["isAvailable"]!.GetValue<bool>()), "Published schedule slots exclude actual bookings even when CurrentBooked is stale");
 
         await Send(HttpMethod.Post, "api/appointments/direct", new
         {
@@ -159,10 +171,25 @@ internal static class CoreWorkflowChecks
             "Reception lists a patient's books filtered by PatientId");
 
         await Send(HttpMethod.Put, $"api/PatientBooks/{pendingBook.PatientBookId}/status",
+            new { status = "Issued", newBookNumber = "CW-BOOK-001" }, status: 409, token: receptionToken);
+        var firstIssueInvoice = new BookInvoice { PatientId = bookPatient.PatientId, Amount = 10000,
+            Status = "Unpaid", CreatedAt = DateTime.UtcNow };
+        db.BookInvoices.Add(firstIssueInvoice);
+        pendingBook.BookInvoice = firstIssueInvoice;
+        await db.SaveChangesAsync();
+        await Send(HttpMethod.Put, $"api/PatientBooks/{pendingBook.PatientBookId}/status",
+            new { status = "Issued", newBookNumber = "CW-BOOK-001" }, status: 409, token: receptionToken);
+        check(await db.PatientBooks.AsNoTracking().AnyAsync(x => x.PatientBookId == pendingBook.PatientBookId
+                && x.Status == "Pending" && x.IssuedByUserId == null),
+            "A pending book cannot be issued without a paid invoice or stamp an issuer on failure");
+        firstIssueInvoice.Status = "Paid";
+        firstIssueInvoice.PaidAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+        await Send(HttpMethod.Put, $"api/PatientBooks/{pendingBook.PatientBookId}/status",
             new { status = "Issued", newBookNumber = "CW-BOOK-001" }, token: receptionToken);
         db.ChangeTracker.Clear();
         check((await db.PatientBooks.AsNoTracking().SingleAsync(x => x.PatientBookId == pendingBook.PatientBookId)).Status == "Issued",
-            "Pending book transitions to Issued with a new book number");
+            "Pending book transitions to Issued only after its invoice is paid");
 
         var invalidTransition = (await Send(HttpMethod.Put, $"api/PatientBooks/{pendingBook.PatientBookId}/status",
             new { status = "Pending" }, status: 400, token: receptionToken))!;

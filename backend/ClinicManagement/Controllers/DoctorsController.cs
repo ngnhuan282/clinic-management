@@ -51,7 +51,7 @@ public class DoctorsController : ControllerBase
         Ok(ApiResponse<PublicDoctorResponse>.Success(await _doctorService.GetPublicDoctorAsync(doctorId)));
 
     [HttpGet("me")]
-    [Authorize(Roles = RoleConstants.Doctor)]
+    [Authorize(Roles = RoleConstants.Doctor + "," + RoleConstants.DepartmentHead)]
     public async Task<IActionResult> GetMyProfile()
     {
         var result = await _doctorService.GetMyProfileAsync();
@@ -59,7 +59,7 @@ public class DoctorsController : ControllerBase
     }
 
     [HttpPut("me")]
-    [Authorize(Roles = RoleConstants.Doctor)]
+    [Authorize(Roles = RoleConstants.Doctor + "," + RoleConstants.DepartmentHead)]
     public async Task<IActionResult> UpdateMyProfile(UpdateDoctorProfileRequest request)
     {
         var result = await _doctorService.UpdateMyProfileAsync(request);

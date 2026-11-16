@@ -289,6 +289,7 @@ public class DoctorScheduleService(ApplicationDbContext context, ICurrentUserSer
     {
         var departmentId = await scope.ForHeadAsync();
         await scope.ValidateFiltersAsync(departmentId, doctorId, null);
+        var appointmentDate = date.ToDateTime(TimeOnly.MinValue);
         return await _context.TimeSlots.AsNoTracking()
             .Where(x => x.Schedule.DoctorId == doctorId && x.Schedule.WorkDate == date &&
                         (departmentId == null || (x.Schedule.Doctor.DepartmentId == departmentId && x.Schedule.Room.DepartmentId == departmentId)) &&
@@ -304,6 +305,8 @@ public class DoctorScheduleService(ApplicationDbContext context, ICurrentUserSer
                 StartTime = x.StartTime,
                 EndTime = x.EndTime,
                 IsAvailable = x.IsAvailable && x.CurrentBooked < x.MaxCapacity
+                    && !_context.Appointments.Any(a => a.DoctorId == doctorId && a.AppointmentDate.Date == appointmentDate
+                        && a.StartTime == x.StartTime && a.Status != AppointmentStatusConstants.Cancelled)
             }).ToListAsync();
     }
 

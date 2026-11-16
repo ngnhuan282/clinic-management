@@ -14,6 +14,8 @@ namespace ClinicManagement.Migrations
                 name: "CK_PatientBooks_Status",
                 table: "PatientBooks");
 
+            migrationBuilder.Sql("UPDATE PatientBooks SET Status = 'Replaced' WHERE Status = 'Voided';");
+
             migrationBuilder.AddCheckConstraint(
                 name: "CK_PatientBooks_Status",
                 table: "PatientBooks",
@@ -23,9 +25,16 @@ namespace ClinicManagement.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.Sql("""
+                IF EXISTS (SELECT 1 FROM PatientBooks WHERE Status = 'Pending')
+                    THROW 51000, 'Resolve pending patient books before downgrading to the legacy book statuses.', 1;
+                """);
+
             migrationBuilder.DropCheckConstraint(
                 name: "CK_PatientBooks_Status",
                 table: "PatientBooks");
+
+            migrationBuilder.Sql("UPDATE PatientBooks SET Status = 'Voided' WHERE Status IN ('Lost', 'Replaced');");
 
             migrationBuilder.AddCheckConstraint(
                 name: "CK_PatientBooks_Status",
