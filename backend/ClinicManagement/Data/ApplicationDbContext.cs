@@ -75,7 +75,7 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<PrescriptionStockReview> PrescriptionStockReviews => Set<PrescriptionStockReview>();
     public DbSet<PrescriptionStockReviewDecision> PrescriptionStockReviewDecisions => Set<PrescriptionStockReviewDecision>();
-
+public DbSet<InvoicePayment> InvoicePayments { get; set; }
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {
@@ -147,7 +147,8 @@ public class ApplicationDbContext : DbContext
                 {
                     RoleId = 6,
                     RoleName = "DepartmentHead",
-                    Description = "Department head and doctor", IsSystem = true
+                    Description = "Department head and doctor",
+                    IsSystem = true
                 },
                 new Role
                 {
@@ -193,9 +194,12 @@ public class ApplicationDbContext : DbContext
                 [RoleConstants.Receptionist] = 3,
                 [RoleConstants.Patient] = 4,
                 [RoleConstants.LabTechnician] = 5,
-                [RoleConstants.Admin] = 1, [RoleConstants.Doctor] = 2,
-                [RoleConstants.Receptionist] = 3, [RoleConstants.Patient] = 4,
-                [RoleConstants.LabTechnician] = 5, [RoleConstants.DepartmentHead] = 6,
+                [RoleConstants.Admin] = 1,
+                [RoleConstants.Doctor] = 2,
+                [RoleConstants.Receptionist] = 3,
+                [RoleConstants.Patient] = 4,
+                [RoleConstants.LabTechnician] = 5,
+                [RoleConstants.DepartmentHead] = 6,
                 [RoleConstants.Pharmacist] = 7
             };
             entity.HasData(PermissionCatalog.DefaultRoles
@@ -866,7 +870,7 @@ public class ApplicationDbContext : DbContext
                 .HasForeignKey(x => x.InventoryId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
-        
+
 
         modelBuilder.Entity<Invoice>(entity =>
 {
@@ -874,6 +878,23 @@ public class ApplicationDbContext : DbContext
     entity.Property(e => e.InsuranceAmount).HasPrecision(18, 2);
     entity.Property(e => e.InsuranceDiscountPercent).HasPrecision(5, 2);
     entity.Property(e => e.PatientAmount).HasPrecision(18, 2);
+    entity.Property(e => e.PaidAmount).HasPrecision(18, 2);
+});
+
+modelBuilder.Entity<InvoicePayment>(entity =>
+{
+    entity.HasKey(e => e.Id);
+    entity.Property(e => e.ReceiptNumber).HasMaxLength(50).IsRequired();
+    entity.HasIndex(e => e.ReceiptNumber).IsUnique();
+    entity.Property(e => e.PaymentType).HasMaxLength(20).IsRequired();
+    entity.Property(e => e.Amount).HasPrecision(18, 2);
+    entity.Property(e => e.PaymentMethod).HasMaxLength(30).IsRequired();
+    entity.Property(e => e.ReferenceCode).HasMaxLength(100);
+    entity.Property(e => e.Note).HasMaxLength(500);
+    entity.HasOne(e => e.Invoice)
+        .WithMany(i => i.Payments)
+        .HasForeignKey(e => e.InvoiceId)
+        .OnDelete(DeleteBehavior.Cascade);
 });
     }
 }
