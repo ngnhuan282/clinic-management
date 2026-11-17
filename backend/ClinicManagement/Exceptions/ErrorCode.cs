@@ -93,7 +93,7 @@ public sealed class ErrorCode
             "Role not found",
             HttpStatusCode.NotFound
         );
-    
+
     public static readonly ErrorCode EMAIL_EXISTED =
         new(
             2006,
@@ -434,4 +434,8 @@ public sealed class ErrorCode
 
     public static readonly ErrorCode PRESCRIPTION_BILLING_CONFLICT =
         new(7407, "A billed prescription cannot change medicines or quantities, be cancelled or reissued. Resolve its invoice first", HttpStatusCode.Conflict);
+public static readonly ErrorCode LAB_RESULT_PAYMENT_GUARD = new(7204, "A paid lab test invoice is required before starting or submitting lab results", HttpStatusCode.Conflict);
+public static readonly ErrorCode LAB_TEST_INVALID_STATUS = new(7205, "Lab test status does not allow this operation", HttpStatusCode.Conflict);
+
+
 }

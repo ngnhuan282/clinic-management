@@ -741,6 +741,9 @@ namespace ClinicManagement.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("AppointmentId")
+                        .HasColumnType("int");
+
                     b.Property<string>("ClinicalDiagnosis")
                         .HasColumnType("nvarchar(max)");
 
@@ -756,11 +759,19 @@ namespace ClinicManagement.Migrations
                     b.Property<int>("PatientId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("ReceivedByTechnicianId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AppointmentId");
 
                     b.HasIndex("LabTestTypeId");
 
@@ -3071,11 +3082,17 @@ namespace ClinicManagement.Migrations
 
             modelBuilder.Entity("ClinicManagement.Data.Entities.LabTest", b =>
                 {
+                    b.HasOne("ClinicManagement.Data.Entities.Appointment", "Appointment")
+                        .WithMany()
+                        .HasForeignKey("AppointmentId");
+
                     b.HasOne("ClinicManagement.Data.Entities.LabTestType", "LabTestType")
                         .WithMany()
                         .HasForeignKey("LabTestTypeId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Appointment");
 
                     b.Navigation("LabTestType");
                 });
