@@ -756,7 +756,13 @@ namespace ClinicManagement.Migrations
                     b.Property<int>("LabTestTypeId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("MedicalRecordId")
+                        .HasColumnType("int");
+
                     b.Property<int>("PatientId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PatientProfileId")
                         .HasColumnType("int");
 
                     b.Property<int?>("ReceivedByTechnicianId")
@@ -774,6 +780,8 @@ namespace ClinicManagement.Migrations
                     b.HasIndex("AppointmentId");
 
                     b.HasIndex("LabTestTypeId");
+
+                    b.HasIndex("MedicalRecordId");
 
                     b.ToTable("LabTests");
                 });
@@ -3092,9 +3100,15 @@ namespace ClinicManagement.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("ClinicManagement.Data.Entities.MedicalRecord", "MedicalRecord")
+                        .WithMany()
+                        .HasForeignKey("MedicalRecordId");
+
                     b.Navigation("Appointment");
 
                     b.Navigation("LabTestType");
+
+                    b.Navigation("MedicalRecord");
                 });
 
             modelBuilder.Entity("ClinicManagement.Data.Entities.LabTestResult", b =>

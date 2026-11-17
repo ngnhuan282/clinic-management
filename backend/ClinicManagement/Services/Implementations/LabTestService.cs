@@ -14,81 +14,179 @@ namespace ClinicManagement.Services;
 public class LabTestService(ApplicationDbContext context, INotificationService notifications) : ILabTestService
 {
     public async Task<LabTestResponseDto> CreateLabTestAsync(int doctorId, CreateLabTestDto request)
+{
+    if (request.LabTestTypeId <= 0)
+        throw new AppException(ErrorCode.INVALID_REQUEST);
+
+    var labTestType = await context.LabTestTypes.AsNoTracking()
+        .SingleOrDefaultAsync(x => x.Id == request.LabTestTypeId && x.IsActive)
+        ?? throw new AppException(ErrorCode.LAB_TEST_TYPE_NOT_FOUND);
+
+    var doctorEntity = await context.Doctors.AsNoTracking()
+        .SingleOrDefaultAsync(d => d.UserId == doctorId);
+
+    bool IsAssignedToDoctor(int? appDoctorId) =>
+        appDoctorId.HasValue && (appDoctorId.Value == doctorId || (doctorEntity != null && appDoctorId.Value == doctorEntity.DoctorId));
+
+    Appointment? appointment = null;
+    MedicalRecord? medicalRecord = null;
+
+    if (request.MedicalRecordId is > 0)
     {
-        if (request.PatientId <= 0 || request.LabTestTypeId <= 0)
+        medicalRecord = await context.MedicalRecords.AsNoTracking()
+            .Include(m => m.Appointment)
+            .SingleOrDefaultAsync(m => m.MedicalRecordId == request.MedicalRecordId.Value)
+            ?? throw new AppException(ErrorCode.INVALID_REQUEST);
+
+        if (!IsAssignedToDoctor(medicalRecord.DoctorId) && !IsAssignedToDoctor(medicalRecord.Appointment?.DoctorId))
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+
+        appointment = medicalRecord.Appointment;
+    }
+
+    if (request.AppointmentId is > 0)
+    {
+        var appById = await context.Appointments.AsNoTracking()
+            .SingleOrDefaultAsync(a => a.AppointmentId == request.AppointmentId.Value)
+            ?? throw new AppException(ErrorCode.APPOINTMENT_NOT_FOUND);
+
+        if (appById.Status == AppointmentStatusConstants.Cancelled)
+            throw new AppException(ErrorCode.APPOINTMENT_INVALID_STATUS);
+
+        if (!IsAssignedToDoctor(appById.DoctorId))
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+
+        if (medicalRecord != null && medicalRecord.AppointmentId != appById.AppointmentId)
             throw new AppException(ErrorCode.INVALID_REQUEST);
 
+        appointment = appById;
+        medicalRecord ??= await context.MedicalRecords.AsNoTracking()
+            .SingleOrDefaultAsync(m => m.AppointmentId == appById.AppointmentId);
+    }
+
+    int? resolvedAppointmentId = appointment?.AppointmentId;
+    int? resolvedMedicalRecordId = medicalRecord?.MedicalRecordId;
+    int resolvedPatientId = 0;
+
+    int? candidateUserId = appointment?.PatientId ?? medicalRecord?.PatientId;
+    int? candidateProfileId = appointment?.PatientProfileId ?? request.PatientProfileId;
+
+    if (candidateUserId is > 0)
+    {
         var patientUser = await context.Users.AsNoTracking()
-            .SingleOrDefaultAsync(x => x.UserId == request.PatientId && x.Status && x.Role.RoleName == RoleConstants.Patient)
+            .SingleOrDefaultAsync(x => x.UserId == candidateUserId.Value && x.Status && x.Role.RoleName == RoleConstants.Patient)
+            ?? throw new AppException(ErrorCode.PATIENT_NOT_FOUND);
+        resolvedPatientId = patientUser.UserId;
+    }
+    else if (candidateProfileId is > 0)
+    {
+        var profile = await context.Patients.AsNoTracking()
+            .SingleOrDefaultAsync(p => p.PatientId == candidateProfileId.Value)
             ?? throw new AppException(ErrorCode.PATIENT_NOT_FOUND);
 
-        var labTestType = await context.LabTestTypes.AsNoTracking()
-            .SingleOrDefaultAsync(x => x.Id == request.LabTestTypeId && x.IsActive)
-            ?? throw new AppException(ErrorCode.LAB_TEST_TYPE_NOT_FOUND);
-
-        // Gắn liên kết lượt khám (IX.2): ưu tiên AppointmentId gửi lên, hoặc tự tìm lượt khám gần nhất của bệnh nhân
-        int? resolvedAppointmentId = request.AppointmentId is > 0 ? request.AppointmentId : null;
-        if (resolvedAppointmentId == null)
+        if (profile.UserId is > 0)
         {
-            var profileIds = await context.Patients.AsNoTracking()
-                .Where(p => p.UserId == request.PatientId)
-                .Select(p => p.PatientId)
-                .ToListAsync();
+            var patientUser = await context.Users.AsNoTracking()
+                .SingleOrDefaultAsync(x => x.UserId == profile.UserId.Value && x.Status && x.Role.RoleName == RoleConstants.Patient)
+                ?? throw new AppException(ErrorCode.PATIENT_NOT_FOUND);
+            resolvedPatientId = patientUser.UserId;
+        }
+        else
+        {
+            resolvedPatientId = profile.PatientId;
+        }
+    }
+    else if (request.PatientId is > 0)
+    {
+        var patientUser = await context.Users.AsNoTracking()
+            .SingleOrDefaultAsync(x => x.UserId == request.PatientId.Value && x.Status && x.Role.RoleName == RoleConstants.Patient);
 
-            var today = DateTime.UtcNow.AddHours(7).Date;
-            var latestApp = await context.Appointments.AsNoTracking()
-                .Where(a => a.Status != AppointmentStatusConstants.Cancelled &&
-                            (a.PatientId == request.PatientId ||
-                             (a.PatientProfileId.HasValue && profileIds.Contains(a.PatientProfileId.Value))))
-                .OrderBy(a => Math.Abs((a.AppointmentDate.Date - today).TotalDays))
-                .ThenByDescending(a => a.AppointmentId)
-                .FirstOrDefaultAsync();
+        if (patientUser != null)
+        {
+            resolvedPatientId = patientUser.UserId;
+        }
+        else
+        {
+            var profileById = await context.Patients.AsNoTracking()
+                .SingleOrDefaultAsync(p => p.PatientId == request.PatientId.Value)
+                ?? throw new AppException(ErrorCode.PATIENT_NOT_FOUND);
 
-            resolvedAppointmentId = latestApp?.AppointmentId;
+            resolvedPatientId = profileById.UserId ?? profileById.PatientId;
+        }
+    }
+    else if (!string.IsNullOrWhiteSpace(request.WalkInPatientName) && !string.IsNullOrWhiteSpace(request.WalkInPatientPhone))
+    {
+        var cleanName = request.WalkInPatientName.Trim();
+        var cleanPhone = request.WalkInPatientPhone.Trim();
+
+        var existingWalkIn = await context.Patients
+            .FirstOrDefaultAsync(p => p.UserId == null && p.FullName == cleanName && p.Phone == cleanPhone);
+
+        if (existingWalkIn == null)
+        {
+            existingWalkIn = new Patient
+            {
+                FullName = cleanName,
+                Phone = cleanPhone,
+                CreatedAt = DateTime.UtcNow
+            };
+            context.Patients.Add(existingWalkIn);
+            await context.SaveChangesAsync();
         }
 
-        var test = new LabTest
-        {
-            AppointmentId = resolvedAppointmentId,
-            DoctorId = doctorId,
-            PatientId = request.PatientId,
-            LabTestTypeId = request.LabTestTypeId,
-            ClinicalDiagnosis = request.ClinicalDiagnosis?.Trim() ?? string.Empty,
-            Status = "Pending",
-            CreatedAt = DateTime.UtcNow
-        };
-
-        context.LabTests.Add(test);
-        await context.SaveChangesAsync();
-
-        var enriched = await EnrichLabTestsAsync([test]);
-        return enriched.First();
+        resolvedPatientId = existingWalkIn.PatientId;
     }
-
-    // IX.2: Chỉ lấy các ca đã thanh toán đủ (Invoice.Status == "Paid") ở trạng thái Pending hoặc InProgress
-    public async Task<List<LabTestResponseDto>> GetPendingLabTestsAsync()
+    else
     {
-        var paidLabTestIds = await context.InvoiceDetails
-            .AsNoTracking()
-            .Where(d => d.SourceType == "LabTest" &&
-                        d.Invoice != null &&
-                        d.Invoice.InvoiceType == "Standard" &&
-                        d.Invoice.Status == "Paid")
-            .Select(d => d.SourceId)
-            .Distinct()
-            .ToListAsync();
-
-        var tests = await context.LabTests
-            .AsNoTracking()
-            .Include(l => l.LabTestType)
-            .Include(l => l.LabTestResult)
-            .Where(l => (l.Status == "Pending" || l.Status == "InProgress") && paidLabTestIds.Contains(l.Id))
-            .OrderBy(l => l.Status == "InProgress" ? 0 : 1) // Ưu tiên ca đang thực hiện lên đầu
-            .ThenBy(l => l.CreatedAt)
-            .ToListAsync();
-
-        return await EnrichLabTestsAsync(tests);
+        throw new AppException(ErrorCode.INVALID_REQUEST);
     }
+
+    if (resolvedAppointmentId == null && resolvedPatientId > 0)
+    {
+        var profileIds = await context.Patients.AsNoTracking()
+            .Where(p => p.UserId == resolvedPatientId || p.PatientId == resolvedPatientId)
+            .Select(p => p.PatientId)
+            .ToListAsync();
+
+        var today = DateTime.UtcNow.AddHours(7).Date;
+        var latestApp = await context.Appointments.AsNoTracking()
+            .Where(a => a.Status != AppointmentStatusConstants.Cancelled
+                && (a.DoctorId == doctorId || (doctorEntity != null && a.DoctorId == doctorEntity.DoctorId))
+                && ((a.PatientId.HasValue && a.PatientId.Value == resolvedPatientId)
+                    || (a.PatientProfileId.HasValue && profileIds.Contains(a.PatientProfileId.Value))))
+            .OrderBy(a => Math.Abs((a.AppointmentDate.Date - today).TotalDays))
+            .ThenByDescending(a => a.AppointmentId)
+            .FirstOrDefaultAsync();
+
+        resolvedAppointmentId = latestApp?.AppointmentId;
+        if (resolvedAppointmentId.HasValue && resolvedMedicalRecordId == null)
+        {
+            resolvedMedicalRecordId = await context.MedicalRecords.AsNoTracking()
+                .Where(m => m.AppointmentId == resolvedAppointmentId.Value)
+                .Select(m => (int?)m.MedicalRecordId)
+                .FirstOrDefaultAsync();
+        }
+    }
+
+    var test = new LabTest
+    {
+        AppointmentId = resolvedAppointmentId,
+        MedicalRecordId = resolvedMedicalRecordId,
+        DoctorId = doctorId,
+        PatientId = resolvedPatientId,
+        LabTestTypeId = request.LabTestTypeId,
+        ClinicalDiagnosis = request.ClinicalDiagnosis?.Trim() ?? string.Empty,
+        Status = "Pending",
+        CreatedAt = DateTime.UtcNow
+    };
+
+    context.LabTests.Add(test);
+    await context.SaveChangesAsync();
+
+    var enriched = await EnrichLabTestsAsync([test]);
+    
+    return enriched.First();
+}
 
     // IX.2 & IX.3: Kỹ thuật viên tiếp nhận chỉ định và bắt đầu thực hiện xét nghiệm
     public async Task<LabTestResponseDto> StartLabTestAsync(int labTestId, int technicianId)
@@ -193,7 +291,18 @@ public class LabTestService(ApplicationDbContext context, INotificationService n
         if (tests.Count == 0) return null;
         return (await EnrichLabTestsAsync(tests)).FirstOrDefault();
     }
+public async Task<List<LabTestResponseDto>> GetPendingLabTestsAsync()
+{
+    var tests = await context.LabTests
+        .AsNoTracking()
+        .Include(x => x.LabTestType)
+        .Include(x => x.LabTestResult)
+        .Where(x => x.Status == "Pending")
+        .OrderByDescending(x => x.CreatedAt)
+        .ToListAsync();
 
+    return await EnrichLabTestsAsync(tests);
+}
     public async Task<List<LabTestResponseDto>> GetLabTestsAsync(int currentUserId, string currentUserRole)
     {
         var tests = await (await VisibleToAsync(currentUserId))
@@ -278,6 +387,7 @@ public class LabTestService(ApplicationDbContext context, INotificationService n
             {
                 Id = t.Id,
                 AppointmentId = resolvedAppId,
+                MedicalRecordId = t.MedicalRecordId,
                 PatientId = t.PatientId,
                 PatientName = patientProfile?.FullName ?? patientUser?.FullName ?? $"Bệnh nhân #{t.PatientId}",
                 PatientPhone = patientProfile?.Phone ?? patientUser?.Phone ?? string.Empty,
@@ -303,7 +413,7 @@ public class LabTestService(ApplicationDbContext context, INotificationService n
             };
         }).ToList();
     }
-
+//111//
     private static bool IsDeadlock(Exception error)
     {
         for (Exception? current = error; current != null; current = current.InnerException)

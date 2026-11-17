@@ -22,5 +22,6 @@ namespace ClinicManagement.DTOs.LabTests
         public decimal Price { get; set; }
 
         public LabTestResultResponseDto? Result { get; set; }
+        public int? MedicalRecordId { get; set; }
     }
 }

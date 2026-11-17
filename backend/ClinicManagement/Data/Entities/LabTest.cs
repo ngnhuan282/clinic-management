@@ -6,7 +6,9 @@ namespace ClinicManagement.Data.Entities
     {
         public int Id { get; set; }
         public int? AppointmentId { get; set; }
+        public int? MedicalRecordId { get; set; }
         public int PatientId { get; set; }
+        public int? PatientProfileId { get; set; } // Tuỳ chọn nếu muốn lưu rõ ID hồ sơ Patients
         public int DoctorId { get; set; }
         public int LabTestTypeId { get; set; }
         public string Status { get; set; } = "Pending"; // Pending, InProgress, Completed, Cancelled
@@ -17,6 +19,7 @@ namespace ClinicManagement.Data.Entities
 
         // Navigation properties
         public Appointment? Appointment { get; set; }
+        public MedicalRecord? MedicalRecord { get; set; }
         public LabTestType? LabTestType { get; set; }
         public LabTestResult? LabTestResult { get; set; }
     }
