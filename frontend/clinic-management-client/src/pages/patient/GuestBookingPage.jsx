@@ -27,6 +27,7 @@ import {
     CheckCircleOutlined,
     LocalHospitalOutlined,
     PersonOutlineOutlined,
+    RadioButtonUncheckedOutlined,
     RefreshOutlined,
     ShieldOutlined,
 } from "@mui/icons-material";
@@ -38,12 +39,29 @@ import { clinicToday, validateGuestBooking } from "../../utils/publicBooking";
 import getApiErrorMessage from "../../utils/errorHandler";
 
 const sectionSx = {
-    p: { xs: 2.75, md: 3.5 },
+    p: { xs: 2.25, md: 3.25 },
     borderRadius: "16px",
     borderColor: "#C5D8EC",
     bgcolor: "#FFFFFF",
     boxShadow: "0 2px 10px rgba(10, 37, 64, 0.04)",
 };
+
+function activeCardSx(active, done) {
+    if (active) {
+        return {
+            borderColor: "#0B4F8A",
+            borderLeft: "4px solid #0B4F8A",
+            boxShadow: "0 6px 20px rgba(11, 79, 138, 0.10)",
+        };
+    }
+    if (done) {
+        return {
+            borderColor: "#A7F3D0",
+            borderLeft: "4px solid #059669",
+        };
+    }
+    return {};
+}
 
 const time = value => String(value || "").slice(0, 5);
 const dateLabel = value => value?.split("T")[0].split("-").reverse().join("/");
@@ -203,7 +221,7 @@ export default function GuestBookingPage() {
                         >
                             <CheckCircleOutlined sx={{ fontSize: 32 }} />
                         </Box>
-                        <Box>
+                        <Box sx={{ minWidth: 0 }}>
                             <Typography component="h2" variant="h5" sx={{ fontWeight: 800, color: "#0A2540" }}>
                                 Đã tiếp nhận đăng ký khám
                             </Typography>
@@ -216,7 +234,7 @@ export default function GuestBookingPage() {
                     <Paper
                         variant="outlined"
                         sx={{
-                            p: 3,
+                            p: { xs: 2.25, sm: 3 },
                             bgcolor: "#F4F7FA",
                             borderRadius: "12px",
                             borderColor: "#C5D8EC",
@@ -270,8 +288,13 @@ export default function GuestBookingPage() {
                         label="Chờ lễ tân xác nhận"
                         color="warning"
                         variant="outlined"
-                        sx={{ fontWeight: 750, borderRadius: "8px", bgcolor: "#FFFBEB", color: "#92400E", borderColor: "#FCD34D", mb: 3 }}
+                        sx={{ fontWeight: 750, borderRadius: "8px", bgcolor: "#FFFBEB", color: "#92400E", borderColor: "#FCD34D", mb: 2.5 }}
                     />
+
+                    <Alert severity="info" sx={{ mb: 3, borderRadius: "10px", bgcolor: "#EAF2FA", color: "#0A2540" }}>
+                        <strong>Lưu ý quan trọng khi đến khám:</strong> Hãy đến quầy lễ tân trước <strong>10–15 phút</strong>, đọc mã lịch hẹn{" "}
+                        <strong>#{receipt.appointmentId}</strong> và xuất trình sổ khám giấy (hoặc làm thủ tục mua/cấp lại sổ tại quầy).
+                    </Alert>
 
                     <Typography sx={{ fontSize: 14.5, lineHeight: 1.8, color: "#1E293B", mb: 4 }}>
                         Vui lòng lưu lại mã số lịch hẹn trên. Khi cần điều chỉnh hoặc hủy lịch, vui lòng gọi đến tổng đài{" "}
@@ -316,20 +339,28 @@ export default function GuestBookingPage() {
 
     const step1Done = Boolean(department && doctor);
     const step2Done = Boolean(selectedSlot);
-    const step3Done = Boolean(values.patientName.trim() && values.patientPhone.trim() && values.reason.trim() && values.consent);
+    const step3Done = Boolean(
+        values.patientName.trim() && values.patientPhone.trim() && values.reason.trim() && values.consent
+    );
+    const currentStep = !step1Done ? 1 : !step2Done ? 2 : !step3Done ? 3 : 4;
+    const checklist = [
+        ["Chọn chuyên khoa & bác sĩ", step1Done],
+        ["Chọn ngày & giờ khám còn trống", step2Done],
+        ["Điền liên hệ, lý do & xác nhận", step3Done],
+    ];
 
     return (
         <PublicPage
-            badge="Đặt hẹn nhanh không cần tài khoản"
+            badge="Đặt hẹn nhanh · Không bắt buộc tài khoản & sổ khám giấy"
             title="Đăng ký khám trực tuyến"
-            description="Lựa chọn chuyên khoa, bác sĩ và khung giờ còn trống thuận tiện nhất. Bạn có thể gửi đăng ký ngay hoặc đăng nhập để lưu lịch sử khám lâu dài."
+            description="Thực hiện lần lượt 3 bước đơn giản bên dưới để chọn chuyên khoa, bác sĩ và khung giờ trống 30 phút thuận tiện nhất."
         >
             {/* Login Suggestion Banner */}
             <Alert
                 severity="info"
                 icon={<ShieldOutlined />}
                 sx={{
-                    mb: 3,
+                    mb: 2.5,
                     borderRadius: "12px",
                     bgcolor: "#EAF2FA",
                     borderColor: "#90BCE6",
@@ -355,24 +386,27 @@ export default function GuestBookingPage() {
                 >
                     đăng ký tài khoản
                 </Link>{" "}
-                để theo dõi lịch hẹn, đơn thuốc và kết quả xét nghiệm trực tuyến.
+                để tự quản lý/hủy lịch hẹn, xem đơn thuốc và kết quả xét nghiệm trực tuyến.
             </Alert>
 
             {/* Visual 3-Step Indicator */}
             <Grid container spacing={1.5} sx={{ mb: 3.5 }}>
                 {[
-                    ["Bước 1", "Chọn chuyên khoa & bác sĩ", step1Done, true],
-                    ["Bước 2", "Chọn ngày & khung giờ trống", step2Done, step1Done],
-                    ["Bước 3", "Điền thông tin liên hệ", step3Done, step2Done],
+                    ["Bước 1", "Chọn chuyên khoa & bác sĩ", step1Done, currentStep === 1],
+                    ["Bước 2", "Chọn ngày & khung giờ trống", step2Done, currentStep === 2],
+                    ["Bước 3", "Điền thông tin liên hệ", step3Done, currentStep === 3],
                 ].map(([stepLabel, title, done, active]) => (
-                    <Grid key={stepLabel} size={{ xs: 12, sm: 4 }}>
+                    <Grid key={stepLabel} size={{ xs: 12, sm: 4 }} sx={{ minWidth: 0 }}>
                         <Paper
                             variant="outlined"
                             sx={{
                                 p: 1.75,
+                                height: "100%",
                                 borderRadius: "12px",
-                                borderColor: done || active ? "#0B4F8A" : "#CEDCEB",
-                                bgcolor: done ? "#E6F0FA" : active ? "#FFFFFF" : "#F8FAFC",
+                                borderColor: done ? "#6EE7B7" : active ? "#0B4F8A" : "#CEDCEB",
+                                borderWidth: active ? 2 : 1,
+                                bgcolor: done ? "#ECFDF5" : active ? "#FFFFFF" : "#F8FAFC",
+                                boxShadow: active ? "0 0 0 3px rgba(11, 79, 138, 0.14)" : "none",
                                 display: "flex",
                                 alignItems: "center",
                                 gap: 1.25,
@@ -383,7 +417,7 @@ export default function GuestBookingPage() {
                                     width: 30,
                                     height: 30,
                                     borderRadius: "50%",
-                                    bgcolor: done || active ? "#0B4F8A" : "#94A3B8",
+                                    bgcolor: done ? "#059669" : active ? "#0B4F8A" : "#94A3B8",
                                     color: "#FFFFFF",
                                     display: "grid",
                                     placeItems: "center",
@@ -394,11 +428,27 @@ export default function GuestBookingPage() {
                             >
                                 {done ? "✓" : stepLabel.slice(-1)}
                             </Box>
-                            <Box sx={{ minWidth: 0 }}>
-                                <Typography sx={{ fontSize: 11.5, fontWeight: 750, color: done || active ? "#0B4F8A" : "#475569", textTransform: "uppercase" }}>
-                                    {stepLabel}
-                                </Typography>
-                                <Typography noWrap sx={{ fontSize: 14, fontWeight: 750, color: "#0A2540" }}>
+                            <Box sx={{ minWidth: 0, flex: 1 }}>
+                                <Stack direction="row" spacing={0.75} sx={{ alignItems: "center", flexWrap: "wrap" }}>
+                                    <Typography
+                                        sx={{
+                                            fontSize: 11.5,
+                                            fontWeight: 800,
+                                            color: done ? "#065F46" : active ? "#0B4F8A" : "#475569",
+                                            textTransform: "uppercase",
+                                        }}
+                                    >
+                                        {stepLabel}
+                                    </Typography>
+                                    {active && (
+                                        <Chip
+                                            size="small"
+                                            label="Đang làm"
+                                            sx={{ height: 18, fontSize: 10.5, fontWeight: 800, bgcolor: "#0B4F8A", color: "#FFFFFF" }}
+                                        />
+                                    )}
+                                </Stack>
+                                <Typography sx={{ fontSize: 14, fontWeight: 750, color: "#0A2540", overflowWrap: "anywhere" }}>
                                     {title}
                                 </Typography>
                             </Box>
@@ -410,33 +460,48 @@ export default function GuestBookingPage() {
             <Box component="form" onSubmit={review} noValidate aria-busy={busy}>
                 <Grid container spacing={3.5}>
                     {/* Left Form: 3 Steps */}
-                    <Grid size={{ xs: 12, md: 8 }}>
+                    <Grid size={{ xs: 12, md: 8 }} sx={{ minWidth: 0 }}>
                         <Stack spacing={3}>
                             {/* Step 1: Specialty & Doctor */}
-                            <Paper variant="outlined" sx={sectionSx}>
-                                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2.5 }}>
-                                    <Box
-                                        sx={{
-                                            width: 40,
-                                            height: 40,
-                                            borderRadius: "10px",
-                                            bgcolor: "#0B4F8A",
-                                            color: "#FFFFFF",
-                                            display: "grid",
-                                            placeItems: "center",
-                                        }}
-                                    >
-                                        <LocalHospitalOutlined sx={{ fontSize: 22 }} />
+                            <Paper
+                                variant="outlined"
+                                sx={{ ...sectionSx, ...activeCardSx(currentStep === 1, step1Done) }}
+                            >
+                                <Stack
+                                    direction={{ xs: "column", sm: "row" }}
+                                    spacing={1.25}
+                                    sx={{ justifyContent: "space-between", alignItems: { sm: "flex-start" }, mb: 2.5 }}
+                                >
+                                    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, minWidth: 0 }}>
+                                        <Box
+                                            sx={{
+                                                width: 40,
+                                                height: 40,
+                                                borderRadius: "10px",
+                                                bgcolor: step1Done ? "#059669" : "#0B4F8A",
+                                                color: "#FFFFFF",
+                                                display: "grid",
+                                                placeItems: "center",
+                                                flexShrink: 0,
+                                            }}
+                                        >
+                                            <LocalHospitalOutlined sx={{ fontSize: 22 }} />
+                                        </Box>
+                                        <Box sx={{ minWidth: 0 }}>
+                                            <Typography component="h2" variant="h6" sx={{ fontWeight: 800, fontSize: { xs: 17, sm: 18.5 }, color: "#0A2540" }}>
+                                                1. Chọn chuyên khoa & bác sĩ
+                                            </Typography>
+                                            <Typography sx={{ fontSize: 13.5, color: "#475569" }}>
+                                                Lựa chọn khoa điều trị trước, sau đó chọn bác sĩ tiếp nhận
+                                            </Typography>
+                                        </Box>
                                     </Box>
-                                    <Box>
-                                        <Typography component="h2" variant="h6" sx={{ fontWeight: 800, fontSize: 18.5, color: "#0A2540" }}>
-                                            1. Chọn chuyên khoa & bác sĩ
-                                        </Typography>
-                                        <Typography sx={{ fontSize: 13.5, color: "#475569" }}>
-                                            Lựa chọn khoa điều trị và bác sĩ bạn mong muốn thăm khám
-                                        </Typography>
-                                    </Box>
-                                </Box>
+                                    {step1Done ? (
+                                        <Chip size="small" label="✓ Đã chọn" sx={{ alignSelf: "flex-start", bgcolor: "#ECFDF5", color: "#065F46", border: "1px solid #6EE7B7", fontWeight: 750 }} />
+                                    ) : currentStep === 1 ? (
+                                        <Chip size="small" label="Bước cần làm" sx={{ alignSelf: "flex-start", bgcolor: "#E6F0FA", color: "#0B4F8A", border: "1px solid #90BCE6", fontWeight: 750 }} />
+                                    ) : null}
+                                </Stack>
 
                                 <Stack spacing={2.5}>
                                     <ResourceState resource={departments}>
@@ -479,7 +544,7 @@ export default function GuestBookingPage() {
                                             helperText={
                                                 errors.doctorId ||
                                                 (!department
-                                                    ? "Vui lòng chọn chuyên khoa trước"
+                                                    ? "Vui lòng chọn chuyên khoa ở ô trên trước"
                                                     : "Chọn bác sĩ trong danh sách chuyên khoa")
                                             }
                                         >
@@ -516,30 +581,45 @@ export default function GuestBookingPage() {
                             </Paper>
 
                             {/* Step 2: Date & Slot */}
-                            <Paper variant="outlined" sx={sectionSx}>
-                                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2.5 }}>
-                                    <Box
-                                        sx={{
-                                            width: 40,
-                                            height: 40,
-                                            borderRadius: "10px",
-                                            bgcolor: "#0B4F8A",
-                                            color: "#FFFFFF",
-                                            display: "grid",
-                                            placeItems: "center",
-                                        }}
-                                    >
-                                        <AccessTimeOutlined sx={{ fontSize: 22 }} />
+                            <Paper
+                                variant="outlined"
+                                sx={{ ...sectionSx, ...activeCardSx(currentStep === 2, step2Done) }}
+                            >
+                                <Stack
+                                    direction={{ xs: "column", sm: "row" }}
+                                    spacing={1.25}
+                                    sx={{ justifyContent: "space-between", alignItems: { sm: "flex-start" }, mb: 2.5 }}
+                                >
+                                    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, minWidth: 0 }}>
+                                        <Box
+                                            sx={{
+                                                width: 40,
+                                                height: 40,
+                                                borderRadius: "10px",
+                                                bgcolor: step2Done ? "#059669" : "#0B4F8A",
+                                                color: "#FFFFFF",
+                                                display: "grid",
+                                                placeItems: "center",
+                                                flexShrink: 0,
+                                            }}
+                                        >
+                                            <AccessTimeOutlined sx={{ fontSize: 22 }} />
+                                        </Box>
+                                        <Box sx={{ minWidth: 0 }}>
+                                            <Typography component="h2" variant="h6" sx={{ fontWeight: 800, fontSize: { xs: 17, sm: 18.5 }, color: "#0A2540" }}>
+                                                2. Ngày & khung giờ khám
+                                            </Typography>
+                                            <Typography sx={{ fontSize: 13.5, color: "#475569" }}>
+                                                Chọn ngày khám và bấm vào 1 khung giờ trống ({clinic.defaultSlotDurationMinutes} phút/lượt)
+                                            </Typography>
+                                        </Box>
                                     </Box>
-                                    <Box>
-                                        <Typography component="h2" variant="h6" sx={{ fontWeight: 800, fontSize: 18.5, color: "#0A2540" }}>
-                                            2. Ngày & khung giờ khám
-                                        </Typography>
-                                        <Typography sx={{ fontSize: 13.5, color: "#475569" }}>
-                                            Chọn ngày khám để xem các khung giờ bác sĩ còn trống
-                                        </Typography>
-                                    </Box>
-                                </Box>
+                                    {step2Done ? (
+                                        <Chip size="small" label="✓ Đã chọn giờ" sx={{ alignSelf: "flex-start", bgcolor: "#ECFDF5", color: "#065F46", border: "1px solid #6EE7B7", fontWeight: 750 }} />
+                                    ) : currentStep === 2 ? (
+                                        <Chip size="small" label="Bước cần làm" sx={{ alignSelf: "flex-start", bgcolor: "#E6F0FA", color: "#0B4F8A", border: "1px solid #90BCE6", fontWeight: 750 }} />
+                                    ) : null}
+                                </Stack>
 
                                 <Stack spacing={2.5}>
                                     <TextField
@@ -555,14 +635,18 @@ export default function GuestBookingPage() {
                                         helperText="Giờ khám theo múi giờ Việt Nam (UTC+7)"
                                     />
 
-                                    {doctor && (
+                                    {!doctor ? (
+                                        <Alert severity="info" sx={{ borderRadius: "10px", bgcolor: "#F0F7FF", color: "#0A2540" }}>
+                                            Vui lòng hoàn tất chọn <strong>Bác sĩ tiếp nhận</strong> ở Bước 1 để xem các khung giờ còn trống.
+                                        </Alert>
+                                    ) : (
                                         <Box>
                                             <Stack
                                                 direction="row"
                                                 sx={{ justifyContent: "space-between", alignItems: "center", mb: 1.5, flexWrap: "wrap", gap: 1 }}
                                             >
                                                 <Typography variant="subtitle2" sx={{ fontWeight: 750, fontSize: 14.5, color: "#0A2540" }}>
-                                                    Khung giờ khám còn trống:
+                                                    Khung giờ khám còn trống ({available.length} chỗ):
                                                 </Typography>
                                                 <Button
                                                     onClick={() => {
@@ -585,7 +669,7 @@ export default function GuestBookingPage() {
                                                         aria-label="Giờ khám còn trống"
                                                         sx={{
                                                             display: "grid",
-                                                            gridTemplateColumns: "repeat(auto-fill, minmax(106px, 1fr))",
+                                                            gridTemplateColumns: "repeat(auto-fill, minmax(98px, 1fr))",
                                                             gap: 1.25,
                                                         }}
                                                     >
@@ -604,29 +688,30 @@ export default function GuestBookingPage() {
                                                                     aria-pressed={isSelected}
                                                                     onClick={() => update("startTime", slot.startTime)}
                                                                     sx={{
-                                                                        minHeight: 48,
+                                                                        minHeight: 50,
+                                                                        minWidth: 0,
                                                                         borderRadius: "8px",
                                                                         fontWeight: 800,
-                                                                        fontSize: 15,
+                                                                        fontSize: 14.5,
                                                                         fontVariantNumeric: "tabular-nums",
                                                                         textTransform: "none",
                                                                         border: slot.isAvailable
                                                                             ? isSelected
                                                                                 ? "2px solid #0B4F8A"
-                                                                                : "1.5px solid #0B4F8A"
+                                                                                : "1.5px solid #059669"
                                                                             : "1px solid #CBD5E1",
                                                                         bgcolor: isSelected
                                                                             ? "#0B4F8A"
                                                                             : slot.isAvailable
-                                                                            ? "#E6F0FA"
+                                                                            ? "#ECFDF5"
                                                                             : "#F1F5F9",
                                                                         color: isSelected
                                                                             ? "#FFFFFF"
                                                                             : slot.isAvailable
-                                                                            ? "#0A2540"
+                                                                            ? "#065F46"
                                                                             : "#64748B",
                                                                         "&:hover": {
-                                                                            bgcolor: isSelected ? "#083A66" : "#D2E5F8",
+                                                                            bgcolor: isSelected ? "#083A66" : "#D1FAE5",
                                                                         },
                                                                     }}
                                                                 >
@@ -659,30 +744,45 @@ export default function GuestBookingPage() {
                             </Paper>
 
                             {/* Step 3: Patient Information */}
-                            <Paper variant="outlined" sx={sectionSx}>
-                                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2.5 }}>
-                                    <Box
-                                        sx={{
-                                            width: 40,
-                                            height: 40,
-                                            borderRadius: "10px",
-                                            bgcolor: "#0B4F8A",
-                                            color: "#FFFFFF",
-                                            display: "grid",
-                                            placeItems: "center",
-                                        }}
-                                    >
-                                        <PersonOutlineOutlined sx={{ fontSize: 22 }} />
+                            <Paper
+                                variant="outlined"
+                                sx={{ ...sectionSx, ...activeCardSx(currentStep === 3, step3Done) }}
+                            >
+                                <Stack
+                                    direction={{ xs: "column", sm: "row" }}
+                                    spacing={1.25}
+                                    sx={{ justifyContent: "space-between", alignItems: { sm: "flex-start" }, mb: 2.5 }}
+                                >
+                                    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, minWidth: 0 }}>
+                                        <Box
+                                            sx={{
+                                                width: 40,
+                                                height: 40,
+                                                borderRadius: "10px",
+                                                bgcolor: step3Done ? "#059669" : "#0B4F8A",
+                                                color: "#FFFFFF",
+                                                display: "grid",
+                                                placeItems: "center",
+                                                flexShrink: 0,
+                                            }}
+                                        >
+                                            <PersonOutlineOutlined sx={{ fontSize: 22 }} />
+                                        </Box>
+                                        <Box sx={{ minWidth: 0 }}>
+                                            <Typography component="h2" variant="h6" sx={{ fontWeight: 800, fontSize: { xs: 17, sm: 18.5 }, color: "#0A2540" }}>
+                                                3. Thông tin người khám
+                                            </Typography>
+                                            <Typography sx={{ fontSize: 13.5, color: "#475569" }}>
+                                                Thông tin liên hệ để lễ tân gọi xác nhận lịch hẹn và đón tiếp tại quầy
+                                            </Typography>
+                                        </Box>
                                     </Box>
-                                    <Box>
-                                        <Typography component="h2" variant="h6" sx={{ fontWeight: 800, fontSize: 18.5, color: "#0A2540" }}>
-                                            3. Thông tin người khám
-                                        </Typography>
-                                        <Typography sx={{ fontSize: 13.5, color: "#475569" }}>
-                                            Thông tin liên hệ để lễ tân xác nhận lịch hẹn và đón tiếp tại quầy
-                                        </Typography>
-                                    </Box>
-                                </Box>
+                                    {step3Done ? (
+                                        <Chip size="small" label="✓ Đã điền" sx={{ alignSelf: "flex-start", bgcolor: "#ECFDF5", color: "#065F46", border: "1px solid #6EE7B7", fontWeight: 750 }} />
+                                    ) : currentStep === 3 ? (
+                                        <Chip size="small" label="Bước cần làm" sx={{ alignSelf: "flex-start", bgcolor: "#E6F0FA", color: "#0B4F8A", border: "1px solid #90BCE6", fontWeight: 750 }} />
+                                    ) : null}
+                                </Stack>
 
                                 <Stack spacing={2.5}>
                                     <Grid container spacing={2}>
@@ -726,8 +826,16 @@ export default function GuestBookingPage() {
                                         slotProps={{ htmlInput: { maxLength: 500 } }}
                                     />
 
-                                    <Box sx={{ pt: 0.5 }}>
+                                    <Box
+                                        sx={{
+                                            p: 1.75,
+                                            borderRadius: "10px",
+                                            bgcolor: values.consent ? "#ECFDF5" : "#F8FAFC",
+                                            border: `1px solid ${errors.consent ? "#FCA5A5" : values.consent ? "#6EE7B7" : "#DCE7F2"}`,
+                                        }}
+                                    >
                                         <FormControlLabel
+                                            sx={{ alignItems: "flex-start", m: 0 }}
                                             control={
                                                 <Checkbox
                                                     id="guest-consent"
@@ -735,6 +843,7 @@ export default function GuestBookingPage() {
                                                     onChange={e => update("consent", e.target.checked)}
                                                     disabled={busy}
                                                     color="primary"
+                                                    sx={{ pt: 0.25 }}
                                                 />
                                             }
                                             label={
@@ -758,7 +867,7 @@ export default function GuestBookingPage() {
                     </Grid>
 
                     {/* Right Summary Sidebar */}
-                    <Grid size={{ xs: 12, md: 4 }}>
+                    <Grid size={{ xs: 12, md: 4 }} sx={{ minWidth: 0 }}>
                         <Paper
                             variant="outlined"
                             sx={{
@@ -769,12 +878,23 @@ export default function GuestBookingPage() {
                                 borderTop: "4px solid #0B4F8A",
                             }}
                         >
-                            <Typography component="h2" variant="h6" sx={{ fontWeight: 800, fontSize: 18.5, color: "#0A2540", mb: 2 }}>
-                                Tóm tắt đăng ký khám
-                            </Typography>
+                            <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", mb: 2, flexWrap: "wrap", gap: 1 }}>
+                                <Typography component="h2" variant="h6" sx={{ fontWeight: 800, fontSize: 18, color: "#0A2540" }}>
+                                    Tóm tắt đăng ký khám
+                                </Typography>
+                                <Chip
+                                    size="small"
+                                    label={step1Done && step2Done && step3Done ? "Sẵn sàng" : `Bước ${currentStep}/3`}
+                                    sx={{
+                                        bgcolor: step1Done && step2Done && step3Done ? "#ECFDF5" : "#E6F0FA",
+                                        color: step1Done && step2Done && step3Done ? "#065F46" : "#0B4F8A",
+                                        fontWeight: 750,
+                                    }}
+                                />
+                            </Stack>
 
                             <Stack spacing={2}>
-                                <Box sx={{ p: 2.25, bgcolor: "#F4F7FA", borderRadius: "12px", border: "1px solid #C5D8EC" }}>
+                                <Box sx={{ p: 2, bgcolor: "#F4F7FA", borderRadius: "12px", border: "1px solid #C5D8EC" }}>
                                     <Stack spacing={1.35}>
                                         <Box>
                                             <Typography variant="caption" color="text.secondary">
@@ -812,7 +932,7 @@ export default function GuestBookingPage() {
                                             </Typography>
                                         </Box>
                                         <Divider sx={{ borderColor: "#DCE7F2" }} />
-                                        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                                        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 1, flexWrap: "wrap" }}>
                                             <Typography variant="caption" color="text.secondary">
                                                 Phí khám niêm yết
                                             </Typography>
@@ -820,6 +940,34 @@ export default function GuestBookingPage() {
                                                 {money(clinic.defaultExaminationFee)}
                                             </Typography>
                                         </Box>
+                                    </Stack>
+                                </Box>
+
+                                {/* Completion Checklist */}
+                                <Box
+                                    sx={{
+                                        p: 1.75,
+                                        borderRadius: "12px",
+                                        bgcolor: step1Done && step2Done && step3Done ? "#ECFDF5" : "#F8FAFC",
+                                        border: `1px solid ${step1Done && step2Done && step3Done ? "#6EE7B7" : "#DCE7F2"}`,
+                                    }}
+                                >
+                                    <Typography sx={{ fontSize: 12, fontWeight: 800, color: "#334155", mb: 0.75, textTransform: "uppercase" }}>
+                                        Các mục cần hoàn tất
+                                    </Typography>
+                                    <Stack spacing={0.65}>
+                                        {checklist.map(([label, done]) => (
+                                            <Stack key={label} direction="row" spacing={0.85} sx={{ alignItems: "center" }}>
+                                                {done ? (
+                                                    <CheckCircleOutlined sx={{ fontSize: 16, color: "#059669", flexShrink: 0 }} />
+                                                ) : (
+                                                    <RadioButtonUncheckedOutlined sx={{ fontSize: 16, color: "#94A3B8", flexShrink: 0 }} />
+                                                )}
+                                                <Typography sx={{ fontSize: 13, fontWeight: done ? 700 : 500, color: done ? "#065F46" : "#475569" }}>
+                                                    {label}
+                                                </Typography>
+                                            </Stack>
+                                        ))}
                                     </Stack>
                                 </Box>
 
@@ -951,7 +1099,7 @@ export default function GuestBookingPage() {
                         </Typography>
                     </Stack>
                 </DialogContent>
-                <DialogActions sx={{ px: 3, pb: 3, pt: 1, gap: 1 }}>
+                <DialogActions sx={{ px: 3, pb: 3, pt: 1, gap: 1, flexWrap: "wrap" }}>
                     <Button
                         onClick={() => setConfirming(false)}
                         disabled={busy}
