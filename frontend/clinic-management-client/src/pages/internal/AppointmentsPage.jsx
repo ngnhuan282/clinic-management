@@ -1,14 +1,71 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Box, Button, Checkbox, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Divider, IconButton, LinearProgress, MenuItem, Paper, Snackbar, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TextField, Typography } from "@mui/material";
-import { AddCircleOutlineOutlined, AssignmentTurnedInOutlined, CalendarMonthOutlined, CancelOutlined, CheckCircleOutlineOutlined, CloseOutlined, EditCalendarOutlined, EventAvailableOutlined, HighlightOffOutlined, PeopleAltOutlined, RefreshOutlined, SearchOutlined } from "@mui/icons-material";
-import { cancelAppointment, confirmAppointment, createDirectAppointment, getAppointments, rescheduleAppointment } from "../../api/appointmentApi";
+import {
+    Alert,
+    Box,
+    Button,
+    Checkbox,
+    Chip,
+    CircularProgress,
+    Grid,
+    LinearProgress,
+    MenuItem,
+    Paper,
+    Snackbar,
+    Stack,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TablePagination,
+    TableRow,
+    TextField,
+    Typography,
+} from "@mui/material";
+import {
+    AddCircleOutlineOutlined,
+    AssignmentTurnedInOutlined,
+    CalendarMonthOutlined,
+    CancelOutlined,
+    CheckCircleOutlineOutlined,
+    EditCalendarOutlined,
+    EventAvailableOutlined,
+    FactCheckOutlined,
+    FilterAltOutlined,
+    HighlightOffOutlined,
+    HowToRegOutlined,
+    PeopleAltOutlined,
+    RefreshOutlined,
+    RestartAltOutlined,
+    SearchOutlined,
+    SensorsOutlined,
+} from "@mui/icons-material";
+import {
+    cancelAppointment,
+    confirmAppointment,
+    createDirectAppointment,
+    getAppointments,
+    rescheduleAppointment,
+} from "../../api/appointmentApi";
 import { findPatientMatches } from "../../api/receptionApi";
 import ReceptionCheckInDialog from "../../components/internal/ReceptionCheckInDialog";
+import AppointmentDialogs from "../../components/internal/appointments/AppointmentDialogs";
 import { getAvailableSlots, getDepartments, getDoctorsByDepartment } from "../../api/bookingApi";
+import ClinicPageHeader from "../../components/common/ClinicPageHeader";
 import StatusBadge from "../../components/common/StatusBadge";
 import { getApiErrorMessage } from "../../utils/errorHandler";
 import { formatDate } from "../../utils/formatDate";
 import useNotifications from "../../hooks/useNotifications";
+import {
+    clinicButtonSx,
+    clinicColors,
+    clinicFieldSx,
+    clinicPrimaryButtonSx,
+    clinicResetButtonSx,
+    clinicSecondaryButtonSx,
+    clinicSurfaceSx,
+    clinicTableSx,
+} from "../../components/common/clinicUi";
 
 const STATUS_OPTIONS = [
     { value: "Pending", label: "Chờ xác nhận" },
@@ -18,36 +75,19 @@ const STATUS_OPTIONS = [
     { value: "Cancelled", label: "Đã hủy" },
 ];
 
-const ACTION_BUTTON_SX = {
-    minWidth: 94,
-    justifyContent: "flex-start",
-    px: 1,
-    borderRadius: 999,
-    bgcolor: "background.paper",
-    border: "1px solid",
-    borderColor: "divider",
-    "& .MuiButton-startIcon": {
-        ml: 0,
-        mr: 0.75,
-    },
+const OUTLINE_ACTION_SX = {
+    minHeight: 32,
+    px: 1.25,
+    borderRadius: "8px",
+    textTransform: "none",
+    fontWeight: 700,
+    fontSize: 13,
+    bgcolor: "#FFFFFF",
+    border: "1px solid #CBD8E6",
+    color: "#1E293B",
     "&:hover": {
-        bgcolor: "#f3f8ff",
-    },
-};
-
-const DIRECT_FORM_CARD_SX = {
-    p: 2,
-    border: "1px solid",
-    borderColor: "#dbe7f3",
-    bgcolor: "#f4f8fc",
-    borderRadius: 2,
-    boxShadow: "0 10px 22px rgba(31, 64, 104, 0.06)",
-};
-
-const FILTER_FIELD_SX = {
-    "& .MuiOutlinedInput-root": {
-        bgcolor: "background.paper",
-        borderRadius: 1.5,
+        bgcolor: "#F1F6FB",
+        borderColor: "#0B4F8A",
     },
 };
 
@@ -102,11 +142,26 @@ function emptyDialogForm() {
 }
 
 export default function AppointmentsPage() {
-    const { revision, availabilityRevision, appointmentEvent } = useNotifications();
+    const {
+        revision,
+        availabilityRevision,
+        appointmentEvent,
+        bookInvoiceEvent,
+        patientBookEvent,
+    } = useNotifications();
     const appointmentRequest = useRef(0);
     const summaryRequest = useRef(0);
+    const initialRevisionRef = useRef(revision);
     const today = toDateValue(new Date());
-    const [query, setQuery] = useState({ pageNumber: 1, pageSize: 10, search: "", status: "", doctorId: "", dateFrom: today, dateTo: "" });
+    const [query, setQuery] = useState({
+        pageNumber: 1,
+        pageSize: 10,
+        search: "",
+        status: "",
+        doctorId: "",
+        dateFrom: today,
+        dateTo: "",
+    });
     const [search, setSearch] = useState("");
     const [items, setItems] = useState([]);
     const [totalItems, setTotalItems] = useState(0);
@@ -119,6 +174,7 @@ export default function AppointmentsPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [notice, setNotice] = useState("");
+    const [liveBanner, setLiveBanner] = useState("");
     const [action, setAction] = useState(null);
     const [saving, setSaving] = useState(false);
     const [dialogError, setDialogError] = useState("");
@@ -137,31 +193,56 @@ export default function AppointmentsPage() {
 
     useEffect(() => {
         if (!appointmentEvent) return;
-        const timer = setTimeout(() => setCheckInAppointment(current =>
-            current?.appointmentId === appointmentEvent.appointmentId ? { ...current, ...appointmentEvent } : current), 0);
+        const timer = setTimeout(
+            () =>
+                setCheckInAppointment(current =>
+                    current?.appointmentId === appointmentEvent.appointmentId
+                        ? { ...current, ...appointmentEvent }
+                        : current
+                ),
+            0
+        );
         return () => clearTimeout(timer);
     }, [appointmentEvent]);
+
+    useEffect(() => {
+        if (revision <= initialRevisionRef.current) return;
+        const timer = setTimeout(() => {
+            if (bookInvoiceEvent?.status === "Paid") {
+                setLiveBanner(
+                    `Đồng bộ thời gian thực: Thu ngân vừa ghi nhận thanh toán hóa đơn sổ #${bookInvoiceEvent.bookInvoiceId} (Paid).`
+                );
+            } else if (patientBookEvent?.bookNumber) {
+                setLiveBanner(
+                    `Đồng bộ thời gian thực: Đã cập nhật sổ khám ${patientBookEvent.bookNumber}.`
+                );
+            } else if (appointmentEvent?.appointmentId) {
+                setLiveBanner(
+                    `Đồng bộ thời gian thực: Danh sách lịch hẹn vừa tự động cập nhật (Lịch #${appointmentEvent.appointmentId}).`
+                );
+            }
+        }, 0);
+        return () => clearTimeout(timer);
+    }, [revision, appointmentEvent, bookInvoiceEvent, patientBookEvent]);
 
     function changeFilter(key, value) {
         setQuery(current => ({ ...current, [key]: value, pageNumber: 1 }));
     }
 
     const pendingItems = items.filter(item => item.status === "Pending");
-    const selectedPendingItems = items.filter(item =>
-        selectedIds.includes(item.appointmentId)
-        && item.status === "Pending"
+    const selectedPendingItems = items.filter(
+        item => selectedIds.includes(item.appointmentId) && item.status === "Pending"
     );
-    const allPendingSelected = pendingItems.length > 0
-        && pendingItems.every(item => selectedIds.includes(item.appointmentId));
-    const somePendingSelected = pendingItems.some(item => selectedIds.includes(item.appointmentId))
-        && !allPendingSelected;
+    const allPendingSelected =
+        pendingItems.length > 0 && pendingItems.every(item => selectedIds.includes(item.appointmentId));
+    const somePendingSelected =
+        pendingItems.some(item => selectedIds.includes(item.appointmentId)) && !allPendingSelected;
 
     function toggleSelectAllPending(checked) {
         if (checked) {
-            setSelectedIds(current => Array.from(new Set([
-                ...current,
-                ...pendingItems.map(item => item.appointmentId),
-            ])));
+            setSelectedIds(current =>
+                Array.from(new Set([...current, ...pendingItems.map(item => item.appointmentId)]))
+            );
             return;
         }
 
@@ -170,97 +251,130 @@ export default function AppointmentsPage() {
     }
 
     function toggleSelectAppointment(appointmentId, checked) {
-        setSelectedIds(current => checked
-            ? Array.from(new Set([...current, appointmentId]))
-            : current.filter(id => id !== appointmentId));
+        setSelectedIds(current =>
+            checked
+                ? Array.from(new Set([...current, appointmentId]))
+                : current.filter(id => id !== appointmentId)
+        );
     }
 
-    const loadAppointments = useCallback(async (signal) => {
-        const requestId = ++appointmentRequest.current;
-        setLoading(true);
-        setError("");
-        try {
-            const data = await getAppointments({
-                pageNumber: query.pageNumber,
-                pageSize: query.pageSize,
-                search: query.search || undefined,
-                status: query.status || undefined,
-                dateFrom: query.dateFrom || undefined,
-                dateTo: query.dateTo || undefined,
-                doctorId: query.doctorId || undefined,
-            }, signal);
-            if (signal?.aborted || requestId !== appointmentRequest.current) return;
-            setItems(data.items || []);
-            setTotalItems(data.totalItems || 0);
-            setSelectedIds(current => current.filter(id =>
-                (data.items || []).some(item => item.appointmentId === id)
-            ));
-        } catch (err) {
-            if (err.name !== "CanceledError" && requestId === appointmentRequest.current) setError(getApiErrorMessage(err));
-        } finally {
-            if (!signal?.aborted && requestId === appointmentRequest.current) setLoading(false);
-        }
-    }, [query]);
+    const loadAppointments = useCallback(
+        async signal => {
+            const requestId = ++appointmentRequest.current;
+            setLoading(true);
+            setError("");
+            try {
+                const data = await getAppointments(
+                    {
+                        pageNumber: query.pageNumber,
+                        pageSize: query.pageSize,
+                        search: query.search || undefined,
+                        status: query.status || undefined,
+                        dateFrom: query.dateFrom || undefined,
+                        dateTo: query.dateTo || undefined,
+                        doctorId: query.doctorId || undefined,
+                    },
+                    signal
+                );
+                if (signal?.aborted || requestId !== appointmentRequest.current) return;
+                setItems(data.items || []);
+                setTotalItems(data.totalItems || 0);
+                setSelectedIds(current =>
+                    current.filter(id => (data.items || []).some(item => item.appointmentId === id))
+                );
+            } catch (err) {
+                if (err.name !== "CanceledError" && requestId === appointmentRequest.current) {
+                    setError(getApiErrorMessage(err));
+                }
+            } finally {
+                if (!signal?.aborted && requestId === appointmentRequest.current) setLoading(false);
+            }
+        },
+        [query]
+    );
 
-    const loadSummary = useCallback(async (signal) => {
-        const requestId = ++summaryRequest.current;
-        try {
-            const filters = { pageNumber: 1, pageSize: 1, search: query.search || undefined,
-                dateFrom: query.dateFrom || undefined, dateTo: query.dateTo || undefined,
-                doctorId: query.doctorId || undefined, status: query.status || undefined };
-            const countStatus = status => query.status && query.status !== status
-                ? Promise.resolve({ totalItems: 0 }) : getAppointments({ ...filters, status }, signal);
-            const [all, pending, confirmed, cancelled] = await Promise.all([
-                getAppointments(filters, signal), countStatus("Pending"), countStatus("Confirmed"), countStatus("Cancelled"),
-            ]);
-            if (signal?.aborted || requestId !== summaryRequest.current) return;
-            setSummary({
-                total: all.totalItems || 0, Pending: pending.totalItems || 0,
-                Confirmed: confirmed.totalItems || 0, Cancelled: cancelled.totalItems || 0,
-            });
-        } catch {
-            setSummary(current => current);
-        }
-    }, [query.search, query.status, query.dateFrom, query.dateTo, query.doctorId]);
+    const loadSummary = useCallback(
+        async signal => {
+            const requestId = ++summaryRequest.current;
+            try {
+                const filters = {
+                    pageNumber: 1,
+                    pageSize: 1,
+                    search: query.search || undefined,
+                    dateFrom: query.dateFrom || undefined,
+                    dateTo: query.dateTo || undefined,
+                    doctorId: query.doctorId || undefined,
+                };
+                const [all, pending, confirmed, cancelled] = await Promise.all([
+                    getAppointments(filters, signal),
+                    getAppointments({ ...filters, status: "Pending" }, signal),
+                    getAppointments({ ...filters, status: "Confirmed" }, signal),
+                    getAppointments({ ...filters, status: "Cancelled" }, signal),
+                ]);
+                if (signal?.aborted || requestId !== summaryRequest.current) return;
+                setSummary({
+                    total: all.totalItems || 0,
+                    Pending: pending.totalItems || 0,
+                    Confirmed: confirmed.totalItems || 0,
+                    Cancelled: cancelled.totalItems || 0,
+                });
+            } catch {
+                setSummary(current => current);
+            }
+        },
+        [query.search, query.dateFrom, query.dateTo, query.doctorId]
+    );
 
     useEffect(() => {
         const controller = new AbortController();
         Promise.resolve().then(() => loadAppointments(controller.signal));
-        return () => { controller.abort(); appointmentRequest.current += 1; };
+        return () => {
+            controller.abort();
+            appointmentRequest.current += 1;
+        };
     }, [loadAppointments, revision]);
 
     useEffect(() => {
         const controller = new AbortController();
         Promise.resolve().then(() => loadSummary(controller.signal));
-        return () => { controller.abort(); summaryRequest.current += 1; };
+        return () => {
+            controller.abort();
+            summaryRequest.current += 1;
+        };
     }, [loadSummary, revision]);
 
     useEffect(() => {
         let active = true;
-        getDepartments().then(async result => {
-            if (!active) return;
-            setDepartments(result);
-            const doctorLists = await Promise.all(result.map(department => getDoctorsByDepartment(department.departmentId)));
-            if (active) setFilterDoctors(doctorLists.flat().sort((left, right) => left.fullName.localeCompare(right.fullName, "vi")));
-        })
+        getDepartments()
+            .then(async result => {
+                if (!active) return;
+                setDepartments(result);
+                const doctorLists = await Promise.all(
+                    result.map(department => getDoctorsByDepartment(department.departmentId))
+                );
+                if (active) {
+                    setFilterDoctors(
+                        doctorLists
+                            .flat()
+                            .sort((left, right) => left.fullName.localeCompare(right.fullName, "vi"))
+                    );
+                }
+            })
             .catch(() => setDepartments([]));
-        return () => { active = false; };
+        return () => {
+            active = false;
+        };
     }, []);
 
     useEffect(() => {
-        if (!dialogForm.departmentId) {
-            return;
-        }
-
+        if (!dialogForm.departmentId) return;
         getDoctorsByDepartment(dialogForm.departmentId)
             .then(setDoctors)
             .catch(() => setDoctors([]));
     }, [dialogForm.departmentId]);
 
     useEffect(() => {
-        if (!dialogForm.doctorId || !dialogForm.appointmentDate) {
-            return;
-        }
+        if (!dialogForm.doctorId || !dialogForm.appointmentDate) return;
         let active = true;
         Promise.resolve().then(() => {
             if (!active) return;
@@ -270,13 +384,25 @@ export default function AppointmentsPage() {
                     if (!active) return;
                     const available = result.filter(slot => slot.isAvailable);
                     setSlots(available);
-                    setDialogForm(current => current.startTime && !available.some(slot => slot.startTime === current.startTime)
-                        ? { ...current, startTime: "" } : current);
+                    setDialogForm(current =>
+                        current.startTime && !available.some(slot => slot.startTime === current.startTime)
+                            ? { ...current, startTime: "" }
+                            : current
+                    );
                 })
-                .catch(() => { if (active) { setSlots([]); setDialogForm(current => ({ ...current, startTime: "" })); } })
-                .finally(() => { if (active) setSlotsLoading(false); });
+                .catch(() => {
+                    if (active) {
+                        setSlots([]);
+                        setDialogForm(current => ({ ...current, startTime: "" }));
+                    }
+                })
+                .finally(() => {
+                    if (active) setSlotsLoading(false);
+                });
         });
-        return () => { active = false; };
+        return () => {
+            active = false;
+        };
     }, [dialogForm.doctorId, dialogForm.appointmentDate, availabilityRevision]);
 
     function openConfirm(appointment) {
@@ -316,6 +442,18 @@ export default function AppointmentsPage() {
         });
     }
 
+    async function handleMatchPatients() {
+        setMatchingPatients(true);
+        setDialogError("");
+        try {
+            setPatientMatches(await findPatientMatches(dialogForm.patientPhone.trim()));
+        } catch (err) {
+            setDialogError(getApiErrorMessage(err));
+        } finally {
+            setMatchingPatients(false);
+        }
+    }
+
     async function submitAction() {
         if (saving || !action) return;
         setSaving(true);
@@ -333,7 +471,9 @@ export default function AppointmentsPage() {
                     startTime: dialogForm.startTime,
                     patientName: dialogForm.patientName.trim(),
                     patientPhone: dialogForm.patientPhone.trim(),
-                    patientProfileId: dialogForm.patientProfileId ? Number(dialogForm.patientProfileId) : null,
+                    patientProfileId: dialogForm.patientProfileId
+                        ? Number(dialogForm.patientProfileId)
+                        : null,
                     birthDate: dialogForm.birthDate || null,
                     identityNumber: dialogForm.identityNumber.trim() || null,
                     insuranceCode: dialogForm.insuranceCode.trim() || null,
@@ -388,9 +528,7 @@ export default function AppointmentsPage() {
 
         try {
             await Promise.all(
-                selectedPendingItems.map(appointment =>
-                    confirmAppointment(appointment.appointmentId)
-                )
+                selectedPendingItems.map(appointment => confirmAppointment(appointment.appointmentId))
             );
             setSelectedIds([]);
             setToast({
@@ -411,426 +549,713 @@ export default function AppointmentsPage() {
         }
     }
 
-    const actionTitle = action?.type === "confirm"
-        ? "Xác nhận lịch hẹn"
-        : action?.type === "cancel"
-            ? "Hủy lịch hẹn"
-            : action?.type === "create"
-                ? "Đặt lịch trực tiếp"
-                : "Đổi lịch hẹn";
-
-    const isScheduleDialog = action?.type === "reschedule" || action?.type === "create";
-    const scheduleDisabled = slotsLoading || !dialogForm.doctorId || !dialogForm.appointmentDate || !dialogForm.startTime;
-    const createDisabled = scheduleDisabled
-        || !dialogForm.patientName.trim()
-        || !dialogForm.patientPhone.trim()
-        || !dialogForm.reason.trim();
-    const selectedDepartment = departments.find(department => String(department.departmentId) === String(dialogForm.departmentId));
-    const selectedDoctor = doctors.find(doctor => String(doctor.doctorId) === String(dialogForm.doctorId));
-    const selectedSlot = slots.find(slot => slot.startTime === dialogForm.startTime);
+    const dayAfterTomorrow = addDays(today, 2);
+    const dayAfterName =
+        new Date(dayAfterTomorrow).getDay() === 0
+            ? "Chủ nhật"
+            : `Thứ ${new Date(dayAfterTomorrow).getDay() + 1}`;
     const directDateOptions = [
         { label: `Hôm nay (${formatShortDate(today)})`, value: today },
         { label: `Ngày mai (${formatShortDate(addDays(today, 1))})`, value: addDays(today, 1) },
-        { label: `Thứ ${new Date(addDays(today, 2)).getDay() + 1} (${formatShortDate(addDays(today, 2))})`, value: addDays(today, 2) },
+        { label: `${dayAfterName} (${formatShortDate(dayAfterTomorrow)})`, value: dayAfterTomorrow },
     ];
-    const directSteps = [
-        { label: "Chuyên khoa", complete: Boolean(dialogForm.departmentId) },
-        { label: "Bác sĩ", complete: Boolean(dialogForm.doctorId) },
-        { label: "Ngày khám", complete: Boolean(dialogForm.appointmentDate) },
-        { label: "Khung giờ", complete: Boolean(dialogForm.startTime) },
+
+    const statCards = [
         {
-            label: "Thông tin bệnh nhân",
-            complete: Boolean(dialogForm.patientName.trim() && dialogForm.patientPhone.trim() && dialogForm.reason.trim()),
+            key: "",
+            title: "Tổng lượt hẹn",
+            value: summary.total,
+            color: "#0B4F8A",
+            soft: "#E8F2FC",
+            border: "#BFDBFE",
+            icon: PeopleAltOutlined,
         },
-        { label: "Xác nhận lịch", complete: !createDisabled },
+        {
+            key: "Pending",
+            title: "Chờ xác nhận",
+            value: summary.Pending,
+            color: "#D97706",
+            soft: "#FFFBEB",
+            border: "#FDE68A",
+            icon: CalendarMonthOutlined,
+        },
+        {
+            key: "Confirmed",
+            title: "Đã xác nhận",
+            value: summary.Confirmed,
+            color: "#059669",
+            soft: "#ECFDF5",
+            border: "#A7F3D0",
+            icon: EventAvailableOutlined,
+        },
+        {
+            key: "Cancelled",
+            title: "Đã hủy",
+            value: summary.Cancelled,
+            color: "#DC2626",
+            soft: "#FEF2F2",
+            border: "#FECACA",
+            icon: HighlightOffOutlined,
+        },
     ];
-    const activeDirectStep = Math.max(
-        directSteps.findIndex(step => !step.complete),
-        0
-    );
-    const dialogMaxWidth = action?.type === "create"
-        ? "md"
-        : isScheduleDialog
-            ? "sm"
-            : "xs";
 
-    return <Stack spacing={3}>
-        <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 }, borderRadius: 2, bgcolor: "#f6fbff", borderColor: "#d8e7f6", boxShadow: "0 18px 40px rgba(30, 74, 120, 0.08)" }}>
-            <Stack direction={{ xs: "column", md: "row" }} spacing={2.5} sx={{ justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" } }}>
-                <Box>
-                    <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 1 }}>
-                        <Chip size="small" color="primary" label="Lễ tân" />
-                    </Stack>
-                    <Typography variant="h4" component="h1" sx={{ fontWeight: 800 }}>Điều phối & Xác nhận lịch hẹn</Typography>
-                    <Typography color="text.secondary" sx={{ mt: 1, maxWidth: 620 }}>Xác nhận lịch online, đổi/hủy khi cần và tiếp nhận bệnh nhân vãng lai tại quầy.</Typography>
-                </Box>
-                <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ width: { xs: "100%", sm: "auto" } }}>
-                    <Button variant="contained" size="large" startIcon={<AddCircleOutlineOutlined />} onClick={openCreate} sx={{ borderRadius: 1.5, boxShadow: "0 10px 22px rgba(25, 118, 210, 0.22)" }}>Đặt lịch trực tiếp</Button>
-                    <Button aria-label="Tải lại lịch hẹn" size="large" variant="outlined" startIcon={<RefreshOutlined />} onClick={() => loadAppointments()} disabled={loading} sx={{ borderRadius: 1.5, bgcolor: "background.paper" }}>Tải lại</Button>
-                </Stack>
-            </Stack>
-        </Paper>
+    const isTodayFilter = query.dateFrom === today && !query.dateTo;
+    const isTomorrowFilter = query.dateFrom === addDays(today, 1) && query.dateTo === addDays(today, 1);
+    const isAllDatesFilter = !query.dateFrom && !query.dateTo;
 
-        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" }, gap: 2 }}>
-            <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2, borderColor: "#f2d48b", bgcolor: "#fffaf0", position: "relative", overflow: "hidden" }}>
-                <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between" }}>
-                    <Box>
-                        <Typography variant="body2" color="text.secondary">Chờ xác nhận</Typography>
-                        <Typography variant="h4" sx={{ mt: 0.5, fontWeight: 800, color: "#9a6400" }}>{summary.Pending}</Typography>
-                    </Box>
-                    <Box sx={{ width: 48, height: 48, borderRadius: 2, bgcolor: "#ffe8ad", color: "#9a6400", display: "grid", placeItems: "center" }}><CalendarMonthOutlined /></Box>
-                </Stack>
-            </Paper>
-            <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2, borderColor: "#b9ddc8", bgcolor: "#f1fbf5", position: "relative", overflow: "hidden" }}>
-                <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between" }}>
-                    <Box>
-                        <Typography variant="body2" color="text.secondary">Đã xác nhận</Typography>
-                        <Typography variant="h4" sx={{ mt: 0.5, fontWeight: 800, color: "#1b7f45" }}>{summary.Confirmed}</Typography>
-                    </Box>
-                    <Box sx={{ width: 48, height: 48, borderRadius: 2, bgcolor: "#c9f1d7", color: "#1b7f45", display: "grid", placeItems: "center" }}><EventAvailableOutlined /></Box>
-                </Stack>
-            </Paper>
-            <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2, borderColor: "#f0c2bf", bgcolor: "#fff5f4", position: "relative", overflow: "hidden" }}>
-                <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between" }}>
-                    <Box>
-                        <Typography variant="body2" color="text.secondary">Đã hủy</Typography>
-                        <Typography variant="h4" sx={{ mt: 0.5, fontWeight: 800, color: "#b9473e" }}>{summary.Cancelled}</Typography>
-                    </Box>
-                    <Box sx={{ width: 48, height: 48, borderRadius: 2, bgcolor: "#ffd8d4", color: "#b9473e", display: "grid", placeItems: "center" }}><HighlightOffOutlined /></Box>
-                </Stack>
-            </Paper>
-        </Box>
-
-        {notice && <Alert severity="success" onClose={() => setNotice("")}>{notice}</Alert>}
-        {error && <Alert severity="error" action={<Button onClick={() => loadAppointments()}>Thử lại</Button>}>{error}</Alert>}
-
-        <Paper variant="outlined" sx={{ overflow: "hidden", borderRadius: 2, borderColor: "#dce7f2", boxShadow: "0 16px 36px rgba(40, 65, 95, 0.06)" }}>
-            <Box sx={{ px: 3, pt: 2.5, pb: 1.5, bgcolor: "#fbfdff", borderBottom: "1px solid", borderColor: "divider" }}>
-                <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} sx={{ alignItems: { xs: "flex-start", md: "center" }, justifyContent: "space-between" }}>
-                    <Box>
-                        <Typography variant="h6" sx={{ fontWeight: 800 }}>Danh sách lịch hẹn</Typography>
-                        <Typography variant="body2" color="text.secondary">Hiển thị {items.length} / {totalItems} lịch theo bộ lọc hiện tại</Typography>
-                    </Box>
-                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ alignItems: { xs: "stretch", sm: "center" } }}>
-                        <Chip icon={<PeopleAltOutlined />} label={`${summary.total} lượt hẹn`} color="primary" variant="outlined" />
-                        <Button variant="contained" color="success" startIcon={<CheckCircleOutlineOutlined />} disabled={!selectedPendingItems.length || bulkSaving} onClick={confirmSelectedAppointments}>
-                            {bulkSaving ? "Đang xác nhận..." : `Xác nhận hàng loạt${selectedPendingItems.length ? ` (${selectedPendingItems.length})` : ""}`}
+    return (
+        <Stack spacing={2.5} sx={{ pb: 4, minWidth: 0 }}>
+            <ClinicPageHeader
+                eyebrow="Quầy tiếp nhận lễ tân"
+                badge={
+                    <Chip
+                        size="small"
+                        icon={<SensorsOutlined sx={{ fontSize: "15px !important", color: "#059669 !important" }} />}
+                        label="Đồng bộ thời gian thực"
+                        sx={{
+                            bgcolor: "#ECFDF5",
+                            color: "#065F46",
+                            border: "1px solid #6EE7B7",
+                            fontWeight: 750,
+                            fontSize: 12,
+                        }}
+                    />
+                }
+                title="Điều phối & Xác nhận lịch hẹn"
+                icon={FactCheckOutlined}
+                description="Tra cứu, xác nhận lịch đặt trước, đặt lịch trực tiếp tại quầy và thực hiện Check-in bệnh nhân."
+                actions={
+                    <>
+                        <Button
+                            variant="contained"
+                            startIcon={<AddCircleOutlineOutlined />}
+                            onClick={openCreate}
+                            sx={clinicPrimaryButtonSx}
+                        >
+                            Đặt lịch trực tiếp
                         </Button>
-                    </Stack>
-                </Stack>
-            </Box>
-            <Stack component="form" onSubmit={event => { event.preventDefault(); changeFilter("search", search.trim()); }} direction={{ xs: "column", lg: "row" }} spacing={2} useFlexGap sx={{ p: 3, bgcolor: "#f6f9fc", flexWrap: "wrap" }}>
-                <TextField label="Tìm lịch hẹn" placeholder="Tên, SĐT, bác sĩ hoặc lý do" value={search} onChange={event => setSearch(event.target.value)} size="small" sx={{ flex: 1, minWidth: 220, ...FILTER_FIELD_SX }} slotProps={{ htmlInput: { maxLength: 100 } }} />
-                <Button type="submit" variant="contained" startIcon={<SearchOutlined />} sx={{ borderRadius: 1.5 }}>Tìm kiếm</Button>
-                <TextField select label="Trạng thái" value={query.status} onChange={event => changeFilter("status", event.target.value)} size="small" sx={{ minWidth: 180, ...FILTER_FIELD_SX }}>
-                    <MenuItem value="">Tất cả trạng thái</MenuItem>
-                    {STATUS_OPTIONS.map(option => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
-                </TextField>
-                <TextField select label="Bác sĩ" value={query.doctorId} onChange={event => changeFilter("doctorId", event.target.value)} size="small" sx={{ minWidth: 180, ...FILTER_FIELD_SX }}>
-                    <MenuItem value="">Tất cả bác sĩ</MenuItem>
-                    {filterDoctors.map(doctor => <MenuItem key={doctor.doctorId} value={doctor.doctorId}>{doctor.fullName}</MenuItem>)}
-                </TextField>
-                <TextField label="Từ ngày" type="date" value={query.dateFrom} onChange={event => changeFilter("dateFrom", event.target.value)} size="small" sx={{ minWidth: 165, ...FILTER_FIELD_SX }} slotProps={{ inputLabel: { shrink: true } }} />
-                <TextField label="Đến ngày" type="date" value={query.dateTo} onChange={event => changeFilter("dateTo", event.target.value)} size="small" sx={{ minWidth: 165, ...FILTER_FIELD_SX }} slotProps={{ inputLabel: { shrink: true } }} />
-                <Button onClick={() => { setSearch(""); setQuery(current => ({ ...current, search: "", status: "", doctorId: "", dateFrom: "", dateTo: "", pageNumber: 1 })); }}>Xóa bộ lọc</Button>
-            </Stack>
+                        <Button
+                            aria-label="Tải lại lịch hẹn"
+                            variant="outlined"
+                            startIcon={<RefreshOutlined />}
+                            onClick={() => {
+                                void loadAppointments();
+                                void loadSummary();
+                            }}
+                            disabled={loading}
+                            sx={clinicSecondaryButtonSx}
+                        >
+                            Tải lại
+                        </Button>
+                    </>
+                }
+            />
 
-            {loading && <LinearProgress aria-label="Đang tải lịch hẹn" />}
-
-            <TableContainer>
-                <Table aria-label="Danh sách lịch hẹn" sx={{ minWidth: 980 }}>
-                    <TableHead>
-                        <TableRow sx={{ bgcolor: "#edf4fb" }}>
-                            <TableCell padding="checkbox">
-                                <Checkbox
-                                    aria-label="Chọn tất cả lịch chờ xác nhận"
-                                    checked={allPendingSelected}
-                                    indeterminate={somePendingSelected}
-                                    disabled={!pendingItems.length || loading}
-                                    onChange={event => toggleSelectAllPending(event.target.checked)}
-                                />
-                            </TableCell>
-                            {["Bệnh nhân", "Lịch khám", "Bác sĩ", "Lý do", "Trạng thái", "Thao tác"].map(label => <TableCell key={label} sx={{ fontWeight: 800, color: "#23435f" }}>{label}</TableCell>)}
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {items.map((appointment, index) => <TableRow key={appointment.appointmentId} hover sx={{ bgcolor: index % 2 === 0 ? "background.paper" : "#fbfdff", "&:hover": { bgcolor: "#f2f8ff" } }}>
-                            <TableCell padding="checkbox">
-                                <Checkbox
-                                    aria-label={`Chọn lịch hẹn của ${appointment.patientName}`}
-                                    checked={selectedIds.includes(appointment.appointmentId)}
-                                    disabled={appointment.status !== "Pending" || loading || bulkSaving}
-                                    onChange={event => toggleSelectAppointment(appointment.appointmentId, event.target.checked)}
-                                />
-                            </TableCell>
-                            <TableCell>
-                                <Typography sx={{ fontWeight: 700 }}>{appointment.patientName}</Typography>
-                                <Typography variant="body2" color="text.secondary">{appointment.patientPhone}</Typography>
-                            </TableCell>
-                            <TableCell>
-                                <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-                                    <CalendarMonthOutlined fontSize="small" color="primary" />
-                                    <Box>
-                                        <Typography>{formatDate(appointment.appointmentDate)}</Typography>
-                                        <Typography variant="body2" color="text.secondary">{formatTime(appointment.startTime)} - {formatTime(appointment.endTime)}</Typography>
+            {/* Clickable Quick-Triage Stat Cards */}
+            <Grid container spacing={1.75}>
+                {statCards.map(card => {
+                    const Icon = card.icon;
+                    const active = query.status === card.key;
+                    return (
+                        <Grid key={card.title} size={{ xs: 6, lg: 3 }} sx={{ minWidth: 0 }}>
+                            <Paper
+                                variant="outlined"
+                                onClick={() => changeFilter("status", active && card.key ? "" : card.key)}
+                                sx={{
+                                    p: { xs: 1.75, sm: 2.25 },
+                                    height: "100%",
+                                    cursor: "pointer",
+                                    borderRadius: "14px",
+                                    borderColor: active ? card.color : "#D8E4F0",
+                                    borderTop: `4px solid ${card.color}`,
+                                    bgcolor: active ? card.soft : "#FFFFFF",
+                                    boxShadow: active ? `0 0 0 2px ${card.border}` : "0 2px 10px rgba(10, 37, 64, 0.035)",
+                                    transition: "all 0.15s ease",
+                                    "&:hover": {
+                                        borderColor: card.color,
+                                        bgcolor: card.soft,
+                                    },
+                                }}
+                            >
+                                <Stack direction="row" spacing={1} sx={{ justifyContent: "space-between", alignItems: "center" }}>
+                                    <Box sx={{ minWidth: 0 }}>
+                                        <Typography sx={{ fontSize: 12.5, fontWeight: 750, color: "#475569" }}>
+                                            {card.title}
+                                        </Typography>
+                                        <Typography
+                                            sx={{
+                                                mt: 0.5,
+                                                fontSize: { xs: 22, sm: 26 },
+                                                fontWeight: 800,
+                                                color: card.color,
+                                                fontVariantNumeric: "tabular-nums",
+                                            }}
+                                        >
+                                            {card.value}
+                                        </Typography>
+                                    </Box>
+                                    <Box
+                                        sx={{
+                                            width: 40,
+                                            height: 40,
+                                            borderRadius: "10px",
+                                            bgcolor: card.soft,
+                                            color: card.color,
+                                            border: `1px solid ${card.border}`,
+                                            display: "grid",
+                                            placeItems: "center",
+                                            flexShrink: 0,
+                                        }}
+                                    >
+                                        <Icon sx={{ fontSize: 20 }} />
                                     </Box>
                                 </Stack>
-                            </TableCell>
-                            <TableCell>
-                                <Typography>{appointment.doctorName}</Typography>
-                                <Typography variant="body2" color="text.secondary">{appointment.departmentName}</Typography>
-                            </TableCell>
-                            <TableCell sx={{ maxWidth: 260 }}>
-                                <Typography variant="body2" sx={{ whiteSpace: "normal" }}>{appointment.reason}</Typography>
-                            </TableCell>
-                            <TableCell><StatusBadge status={appointment.status} /></TableCell>
-                            <TableCell>
-                                <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
-                                    <Button size="small" sx={ACTION_BUTTON_SX} startIcon={<CheckCircleOutlineOutlined />} disabled={appointment.status !== "Pending" || loading} onClick={() => openConfirm(appointment)}>Xác nhận</Button>
-                                    <Button size="small" sx={ACTION_BUTTON_SX} startIcon={<EditCalendarOutlined />} disabled={["Cancelled", "Completed", "InProgress"].includes(appointment.status) || loading} onClick={() => openReschedule(appointment)}>Đổi lịch</Button>
-                                    <Button size="small" sx={ACTION_BUTTON_SX} color="error" startIcon={<CancelOutlined />} disabled={["Cancelled", "Completed", "InProgress"].includes(appointment.status) || Boolean(appointment.checkedInAt) || loading} onClick={() => openCancel(appointment)}>Hủy</Button>
-                                    <Button size="small" sx={ACTION_BUTTON_SX} startIcon={<AssignmentTurnedInOutlined />} disabled={appointment.status !== "Confirmed" || Boolean(appointment.checkedInAt) || toDateInput(appointment.appointmentDate) !== today || loading} onClick={() => setCheckInAppointment(appointment)}>Check-in</Button>
-                                    {appointment.checkedInAt && <Chip size="small" color="success" label="Đã check-in" />}
-                                </Stack>
-                            </TableCell>
-                        </TableRow>)}
-                        {!loading && !items.length && <TableRow><TableCell colSpan={7} align="center" sx={{ py: 6 }}>Không tìm thấy lịch hẹn phù hợp.</TableCell></TableRow>}
-                    </TableBody>
-                </Table>
-            </TableContainer>
-            <TablePagination component="div" count={totalItems} page={query.pageNumber - 1} rowsPerPage={query.pageSize} rowsPerPageOptions={[10, 20, 50]} labelRowsPerPage="Số dòng" labelDisplayedRows={({ from, to, count }) => `${from}-${to} / ${count}`} onPageChange={(_, page) => setQuery(current => ({ ...current, pageNumber: page + 1 }))} onRowsPerPageChange={event => setQuery(current => ({ ...current, pageNumber: 1, pageSize: Number(event.target.value) }))} />
-        </Paper>
+                            </Paper>
+                        </Grid>
+                    );
+                })}
+            </Grid>
 
-        <Dialog open={Boolean(action)} onClose={saving ? undefined : () => setAction(null)} fullWidth maxWidth={dialogMaxWidth}
-            slotProps={{ paper: { sx: { borderRadius: 2.5, overflow: "hidden", boxShadow: "0 28px 80px rgba(22, 45, 74, 0.26)" } } }}>
-            {action?.type === "create" ? <>
-                <DialogTitle sx={{ p: 0 }}>
-                    <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", p: 2, pb: 1.5, bgcolor: "#fbfdff" }}>
-                        <Box sx={{ width: 42, height: 42, borderRadius: 1.5, bgcolor: "primary.main", color: "primary.contrastText", display: "grid", placeItems: "center", flexShrink: 0, boxShadow: "0 10px 20px rgba(25, 118, 210, 0.24)" }}>
-                            <AssignmentTurnedInOutlined />
-                        </Box>
-                        <Box sx={{ flex: 1, minWidth: 0 }}>
+            {liveBanner && (
+                <Alert
+                    severity="info"
+                    icon={<SensorsOutlined />}
+                    onClose={() => setLiveBanner("")}
+                    sx={{ borderRadius: "12px", bgcolor: "#ECFDF5", color: "#065F46", border: "1px solid #6EE7B7" }}
+                >
+                    {liveBanner}
+                </Alert>
+            )}
+            {notice && (
+                <Alert severity="success" onClose={() => setNotice("")} sx={{ borderRadius: "12px" }}>
+                    {notice}
+                </Alert>
+            )}
+            {error && (
+                <Alert
+                    severity="error"
+                    sx={{ borderRadius: "12px" }}
+                    action={
+                        <Button color="inherit" onClick={() => loadAppointments()}>
+                            Thử lại
+                        </Button>
+                    }
+                >
+                    {error}
+                </Alert>
+            )}
+
+            {/* Filter & Triage Table */}
+            <Paper variant="outlined" sx={{ ...clinicSurfaceSx, overflow: "hidden", minWidth: 0 }}>
+                <Box
+                    sx={{
+                        px: { xs: 2, sm: 3 },
+                        py: 2,
+                        bgcolor: "#F8FBFF",
+                        borderBottom: `1px solid ${clinicColors.border}`,
+                    }}
+                >
+                    <Stack
+                        direction={{ xs: "column", md: "row" }}
+                        spacing={1.5}
+                        sx={{ alignItems: { xs: "flex-start", md: "center" }, justifyContent: "space-between" }}
+                    >
+                        <Box sx={{ minWidth: 0 }}>
                             <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap" }}>
-                                <Typography variant="h6" component="span" sx={{ fontWeight: 800 }}>Đặt Lịch Khám Trực Tiếp Tại Quầy</Typography>
-                                <Chip size="small" color="primary" variant="outlined" label="Walk-in" />
+                                <FilterAltOutlined sx={{ fontSize: 19, color: clinicColors.primary }} />
+                                <Typography variant="h6" sx={{ fontWeight: 800, fontSize: 17, color: clinicColors.heading }}>
+                                    Danh sách lịch hẹn
+                                </Typography>
                             </Stack>
-                            <Typography variant="body2" color="text.secondary">Tiếp đón bệnh nhân tại quầy và chọn lịch khám.</Typography>
+                            <Typography variant="body2" sx={{ color: clinicColors.muted, mt: 0.25 }}>
+                                Hiển thị <strong>{items.length}</strong> / <strong>{totalItems}</strong> lịch hẹn
+                            </Typography>
                         </Box>
-                        <IconButton aria-label="Đóng form đặt lịch" disabled={saving} onClick={() => setAction(null)}><CloseOutlined /></IconButton>
+                        <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap", alignItems: "center" }}>
+                            <Button
+                                variant="contained"
+                                color="success"
+                                startIcon={<CheckCircleOutlineOutlined />}
+                                disabled={!selectedPendingItems.length || bulkSaving}
+                                onClick={confirmSelectedAppointments}
+                                sx={clinicButtonSx}
+                            >
+                                {bulkSaving
+                                    ? "Đang xác nhận..."
+                                    : `Xác nhận hàng loạt${selectedPendingItems.length ? ` (${selectedPendingItems.length})` : ""}`}
+                            </Button>
+                        </Stack>
                     </Stack>
-                    <Divider />
-                    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr 1fr", md: "repeat(6, 1fr)" }, gap: 1, px: 2, py: 1.25, bgcolor: "#eef5fb" }}>
-                        {directSteps.map((step, index) => {
-                            const highlighted = step.complete || index === activeDirectStep;
-                            return <Stack key={step.label} direction="row" spacing={0.75} sx={{ alignItems: "center", minWidth: 0, opacity: highlighted ? 1 : 0.52, bgcolor: highlighted ? "background.paper" : "transparent", borderRadius: 999, px: 0.75, py: 0.5, boxShadow: highlighted ? "0 4px 12px rgba(25, 118, 210, 0.10)" : "none" }}>
-                                <Box sx={{
-                                    width: 22,
-                                    height: 22,
-                                    borderRadius: "50%",
-                                    bgcolor: highlighted ? "primary.main" : "#d8e2ee",
-                                    color: highlighted ? "primary.contrastText" : "text.secondary",
-                                    display: "grid",
-                                    placeItems: "center",
-                                    fontSize: 12,
-                                    fontWeight: 800,
-                                    flexShrink: 0,
-                                }}>{index + 1}</Box>
-                                <Typography variant="caption" color={highlighted ? "primary" : "text.secondary"} sx={{ fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{step.label}</Typography>
-                            </Stack>;
-                        })}
-                    </Box>
-                </DialogTitle>
-                <DialogContent sx={{ bgcolor: "#ffffff", p: 2 }}>
-                    <Stack spacing={2}>
-                        {dialogError && <Alert severity="error">{dialogError}</Alert>}
-                        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2 }}>
-                            <Box sx={{ ...DIRECT_FORM_CARD_SX, borderTop: "3px solid #1976d2" }}>
-                                <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", mb: 1.5 }}>
-                                    <Typography variant="overline" color="primary" sx={{ fontWeight: 800 }}>• Bước 1 & 2: Chuyên khoa & Bác sĩ</Typography>
-                                </Stack>
-                                <Stack spacing={1.5}>
-                                    <TextField select size="small" label="1. Chọn Chuyên khoa khám" value={dialogForm.departmentId} disabled={saving} required onChange={event => {
-                                        setDoctors([]);
-                                        setSlots([]);
-                                        setDialogForm(current => ({ ...current, departmentId: event.target.value, doctorId: "", startTime: "" }));
-                                    }}>
-                                        <MenuItem value="">Chọn chuyên khoa</MenuItem>
-                                        {departments.map(department => <MenuItem key={department.departmentId} value={department.departmentId}>{department.name}</MenuItem>)}
-                                    </TextField>
-                                    <TextField select size="small" label="2. Chọn Bác sĩ phụ trách" value={dialogForm.doctorId} disabled={saving || !dialogForm.departmentId} required onChange={event => {
-                                        setSlots([]);
-                                        setDialogForm(current => ({ ...current, doctorId: event.target.value, startTime: "" }));
-                                    }}>
-                                        <MenuItem value="">Chọn bác sĩ</MenuItem>
-                                        {doctors.map(doctor => <MenuItem key={doctor.doctorId} value={doctor.doctorId}>{doctor.title} {doctor.fullName}</MenuItem>)}
-                                    </TextField>
-                                    <Box sx={{ display: "grid", gridTemplateColumns: "auto 1fr auto", gap: 1, alignItems: "center", p: 1, bgcolor: "background.paper", borderRadius: 1 }}>
-                                        <Typography variant="caption" color="text.secondary">Vị trí chỉ định:</Typography>
-                                        <Typography variant="body2" sx={{ fontWeight: 700 }}>{selectedDoctor ? `${selectedDoctor.title} ${selectedDoctor.fullName}` : "Chưa chọn bác sĩ"}</Typography>
-                                        <Chip size="small" color={selectedDoctor ? "success" : "default"} label={selectedDoctor ? "Sẵn sàng" : "Đang chờ"} />
-                                    </Box>
-                                </Stack>
-                            </Box>
-                            <Box sx={{ ...DIRECT_FORM_CARD_SX, borderTop: "3px solid #2e7d32" }}>
-                                <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", mb: 1.5 }}>
-                                    <Typography variant="overline" color="primary" sx={{ fontWeight: 800 }}>• Bước 3 & 4: Ngày & Khung giờ khám</Typography>
-                                    <Typography variant="caption" color="success.main" sx={{ fontWeight: 700 }}>• {slots.length} chỗ trống</Typography>
-                                </Stack>
-                                <Stack spacing={1.5}>
-                                    <Box>
-                                        <Typography variant="caption" sx={{ fontWeight: 700 }}>3. Ngày tiếp nhận khám *</Typography>
-                                        <Stack direction="row" spacing={1} sx={{ mt: 0.75, flexWrap: "wrap", gap: 1 }}>
-                                            {directDateOptions.map(option => <Button key={option.value} size="small" variant={dialogForm.appointmentDate === option.value ? "contained" : "outlined"} onClick={() => {
-                                                setSlots([]);
-                                                setDialogForm(current => ({ ...current, appointmentDate: option.value, startTime: "" }));
-                                            }}>{option.label}</Button>)}
-                                        </Stack>
-                                    </Box>
-                                    <Box>
-                                        <Typography variant="caption" sx={{ fontWeight: 700 }}>4. Khung giờ tiếp nhận *</Typography>
-                                        <Stack direction="row" spacing={1} sx={{ mt: 0.75, flexWrap: "wrap", gap: 1 }}>
-                                            {slots.slice(0, 8).map(slot => <Button key={slot.startTime} size="small" variant={dialogForm.startTime === slot.startTime ? "contained" : "outlined"} onClick={() => setDialogForm(current => ({ ...current, startTime: slot.startTime }))}>{formatTime(slot.startTime)}</Button>)}
-                                            {!slots.length && <Chip size="small" color="warning" variant="outlined" label={dialogForm.doctorId ? "Không có khung giờ trống" : "Chọn bác sĩ để xem giờ"} />}
-                                        </Stack>
-                                    </Box>
-                                    <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-                                        <Typography variant="caption" color="primary" sx={{ fontWeight: 700 }}>Chọn khung giờ còn trống</Typography>
-                                    </Stack>
-                                </Stack>
-                            </Box>
-                        </Box>
-                        <Box sx={{ ...DIRECT_FORM_CARD_SX, borderTop: "3px solid #7b61ff" }}>
-                            <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", mb: 1.5 }}>
-                                <Typography variant="overline" color="primary" sx={{ fontWeight: 800 }}>• Bước 5: Thông tin bệnh nhân & Triệu chứng</Typography>
-                                <Typography variant="caption" color="text.secondary">Kiểm tra CCCD / Thẻ BHYT tích hợp VNeID</Typography>
-                            </Stack>
-                            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1.25fr 1fr" }, gap: 1.5 }}>
-                                <TextField size="small" label="Họ và tên bệnh nhân" value={dialogForm.patientName} disabled={saving || Boolean(dialogForm.patientProfileId)} required slotProps={{ htmlInput: { maxLength: 100 } }} onChange={event => setDialogForm(current => ({ ...current, patientName: event.target.value }))} />
-                                <TextField size="small" label="Số điện thoại liên hệ" value={dialogForm.patientPhone} disabled={saving || Boolean(dialogForm.patientProfileId)} required slotProps={{ htmlInput: { maxLength: 15 } }} onChange={event => setDialogForm(current => ({ ...current, patientPhone: event.target.value }))} />
-                                <Box sx={{ gridColumn: { md: "1 / -1" } }}>
-                                    <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
-                                        <Button size="small" disabled={saving || matchingPatients || dialogForm.patientPhone.trim().length < 2} onClick={async () => {
-                                            setMatchingPatients(true);
-                                            setDialogError("");
-                                            try { setPatientMatches(await findPatientMatches(dialogForm.patientPhone.trim())); }
-                                            catch (err) { setDialogError(getApiErrorMessage(err)); }
-                                            finally { setMatchingPatients(false); }
-                                        }}>Đối chiếu Patient cũ</Button>
-                                        {dialogForm.patientProfileId && <Button size="small" onClick={() => {
-                                            setDialogForm(current => ({ ...current, patientProfileId: "", patientName: "", patientPhone: "", birthDate: "", identityNumber: "", insuranceCode: "" }));
-                                            setPatientMatches([]);
-                                        }}>Bỏ chọn hồ sơ</Button>}
-                                    </Stack>
-                                    {patientMatches.length > 0 && <TextField select size="small" fullWidth label="Chọn hồ sơ đã đối chiếu" value={dialogForm.patientProfileId}
-                                        onChange={event => {
-                                            const patient = patientMatches.find(item => item.patientId === Number(event.target.value));
-                                            setDialogForm(current => ({ ...current, patientProfileId: patient?.patientId || "",
-                                                patientName: patient?.fullName || current.patientName,
-                                                patientPhone: patient?.phone || current.patientPhone,
-                                                birthDate: patient?.birthDate?.slice(0, 10) || "",
-                                                identityNumber: patient?.identityNumber || "",
-                                                insuranceCode: patient?.insuranceCode || "" }));
-                                        }}>
-                                        <MenuItem value="">Tạo Patient mới</MenuItem>
-                                        {patientMatches.map(patient => <MenuItem key={patient.patientId} value={patient.patientId}>#{patient.patientId} · {patient.fullName} · {patient.phone}</MenuItem>)}
-                                    </TextField>}
-                                    {!patientMatches.length && <Typography variant="caption" color="text.secondary">Tìm theo số điện thoại; nếu có hồ sơ cũ, chọn đúng Patient trước khi đặt lịch.</Typography>}
-                                </Box>
-                                <TextField size="small" label="Ngày sinh" type="date" value={dialogForm.birthDate} disabled={saving || Boolean(dialogForm.patientProfileId)} slotProps={{ inputLabel: { shrink: true } }} onChange={event => setDialogForm(current => ({ ...current, birthDate: event.target.value }))} />
-                                <TextField size="small" label="Số CCCD / Định danh (VNeID)" value={dialogForm.identityNumber} disabled={saving || Boolean(dialogForm.patientProfileId)} slotProps={{ htmlInput: { maxLength: 20 } }} onChange={event => setDialogForm(current => ({ ...current, identityNumber: event.target.value }))} />
-                                <TextField size="small" label="Mã thẻ BHYT" value={dialogForm.insuranceCode} disabled={saving || Boolean(dialogForm.patientProfileId)} slotProps={{ htmlInput: { maxLength: 30 } }} onChange={event => setDialogForm(current => ({ ...current, insuranceCode: event.target.value }))} />
-                                <TextField sx={{ gridColumn: { md: "1 / -1" } }} size="small" label="Lý do khám / Triệu chứng ban đầu" value={dialogForm.reason} disabled={saving} required multiline minRows={3} slotProps={{ htmlInput: { maxLength: 500 } }} onChange={event => setDialogForm(current => ({ ...current, reason: event.target.value }))} />
-                            </Box>
-                        </Box>
-                        <Box sx={{ ...DIRECT_FORM_CARD_SX, bgcolor: "#eef7ff", borderColor: "#b8d9fb", borderTop: "3px solid #0f6fbf" }}>
-                            <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", mb: 1.5 }}>
-                                <Typography variant="overline" color="primary" sx={{ fontWeight: 800 }}>▣ Bước 6: Tóm tắt lịch hẹn</Typography>
-                            </Stack>
-                            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(4, 1fr)" }, gap: 1.5 }}>
-                                <Box><Typography variant="caption" color="text.secondary">Chuyên khoa:</Typography><Typography variant="body2" sx={{ fontWeight: 700 }}>{selectedDepartment?.name || "Chưa chọn"}</Typography></Box>
-                                <Box><Typography variant="caption" color="text.secondary">Bác sĩ & Phòng:</Typography><Typography variant="body2" sx={{ fontWeight: 700 }}>{selectedDoctor ? `${selectedDoctor.title} ${selectedDoctor.fullName}` : "Chưa chọn"}</Typography></Box>
-                                <Box><Typography variant="caption" color="text.secondary">Thời gian hẹn:</Typography><Typography variant="body2" color="primary" sx={{ fontWeight: 800 }}>{selectedSlot ? `${formatTime(selectedSlot.startTime)} ${formatDate(dialogForm.appointmentDate)}` : "Chưa chọn"}</Typography></Box>
-                                <Box><Typography variant="caption" color="text.secondary">Hồ sơ Patient:</Typography><Typography variant="body2" sx={{ fontWeight: 700 }}>{dialogForm.patientProfileId ? `#${dialogForm.patientProfileId} · Patient cũ` : "Tạo Patient mới"}</Typography></Box>
-                            </Box>
-                        </Box>
+
+                    {/* Quick Date Filter Chips */}
+                    <Stack direction="row" spacing={0.75} useFlexGap sx={{ mt: 1.5, flexWrap: "wrap", alignItems: "center" }}>
+                        <Typography sx={{ fontSize: 12.5, fontWeight: 700, color: "#475569", mr: 0.5 }}>
+                            Xem nhanh theo ngày:
+                        </Typography>
+                        <Chip
+                            size="small"
+                            clickable
+                            label={`Từ hôm nay (${formatShortDate(today)})`}
+                            onClick={() =>
+                                setQuery(current => ({ ...current, dateFrom: today, dateTo: "", pageNumber: 1 }))
+                            }
+                            sx={{
+                                fontWeight: 700,
+                                bgcolor: isTodayFilter ? "#0B4F8A" : "#FFFFFF",
+                                color: isTodayFilter ? "#FFFFFF" : "#0B4F8A",
+                                border: "1px solid #90BCE6",
+                            }}
+                        />
+                        <Chip
+                            size="small"
+                            clickable
+                            label={`Chỉ hôm nay (${formatShortDate(today)})`}
+                            onClick={() =>
+                                setQuery(current => ({ ...current, dateFrom: today, dateTo: today, pageNumber: 1 }))
+                            }
+                            sx={{
+                                fontWeight: 700,
+                                bgcolor: query.dateFrom === today && query.dateTo === today ? "#0B4F8A" : "#FFFFFF",
+                                color: query.dateFrom === today && query.dateTo === today ? "#FFFFFF" : "#0B4F8A",
+                                border: "1px solid #90BCE6",
+                            }}
+                        />
+                        <Chip
+                            size="small"
+                            clickable
+                            label={`Ngày mai (${formatShortDate(addDays(today, 1))})`}
+                            onClick={() =>
+                                setQuery(current => ({
+                                    ...current,
+                                    dateFrom: addDays(today, 1),
+                                    dateTo: addDays(today, 1),
+                                    pageNumber: 1,
+                                }))
+                            }
+                            sx={{
+                                fontWeight: 700,
+                                bgcolor: isTomorrowFilter ? "#0B4F8A" : "#FFFFFF",
+                                color: isTomorrowFilter ? "#FFFFFF" : "#0B4F8A",
+                                border: "1px solid #90BCE6",
+                            }}
+                        />
+                        <Chip
+                            size="small"
+                            clickable
+                            label="Mọi ngày"
+                            onClick={() =>
+                                setQuery(current => ({ ...current, dateFrom: "", dateTo: "", pageNumber: 1 }))
+                            }
+                            sx={{
+                                fontWeight: 700,
+                                bgcolor: isAllDatesFilter ? "#0B4F8A" : "#FFFFFF",
+                                color: isAllDatesFilter ? "#FFFFFF" : "#0B4F8A",
+                                border: "1px solid #90BCE6",
+                            }}
+                        />
                     </Stack>
-                </DialogContent>
-                <DialogActions sx={{ justifyContent: "space-between", bgcolor: "#f3f7fb", px: 2, py: 1.5, borderTop: "1px solid", borderColor: "divider" }}>
-                    <Typography variant="caption" color="text.secondary">Check-in thực hiện sau khi kiểm tra sổ khám.</Typography>
-                    <Stack direction="row" spacing={1}>
-                        <Button disabled={saving} onClick={() => setAction(null)}>Hủy</Button>
-                        <Button variant="contained" startIcon={<CheckCircleOutlineOutlined />} disabled={saving || createDisabled} onClick={submitAction}>{saving ? "Đang xác nhận..." : "Xác nhận"}</Button>
-                    </Stack>
-                </DialogActions>
-            </> : <>
-                <DialogTitle>{actionTitle}</DialogTitle>
-                <DialogContent>
-                    <Stack spacing={2} sx={{ pt: 1 }}>
-                        {dialogError && <Alert severity="error">{dialogError}</Alert>}
-                        {action?.appointment && <Box>
-                            <Typography sx={{ fontWeight: 700 }}>{action.appointment.patientName}</Typography>
-                            <Typography variant="body2" color="text.secondary">{formatDate(action.appointment.appointmentDate)} · {formatTime(action.appointment.startTime)} · {action.appointment.doctorName}</Typography>
-                        </Box>}
-                        {action?.type === "confirm" && <Typography color="text.secondary">Lịch hẹn sẽ chuyển sang trạng thái đã xác nhận để bệnh nhân đến khám đúng giờ.</Typography>}
-                        {action?.type === "cancel" && <Typography color="text.secondary">Lịch hẹn bị hủy sẽ nhả khung giờ để bệnh nhân khác có thể đặt lại.</Typography>}
-                        {action?.type === "reschedule" && <>
-                            <TextField select label="Khoa" value={dialogForm.departmentId} disabled={saving} onChange={event => {
-                                setDoctors([]);
-                                setSlots([]);
-                                setDialogForm(current => ({ ...current, departmentId: event.target.value, doctorId: "", startTime: "" }));
-                            }}>
-                                <MenuItem value="">Chọn khoa</MenuItem>
-                                {departments.map(department => <MenuItem key={department.departmentId} value={department.departmentId}>{department.name}</MenuItem>)}
-                            </TextField>
-                            <TextField select label="Bác sĩ" value={dialogForm.doctorId} disabled={saving || !dialogForm.departmentId} onChange={event => {
-                                setSlots([]);
-                                setDialogForm(current => ({ ...current, doctorId: event.target.value, startTime: "" }));
-                            }}>
-                                <MenuItem value="">Chọn bác sĩ</MenuItem>
-                                {doctors.map(doctor => <MenuItem key={doctor.doctorId} value={doctor.doctorId}>{doctor.title} {doctor.fullName}</MenuItem>)}
-                            </TextField>
-                            <TextField label="Ngày khám" type="date" value={dialogForm.appointmentDate} disabled={saving} onChange={event => {
-                                setSlots([]);
-                                setDialogForm(current => ({ ...current, appointmentDate: event.target.value, startTime: "" }));
-                            }} slotProps={{ inputLabel: { shrink: true } }} />
-                            <TextField select label="Khung giờ còn trống" value={dialogForm.startTime} disabled={saving || !slots.length} onChange={event => setDialogForm(current => ({ ...current, startTime: event.target.value }))}>
-                                <MenuItem value="">Chọn giờ khám</MenuItem>
-                                {slots.map(slot => <MenuItem key={slot.startTime} value={slot.startTime}>{formatTime(slot.startTime)} - {formatTime(slot.endTime)}</MenuItem>)}
-                            </TextField>
-                            {dialogForm.doctorId && dialogForm.appointmentDate && !slots.length && <Chip size="small" color="warning" variant="outlined" label="Không có khung giờ trống cho ngày đã chọn" />}
-                        </>}
-                    </Stack>
-                </DialogContent>
-                <DialogActions>
-                    <Button disabled={saving} onClick={() => setAction(null)}>Đóng</Button>
-                    <Button variant="contained" color={action?.type === "cancel" ? "error" : "primary"} disabled={saving || (action?.type === "reschedule" && scheduleDisabled)} onClick={submitAction}>
-                        {saving ? "Đang lưu..." : "Xác nhận"}
+                </Box>
+
+                {/* Filter Form */}
+                <Stack
+                    component="form"
+                    onSubmit={event => {
+                        event.preventDefault();
+                        changeFilter("search", search.trim());
+                    }}
+                    direction={{ xs: "column", lg: "row" }}
+                    spacing={1.5}
+                    useFlexGap
+                    sx={{ p: { xs: 2, sm: 2.5 }, bgcolor: "#F3F7FB", flexWrap: "wrap", minWidth: 0 }}
+                >
+                    <TextField
+                        label="Tìm lịch hẹn"
+                        placeholder="Tên, SĐT, bác sĩ hoặc lý do"
+                        value={search}
+                        onChange={event => setSearch(event.target.value)}
+                        size="small"
+                        sx={{ flex: 1, minWidth: { xs: 0, sm: 220 }, ...clinicFieldSx }}
+                        slotProps={{ htmlInput: { maxLength: 100 } }}
+                    />
+                    <Button type="submit" variant="contained" startIcon={<SearchOutlined />} sx={clinicPrimaryButtonSx}>
+                        Tìm kiếm
                     </Button>
-                </DialogActions>
-            </>}
-        </Dialog>
-        {checkInAppointment && <ReceptionCheckInDialog appointment={items.find(item => item.appointmentId === checkInAppointment.appointmentId) || checkInAppointment}
-            onClose={() => setCheckInAppointment(null)} onCheckedIn={async () => {
-                setCheckInAppointment(null);
-                setNotice("Đã check-in sau khi kiểm tra sổ khám.");
-                await loadAppointments();
-            }} />}
-        <Snackbar
-            open={toast.open}
-            anchorOrigin={{ vertical: "top", horizontal: "right" }}
-            autoHideDuration={toast.status === "loading" ? null : 3000}
-            onClose={() => {
-                if (toast.status !== "loading") setToast(current => ({ ...current, open: false }));
-            }}
-        >
-            <Alert
-                severity={toast.status === "error" ? "error" : "success"}
-                variant="filled"
-                icon={toast.status === "loading" ? <CircularProgress size={18} color="inherit" /> : undefined}
-                sx={{ alignItems: "center", minWidth: 280, boxShadow: "0 14px 34px rgba(22, 45, 74, 0.24)" }}
+                    <TextField
+                        select
+                        label="Trạng thái"
+                        value={query.status}
+                        onChange={event => changeFilter("status", event.target.value)}
+                        size="small"
+                        sx={{ minWidth: { xs: 0, sm: 175 }, ...clinicFieldSx }}
+                    >
+                        <MenuItem value="">Tất cả trạng thái</MenuItem>
+                        {STATUS_OPTIONS.map(option => (
+                            <MenuItem key={option.value} value={option.value}>
+                                {option.label}
+                            </MenuItem>
+                        ))}
+                    </TextField>
+                    <TextField
+                        select
+                        label="Bác sĩ"
+                        value={query.doctorId}
+                        onChange={event => changeFilter("doctorId", event.target.value)}
+                        size="small"
+                        sx={{ minWidth: { xs: 0, sm: 185 }, ...clinicFieldSx }}
+                    >
+                        <MenuItem value="">Tất cả bác sĩ</MenuItem>
+                        {filterDoctors.map(doctor => (
+                            <MenuItem key={doctor.doctorId} value={doctor.doctorId}>
+                                {doctor.fullName}
+                            </MenuItem>
+                        ))}
+                    </TextField>
+                    <TextField
+                        label="Từ ngày"
+                        type="date"
+                        value={query.dateFrom}
+                        onChange={event => changeFilter("dateFrom", event.target.value)}
+                        size="small"
+                        sx={{ minWidth: { xs: 0, sm: 160 }, ...clinicFieldSx }}
+                        slotProps={{ inputLabel: { shrink: true } }}
+                    />
+                    <TextField
+                        label="Đến ngày"
+                        type="date"
+                        value={query.dateTo}
+                        onChange={event => changeFilter("dateTo", event.target.value)}
+                        size="small"
+                        sx={{ minWidth: { xs: 0, sm: 160 }, ...clinicFieldSx }}
+                        slotProps={{ inputLabel: { shrink: true } }}
+                    />
+                    <Button
+                        startIcon={<RestartAltOutlined />}
+                        sx={clinicResetButtonSx}
+                        onClick={() => {
+                            setSearch("");
+                            setQuery(current => ({
+                                ...current,
+                                search: "",
+                                status: "",
+                                doctorId: "",
+                                dateFrom: "",
+                                dateTo: "",
+                                pageNumber: 1,
+                            }));
+                        }}
+                    >
+                        Xóa bộ lọc
+                    </Button>
+                </Stack>
+
+                {loading && <LinearProgress aria-label="Đang tải lịch hẹn" />}
+
+                <Typography
+                    sx={{
+                        px: 2,
+                        py: 1,
+                        display: { xs: "block", md: "none" },
+                        fontSize: 12,
+                        color: clinicColors.muted,
+                        bgcolor: "#FFFFFF",
+                    }}
+                >
+                    Vuốt ngang bảng để xem đầy đủ cột trạng thái và nút thao tác.
+                </Typography>
+
+                <TableContainer sx={{ overflowX: "auto" }}>
+                    <Table aria-label="Danh sách lịch hẹn" sx={{ minWidth: 980, ...clinicTableSx }}>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell padding="checkbox">
+                                    <Checkbox
+                                        aria-label="Chọn tất cả lịch chờ xác nhận"
+                                        checked={allPendingSelected}
+                                        indeterminate={somePendingSelected}
+                                        disabled={!pendingItems.length || loading}
+                                        onChange={event => toggleSelectAllPending(event.target.checked)}
+                                    />
+                                </TableCell>
+                                {["Bệnh nhân", "Lịch khám", "Bác sĩ & Khoa", "Lý do khám", "Trạng thái", "Thao tác"].map(
+                                    label => (
+                                        <TableCell key={label}>{label}</TableCell>
+                                    )
+                                )}
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {items.map(appointment => {
+                                const apptDate = toDateInput(appointment.appointmentDate);
+                                const isPending = appointment.status === "Pending";
+                                const isReadyCheckIn =
+                                    appointment.status === "Confirmed" &&
+                                    !appointment.checkedInAt &&
+                                    apptDate === today;
+
+                                return (
+                                    <TableRow
+                                        key={appointment.appointmentId}
+                                        hover
+                                        sx={{
+                                            bgcolor: isPending
+                                                ? "rgba(255, 251, 235, 0.45)"
+                                                : isReadyCheckIn
+                                                ? "rgba(232, 242, 252, 0.35)"
+                                                : "#FFFFFF",
+                                        }}
+                                    >
+                                        <TableCell padding="checkbox">
+                                            <Checkbox
+                                                aria-label={`Chọn lịch hẹn của ${appointment.patientName}`}
+                                                checked={selectedIds.includes(appointment.appointmentId)}
+                                                disabled={!isPending || loading || bulkSaving}
+                                                onChange={event =>
+                                                    toggleSelectAppointment(
+                                                        appointment.appointmentId,
+                                                        event.target.checked
+                                                    )
+                                                }
+                                            />
+                                        </TableCell>
+                                        <TableCell>
+                                            <Typography sx={{ fontWeight: 800, color: "#0A2540" }}>
+                                                {appointment.patientName}
+                                            </Typography>
+                                            <Typography
+                                                variant="body2"
+                                                sx={{ color: "#475569", fontVariantNumeric: "tabular-nums" }}
+                                            >
+                                                {appointment.patientPhone} · #{appointment.appointmentId}
+                                            </Typography>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+                                                <CalendarMonthOutlined fontSize="small" color="primary" />
+                                                <Box>
+                                                    <Typography sx={{ fontWeight: 750, fontVariantNumeric: "tabular-nums" }}>
+                                                        {formatDate(appointment.appointmentDate)}
+                                                    </Typography>
+                                                    <Typography
+                                                        variant="body2"
+                                                        sx={{ color: "#0B4F8A", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}
+                                                    >
+                                                        {formatTime(appointment.startTime)} – {formatTime(appointment.endTime)}
+                                                    </Typography>
+                                                </Box>
+                                            </Stack>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Typography sx={{ fontWeight: 700, color: "#0A2540" }}>
+                                                {appointment.doctorName}
+                                            </Typography>
+                                            <Typography variant="body2" color="text.secondary">
+                                                {appointment.departmentName}
+                                            </Typography>
+                                        </TableCell>
+                                        <TableCell sx={{ maxWidth: 250 }}>
+                                            <Typography variant="body2" sx={{ whiteSpace: "normal", lineHeight: 1.5 }}>
+                                                {appointment.reason}
+                                            </Typography>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Stack spacing={0.6} sx={{ alignItems: "flex-start" }}>
+                                                <StatusBadge status={appointment.status} />
+                                                {appointment.checkedInAt && (
+                                                    <Chip
+                                                        size="small"
+                                                        icon={<HowToRegOutlined sx={{ fontSize: "14px !important" }} />}
+                                                        color="success"
+                                                        label="Đã check-in"
+                                                        sx={{ height: 22, fontSize: 11.5, fontWeight: 750 }}
+                                                    />
+                                                )}
+                                            </Stack>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Stack direction="row" spacing={0.75} useFlexGap sx={{ flexWrap: "wrap" }}>
+                                                <Button
+                                                    size="small"
+                                                    variant={isPending ? "contained" : "outlined"}
+                                                    color={isPending ? "success" : "inherit"}
+                                                    sx={
+                                                        isPending
+                                                            ? {
+                                                                  minHeight: 32,
+                                                                  px: 1.4,
+                                                                  borderRadius: "8px",
+                                                                  textTransform: "none",
+                                                                  fontWeight: 800,
+                                                                  fontSize: 13,
+                                                                  boxShadow: "none",
+                                                              }
+                                                            : OUTLINE_ACTION_SX
+                                                    }
+                                                    startIcon={<CheckCircleOutlineOutlined />}
+                                                    disabled={!isPending || loading}
+                                                    onClick={() => openConfirm(appointment)}
+                                                >
+                                                    Xác nhận
+                                                </Button>
+
+                                                <Button
+                                                    size="small"
+                                                    variant={isReadyCheckIn ? "contained" : "outlined"}
+                                                    sx={
+                                                        isReadyCheckIn
+                                                            ? {
+                                                                  minHeight: 32,
+                                                                  px: 1.4,
+                                                                  borderRadius: "8px",
+                                                                  textTransform: "none",
+                                                                  fontWeight: 800,
+                                                                  fontSize: 13,
+                                                                  bgcolor: "#0B4F8A",
+                                                                  color: "#FFFFFF",
+                                                                  boxShadow: "none",
+                                                                  "&:hover": { bgcolor: "#083A66", boxShadow: "none" },
+                                                              }
+                                                            : OUTLINE_ACTION_SX
+                                                    }
+                                                    startIcon={<AssignmentTurnedInOutlined />}
+                                                    disabled={!isReadyCheckIn || loading}
+                                                    onClick={() => setCheckInAppointment(appointment)}
+                                                >
+                                                    Check-in
+                                                </Button>
+
+                                                <Button
+                                                    size="small"
+                                                    sx={OUTLINE_ACTION_SX}
+                                                    startIcon={<EditCalendarOutlined />}
+                                                    disabled={
+                                                        ["Cancelled", "Completed", "InProgress"].includes(
+                                                            appointment.status
+                                                        ) ||
+                                                        Boolean(appointment.checkedInAt) ||
+                                                        loading
+                                                    }
+                                                    onClick={() => openReschedule(appointment)}
+                                                >
+                                                    Đổi lịch
+                                                </Button>
+
+                                                <Button
+                                                    size="small"
+                                                    color="error"
+                                                    sx={{
+                                                        ...OUTLINE_ACTION_SX,
+                                                        color: "#DC2626",
+                                                        borderColor: "#FECACA",
+                                                        bgcolor: "#FEF2F2",
+                                                        "&:hover": { bgcolor: "#FEE2E2", borderColor: "#DC2626" },
+                                                    }}
+                                                    startIcon={<CancelOutlined />}
+                                                    disabled={
+                                                        ["Cancelled", "Completed", "InProgress"].includes(
+                                                            appointment.status
+                                                        ) ||
+                                                        Boolean(appointment.checkedInAt) ||
+                                                        loading
+                                                    }
+                                                    onClick={() => openCancel(appointment)}
+                                                >
+                                                    Hủy
+                                                </Button>
+                                            </Stack>
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })}
+                            {!loading && !items.length && (
+                                <TableRow>
+                                    <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
+                                        <Typography sx={{ fontWeight: 700, color: "#0A2540", mb: 0.5 }}>
+                                            Không tìm thấy lịch hẹn phù hợp
+                                        </Typography>
+                                        <Typography variant="body2" color="text.secondary">
+                                            Hãy thử chọn “Mọi ngày”, xóa bộ lọc tìm kiếm hoặc bấm “Đặt lịch trực tiếp” để tiếp nhận khách mới.
+                                        </Typography>
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+
+                <TablePagination
+                    component="div"
+                    count={totalItems}
+                    page={query.pageNumber - 1}
+                    rowsPerPage={query.pageSize}
+                    rowsPerPageOptions={[10, 20, 50]}
+                    labelRowsPerPage="Số dòng"
+                    labelDisplayedRows={({ from, to, count }) => `${from}-${to} / ${count}`}
+                    onPageChange={(_, page) => setQuery(current => ({ ...current, pageNumber: page + 1 }))}
+                    onRowsPerPageChange={event =>
+                        setQuery(current => ({
+                            ...current,
+                            pageNumber: 1,
+                            pageSize: Number(event.target.value),
+                        }))
+                    }
+                />
+            </Paper>
+
+            <AppointmentDialogs
+                action={action}
+                saving={saving}
+                dialogError={dialogError}
+                dialogForm={dialogForm}
+                setDialogForm={setDialogForm}
+                departments={departments}
+                doctors={doctors}
+                setDoctors={setDoctors}
+                slots={slots}
+                setSlots={setSlots}
+                slotsLoading={slotsLoading}
+                patientMatches={patientMatches}
+                setPatientMatches={setPatientMatches}
+                matchingPatients={matchingPatients}
+                onMatchPatients={handleMatchPatients}
+                today={today}
+                directDateOptions={directDateOptions}
+                onClose={() => setAction(null)}
+                onSubmit={submitAction}
+            />
+
+            {checkInAppointment && (
+                <ReceptionCheckInDialog
+                    appointment={
+                        items.find(item => item.appointmentId === checkInAppointment.appointmentId) ||
+                        checkInAppointment
+                    }
+                    onClose={() => setCheckInAppointment(null)}
+                    onCheckedIn={async () => {
+                        setCheckInAppointment(null);
+                        setNotice("Đã check-in sau khi kiểm tra sổ khám.");
+                        await loadAppointments();
+                        await loadSummary();
+                    }}
+                />
+            )}
+
+            <Snackbar
+                open={toast.open}
+                anchorOrigin={{ vertical: "top", horizontal: "right" }}
+                autoHideDuration={toast.status === "loading" ? null : 3000}
+                onClose={() => {
+                    if (toast.status !== "loading") setToast(current => ({ ...current, open: false }));
+                }}
             >
-                {toast.message}
-            </Alert>
-        </Snackbar>
-    </Stack>;
+                <Alert
+                    severity={toast.status === "error" ? "error" : "success"}
+                    variant="filled"
+                    icon={toast.status === "loading" ? <CircularProgress size={18} color="inherit" /> : undefined}
+                    sx={{ alignItems: "center", minWidth: 280, boxShadow: "0 14px 34px rgba(22, 45, 74, 0.24)" }}
+                >
+                    {toast.message}
+                </Alert>
+            </Snackbar>
+        </Stack>
+    );
 }

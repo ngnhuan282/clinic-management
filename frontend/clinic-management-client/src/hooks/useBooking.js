@@ -300,6 +300,7 @@ export function useBooking() {
         setPatientPhone,
         setReason,
         resetForm,
+        refreshSlots,
         submitBooking,
     };
 }
