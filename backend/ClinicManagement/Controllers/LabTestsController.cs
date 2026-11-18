@@ -24,6 +24,12 @@ public class LabTestsController(ILabTestService labTests, ICurrentUserService cu
     public async Task<IActionResult> GetPendingTests() =>
         Ok(await labTests.GetPendingLabTestsAsync());
 
+    // IX.2 & IX.3: Kỹ thuật viên tiếp nhận chỉ định và bắt đầu thực hiện xét nghiệm
+    [HttpPost("{id:int}/start")]
+    [Authorize(Policy = PermissionCodes.LabsEnterResult)]
+    public async Task<IActionResult> StartTest(int id) =>
+        Ok(await labTests.StartLabTestAsync(id, currentUser.GetRequiredUserId()));
+
     [HttpPost("results")]
     [Authorize(Policy = PermissionCodes.LabsEnterResult)]
     public async Task<IActionResult> SubmitResult(CreateLabTestResultDto request) =>
