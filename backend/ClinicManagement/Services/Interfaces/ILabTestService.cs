@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using ClinicManagement.DTOs.LabTests;
 using ClinicManagement.DTOs.LabTestResults;
-using ClinicManagement.DTOs;
 
 namespace ClinicManagement.Services
 {
@@ -11,6 +10,7 @@ namespace ClinicManagement.Services
         Task<List<LabTestResponseDto>> GetLabTestsAsync(int currentUserId, string currentUserRole);
         Task<LabTestResponseDto> CreateLabTestAsync(int doctorId, CreateLabTestDto dto);
         Task<List<LabTestResponseDto>> GetPendingLabTestsAsync();
+        Task<LabTestResponseDto> StartLabTestAsync(int labTestId, int technicianId);
         Task<bool> SubmitResultAsync(int technicianId, CreateLabTestResultDto dto);
         Task<LabTestResponseDto?> GetLabTestByIdAsync(int id, int currentUserId, string currentUserRole);
     }

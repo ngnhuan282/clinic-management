@@ -30,8 +30,7 @@ public class AdminDashboardController : ControllerBase
         var nextMonth = monthStart.AddMonths(1);
 
         var appointmentsToday = _context.Appointments
-            .Where(a => a.AppointmentDate >= today
-                     && a.AppointmentDate < tomorrow);
+            .Where(a => a.AppointmentDate >= today && a.AppointmentDate < tomorrow);
 
         var completedToday = await appointmentsToday
             .CountAsync(a => a.Status == AppointmentStatusConstants.Completed);
@@ -40,16 +39,13 @@ public class AdminDashboardController : ControllerBase
             .CountAsync(a => a.Status == AppointmentStatusConstants.InProgress);
 
         var appointmentsThisMonth = _context.Appointments
-            .Where(a => a.AppointmentDate >= monthStart
-                     && a.AppointmentDate < nextMonth);
+            .Where(a => a.AppointmentDate >= monthStart && a.AppointmentDate < nextMonth);
 
         var completedThisMonth = await appointmentsThisMonth
             .CountAsync(a => a.Status == AppointmentStatusConstants.Completed);
 
         var paidInvoicesThisMonth = _context.Invoices
-            .Where(i => i.Status == "Paid"
-                     && i.CreatedAt >= monthStart
-                     && i.CreatedAt < nextMonth);
+            .Where(i => i.Status == "Paid" && i.CreatedAt >= monthStart && i.CreatedAt < nextMonth);
 
         var revenueThisMonth = await paidInvoicesThisMonth
             .SumAsync(i => (decimal?)i.TotalAmount) ?? 0m;
@@ -70,12 +66,7 @@ public class AdminDashboardController : ControllerBase
 
         var stockByMedicine = _context.Inventory
             .AsNoTracking()
-            .GroupBy(i => new
-            {
-                i.MedicineId,
-                i.Medicine.MedicineName,
-                i.Medicine.Unit
-            })
+            .GroupBy(i => new { i.MedicineId, i.Medicine.MedicineName, i.Medicine.Unit })
             .Select(g => new
             {
                 g.Key.MedicineId,
@@ -94,24 +85,69 @@ public class AdminDashboardController : ControllerBase
         return Ok(new
         {
             generatedAt = now,
-            appointments = new
+            appointments = new { completedToday, inProgressToday, completedThisMonth },
+            revenue = new { totalThisMonth = revenueThisMonth, patientPaymentsThisMonth, insurancePaymentsThisMonth },
+            inventory = new { totalStockQuantity, lowStockMedicines, expiredBatches }
+        });
+    }
+
+    // GET: /api/admin-dashboard/appointments?from=2026-11-01&to=2026-11-17
+    [HttpGet("appointments")]
+    public async Task<IActionResult> GetAppointments(
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to)
+    {
+        var now = DateTime.Now;
+        var startDate = (from ?? new DateTime(now.Year, now.Month, 1)).Date;
+        var endDate = (to ?? now.Date).Date;
+
+        if (endDate < startDate)
+        {
+            return BadRequest(new { message = "Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu." });
+        }
+
+        var endExclusive = endDate.AddDays(1);
+
+        var periodAppointments = _context.Appointments
+            .AsNoTracking()
+            .Where(a => a.AppointmentDate >= startDate && a.AppointmentDate < endExclusive);
+
+        var totals = await periodAppointments
+            .GroupBy(a => 1)
+            .Select(g => new
             {
-                completedToday,
-                inProgressToday,
-                completedThisMonth
+                TotalAppointments = g.Count(),
+                CompletedCount = g.Count(a => a.Status == AppointmentStatusConstants.Completed),
+                InProgressCount = g.Count(a => a.Status == AppointmentStatusConstants.InProgress),
+                CancelledCount = g.Count(a => a.Status == AppointmentStatusConstants.Cancelled)
+            })
+            .FirstOrDefaultAsync();
+
+        var dailyAppointments = await periodAppointments
+            .GroupBy(a => a.AppointmentDate.Date)
+            .Select(g => new
+            {
+                date = g.Key,
+                totalAppointments = g.Count(),
+                completedCount = g.Count(a => a.Status == AppointmentStatusConstants.Completed),
+                inProgressCount = g.Count(a => a.Status == AppointmentStatusConstants.InProgress),
+                cancelledCount = g.Count(a => a.Status == AppointmentStatusConstants.Cancelled)
+            })
+            .OrderBy(x => x.date)
+            .ToListAsync();
+
+        return Ok(new
+        {
+            from = startDate,
+            to = endDate,
+            summary = new
+            {
+                totalAppointments = totals?.TotalAppointments ?? 0,
+                completedCount = totals?.CompletedCount ?? 0,
+                inProgressCount = totals?.InProgressCount ?? 0,
+                cancelledCount = totals?.CancelledCount ?? 0
             },
-            revenue = new
-            {
-                totalThisMonth = revenueThisMonth,
-                patientPaymentsThisMonth,
-                insurancePaymentsThisMonth
-            },
-            inventory = new
-            {
-                totalStockQuantity,
-                lowStockMedicines,
-                expiredBatches
-            }
+            dailyAppointments
         });
     }
 
@@ -127,19 +163,14 @@ public class AdminDashboardController : ControllerBase
 
         if (endDate < startDate)
         {
-            return BadRequest(new
-            {
-                message = "Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu."
-            });
+            return BadRequest(new { message = "Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu." });
         }
 
         var endExclusive = endDate.AddDays(1);
 
         var paidInvoices = _context.Invoices
             .AsNoTracking()
-            .Where(i => i.Status == "Paid"
-                     && i.CreatedAt >= startDate
-                     && i.CreatedAt < endExclusive);
+            .Where(i => i.Status == "Paid" && i.CreatedAt >= startDate && i.CreatedAt < endExclusive);
 
         var totals = await paidInvoices
             .GroupBy(i => 1)
@@ -188,12 +219,7 @@ public class AdminDashboardController : ControllerBase
 
         var stockByMedicine = _context.Inventory
             .AsNoTracking()
-            .GroupBy(i => new
-            {
-                i.MedicineId,
-                i.Medicine.MedicineName,
-                i.Medicine.Unit
-            })
+            .GroupBy(i => new { i.MedicineId, i.Medicine.MedicineName, i.Medicine.Unit })
             .Select(g => new
             {
                 medicineId = g.Key.MedicineId,

@@ -1,5 +1,4 @@
 using System;
-using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -23,7 +22,7 @@ namespace ClinicManagement.Controllers
             _currentUser = currentUser;
         }
 
-        // Lấy danh sách sổ chờ thu tiền theo BillingStage ("Pending" hoặc "LabAndConsultation")
+        // Lấy danh sách sổ chờ thu tiền theo BillingStage ("Book", "Pending", "LabAndConsultation", "Medicine", "Final")
         [HttpGet("pending")]
         [Authorize(Policy = PermissionCodes.BillingView)]
         public async Task<IActionResult> GetPendingBillings([FromQuery] string stage = "Pending")
@@ -32,22 +31,28 @@ namespace ClinicManagement.Controllers
             return Ok(data);
         }
 
-        // Thu ngân lập Hóa đơn
+        // Thu ngân lập Hóa đơn (có thể thu 0đ, thu một phần, hoặc thu đủ)
         [HttpPost]
         [Authorize(Policy = PermissionCodes.BillingCreate)]
-        [Authorize(Policy = PermissionCodes.BillingRecordPayment)]
-public async Task<IActionResult> CreateInvoice([FromBody] CreateInvoiceDto dto)
-{
-    // 1. Lấy claim UserId/NameIdentifier từ JWT Token an toàn
-    var cashierId = _currentUser.GetRequiredUserId();
+        public async Task<IActionResult> CreateInvoice([FromBody] CreateInvoiceDto dto)
+        {
+            var cashierId = _currentUser.GetRequiredUserId();
+            var result = await _invoiceService.CreateInvoiceAsync(cashierId, dto);
+            return Ok(result);
+        }
 
-    // 3. Gọi Service tạo hóa đơn
-    var result = await _invoiceService.CreateInvoiceAsync(cashierId, dto);
-    return Ok(result);
-}
+        // Ghi nhận thanh toán cho hóa đơn Unpaid / PartiallyPaid (VII.6)
+        [HttpPost("{id:int}/payments")]
+        [Authorize(Policy = PermissionCodes.BillingRecordPayment)]
+        public async Task<IActionResult> RecordPayment(int id, [FromBody] RecordInvoicePaymentDto dto)
+        {
+            var cashierId = _currentUser.GetRequiredUserId();
+            var result = await _invoiceService.RecordPaymentAsync(id, cashierId, dto);
+            return Ok(result);
+        }
 
         // Xem chi tiết hóa đơn đã lập
-        [HttpGet("{id}")]
+        [HttpGet("{id:int}")]
         [Authorize(Policy = PermissionCodes.BillingView)]
         public async Task<IActionResult> GetById(int id)
         {
@@ -56,33 +61,31 @@ public async Task<IActionResult> CreateInvoice([FromBody] CreateInvoiceDto dto)
             return Ok(invoice);
         }
 
-// Tra cứu lịch sử hóa đơn đã lập
-[HttpGet("history")]
-[Authorize(Policy = PermissionCodes.BillingView)]
-public async Task<IActionResult> GetInvoiceHistory([FromQuery] string? search)
-{
-    var data = await _invoiceService.GetInvoiceHistoryAsync(search);
-    return Ok(data);
-}
+        // Tra cứu lịch sử hóa đơn & phiếu thu đã lập
+        [HttpGet("history")]
+        [Authorize(Policy = PermissionCodes.BillingView)]
+        public async Task<IActionResult> GetInvoiceHistory([FromQuery] string? search)
+        {
+            var data = await _invoiceService.GetInvoiceHistoryAsync(search);
+            return Ok(data);
+        }
 
-// Lập chứng từ điều chỉnh (Adjustment Invoice)
-[HttpPost("adjustment")]
-[Authorize(Policy = PermissionCodes.BillingCreate)]
-[Authorize(Policy = PermissionCodes.BillingRecordPayment)]
-public async Task<IActionResult> CreateAdjustmentInvoice([FromBody] CreateAdjustmentInvoiceDto dto)
-{
-    var cashierId = _currentUser.GetRequiredUserId();
-
-    try
-    {
-        var result = await _invoiceService.CreateAdjustmentInvoiceAsync(cashierId, dto);
-        return Ok(result);
-    }
-    catch (Exception ex)
-    {
-        return BadRequest(new { message = ex.Message });
-    }
-}
-
+        // Lập chứng từ điều chỉnh / hoàn tiền (VII.8)
+        [HttpPost("adjustment")]
+        [Authorize(Policy = PermissionCodes.BillingCreate)]
+        [Authorize(Policy = PermissionCodes.BillingRecordPayment)]
+        public async Task<IActionResult> CreateAdjustmentInvoice([FromBody] CreateAdjustmentInvoiceDto dto)
+        {
+            var cashierId = _currentUser.GetRequiredUserId();
+            try
+            {
+                var result = await _invoiceService.CreateAdjustmentInvoiceAsync(cashierId, dto);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
     }
 }
