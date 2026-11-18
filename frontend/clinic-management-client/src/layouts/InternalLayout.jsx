@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
     Avatar,
     Box,
@@ -7,112 +7,150 @@ import {
     Divider,
     Drawer,
     IconButton,
-    InputBase,
     Stack,
     Typography,
 } from "@mui/material";
-import AddCircleOutlineOutlinedIcon from "@mui/icons-material/AddCircleOutlineOutlined";
-import BadgeOutlinedIcon from "@mui/icons-material/BadgeOutlined";
-import BarChartOutlinedIcon from "@mui/icons-material/BarChartOutlined";
-import BusinessOutlinedIcon from "@mui/icons-material/BusinessOutlined";
-import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
-import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
-import FolderSharedOutlinedIcon from "@mui/icons-material/FolderSharedOutlined";
-import HelpOutlineOutlinedIcon from "@mui/icons-material/HelpOutlineOutlined";
-import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
-import LocalHospitalOutlinedIcon from "@mui/icons-material/LocalHospitalOutlined";
-import LocalPharmacyOutlinedIcon from "@mui/icons-material/LocalPharmacyOutlined";
-import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
-import MedicalServicesOutlinedIcon from "@mui/icons-material/MedicalServicesOutlined";
-import MenuOutlinedIcon from "@mui/icons-material/MenuOutlined";
-import NotificationBell from "../components/common/NotificationBell";
-import PaymentsOutlinedIcon from "@mui/icons-material/PaymentsOutlined";
-import PeopleAltOutlinedIcon from "@mui/icons-material/PeopleAltOutlined";
-import ScienceOutlinedIcon from "@mui/icons-material/ScienceOutlined";
-import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
-import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
-import SecurityOutlinedIcon from "@mui/icons-material/SecurityOutlined";
+import {
+    AccountCircleRounded,
+    AdminPanelSettingsRounded,
+    AssignmentIndRounded,
+    BarChartRounded,
+    BiotechRounded,
+    CalendarMonthRounded,
+    DashboardRounded,
+    DomainRounded,
+    EditCalendarRounded,
+    EventAvailableRounded,
+    EventNoteRounded,
+    FactCheckRounded,
+    Inventory2Rounded,
+    LocalHospitalRounded,
+    LocalPharmacyRounded,
+    LogoutRounded,
+    ManageAccountsRounded,
+    MedicalInformationRounded,
+    MedicalServicesRounded,
+    MeetingRoomRounded,
+    MenuBookRounded,
+    MenuRounded,
+    MedicationRounded,
+    OpenInNewRounded,
+    PaymentsRounded,
+    ScienceRounded,
+    SettingsRounded,
+    StarOutlineRounded,
+} from "@mui/icons-material";
 import {
     Link as RouterLink,
     useLocation,
     useNavigate,
 } from "react-router-dom";
 
-import useAuth from "../hooks/useAuth";
+import NotificationBell from "../components/common/NotificationBell";
 import RouteContent from "../components/common/RouteContent";
+import { AdminAddIcon, clinicColors } from "../components/common/clinicUi";
+import useAuth from "../hooks/useAuth";
 import {
     INTERNAL_PAGES,
     ROLE_LABELS,
     canSeePage,
 } from "../routes/roleAccess";
 
-const SIDEBAR_WIDTH = 260;
-const TOPBAR_HEIGHT = 76;
+const SIDEBAR_WIDTH = 272;
+const TOPBAR_HEIGHT = 70;
 
 const MENU_ICONS = {
-    "/internal/department-statistics": BarChartOutlinedIcon,
-    "/internal/dashboard": DashboardOutlinedIcon,
-    "/internal/examinations": MedicalServicesOutlinedIcon,
-    "/internal/doctor/stock-reviews": FactCheckOutlinedIcon,
-    "/internal/diseases": FactCheckOutlinedIcon,
-    "/internal/users": BadgeOutlinedIcon,
-    "/internal/roles-permissions": SecurityOutlinedIcon,
-    "/internal/schedule-requests": FactCheckOutlinedIcon,
-    "/internal/departments": BusinessOutlinedIcon,
-    "/internal/specializations": PeopleAltOutlinedIcon,
-    "/internal/rooms": FolderSharedOutlinedIcon,
-    "/internal/medicines": LocalPharmacyOutlinedIcon,
-    "/internal/pharmacy/dispensing": LocalPharmacyOutlinedIcon,
-    "/internal/pharmacy/inventory": Inventory2OutlinedIcon,
-    "/internal/lab-test-types": ScienceOutlinedIcon,
-    "/internal/doctor/lab-orders": ScienceOutlinedIcon,
-    "/internal/technician/lab-queue": ScienceOutlinedIcon,
-    "/internal/invoices": PaymentsOutlinedIcon,
-    "/internal/reports": BarChartOutlinedIcon,
-    "/internal/settings": SettingsOutlinedIcon,
+    "/internal/dashboard": DashboardRounded,
+    "/internal/appointments": EventAvailableRounded,
+    "/internal/patient-books": MenuBookRounded,
+    "/internal/cashier/billing": PaymentsRounded,
+    "/internal/examinations": MedicalServicesRounded,
+    "/internal/doctor/lab-orders": BiotechRounded,
+    "/internal/technician/lab-queue": ScienceRounded,
+    "/internal/doctor/stock-reviews": FactCheckRounded,
+    "/internal/doctor/schedule-requests": EditCalendarRounded,
+    "/internal/department-schedules": EventNoteRounded,
+    "/internal/department-statistics": BarChartRounded,
+    "/internal/doctor-schedules": CalendarMonthRounded,
+    "/internal/schedule-requests": FactCheckRounded,
+    "/internal/departments": DomainRounded,
+    "/internal/specializations": MedicalInformationRounded,
+    "/internal/rooms": MeetingRoomRounded,
+    "/internal/diseases": MedicalInformationRounded,
+    "/internal/lab-test-types": ScienceRounded,
+    "/internal/pharmacy/dispensing": LocalPharmacyRounded,
+    "/internal/medicines": MedicationRounded,
+    "/internal/pharmacy/inventory": Inventory2Rounded,
+    "/internal/users": ManageAccountsRounded,
+    "/internal/roles-permissions": AdminPanelSettingsRounded,
+    "/internal/reviews": StarOutlineRounded,
+    "/internal/settings": SettingsRounded,
+    "/internal/doctor/profile": AssignmentIndRounded,
+    "/internal/profile": AccountCircleRounded,
 };
 
 const ROLE_BRANDS = {
-    Cashier: { title: "MediFlow Cashier", subtitle: "Thu ngân" },
     Admin: {
         title: "MediFlow Admin",
-        subtitle: "Phòng khám Đa khoa",
+        subtitle: "Hệ thống Quản trị Y tế",
+    },
+    Cashier: {
+        title: "MediFlow Cashier",
+        subtitle: "Nghiệp vụ Thu ngân",
     },
     Doctor: {
         title: "MediFlow Doctor",
-        subtitle: "Nghiệp vụ lâm sàng",
+        subtitle: "Nghiệp vụ Lâm sàng",
     },
     DepartmentHead: {
-        title: "MediFlow Doctor",
-        subtitle: "Trưởng khoa",
+        title: "MediFlow Clinic",
+        subtitle: "Điều hành Khoa phòng",
     },
     Receptionist: {
         title: "MediFlow Desk",
-        subtitle: "Tiếp nhận & Thu ngân",
+        subtitle: "Tiếp đón & Điều phối",
     },
     LabTechnician: {
         title: "MediFlow Lab",
-        subtitle: "Xét nghiệm",
+        subtitle: "Xét nghiệm Cận lâm sàng",
     },
     Pharmacist: {
         title: "MediFlow Pharmacy",
-        subtitle: "Quầy cấp thuốc",
+        subtitle: "Dược & Cấp phát thuốc",
     },
 };
 
 function InternalLayout() {
-    const {
-        user,
-        role,
-        logout,
-    } = useAuth();
+    const { user, role, logout } = useAuth();
     const { pathname } = useLocation();
     const navigate = useNavigate();
     const [mobileOpen, setMobileOpen] = useState(false);
     const [loggingOut, setLoggingOut] = useState(false);
 
-    const pages = INTERNAL_PAGES.filter((page) => canSeePage(user, page));
-    const brand = ROLE_BRANDS[role] || { title: `MediFlow ${role || "Portal"}`, subtitle: "Nội bộ phòng khám" };
+    const pages = useMemo(
+        () => INTERNAL_PAGES.filter((page) => canSeePage(user, page)),
+        [user]
+    );
+
+    const groupedPages = useMemo(() => {
+        const groups = [];
+        const map = new Map();
+        pages.forEach((page) => {
+            const key = page.group || "Chức năng";
+            if (!map.has(key)) {
+                const entry = { title: key, items: [] };
+                map.set(key, entry);
+                groups.push(entry);
+            }
+            map.get(key).items.push(page);
+        });
+        return groups;
+    }, [pages]);
+
+    const brand = ROLE_BRANDS[role] || {
+        title: `MediFlow ${role || "Portal"}`,
+        subtitle: "Không gian nội bộ",
+    };
     const roleLabel = ROLE_LABELS[role] || role || "Nội bộ";
     const initial =
         user?.fullName?.trim()?.slice(0, 1) ||
@@ -121,97 +159,112 @@ function InternalLayout() {
         "A";
 
     const isMenuActive = (page) =>
-        pathname === page.path ||
-        pathname.startsWith(`${page.path}/`);
+        pathname === page.path || pathname.startsWith(`${page.path}/`);
+
+    const activePage = pages.find(isMenuActive);
+
+    const todayLabel = useMemo(
+        () =>
+            new Intl.DateTimeFormat("vi-VN", {
+                weekday: "short",
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+            }).format(new Date()),
+        []
+    );
 
     async function handleLogout() {
         setLoggingOut(true);
-
         try {
             await logout();
         } catch {
-            // Local credentials are removed by the auth slice.
+            // Local credentials are cleared by the auth slice.
         } finally {
             navigate("/internal/login", { replace: true });
         }
     }
 
-    const primaryActionPath = role === "Pharmacist"
-        ? "/internal/pharmacy/dispensing"
-        : role === "LabTechnician"
-        ? "/internal/technician/lab-queue"
-        : role === "Doctor" || role === "DepartmentHead" ? "/internal/examinations" : "/internal/dashboard";
-    const primaryActionLabel = role === "Pharmacist"
-        ? "Mở quầy cấp thuốc"
-        : role === "LabTechnician"
-        ? "Xem hàng chờ xét nghiệm"
-        : role === "Doctor" || role === "DepartmentHead" ? "Gọi lượt kế tiếp" : "Tiếp đón & Đặt hẹn mới";
-    const showPrimaryAction = role === "Doctor" || role === "DepartmentHead" || role === "LabTechnician" || role === "Pharmacist" ||
-        ((role === "Admin" || role === "Receptionist") && user?.permissions?.includes("appointments.view"));
+    const primaryActionPath =
+        role === "Pharmacist"
+            ? "/internal/pharmacy/dispensing"
+            : role === "LabTechnician"
+              ? "/internal/technician/lab-queue"
+              : role === "Doctor" || role === "DepartmentHead"
+                ? "/internal/examinations"
+                : "/internal/appointments";
+
+    const primaryActionLabel =
+        role === "Pharmacist"
+            ? "Quầy cấp thuốc"
+            : role === "LabTechnician"
+              ? "Hàng chờ xét nghiệm"
+              : role === "Doctor" || role === "DepartmentHead"
+                ? "Hàng chờ khám"
+                : "Tiếp đón & Lịch hẹn";
+
+    const showPrimaryAction =
+        !pathname.startsWith(primaryActionPath) &&
+        (role === "Doctor" ||
+            role === "DepartmentHead" ||
+            role === "LabTechnician" ||
+            role === "Pharmacist" ||
+            ((role === "Admin" || role === "Receptionist") &&
+                user?.permissions?.includes("appointments.view")));
 
     const navigation = (
-        <Stack sx={{ height: "100%" }}>
+        <Stack sx={{ height: "100%", bgcolor: "#FFFFFF" }}>
             <Stack
                 component={RouterLink}
                 to="/internal/dashboard"
                 direction="row"
                 spacing={1.5}
+                onClick={() => setMobileOpen(false)}
                 sx={{
                     alignItems: "center",
-                    height: TOPBAR_HEIGHT,
-                    px: 2,
-                    pt: 1,
-                    boxSizing: "border-box",
+                    minHeight: TOPBAR_HEIGHT,
+                    px: 2.5,
                     color: "inherit",
                     textDecoration: "none",
-                    borderBottom: "1px solid #E5E9F0",
+                    borderBottom: "1px solid #E4ECF5",
                 }}
             >
                 <Box
                     sx={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: 2,
+                        width: 42,
+                        height: 42,
+                        borderRadius: "12px",
                         display: "grid",
                         placeItems: "center",
                         color: "#FFFFFF",
-                        backgroundColor: "#005DAC",
-                        boxShadow:
-                            "0 8px 18px rgba(0, 93, 172, 0.18)",
+                        bgcolor: clinicColors.primary,
+                        flexShrink: 0,
                     }}
                 >
-                    <LocalHospitalOutlinedIcon />
+                    <LocalHospitalRounded sx={{ fontSize: 23 }} />
                 </Box>
 
-                <Box
-                    sx={{
-                        minWidth: 0,
-                        minHeight: 44,
-                        display: "flex",
-                        flexDirection: "column",
-                        justifyContent: "center",
-                    }}
-                >
+                <Box sx={{ minWidth: 0 }}>
                     <Typography
-                        variant="h6"
                         noWrap
                         sx={{
-                            color: "#005DAC",
-                            fontWeight: 900,
-                            lineHeight: 1.08,
+                            color: clinicColors.heading,
+                            fontSize: 17,
+                            fontWeight: 800,
+                            lineHeight: 1.2,
+                            letterSpacing: "-0.01em",
                         }}
                     >
                         {brand.title}
                     </Typography>
-
                     <Typography
-                        variant="caption"
                         noWrap
                         sx={{
                             display: "block",
-                            color: "#6B7280",
+                            color: "#64748B",
+                            fontSize: 12,
                             fontWeight: 600,
-                            lineHeight: 1.25,
+                            mt: 0.25,
                         }}
                     >
                         {brand.subtitle}
@@ -219,142 +272,143 @@ function InternalLayout() {
                 </Box>
             </Stack>
 
-            {showPrimaryAction && <Box sx={{ p: 1.5 }}>
-                <Button
-                    component={RouterLink}
-                    to={primaryActionPath}
-                    fullWidth
-                    variant="contained"
-                    startIcon={<AddCircleOutlineOutlinedIcon />}
-                    sx={{
-                        minHeight: 44,
-                        fontWeight: 900,
-                        boxShadow:
-                            "0 8px 18px rgba(0, 93, 172, 0.18)",
-                    }}
-                >
-                    {primaryActionLabel}
-                </Button>
-            </Box>}
-
             <Stack
                 component="nav"
-                spacing={0.5}
+                aria-label="Điều hướng nội bộ"
+                spacing={2}
                 sx={{
-                    px: 1.5,
+                    px: 1.75,
+                    py: 2,
                     flex: 1,
                     overflowY: "auto",
                 }}
             >
-                {pages.map((page) => {
-                    const Icon =
-                        MENU_ICONS[page.path] ||
-                        DashboardOutlinedIcon;
-                    const selected = isMenuActive(page);
-
-                    return (
-                        <Button
-                            key={page.path}
-                            component={RouterLink}
-                            to={page.to || page.path}
-                            startIcon={<Icon />}
-                            fullWidth
-                            onClick={() => setMobileOpen(false)}
-                            sx={{
-                                justifyContent: "flex-start",
-                                minHeight: 44,
-                                px: 1.5,
-                                color: selected
-                                    ? "#005DAC"
-                                    : "#4B5563",
-                                backgroundColor: selected
-                                    ? "#EFF6FF"
-                                    : "transparent",
-                                borderLeft: selected
-                                    ? "3px solid #1976D2"
-                                    : "3px solid transparent",
-                                fontWeight: selected ? 900 : 700,
-                                "& .MuiButton-startIcon": {
-                                    color: selected
-                                        ? "#005DAC"
-                                        : "#4B5563",
-                                },
-                                "&:hover": {
-                                    backgroundColor: selected
-                                        ? "#EFF6FF"
-                                        : "#F5F9FD",
-                                },
-                            }}
-                        >
-                            <Stack
-                                direction="row"
+                {groupedPages.map((group) => (
+                    <Box key={group.title}>
+                        {group.title !== "Tổng quan" && (
+                            <Typography
                                 sx={{
-                                    width: "100%",
-                                    alignItems: "center",
-                                    justifyContent: "space-between",
+                                    px: 1.5,
+                                    mb: 0.75,
+                                    fontSize: 11,
+                                    fontWeight: 750,
+                                    letterSpacing: "0.06em",
+                                    textTransform: "uppercase",
+                                    color: "#64748B",
                                 }}
                             >
-                                <Box
-                                    component="span"
-                                    sx={{
-                                        flex: 1,
-                                        minWidth: 0,
-                                        textAlign: "left",
-                                        overflow: "hidden",
-                                        textOverflow: "ellipsis",
-                                    }}
-                                >
-                                    {page.label}
-                                </Box>
+                                {group.title}
+                            </Typography>
+                        )}
 
-                            </Stack>
-                        </Button>
-                    );
-                })}
+                        <Stack spacing={0.5}>
+                            {group.items.map((page) => {
+                                const Icon = MENU_ICONS[page.path] || DashboardRounded;
+                                const selected = isMenuActive(page);
+
+                                return (
+                                    <Button
+                                        key={page.path}
+                                        component={RouterLink}
+                                        to={page.to || page.path}
+                                        startIcon={<Icon sx={{ fontSize: 20 }} />}
+                                        fullWidth
+                                        onClick={() => setMobileOpen(false)}
+                                        sx={{
+                                            justifyContent: "flex-start",
+                                            minHeight: 42,
+                                            px: 1.5,
+                                            py: 0.85,
+                                            borderRadius: "10px",
+                                            textTransform: "none",
+                                            fontSize: 14,
+                                            color: selected ? clinicColors.primary : "#334155",
+                                            bgcolor: selected ? "#E8F2FC" : "transparent",
+                                            fontWeight: selected ? 750 : 600,
+                                            position: "relative",
+                                            "&::before": selected
+                                                ? {
+                                                      content: '""',
+                                                      position: "absolute",
+                                                      left: 0,
+                                                      top: 8,
+                                                      bottom: 8,
+                                                      width: 3.5,
+                                                      borderRadius: "0 4px 4px 0",
+                                                      bgcolor: clinicColors.primary,
+                                                  }
+                                                : undefined,
+                                            "& .MuiButton-startIcon": {
+                                                mr: 1.25,
+                                                color: selected ? clinicColors.primary : "#64748B",
+                                            },
+                                            "&:hover": {
+                                                bgcolor: selected ? "#DCEBFA" : "#F3F7FB",
+                                                color: selected ? clinicColors.primary : "#0A2540",
+                                            },
+                                        }}
+                                    >
+                                        <Box
+                                            component="span"
+                                            sx={{
+                                                flex: 1,
+                                                minWidth: 0,
+                                                textAlign: "left",
+                                                overflow: "hidden",
+                                                textOverflow: "ellipsis",
+                                                whiteSpace: "nowrap",
+                                            }}
+                                        >
+                                            {page.label}
+                                        </Box>
+                                    </Button>
+                                );
+                            })}
+                        </Stack>
+                    </Box>
+                ))}
             </Stack>
 
-            <Box sx={{ p: 1.5 }}>
-                <Divider sx={{ mb: 1.5 }} />
+            <Box sx={{ p: 2, borderTop: "1px solid #E4ECF5", bgcolor: "#FAFCFF" }}>
+                <Stack spacing={0.75}>
+                    <Button
+                        component={RouterLink}
+                        to="/"
+                        fullWidth
+                        startIcon={<OpenInNewRounded sx={{ fontSize: 18 }} />}
+                        sx={{
+                            justifyContent: "flex-start",
+                            borderRadius: "10px",
+                            textTransform: "none",
+                            color: "#475569",
+                            fontSize: 13.5,
+                            fontWeight: 600,
+                            minHeight: 38,
+                            "&:hover": { bgcolor: "#EEF4FA", color: clinicColors.primary },
+                        }}
+                    >
+                        Cổng thông tin bệnh nhân
+                    </Button>
 
-                <Chip
-                    size="small"
-                    label={roleLabel}
-                    color="primary"
-                    variant="outlined"
-                    sx={{
-                        mb: 1,
-                        maxWidth: "100%",
-                        fontWeight: 800,
-                    }}
-                />
-
-                <Button
-                    component={RouterLink}
-                    to="/"
-                    fullWidth
-                    startIcon={<HelpOutlineOutlinedIcon />}
-                    sx={{
-                        justifyContent: "flex-start",
-                        color: "#6B7280",
-                        fontWeight: 800,
-                    }}
-                >
-                    Hỗ trợ kỹ thuật
-                </Button>
-
-                <Button
-                    fullWidth
-                    startIcon={<LogoutOutlinedIcon />}
-                    disabled={loggingOut}
-                    onClick={handleLogout}
-                    sx={{
-                        justifyContent: "flex-start",
-                        color: "#DC2626",
-                        fontWeight: 800,
-                    }}
-                >
-                    Đăng xuất
-                </Button>
+                    <Button
+                        fullWidth
+                        startIcon={<LogoutRounded sx={{ fontSize: 18 }} />}
+                        disabled={loggingOut}
+                        onClick={handleLogout}
+                        sx={{
+                            justifyContent: "flex-start",
+                            borderRadius: "10px",
+                            textTransform: "none",
+                            color: "#B91C1C",
+                            fontSize: 13.5,
+                            fontWeight: 650,
+                            minHeight: 38,
+                            "&:hover": { bgcolor: "#FEF2F2" },
+                        }}
+                    >
+                        Đăng xuất
+                    </Button>
+                </Stack>
             </Box>
         </Stack>
     );
@@ -364,7 +418,7 @@ function InternalLayout() {
             sx={{
                 display: "flex",
                 minHeight: "100vh",
-                backgroundColor: "#F6FAFE",
+                bgcolor: "#F3F7FB",
             }}
         >
             <Box
@@ -374,8 +428,8 @@ function InternalLayout() {
                     flexShrink: 0,
                     display: { xs: "none", lg: "flex" },
                     flexDirection: "column",
-                    borderRight: "1px solid #E5E9F0",
-                    backgroundColor: "#FFFFFF",
+                    borderRight: "1px solid #DCE7F2",
+                    bgcolor: "#FFFFFF",
                     position: "sticky",
                     top: 0,
                     height: "100vh",
@@ -390,7 +444,7 @@ function InternalLayout() {
                 sx={{
                     display: { xs: "block", lg: "none" },
                     "& .MuiDrawer-paper": {
-                        width: 280,
+                        width: 284,
                     },
                 }}
             >
@@ -411,19 +465,17 @@ function InternalLayout() {
                         position: "sticky",
                         top: 0,
                         zIndex: 10,
-                        height: TOPBAR_HEIGHT,
-                        px: { xs: 2, md: 3 },
+                        minHeight: TOPBAR_HEIGHT,
+                        px: { xs: 2, sm: 3, lg: 4 },
                         display: "flex",
                         alignItems: "center",
-                        boxSizing: "border-box",
-                        borderBottom: "1px solid #E5E9F0",
-                        backgroundColor: "rgba(255, 255, 255, 0.94)",
-                        backdropFilter: "blur(12px)",
+                        borderBottom: "1px solid #DCE7F2",
+                        bgcolor: "#FFFFFF",
                     }}
                 >
                     <Stack
                         direction="row"
-                        gap={2}
+                        spacing={2}
                         sx={{ width: "100%", alignItems: "center" }}
                     >
                         <IconButton
@@ -432,88 +484,112 @@ function InternalLayout() {
                             sx={{
                                 display: { lg: "none" },
                                 flexShrink: 0,
+                                color: clinicColors.heading,
                             }}
                         >
-                            <MenuOutlinedIcon />
+                            <MenuRounded />
                         </IconButton>
 
-                        <Stack
-                            direction="row"
-                            spacing={1.5}
-                            sx={{
-                                alignItems: "center",
-                                minWidth: 0,
-                                flexShrink: 0,
-                            }}
-                        >
-                            <Box
+                        <Box sx={{ minWidth: 0, flex: 1 }}>
+                            {activePage?.group && activePage.group !== "Tổng quan" && (
+                                <Typography
+                                    noWrap
+                                    sx={{
+                                        fontSize: 11.5,
+                                        fontWeight: 700,
+                                        color: clinicColors.primary,
+                                        textTransform: "uppercase",
+                                        letterSpacing: "0.04em",
+                                    }}
+                                >
+                                    {activePage.group}
+                                </Typography>
+                            )}
+                            <Typography
+                                noWrap
                                 sx={{
-                                    display: { xs: "none", md: "flex" },
-                                    alignItems: "center",
-                                    width: { md: 260, xl: 320 },
-                                    height: 44,
-                                    px: 1.5,
-                                    borderRadius: 2,
-                                    border: "1px solid #E5E9F0",
-                                    backgroundColor: "#F8FAFC",
+                                    fontSize: { xs: 15.5, sm: 17 },
+                                    fontWeight: 750,
+                                    color: clinicColors.heading,
                                 }}
                             >
-                                <SearchOutlinedIcon
-                                    sx={{
-                                        mr: 1,
-                                        color: "#6B7280",
-                                    }}
-                                />
-
-                                <InputBase
-                                    placeholder="Tìm kiếm nhanh..."
-                                    sx={{
-                                        flex: 1,
-                                        fontSize: 14,
-                                    }}
-                                />
-                            </Box>
-
-                        </Stack>
+                                {activePage?.label || brand.title}
+                            </Typography>
+                        </Box>
 
                         <Stack
                             direction="row"
                             spacing={1.5}
-                            sx={{
-                                alignItems: "center",
-                                ml: "auto",
-                                flexShrink: 0,
-                            }}
+                            sx={{ alignItems: "center", flexShrink: 0 }}
                         >
-                            {showPrimaryAction && <Button
-                                component={RouterLink}
-                                to={primaryActionPath}
-                                variant="contained"
-                                startIcon={<AddCircleOutlineOutlinedIcon />}
+                            <Chip
+                                label={todayLabel}
+                                size="small"
                                 sx={{
-                                    display: { xs: "none", md: "flex" },
-                                    minHeight: 42,
-                                    fontWeight: 900,
-                                    boxShadow:
-                                        "0 8px 18px rgba(0, 93, 172, 0.16)",
+                                    display: { xs: "none", xl: "inline-flex" },
+                                    height: 32,
+                                    px: 0.75,
+                                    borderRadius: "9px",
+                                    bgcolor: "#F3F7FB",
+                                    color: "#475569",
+                                    border: "1px solid #DCE7F2",
+                                    fontWeight: 600,
+                                    fontSize: 12.5,
                                 }}
-                            >
-                                {primaryActionLabel}
-                            </Button>}
+                            />
+
+                            {showPrimaryAction && (
+                                <Button
+                                    component={RouterLink}
+                                    to={primaryActionPath}
+                                    variant="contained"
+                                    startIcon={<AdminAddIcon />}
+                                    sx={{
+                                        display: { xs: "none", md: "inline-flex" },
+                                        minHeight: 38,
+                                        px: 2,
+                                        borderRadius: "10px",
+                                        textTransform: "none",
+                                        fontWeight: 700,
+                                        bgcolor: clinicColors.primary,
+                                        boxShadow: "none",
+                                        "&:hover": {
+                                            bgcolor: clinicColors.primaryDark,
+                                            boxShadow: "none",
+                                        },
+                                    }}
+                                >
+                                    {primaryActionLabel}
+                                </Button>
+                            )}
 
                             <NotificationBell />
 
+                            <Divider orientation="vertical" flexItem sx={{ my: 1.5, display: { xs: "none", sm: "block" } }} />
+
                             <Stack
+                                component={RouterLink}
+                                to="/internal/profile"
                                 direction="row"
-                                spacing={1}
-                                sx={{ minWidth: 0, alignItems: "center" }}
+                                spacing={1.25}
+                                sx={{
+                                    minWidth: 0,
+                                    alignItems: "center",
+                                    textDecoration: "none",
+                                    px: { xs: 0.5, sm: 1.25 },
+                                    py: 0.65,
+                                    borderRadius: "12px",
+                                    "&:hover": { bgcolor: "#F3F7FB" },
+                                }}
                             >
                                 <Avatar
                                     sx={{
-                                        width: 40,
-                                        height: 40,
-                                        bgcolor: "#005DAC",
-                                        fontWeight: 900,
+                                        width: 38,
+                                        height: 38,
+                                        bgcolor: clinicColors.primary,
+                                        color: "#FFFFFF",
+                                        fontSize: 15,
+                                        fontWeight: 750,
                                     }}
                                 >
                                     {initial.toLocaleUpperCase("vi-VN")}
@@ -521,30 +597,31 @@ function InternalLayout() {
 
                                 <Box
                                     sx={{
-                                        display: {
-                                            xs: "none",
-                                            md: "block",
-                                        },
+                                        display: { xs: "none", md: "block" },
                                         minWidth: 0,
-                                        maxWidth: 220,
+                                        maxWidth: 190,
                                     }}
                                 >
                                     <Typography
-                                        variant="body2"
                                         noWrap
                                         sx={{
-                                            color: "#111827",
-                                            fontWeight: 900,
+                                            color: clinicColors.heading,
+                                            fontSize: 13.5,
+                                            fontWeight: 750,
+                                            lineHeight: 1.3,
                                         }}
                                     >
-                                        {user?.fullName ||
-                                            user?.username ||
-                                            "Người dùng nội bộ"}
+                                        {user?.fullName || user?.username || "Nhân sự nội bộ"}
                                     </Typography>
 
                                     <Typography
-                                        variant="caption"
-                                        color="text.secondary"
+                                        noWrap
+                                        sx={{
+                                            display: "block",
+                                            color: "#64748B",
+                                            fontSize: 12,
+                                            fontWeight: 600,
+                                        }}
                                     >
                                         {roleLabel}
                                     </Typography>
@@ -559,9 +636,10 @@ function InternalLayout() {
                     sx={{
                         flex: 1,
                         width: "100%",
-                        maxWidth: 1440,
+                        maxWidth: 1480,
                         mx: "auto",
-                        p: { xs: 2, md: 3 },
+                        px: { xs: 2, sm: 3, lg: 4 },
+                        py: { xs: 2.5, md: 3.5 },
                     }}
                 >
                     <RouteContent />

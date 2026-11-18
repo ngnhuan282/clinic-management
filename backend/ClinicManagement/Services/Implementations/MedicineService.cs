@@ -13,27 +13,40 @@ public class MedicineService : IMedicineService
     private readonly IMedicineRepository _medicineRepository;
     private readonly IMedicineCategoryRepository _categoryRepository;
     private readonly ISupplierRepository _supplierRepository;
+    private readonly ClinicSettingsService? _clinicSettings;
 
     public MedicineService(
         IMedicineRepository medicineRepository,
         IMedicineCategoryRepository categoryRepository,
-        ISupplierRepository supplierRepository)
+        ISupplierRepository supplierRepository,
+        ClinicSettingsService? clinicSettings = null)
     {
         _medicineRepository = medicineRepository;
         _categoryRepository = categoryRepository;
         _supplierRepository = supplierRepository;
+        _clinicSettings = clinicSettings;
+    }
+
+    private async Task<(int LowStock, int NearExpiry)> GetThresholdsAsync()
+    {
+        if (_clinicSettings is null)
+            return (MedicineMapping.LowStockThreshold, MedicineMapping.ExpiringSoonDays);
+        var s = await _clinicSettings.GetSnapshotAsync();
+        return (s.LowStockThreshold > 0 ? s.LowStockThreshold : MedicineMapping.LowStockThreshold,
+            s.NearExpiryDays > 0 ? s.NearExpiryDays : MedicineMapping.ExpiringSoonDays);
     }
 
     public async Task<PagedResponse<MedicineResponse>> GetPagedAsync(
         MedicineFilterRequest request)
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var (lowStock, nearExpiry) = await GetThresholdsAsync();
 
         var (items, totalItems) =
             await _medicineRepository.GetPagedAsync(request);
 
         var responses = items
-            .Select(x => x.ToResponse(today))
+            .Select(x => x.ToResponse(today, lowStock, nearExpiry))
             .ToList();
 
         return new PagedResponse<MedicineResponse>(
@@ -47,11 +60,12 @@ public class MedicineService : IMedicineService
     public async Task<MedicineSummaryResponse> GetSummaryAsync()
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var (lowStock, nearExpiry) = await GetThresholdsAsync();
         var medicines =
             await _medicineRepository.GetAllWithInventoryAsync();
 
         var responses = medicines
-            .Select(x => x.ToResponse(today))
+            .Select(x => x.ToResponse(today, lowStock, nearExpiry))
             .ToList();
 
         return new MedicineSummaryResponse
@@ -96,8 +110,9 @@ public class MedicineService : IMedicineService
         }
 
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var (lowStock, nearExpiry) = await GetThresholdsAsync();
 
-        return medicine.ToResponse(today);
+        return medicine.ToResponse(today, lowStock, nearExpiry);
     }
 
     public async Task<MedicineResponse> CreateAsync(
@@ -182,6 +197,13 @@ public class MedicineService : IMedicineService
         {
             throw new AppException(
                 ErrorCode.MEDICINE_HAS_INVENTORY
+            );
+        }
+
+        if (await _medicineRepository.IsReferencedAsync(medicineId))
+        {
+            throw new AppException(
+                ErrorCode.MEDICINE_IN_USE
             );
         }
 

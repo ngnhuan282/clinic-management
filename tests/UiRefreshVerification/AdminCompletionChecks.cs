@@ -23,7 +23,9 @@ internal static class AdminCompletionChecks
             using var response = await http.SendAsync(request);
             if ((int)response.StatusCode != expected)
                 throw new InvalidOperationException($"Admin check {method} {path}: expected {expected}, got {(int)response.StatusCode}.");
-            return expected is 200 or 201 ? JsonNode.Parse(await response.Content.ReadAsStringAsync())?["result"] : null;
+            if (expected is not (200 or 201)) return null;
+            var parsed = JsonNode.Parse(await response.Content.ReadAsStringAsync());
+            return parsed is JsonObject envelope && envelope.ContainsKey("result") && envelope.ContainsKey("code") ? envelope["result"] : parsed;
         }
         var roleIds = await db.Roles.ToDictionaryAsync(x => x.RoleName, x => x.RoleId);
         object Staff(string username, int roleId, int? doctorId = null, string? email = null) => new
@@ -170,6 +172,133 @@ internal static class AdminCompletionChecks
             && Near(moderated["totals"]!["averageRating"], group.Average(x => (double)x.Rating))
             && (remaining.Count == 0 ? moderated["totals"]!["publicAverageRating"] == null : Near(moderated["totals"]!["publicAverageRating"], remaining.Average(x => (double)x.Rating))), "Moderation updates public averages while preserving overall averages");
         await Api(HttpMethod.Patch, $"reviews/{visible.ReviewId}/visibility", new { isVisible = true }, adminToken);
+
+        // Public department & specialization catalog (I.1)
+        var inactiveDepartment = new Department { Code = "UI-INACTIVE-DEPT", Name = "Khoa ngừng hoạt động kiểm thử", IsActive = false, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+        db.Departments.Add(inactiveDepartment);
+        await db.SaveChangesAsync();
+        var activeExtraSpec = new Specialization { Code = "UI-TIM-MACH", Name = "Nội tim mạch kiểm thử", Description = "Chuyên khoa tim mạch trực thuộc Nội tổng quát.", DepartmentId = 1, IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+        var inactiveSpec = new Specialization { Code = "UI-SPEC-OFF", Name = "Chuyên khoa ngừng hoạt động", DepartmentId = 1, IsActive = false, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+        var specInInactiveDept = new Specialization { Code = "UI-DEPT-OFF-SPEC", Name = "Chuyên khoa thuộc khoa khóa", DepartmentId = inactiveDepartment.DepartmentId, IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+        db.Specializations.AddRange(activeExtraSpec, inactiveSpec, specInInactiveDept);
+        await db.SaveChangesAsync();
+
+        var publicSpecs = (await Api(HttpMethod.Get, "specializations/public"))!.AsArray();
+        var dept1Specs = (await Api(HttpMethod.Get, "specializations/public?departmentId=1"))!.AsArray();
+        var publicDepts = (await Api(HttpMethod.Get, "departments/public"))!.AsArray();
+        var bookingDepts = (await Api(HttpMethod.Get, "appointments/departments"))!.AsArray();
+        check(publicSpecs.Any(x => x!["specializationId"]!.GetValue<int>() == activeExtraSpec.SpecializationId
+                && x["departmentId"]!.GetValue<int>() == 1
+                && x["departmentName"]!.GetValue<string>() == "Nội tổng quát")
+            && publicSpecs.All(x => x!["specializationId"]!.GetValue<int>() != inactiveSpec.SpecializationId
+                && x["specializationId"]!.GetValue<int>() != specInInactiveDept.SpecializationId)
+            && dept1Specs.All(x => x!["departmentId"]!.GetValue<int>() == 1),
+            "Public specialization catalog works anonymously, links departments, and excludes inactive items");
+        check(publicDepts.All(x => x!["departmentId"]!.GetValue<int>() != inactiveDepartment.DepartmentId)
+            && bookingDepts.Single(x => x!["departmentId"]!.GetValue<int>() == 1)!["specializations"]!.AsArray()
+                .Any(x => x!["specializationId"]!.GetValue<int>() == activeExtraSpec.SpecializationId),
+            "Public department endpoints include active child specializations and exclude inactive departments");
+
+        // Clinic configuration (III.9)
+        await Api(HttpMethod.Get, "clinic-settings", expected: 401);
+        await Api(HttpMethod.Get, "clinic-settings", access: patientToken, expected: 403);
+        await Api(HttpMethod.Put, "clinic-settings", new { clinicName = "Forbidden" }, expected: 401);
+        await Api(HttpMethod.Put, "clinic-settings", new { clinicName = "Forbidden" }, patientToken, 403);
+        check(true, "Clinic settings admin APIs enforce anonymous 401 and non-Admin 403");
+
+        var initialPublicSettings = (await Api(HttpMethod.Get, "public/clinic-settings"))!;
+        var initialAdminSettings = (await Api(HttpMethod.Get, "clinic-settings", access: adminToken))!;
+        check(initialPublicSettings["defaultExaminationFee"]!.GetValue<decimal>() == 150000m
+            && initialPublicSettings["patientBookFee"]!.GetValue<decimal>() == 10000m
+            && initialPublicSettings["updatedByUserId"] == null
+            && initialAdminSettings["clinicSettingId"]!.GetValue<int>() == 1,
+            "Seeded clinic settings are readable both publicly and in Admin management");
+
+        object SettingsPayload(decimal examFee = 185000m, decimal bookFee = 15000m, int slotMinutes = 30, int lowStock = 15, int nearExpiry = 45) => new
+        {
+            clinicName = "Phòng khám Đa khoa MediFlow Sài Gòn",
+            tagline = "Chăm sóc chuẩn mực - Minh bạch chi phí",
+            description = "Hệ thống khám chữa bệnh đa chuyên khoa ứng dụng hồ sơ và lịch hẹn trực tuyến.",
+            phone = "1900 6886",
+            email = "cskh@mediflow-clinic.vn",
+            workingHours = "07:00 – 20:30, Thứ Hai – Chủ Nhật",
+            primaryLocationName = "Cơ sở Quận 1",
+            primaryLocationAddress = "128 Nguyễn Trãi, Quận 1, TP. Hồ Chí Minh",
+            secondaryLocationName = "Cơ sở Thủ Đức",
+            secondaryLocationAddress = "88 Võ Văn Ngân, TP. Thủ Đức, TP. Hồ Chí Minh",
+            defaultExaminationFee = examFee,
+            patientBookFee = bookFee,
+            defaultSlotDurationMinutes = slotMinutes,
+            defaultMaxPatientsPerSlot = 2,
+            lowStockThreshold = lowStock,
+            nearExpiryDays = nearExpiry
+        };
+
+        await Api(HttpMethod.Put, "clinic-settings", new { clinicName = "", defaultExaminationFee = 0, patientBookFee = -1000, defaultSlotDurationMinutes = 25 }, adminToken, 400);
+        await Api(HttpMethod.Put, "clinic-settings", new
+        {
+            clinicName = "Tamper", tagline = "Tamper", description = "Tamper", phone = "1900 6886",
+            email = "cskh@mediflow-clinic.vn", workingHours = "08:00 - 17:00",
+            primaryLocationName = "Cơ sở 1", primaryLocationAddress = "Địa chỉ 1",
+            secondaryLocationName = "Chỉ có tên cơ sở phụ", secondaryLocationAddress = "",
+            defaultExaminationFee = 150000m, patientBookFee = 10000m, defaultSlotDurationMinutes = 30,
+            defaultMaxPatientsPerSlot = 1, lowStockThreshold = 10, nearExpiryDays = 30
+        }, adminToken, 400);
+        await Api(HttpMethod.Put, "clinic-settings", new
+        {
+            clinicName = "Tamper", tagline = "Tamper", description = "Tamper", phone = "1900 6886",
+            email = "cskh@mediflow-clinic.vn", workingHours = "08:00 - 17:00",
+            primaryLocationName = "Cơ sở 1", primaryLocationAddress = "Địa chỉ 1",
+            defaultExaminationFee = 150000m, patientBookFee = 10000m, defaultSlotDurationMinutes = 30,
+            defaultMaxPatientsPerSlot = 1, lowStockThreshold = 10, nearExpiryDays = 30,
+            updatedByUserId = 999
+        }, adminToken, 400);
+        check(true, "Clinic settings validation rejects invalid fees/slots, partial secondary location and injected audit fields");
+
+        var updatedSettings = (await Api(HttpMethod.Put, "clinic-settings", SettingsPayload(), adminToken))!;
+        var refreshedPublicSettings = (await Api(HttpMethod.Get, "public/clinic-settings"))!;
+        check(updatedSettings["updatedByUserId"]!.GetValue<int>() == adminUserId
+            && refreshedPublicSettings["clinicName"]!.GetValue<string>() == "Phòng khám Đa khoa MediFlow Sài Gòn"
+            && refreshedPublicSettings["defaultExaminationFee"]!.GetValue<decimal>() == 185000m
+            && refreshedPublicSettings["patientBookFee"]!.GetValue<decimal>() == 15000m
+            && refreshedPublicSettings["locations"]!.AsArray().Count == 2,
+            "Saved clinic settings update public clinic information, locations and listed fees");
+
+        var pendingBillings = (await Api(HttpMethod.Get, "invoices/pending?stage=Pending", access: adminToken))!.AsArray();
+        check(pendingBillings.Count > 0 && pendingBillings.All(x =>
+                x!["items"]![0]!["unitPrice"]!.GetValue<decimal>() == 185000m
+                && x["items"]![0]!["totalPrice"]!.GetValue<decimal>() == 185000m),
+            "Pending consultation billing uses configured DefaultExaminationFee instead of a hardcoded constant");
+
+        var configuredBookInvoice = (await Api(HttpMethod.Post, $"patients/{patientProfileId}/book-invoices", new { }, adminToken))!;
+        check(configuredBookInvoice["amount"]!.GetValue<decimal>() == 15000m,
+            "Book invoice creation defaults to configured PatientBookFee when amount is omitted");
+
+        db.ChangeTracker.Clear();
+        check(await db.RbacAudits.AnyAsync(x => x.Action == "clinic.settings" && x.ActorUserId == adminUserId),
+            "Updating clinic settings records an audit trail entry");
+
+        // Restore seed values so downstream suites observe standard baseline parameters until UI changes them.
+        await Api(HttpMethod.Put, "clinic-settings", new
+        {
+            clinicName = initialAdminSettings["clinicName"]!.GetValue<string>(),
+            tagline = initialAdminSettings["tagline"]!.GetValue<string>(),
+            description = initialAdminSettings["description"]!.GetValue<string>(),
+            phone = initialAdminSettings["phone"]!.GetValue<string>(),
+            email = initialAdminSettings["email"]!.GetValue<string>(),
+            workingHours = initialAdminSettings["workingHours"]!.GetValue<string>(),
+            primaryLocationName = initialAdminSettings["primaryLocationName"]!.GetValue<string>(),
+            primaryLocationAddress = initialAdminSettings["primaryLocationAddress"]!.GetValue<string>(),
+            secondaryLocationName = initialAdminSettings["secondaryLocationName"]?.GetValue<string>(),
+            secondaryLocationAddress = initialAdminSettings["secondaryLocationAddress"]?.GetValue<string>(),
+            defaultExaminationFee = 150000m,
+            patientBookFee = 10000m,
+            defaultSlotDurationMinutes = 30,
+            defaultMaxPatientsPerSlot = 1,
+            lowStockThreshold = 10,
+            nearExpiryDays = 30
+        }, adminToken);
+
         return new(createdId, "ui_created_staff", profiles[3].DoctorId);
     }
 }

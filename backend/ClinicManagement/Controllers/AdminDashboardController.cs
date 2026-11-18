@@ -1,5 +1,6 @@
 using ClinicManagement.Commons;
 using ClinicManagement.Data;
+using ClinicManagement.Services.Implementations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -83,8 +84,11 @@ public class AdminDashboardController : ControllerBase
                 QuantityInStock = g.Sum(i => i.QuantityInStock)
             });
 
+        var settings = await ClinicSettingsService.ReadSnapshotSafeAsync(_context);
+        var lowStockThreshold = settings.LowStockThreshold > 0 ? settings.LowStockThreshold : 10;
+
         var lowStockMedicines = await stockByMedicine
-            .Where(i => i.QuantityInStock <= 10)
+            .Where(i => i.QuantityInStock <= lowStockThreshold)
             .CountAsync();
 
         return Ok(new

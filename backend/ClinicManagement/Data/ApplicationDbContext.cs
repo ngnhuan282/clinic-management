@@ -1,4 +1,4 @@
-﻿using ClinicManagement.Data.Entities;
+using ClinicManagement.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 using ClinicManagement.Commons;
 
@@ -75,6 +75,7 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<PrescriptionStockReview> PrescriptionStockReviews => Set<PrescriptionStockReview>();
     public DbSet<PrescriptionStockReviewDecision> PrescriptionStockReviewDecisions => Set<PrescriptionStockReviewDecision>();
+    public DbSet<ClinicSetting> ClinicSettings => Set<ClinicSetting>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
@@ -875,5 +876,35 @@ public class ApplicationDbContext : DbContext
     entity.Property(e => e.InsuranceDiscountPercent).HasPrecision(5, 2);
     entity.Property(e => e.PatientAmount).HasPrecision(18, 2);
 });
+
+        modelBuilder.Entity<ClinicSetting>(entity =>
+        {
+            entity.HasKey(x => x.ClinicSettingId);
+            entity.Property(x => x.ClinicName).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.Tagline).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Description).HasMaxLength(600).IsRequired();
+            entity.Property(x => x.Phone).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Email).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.WorkingHours).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.PrimaryLocationName).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.PrimaryLocationAddress).HasMaxLength(255).IsRequired();
+            entity.Property(x => x.SecondaryLocationName).HasMaxLength(150);
+            entity.Property(x => x.SecondaryLocationAddress).HasMaxLength(255);
+            entity.Property(x => x.DefaultExaminationFee).HasPrecision(18, 2);
+            entity.Property(x => x.PatientBookFee).HasPrecision(18, 2);
+            entity.Property(x => x.UpdatedAt).HasDefaultValueSql("GETUTCDATE()");
+            entity.ToTable(x =>
+            {
+                x.HasCheckConstraint("CK_ClinicSettings_DefaultExaminationFee", "[DefaultExaminationFee] > 0");
+                x.HasCheckConstraint("CK_ClinicSettings_PatientBookFee", "[PatientBookFee] > 0");
+                x.HasCheckConstraint("CK_ClinicSettings_SlotDuration", "[DefaultSlotDurationMinutes] IN (15, 20, 30)");
+                x.HasCheckConstraint("CK_ClinicSettings_MaxPatientsPerSlot", "[DefaultMaxPatientsPerSlot] BETWEEN 1 AND 20");
+                x.HasCheckConstraint("CK_ClinicSettings_LowStockThreshold", "[LowStockThreshold] >= 1");
+                x.HasCheckConstraint("CK_ClinicSettings_NearExpiryDays", "[NearExpiryDays] >= 1");
+            });
+            entity.HasOne(x => x.UpdatedByUser).WithMany().HasForeignKey(x => x.UpdatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasData(ClinicSetting.CreateSeed());
+        });
     }
 }

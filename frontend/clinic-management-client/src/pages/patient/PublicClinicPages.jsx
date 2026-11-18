@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Link as RouterLink, useParams } from "react-router-dom";
 import {
     Accordion,
@@ -27,36 +27,52 @@ import {
     AccessTimeOutlined,
     ArrowForward,
     CalendarMonthOutlined,
+    CheckCircleOutlined,
     EmailOutlined,
     ExpandMore,
+    HealthAndSafetyOutlined,
     InfoOutlined,
     LocalHospitalOutlined,
     LocationOnOutlined,
     MedicalServicesOutlined,
+    PhoneInTalkOutlined,
     PhoneOutlined,
     Search,
     ShieldOutlined,
 } from "@mui/icons-material";
 import { getDepartments } from "../../api/bookingApi";
-import { getPublicServices } from "../../api/publicApi";
+import { getPublicServices, getPublicSpecializations, useClinicInfo } from "../../api/publicApi";
 import usePublicResource from "../../hooks/usePublicResource";
 import PublicPage, { ResourceState } from "../../components/patient/PublicPage";
-import { CLINIC, FAQS, GUIDES } from "../../data/publicContent";
+import { FAQS, GUIDES } from "../../data/publicContent";
 
 const cardSx = {
     p: { xs: 2.75, md: 3.25 },
     borderRadius: "14px",
-    borderColor: "#e5e9f0",
-    bgcolor: "#ffffff",
+    borderColor: "#C5D8EC",
+    bgcolor: "#FFFFFF",
     height: "100%",
     display: "flex",
     flexDirection: "column",
     gap: 1.5,
-    boxShadow: "0 1px 3px rgba(15, 23, 42, 0.03)",
-    transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+    boxShadow: "0 2px 8px rgba(10, 37, 64, 0.04)",
+    transition: "border-color 0.15s ease, box-shadow 0.15s ease",
     "&:hover": {
-        borderColor: "#90caf9",
-        boxShadow: "0 8px 24px rgba(25, 118, 210, 0.08)",
+        borderColor: "#0B4F8A",
+        boxShadow: "0 8px 20px rgba(10, 37, 64, 0.08)",
+    },
+};
+
+const searchPaperSx = {
+    p: 0.75,
+    display: "flex",
+    alignItems: "center",
+    gap: 1,
+    borderRadius: "12px",
+    border: "2px solid #90BCE6",
+    bgcolor: "#FFFFFF",
+    "&:focus-within": {
+        borderColor: "#0B4F8A",
     },
 };
 
@@ -81,16 +97,17 @@ const money = value =>
     new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(value);
 
 export function BookingCallout() {
+    const clinic = useClinicInfo();
     return (
         <Paper
-            variant="outlined"
+            elevation={0}
             sx={{
-                mt: 5,
+                mt: 5.5,
                 p: { xs: 3, md: 4 },
                 borderRadius: "16px",
-                borderColor: "#bfdbfe",
-                background: "linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%)",
-                boxShadow: "0 4px 16px rgba(25, 118, 210, 0.08)",
+                bgcolor: "#0B3B68",
+                color: "#FFFFFF",
+                border: "1px solid #082D50",
             }}
         >
             <Stack
@@ -99,18 +116,18 @@ export function BookingCallout() {
                 sx={{ justifyContent: "space-between", alignItems: { md: "center" } }}
             >
                 <Box sx={{ maxWidth: 600 }}>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-                        <CalendarMonthOutlined color="primary" sx={{ fontSize: 22 }} />
+                    <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 1 }}>
+                        <CalendarMonthOutlined sx={{ fontSize: 22, color: "#BAE6FD" }} />
                         <Typography
                             component="h2"
                             variant="h5"
-                            sx={{ fontWeight: 800, fontSize: { xs: 20, sm: 22 }, color: "#0f2c4d" }}
+                            sx={{ fontWeight: 800, fontSize: { xs: 20, sm: 23 }, color: "#FFFFFF" }}
                         >
-                            Chủ động chọn lịch khám của bạn
+                            Chủ động chọn lịch khám phù hợp với bạn
                         </Typography>
-                    </Box>
-                    <Typography color="text.secondary" sx={{ fontSize: 14.5, lineHeight: 1.6 }}>
-                        Tìm chuyên khoa, chọn bác sĩ uy tín, xem trước giờ trống và gửi đăng ký lịch hẹn trực tuyến chỉ trong vài phút.
+                    </Stack>
+                    <Typography sx={{ fontSize: 15, lineHeight: 1.65, color: "#E6F0FA" }}>
+                        Tra cứu chuyên khoa, chọn bác sĩ uy tín, xem trước giờ trống và gửi đăng ký lịch hẹn trực tuyến chỉ trong vài phút. Hỗ trợ qua tổng đài {clinic.phone}.
                     </Typography>
                 </Box>
                 <Button
@@ -123,10 +140,12 @@ export function BookingCallout() {
                         flexShrink: 0,
                         borderRadius: "10px",
                         px: 3,
-                        py: 1.25,
-                        fontWeight: 700,
+                        py: 1.35,
+                        fontWeight: 800,
                         textTransform: "none",
-                        boxShadow: "0 4px 12px rgba(25, 118, 210, 0.25)",
+                        bgcolor: "#FFFFFF",
+                        color: "#0A2540",
+                        "&:hover": { bgcolor: "#E6F0FA" },
                     }}
                 >
                     Đặt lịch khám ngay
@@ -136,35 +155,46 @@ export function BookingCallout() {
     );
 }
 
+const loadAllPublicSpecializations = () => getPublicSpecializations();
+
 export function SpecialtiesPage() {
-    const resource = usePublicResource(getDepartments);
+    const departmentResource = usePublicResource(getDepartments);
+    const specializationResource = usePublicResource(loadAllPublicSpecializations);
     const [query, setQuery] = useState("");
-    const departments = (resource.data || []).filter(item =>
-        matches(`${item.name} ${item.description || ""}`, query)
+
+    const allSpecializations = specializationResource.data || [];
+    const specializationsForDepartment = department => {
+        const fromCatalog = allSpecializations.filter(item => item.departmentId === department.departmentId);
+        return fromCatalog.length > 0 ? fromCatalog : department.specializations || [];
+    };
+
+    const departments = (departmentResource.data || []).filter(item => {
+        const specText = specializationsForDepartment(item)
+            .map(spec => `${spec.code || ""} ${spec.name} ${spec.description || ""}`)
+            .join(" ");
+        return matches(`${item.code || ""} ${item.name} ${item.description || ""} ${specText}`, query);
+    });
+
+    const filteredSpecializations = allSpecializations.filter(spec =>
+        matches(`${spec.code || ""} ${spec.name} ${spec.description || ""} ${spec.departmentName || ""}`, query)
     );
+
+    const combinedResource =
+        departmentResource.status !== "ready"
+            ? departmentResource
+            : specializationResource.status === "error"
+            ? specializationResource
+            : departmentResource;
 
     return (
         <PublicPage
-            title="Chuyên khoa điều trị"
-            description="Tìm hiểu các chuyên khoa đang hoạt động và lựa chọn bác sĩ phù hợp với nhu cầu chăm sóc sức khỏe của bạn."
+            badge="Danh mục chuyên môn"
+            title="Khoa & Chuyên khoa điều trị"
+            description="Tìm hiểu danh sách các khoa lâm sàng, danh mục chuyên khoa trực thuộc và lựa chọn bác sĩ phù hợp với nhu cầu chăm sóc sức khỏe của bạn."
         >
-            <Paper
-                elevation={0}
-                sx={{
-                    p: 0.75,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                    borderRadius: "12px",
-                    border: "1px solid #cbd5e1",
-                    bgcolor: "#ffffff",
-                    mb: 4,
-                    maxWidth: 560,
-                    boxShadow: "0 1px 3px rgba(15, 23, 42, 0.04)",
-                }}
-            >
+            <Paper elevation={0} sx={{ ...searchPaperSx, mb: 4, maxWidth: 580 }}>
                 <TextField
-                    placeholder="Tìm chuyên khoa theo tên hoặc triệu chứng..."
+                    placeholder="Tìm khoa, chuyên khoa theo tên, mã hoặc triệu chứng..."
                     value={query}
                     onChange={e => setQuery(e.target.value)}
                     fullWidth
@@ -174,7 +204,7 @@ export function SpecialtiesPage() {
                         input: {
                             startAdornment: (
                                 <InputAdornment position="start">
-                                    <Search sx={{ color: "text.secondary", ml: 0.5 }} />
+                                    <Search sx={{ color: "#0B4F8A", ml: 0.5 }} />
                                 </InputAdornment>
                             ),
                         },
@@ -186,53 +216,212 @@ export function SpecialtiesPage() {
                 />
             </Paper>
 
-            <ResourceState resource={resource}>
-                {!departments.length && (
+            <ResourceState resource={combinedResource}>
+                {!departments.length && !filteredSpecializations.length && (
                     <Alert severity="info" sx={{ borderRadius: "12px" }}>
-                        {query ? "Không tìm thấy chuyên khoa phù hợp với từ khóa." : "Chưa có chuyên khoa được công bố."}
+                        {query
+                            ? "Không tìm thấy khoa hoặc chuyên khoa phù hợp với từ khóa."
+                            : "Chưa có khoa hoặc chuyên khoa được công bố."}
                     </Alert>
                 )}
-                <Grid container spacing={2.5}>
-                    {departments.map(item => (
-                        <Grid size={{ xs: 12, sm: 6, md: 4 }} key={item.departmentId}>
-                            <Paper variant="outlined" sx={cardSx}>
-                                <Box
-                                    sx={{
-                                        width: 44,
-                                        height: 44,
-                                        borderRadius: "10px",
-                                        bgcolor: "#eff6ff",
-                                        color: "primary.main",
-                                        display: "grid",
-                                        placeItems: "center",
-                                    }}
-                                >
-                                    <LocalHospitalOutlined sx={{ fontSize: 24 }} />
-                                </Box>
-                                <Typography component="h2" variant="h6" sx={{ fontWeight: 750, fontSize: 17, color: "#1f2937" }}>
-                                    {item.name}
-                                </Typography>
-                                <Typography color="text.secondary" sx={{ flex: 1, lineHeight: 1.65, fontSize: 13.5 }}>
-                                    {item.description || "Xem thông tin chuyên khoa, đội ngũ bác sĩ và lịch khám đang được công bố."}
-                                </Typography>
-                                <Button
-                                    component={RouterLink}
-                                    to={`/specialties/${item.departmentId}`}
-                                    endIcon={<ArrowForward sx={{ fontSize: 16 }} />}
-                                    sx={{
-                                        alignSelf: "flex-start",
-                                        textTransform: "none",
-                                        fontWeight: 650,
-                                        px: 0,
-                                        "&:hover": { bgcolor: "transparent", color: "primary.dark" },
-                                    }}
-                                >
-                                    Tìm hiểu chuyên khoa
-                                </Button>
-                            </Paper>
+
+                {departments.length > 0 && (
+                    <Box component="section" sx={{ mb: filteredSpecializations.length > 0 ? 5.5 : 0 }}>
+                        <Stack
+                            direction={{ xs: "column", sm: "row" }}
+                            sx={{ justifyContent: "space-between", alignItems: { sm: "baseline" }, mb: 2.5, gap: 1 }}
+                        >
+                            <Typography component="h2" sx={{ fontWeight: 800, fontSize: { xs: 20, sm: 23 }, color: "#0A2540" }}>
+                                Danh sách khoa lâm sàng ({departments.length})
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                Mỗi khoa quản lý các chuyên khoa chuyên sâu và đội ngũ bác sĩ tiếp nhận khám
+                            </Typography>
+                        </Stack>
+                        <Grid container spacing={2.5}>
+                            {departments.map(item => {
+                                const deptSpecs = specializationsForDepartment(item);
+                                return (
+                                    <Grid size={{ xs: 12, sm: 6, md: 4 }} key={item.departmentId}>
+                                        <Paper variant="outlined" sx={cardSx}>
+                                            <Stack
+                                                direction="row"
+                                                sx={{ justifyContent: "space-between", alignItems: "center", gap: 1 }}
+                                            >
+                                                <Box
+                                                    sx={{
+                                                        width: 46,
+                                                        height: 46,
+                                                        borderRadius: "10px",
+                                                        bgcolor: "#E6F0FA",
+                                                        color: "#0B4F8A",
+                                                        display: "grid",
+                                                        placeItems: "center",
+                                                        flexShrink: 0,
+                                                    }}
+                                                >
+                                                    <LocalHospitalOutlined sx={{ fontSize: 24 }} />
+                                                </Box>
+                                                {item.code && (
+                                                    <Chip
+                                                        label={`Khoa ${item.code}`}
+                                                        size="small"
+                                                        sx={{
+                                                            bgcolor: "#EAF2FA",
+                                                            color: "#0B4F8A",
+                                                            border: "1px solid #90BCE6",
+                                                            fontWeight: 750,
+                                                            fontSize: 12,
+                                                        }}
+                                                    />
+                                                )}
+                                            </Stack>
+                                            <Typography
+                                                component="h2"
+                                                variant="h6"
+                                                sx={{ fontWeight: 800, fontSize: 18, color: "#0A2540" }}
+                                            >
+                                                {item.name}
+                                            </Typography>
+                                            <Typography sx={{ flex: 1, lineHeight: 1.65, fontSize: 14, color: "#334155" }}>
+                                                {item.description ||
+                                                    "Xem thông tin chuyên khoa, đội ngũ bác sĩ và lịch khám đang được công bố."}
+                                            </Typography>
+                                            {deptSpecs.length > 0 && (
+                                                <Box sx={{ pt: 0.5 }}>
+                                                    <Typography
+                                                        variant="caption"
+                                                        sx={{ display: "block", color: "#475569", fontWeight: 750, mb: 0.75 }}
+                                                    >
+                                                        Chuyên khoa trực thuộc ({deptSpecs.length}):
+                                                    </Typography>
+                                                    <Stack direction="row" sx={{ flexWrap: "wrap", gap: 0.75 }}>
+                                                        {deptSpecs.map(spec => (
+                                                            <Chip
+                                                                key={spec.specializationId}
+                                                                label={spec.name}
+                                                                size="small"
+                                                                variant="outlined"
+                                                                sx={{
+                                                                    borderRadius: "6px",
+                                                                    fontSize: 12,
+                                                                    fontWeight: 650,
+                                                                    bgcolor: "#F4F8FC",
+                                                                    borderColor: "#90BCE6",
+                                                                    color: "#0A2540",
+                                                                }}
+                                                            />
+                                                        ))}
+                                                    </Stack>
+                                                </Box>
+                                            )}
+                                            <Box sx={{ pt: 1, borderTop: "1px solid #E2ECF5" }}>
+                                                <Button
+                                                    component={RouterLink}
+                                                    to={`/specialties/${item.departmentId}`}
+                                                    endIcon={<ArrowForward sx={{ fontSize: 16 }} />}
+                                                    sx={{
+                                                        textTransform: "none",
+                                                        fontWeight: 750,
+                                                        px: 0,
+                                                        color: "#0B4F8A",
+                                                        "&:hover": { bgcolor: "transparent", color: "#083A66" },
+                                                    }}
+                                                >
+                                                    Tìm hiểu chuyên khoa
+                                                </Button>
+                                            </Box>
+                                        </Paper>
+                                    </Grid>
+                                );
+                            })}
                         </Grid>
-                    ))}
-                </Grid>
+                    </Box>
+                )}
+
+                {filteredSpecializations.length > 0 && (
+                    <Box component="section">
+                        <Stack
+                            direction={{ xs: "column", sm: "row" }}
+                            sx={{ justifyContent: "space-between", alignItems: { sm: "baseline" }, mb: 2.5, gap: 1 }}
+                        >
+                            <Typography component="h2" sx={{ fontWeight: 800, fontSize: { xs: 20, sm: 23 }, color: "#0A2540" }}>
+                                Danh mục chuyên khoa theo khoa ({filteredSpecializations.length})
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                Quan hệ khoa chủ quản và chuyên khoa chuyên môn đang hoạt động tại phòng khám
+                            </Typography>
+                        </Stack>
+                        <Grid container spacing={2.5}>
+                            {filteredSpecializations.map(spec => (
+                                <Grid size={{ xs: 12, sm: 6, md: 4 }} key={spec.specializationId}>
+                                    <Paper variant="outlined" sx={cardSx}>
+                                        <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", alignItems: "center" }}>
+                                            <Chip
+                                                icon={<MedicalServicesOutlined sx={{ fontSize: 16 }} />}
+                                                label={`Khoa: ${spec.departmentName}`}
+                                                size="small"
+                                                color="primary"
+                                                variant="outlined"
+                                                sx={{
+                                                    borderRadius: "6px",
+                                                    fontWeight: 700,
+                                                    fontSize: 12,
+                                                    bgcolor: "#E6F0FA",
+                                                    borderColor: "#90BCE6",
+                                                    color: "#0B4F8A",
+                                                }}
+                                            />
+                                            {spec.code && (
+                                                <Chip
+                                                    label={spec.code}
+                                                    size="small"
+                                                    sx={{
+                                                        borderRadius: "6px",
+                                                        fontSize: 11.5,
+                                                        fontWeight: 750,
+                                                        bgcolor: "#F1F5F9",
+                                                        color: "#0A2540",
+                                                    }}
+                                                />
+                                            )}
+                                        </Stack>
+                                        <Typography
+                                            component="h3"
+                                            variant="h6"
+                                            sx={{ fontWeight: 800, fontSize: 17, color: "#0A2540" }}
+                                        >
+                                            {spec.name}
+                                        </Typography>
+                                        <Typography sx={{ flex: 1, lineHeight: 1.65, fontSize: 14, color: "#334155" }}>
+                                            {spec.description ||
+                                                `Chuyên khoa ${spec.name} trực thuộc khoa ${spec.departmentName}, tiếp nhận thăm khám và tư vấn chuyên sâu.`}
+                                        </Typography>
+                                        <Stack direction="row" spacing={1.5} sx={{ pt: 1, borderTop: "1px solid #E2ECF5", flexWrap: "wrap" }}>
+                                            <Button
+                                                component={RouterLink}
+                                                to={`/specialties/${spec.departmentId}`}
+                                                size="small"
+                                                sx={{ textTransform: "none", fontWeight: 750, px: 0, color: "#0B4F8A" }}
+                                            >
+                                                Xem khoa {spec.departmentName}
+                                            </Button>
+                                            <Button
+                                                component={RouterLink}
+                                                to={`/doctors?departmentId=${spec.departmentId}`}
+                                                size="small"
+                                                variant="outlined"
+                                                sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px", borderColor: "#B8CCE0", color: "#0A2540" }}
+                                            >
+                                                Tra cứu bác sĩ
+                                            </Button>
+                                        </Stack>
+                                    </Paper>
+                                </Grid>
+                            ))}
+                        </Grid>
+                    </Box>
+                )}
             </ResourceState>
             <BookingCallout />
         </PublicPage>
@@ -241,77 +430,174 @@ export function SpecialtiesPage() {
 
 export function SpecialtyDetailPage() {
     const { departmentId } = useParams();
-    const resource = usePublicResource(getDepartments);
-    const department = resource.data?.find(item => item.departmentId === Number(departmentId));
+    const numericDepartmentId = Number(departmentId);
+    const departmentResource = usePublicResource(getDepartments);
+    const loadSpecializations = useCallback(
+        () =>
+            Number.isInteger(numericDepartmentId) && numericDepartmentId > 0
+                ? getPublicSpecializations(numericDepartmentId)
+                : Promise.resolve([]),
+        [numericDepartmentId]
+    );
+    const specializationResource = usePublicResource(loadSpecializations);
+    const department = departmentResource.data?.find(item => item.departmentId === numericDepartmentId);
+    const specializations =
+        specializationResource.data?.length > 0
+            ? specializationResource.data
+            : department?.specializations || [];
     const information = department?.publicInformation;
+    const combinedResource =
+        departmentResource.status !== "ready"
+            ? departmentResource
+            : specializationResource.status === "error"
+            ? specializationResource
+            : departmentResource;
 
     return (
         <PublicPage
+            badge="Chi tiết khoa lâm sàng"
             title={department?.name || "Thông tin chuyên khoa"}
             description={department?.description}
         >
-            <ResourceState resource={resource}>
+            <ResourceState resource={combinedResource}>
                 {department ? (
                     <Paper
                         variant="outlined"
                         sx={{
                             p: { xs: 3, md: 4.5 },
                             borderRadius: "16px",
-                            borderColor: "#e5e9f0",
-                            bgcolor: "#ffffff",
-                            boxShadow: "0 2px 8px rgba(15, 23, 42, 0.04)",
+                            borderColor: "#C5D8EC",
+                            bgcolor: "#FFFFFF",
+                            boxShadow: "0 2px 12px rgba(10, 37, 64, 0.04)",
                         }}
                     >
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2 }}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1.75, mb: 3 }}>
                             <Box
                                 sx={{
-                                    width: 48,
-                                    height: 48,
+                                    width: 52,
+                                    height: 52,
                                     borderRadius: "12px",
-                                    bgcolor: "#eff6ff",
-                                    color: "primary.main",
+                                    bgcolor: "#0B4F8A",
+                                    color: "#FFFFFF",
                                     display: "grid",
                                     placeItems: "center",
+                                    flexShrink: 0,
                                 }}
                             >
                                 <LocalHospitalOutlined sx={{ fontSize: 28 }} />
                             </Box>
                             <Box>
-                                <Typography variant="overline" color="primary.main" sx={{ fontWeight: 700, letterSpacing: "0.05em" }}>
-                                    Chuyên khoa lâm sàng
+                                <Typography
+                                    variant="overline"
+                                    sx={{ fontWeight: 750, letterSpacing: "0.05em", color: "#0B4F8A", display: "block", lineHeight: 1.4 }}
+                                >
+                                    Khoa lâm sàng {department.code ? `· Mã ${department.code}` : ""}
                                 </Typography>
-                                <Typography component="h2" variant="h5" sx={{ fontWeight: 800, color: "#0f2c4d" }}>
+                                <Typography component="h2" variant="h5" sx={{ fontWeight: 800, color: "#0A2540" }}>
                                     {department.name}
                                 </Typography>
                             </Box>
                         </Box>
 
-                        <Typography sx={{ whiteSpace: "pre-line", lineHeight: 1.85, fontSize: 15, color: "#374151", mb: 3 }}>
+                        <Typography component="h3" variant="h6" sx={{ fontWeight: 800, fontSize: 18, mb: 1, color: "#0A2540" }}>
+                            Giới thiệu chuyên khoa
+                        </Typography>
+                        <Typography sx={{ whiteSpace: "pre-line", lineHeight: 1.85, fontSize: 15.5, color: "#1E293B", mb: 3.5 }}>
                             {information?.overview ||
                                 department.description ||
-                                `Chuyên khoa ${department.name} đang tiếp nhận đăng ký khám. Xem danh sách bác sĩ và chọn lịch khám phù hợp.`}
+                                `Khoa ${department.name} đang tiếp nhận đăng ký khám. Xem danh sách chuyên khoa trực thuộc, bác sĩ và chọn lịch khám phù hợp.`}
                         </Typography>
 
+                        <Box component="section" sx={{ mt: 3, mb: 3.5 }}>
+                            <Typography component="h3" variant="h6" sx={{ fontWeight: 800, fontSize: 18, mb: 1.75, color: "#0A2540" }}>
+                                Chuyên khoa trực thuộc ({specializations.length})
+                            </Typography>
+                            {specializations.length > 0 ? (
+                                <Grid container spacing={2}>
+                                    {specializations.map(spec => (
+                                        <Grid key={spec.specializationId} size={{ xs: 12, sm: 6 }}>
+                                            <Paper
+                                                variant="outlined"
+                                                sx={{
+                                                    p: 2.25,
+                                                    height: "100%",
+                                                    borderRadius: "12px",
+                                                    borderColor: "#B8D4F0",
+                                                    bgcolor: "#F4F8FC",
+                                                }}
+                                            >
+                                                <Stack
+                                                    direction="row"
+                                                    spacing={1}
+                                                    sx={{ alignItems: "center", mb: 0.75, flexWrap: "wrap" }}
+                                                >
+                                                    <Typography sx={{ fontWeight: 750, fontSize: 16, color: "#0A2540" }}>
+                                                        {spec.name}
+                                                    </Typography>
+                                                    {spec.code && (
+                                                        <Chip
+                                                            label={spec.code}
+                                                            size="small"
+                                                            sx={{
+                                                                height: 22,
+                                                                fontSize: 11.5,
+                                                                fontWeight: 750,
+                                                                bgcolor: "#E6F0FA",
+                                                                color: "#0B4F8A",
+                                                            }}
+                                                        />
+                                                    )}
+                                                </Stack>
+                                                <Typography variant="body2" sx={{ lineHeight: 1.65, color: "#334155" }}>
+                                                    {spec.description ||
+                                                        `Chuyên khoa ${spec.name} trực thuộc khoa ${department.name}.`}
+                                                </Typography>
+                                            </Paper>
+                                        </Grid>
+                                    ))}
+                                </Grid>
+                            ) : (
+                                <Typography variant="body2" color="text.secondary">
+                                    Khoa hiện đang tiếp nhận khám tổng hợp theo phạm vi chuyên môn của đội ngũ bác sĩ trong khoa.
+                                </Typography>
+                            )}
+                        </Box>
+
                         {information?.focusAreas?.length > 0 && (
-                            <Box component="section" sx={{ mt: 3, mb: 3 }}>
-                                <Typography component="h3" variant="h6" sx={{ fontWeight: 750, fontSize: 17, mb: 1.5, color: "#1f2937" }}>
-                                    Nhóm vấn đề & bệnh lý thường gặp
+                            <Box component="section" sx={{ mt: 3.5, mb: 3.5 }}>
+                                <Typography component="h3" variant="h6" sx={{ fontWeight: 800, fontSize: 18, mb: 1.5, color: "#0A2540" }}>
+                                    Nhóm vấn đề thường gặp
                                 </Typography>
                                 <Box
                                     component="ul"
                                     sx={{
-                                        pl: 2.5,
+                                        listStyle: "none",
+                                        p: 0,
                                         m: 0,
                                         display: "grid",
                                         gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
                                         gap: 1.25,
-                                        "& li": { lineHeight: 1.6, fontSize: 14.5, color: "#4b5563" },
                                     }}
                                 >
                                     {information.focusAreas.map(item => (
-                                        <Typography component="li" key={item}>
-                                            {item}
-                                        </Typography>
+                                        <Box
+                                            component="li"
+                                            key={item}
+                                            sx={{
+                                                display: "flex",
+                                                alignItems: "flex-start",
+                                                gap: 1,
+                                                p: 1.5,
+                                                borderRadius: "10px",
+                                                bgcolor: "#F4F7FA",
+                                                border: "1px solid #DCE7F2",
+                                            }}
+                                        >
+                                            <CheckCircleOutlined sx={{ fontSize: 19, color: "#0B4F8A", mt: 0.2, flexShrink: 0 }} />
+                                            <Typography sx={{ lineHeight: 1.6, fontSize: 14.5, color: "#1E293B" }}>
+                                                {item}
+                                            </Typography>
+                                        </Box>
                                     ))}
                                 </Box>
                             </Box>
@@ -321,21 +607,21 @@ export function SpecialtyDetailPage() {
                             <Box
                                 component="section"
                                 sx={{
-                                    mt: 3,
-                                    p: 3,
-                                    bgcolor: "#eff6ff",
-                                    borderRadius: "12px",
-                                    border: "1px solid #bfdbfe",
+                                    mt: 3.5,
+                                    p: { xs: 2.5, sm: 3 },
+                                    bgcolor: "#EAF2FA",
+                                    borderRadius: "14px",
+                                    border: "1px solid #90BCE6",
                                 }}
                             >
                                 <Typography
                                     component="h3"
                                     variant="h6"
                                     sx={{
-                                        fontWeight: 750,
-                                        fontSize: 16.5,
+                                        fontWeight: 800,
+                                        fontSize: 17,
                                         mb: 1.25,
-                                        color: "primary.main",
+                                        color: "#0B4F8A",
                                         display: "flex",
                                         alignItems: "center",
                                         gap: 1,
@@ -349,7 +635,7 @@ export function SpecialtyDetailPage() {
                                     sx={{
                                         pl: 2.5,
                                         m: 0,
-                                        "& li": { mb: 0.75, lineHeight: 1.7, fontSize: 14, color: "#1e3a8a" },
+                                        "& li": { mb: 0.75, lineHeight: 1.7, fontSize: 14.5, color: "#0A2540" },
                                     }}
                                 >
                                     {information.preparation.map(item => (
@@ -362,7 +648,7 @@ export function SpecialtyDetailPage() {
                         )}
 
                         {information?.sourceUrl && (
-                            <Typography variant="body2" color="text.secondary" sx={{ mt: 3, fontSize: 13 }}>
+                            <Typography variant="body2" color="text.secondary" sx={{ mt: 3, fontSize: 13.5 }}>
                                 Tham khảo nội dung chuyên khoa:{" "}
                                 <Link href={information.sourceUrl} target="_blank" rel="noopener noreferrer" underline="hover">
                                     UMC Clinic
@@ -371,16 +657,23 @@ export function SpecialtyDetailPage() {
                             </Typography>
                         )}
 
-                        <Divider sx={{ my: 3.5, borderColor: "#e5e9f0" }} />
+                        <Divider sx={{ my: 3.5, borderColor: "#DCE7F2" }} />
 
-                        <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.75}>
                             <Button
                                 component={RouterLink}
                                 to={`/booking?departmentId=${department.departmentId}`}
                                 variant="contained"
                                 size="large"
                                 startIcon={<CalendarMonthOutlined />}
-                                sx={{ borderRadius: "10px", px: 3, fontWeight: 700, textTransform: "none" }}
+                                sx={{
+                                    borderRadius: "10px",
+                                    px: 3,
+                                    fontWeight: 750,
+                                    textTransform: "none",
+                                    bgcolor: "#0B4F8A",
+                                    "&:hover": { bgcolor: "#083A66" },
+                                }}
                             >
                                 Đăng ký khám chuyên khoa
                             </Button>
@@ -389,7 +682,14 @@ export function SpecialtyDetailPage() {
                                 to={`/doctors?departmentId=${department.departmentId}`}
                                 variant="outlined"
                                 size="large"
-                                sx={{ borderRadius: "10px", px: 2.5, fontWeight: 600, textTransform: "none" }}
+                                sx={{
+                                    borderRadius: "10px",
+                                    px: 2.5,
+                                    fontWeight: 700,
+                                    textTransform: "none",
+                                    borderColor: "#B8CCE0",
+                                    color: "#0A2540",
+                                }}
                             >
                                 Xem bác sĩ chuyên khoa
                             </Button>
@@ -410,6 +710,7 @@ export function SpecialtyDetailPage() {
 
 export function ServicesPage({ pricing = false }) {
     const resource = usePublicResource(getPublicServices);
+    const clinic = useClinicInfo();
     const [query, setQuery] = useState("");
     const services = (resource.data || []).filter(item =>
         matches(`${item.name} ${item.description || ""}`, query)
@@ -417,24 +718,74 @@ export function ServicesPage({ pricing = false }) {
 
     return (
         <PublicPage
-            title={pricing ? "Bảng giá dịch vụ y tế" : "Dịch vụ & danh mục xét nghiệm"}
-            description="Danh mục các dịch vụ xét nghiệm, chẩn đoán và mức giá niêm yết công khai tại phòng khám. Liên hệ nhân viên để được hướng dẫn chuẩn bị chi tiết."
+            badge={pricing ? "Niêm yết minh bạch" : "Cận lâm sàng & xét nghiệm"}
+            title={pricing ? "Bảng giá dịch vụ y tế" : "Dịch vụ y tế & danh mục xét nghiệm"}
+            description="Danh mục phí khám mặc định, phí sổ khám bệnh và các dịch vụ xét nghiệm niêm yết công khai tại phòng khám."
         >
+            <Grid container spacing={2.25} sx={{ mb: 3.5 }}>
+                {[
+                    [
+                        "Phí khám ban đầu mặc định",
+                        money(clinic.defaultExaminationFee),
+                        "Áp dụng cho mỗi lượt khám chuyên khoa tiêu chuẩn",
+                    ],
+                    [
+                        "Phí sổ khám bệnh",
+                        money(clinic.patientBookFee),
+                        "Áp dụng khi mua sổ mới hoặc cấp lại sổ tại quầy",
+                    ],
+                    [
+                        "Thời lượng khung giờ khám",
+                        `${clinic.defaultSlotDurationMinutes} phút`,
+                        `Tiếp nhận trong khung giờ ${clinic.hours}`,
+                    ],
+                ].map(([label, value, helper]) => (
+                    <Grid key={label} size={{ xs: 12, md: 4 }}>
+                        <Paper
+                            variant="outlined"
+                            sx={{
+                                p: 2.75,
+                                height: "100%",
+                                borderRadius: "14px",
+                                borderColor: "#C5D8EC",
+                                borderTop: "4px solid #0B4F8A",
+                                bgcolor: "#FFFFFF",
+                            }}
+                        >
+                            <Typography
+                                variant="caption"
+                                sx={{
+                                    color: "#0B4F8A",
+                                    fontWeight: 750,
+                                    fontSize: 12,
+                                    textTransform: "uppercase",
+                                    display: "block",
+                                    mb: 0.75,
+                                }}
+                            >
+                                {label}
+                            </Typography>
+                            <Typography
+                                sx={{
+                                    color: "#0A2540",
+                                    fontWeight: 800,
+                                    fontSize: 24,
+                                    mb: 0.5,
+                                    fontVariantNumeric: "tabular-nums",
+                                }}
+                            >
+                                {value}
+                            </Typography>
+                            <Typography variant="body2" sx={{ fontSize: 13.5, color: "#334155" }}>
+                                {helper}
+                            </Typography>
+                        </Paper>
+                    </Grid>
+                ))}
+            </Grid>
+
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mb: 3.5, alignItems: { sm: "center" } }}>
-                <Paper
-                    elevation={0}
-                    sx={{
-                        p: 0.75,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 1,
-                        borderRadius: "12px",
-                        border: "1px solid #cbd5e1",
-                        bgcolor: "#ffffff",
-                        flex: 1,
-                        boxShadow: "0 1px 3px rgba(15, 23, 42, 0.04)",
-                    }}
-                >
+                <Paper elevation={0} sx={{ ...searchPaperSx, flex: 1 }}>
                     <TextField
                         placeholder="Tìm tên dịch vụ, xét nghiệm..."
                         value={query}
@@ -446,7 +797,7 @@ export function ServicesPage({ pricing = false }) {
                             input: {
                                 startAdornment: (
                                     <InputAdornment position="start">
-                                        <Search sx={{ color: "text.secondary", ml: 0.5 }} />
+                                        <Search sx={{ color: "#0B4F8A", ml: 0.5 }} />
                                     </InputAdornment>
                                 ),
                             },
@@ -466,12 +817,14 @@ export function ServicesPage({ pricing = false }) {
                     sx={{
                         flexShrink: 0,
                         borderRadius: "10px",
-                        minHeight: 46,
+                        minHeight: 48,
                         px: 2.5,
-                        fontWeight: 650,
+                        fontWeight: 750,
                         textTransform: "none",
-                        borderColor: "#cbd5e1",
-                        bgcolor: "#ffffff",
+                        borderColor: "#90BCE6",
+                        color: "#0B4F8A",
+                        bgcolor: "#FFFFFF",
+                        "&:hover": { borderColor: "#0B4F8A", bgcolor: "#E6F0FA" },
                     }}
                 >
                     {pricing ? "Chuyển xem dạng thẻ dịch vụ" : "Xem bảng giá chi tiết"}
@@ -491,18 +844,17 @@ export function ServicesPage({ pricing = false }) {
                         variant="outlined"
                         sx={{
                             borderRadius: "14px",
-                            borderColor: "#e5e9f0",
-                            boxShadow: "0 1px 4px rgba(15, 23, 42, 0.03)",
-                            overflow: "hidden",
+                            borderColor: "#C5D8EC",
+                            overflowX: "auto",
                         }}
                     >
                         <Table aria-label="Bảng giá dịch vụ xét nghiệm">
-                            <TableHead sx={{ bgcolor: "#f8fafc" }}>
+                            <TableHead sx={{ bgcolor: "#EAF2FA" }}>
                                 <TableRow>
-                                    <TableCell sx={{ fontWeight: 700, fontSize: 13, color: "#475569" }}>
+                                    <TableCell sx={{ fontWeight: 800, fontSize: 13, color: "#0A2540" }}>
                                         TÊN DỊCH VỤ / XÉT NGHIỆM
                                     </TableCell>
-                                    <TableCell align="right" sx={{ fontWeight: 700, fontSize: 13, color: "#475569" }}>
+                                    <TableCell align="right" sx={{ fontWeight: 800, fontSize: 13, color: "#0A2540" }}>
                                         ĐƠN GIÁ NIÊM YẾT (VNĐ)
                                     </TableCell>
                                 </TableRow>
@@ -512,20 +864,25 @@ export function ServicesPage({ pricing = false }) {
                                     <TableRow
                                         key={item.id}
                                         sx={{
-                                            "&:hover": { bgcolor: "#f8fafc" },
-                                            "& td": { borderColor: "#f1f5f9", py: 1.75 },
+                                            "&:hover": { bgcolor: "#F4F8FC" },
+                                            "& td": { borderColor: "#E2ECF5", py: 1.85 },
                                         }}
                                     >
-                                        <TableCell sx={{ fontSize: 14.5, fontWeight: 500, color: "#1f2937" }}>
+                                        <TableCell sx={{ fontSize: 15, fontWeight: 650, color: "#0A2540" }}>
                                             {item.name}
+                                            {item.description && (
+                                                <Typography sx={{ fontSize: 13, color: "#475569", mt: 0.3, fontWeight: 400 }}>
+                                                    {item.description}
+                                                </Typography>
+                                            )}
                                         </TableCell>
                                         <TableCell
                                             align="right"
                                             sx={{
                                                 whiteSpace: "nowrap",
-                                                fontWeight: 750,
-                                                fontSize: 15,
-                                                color: "primary.main",
+                                                fontWeight: 800,
+                                                fontSize: 15.5,
+                                                color: "#0B4F8A",
                                                 fontVariantNumeric: "tabular-nums",
                                             }}
                                         >
@@ -543,31 +900,43 @@ export function ServicesPage({ pricing = false }) {
                                 <Paper variant="outlined" sx={cardSx}>
                                     <Chip
                                         label="Dịch vụ xét nghiệm"
-                                        color="primary"
                                         variant="outlined"
                                         size="small"
                                         sx={{
                                             alignSelf: "flex-start",
                                             borderRadius: "6px",
-                                            fontSize: 11.5,
-                                            fontWeight: 600,
-                                            bgcolor: "#f0f9ff",
-                                            borderColor: "#bae6fd",
+                                            fontSize: 12,
+                                            fontWeight: 750,
+                                            bgcolor: "#E6F0FA",
+                                            borderColor: "#90BCE6",
+                                            color: "#0B4F8A",
                                         }}
                                     />
-                                    <Typography component="h2" variant="h6" sx={{ fontWeight: 750, fontSize: 16.5, color: "#1f2937" }}>
+                                    <Typography
+                                        component="h2"
+                                        variant="h6"
+                                        sx={{ fontWeight: 800, fontSize: 17, color: "#0A2540" }}
+                                    >
                                         {item.name}
                                     </Typography>
-                                    <Typography color="text.secondary" sx={{ lineHeight: 1.65, fontSize: 13.5, flex: 1 }}>
-                                        {item.description || "Liên hệ phòng khám để được hướng dẫn về dịch vụ và cách chuẩn bị trước khi thực hiện."}
+                                    <Typography sx={{ lineHeight: 1.65, fontSize: 14, color: "#334155", flex: 1 }}>
+                                        {item.description ||
+                                            "Liên hệ phòng khám để được hướng dẫn về dịch vụ và cách chuẩn bị trước khi thực hiện."}
                                     </Typography>
-                                    <Box sx={{ pt: 1, display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                                    <Box
+                                        sx={{
+                                            pt: 1.25,
+                                            borderTop: "1px solid #E2ECF5",
+                                            display: "flex",
+                                            justifyContent: "space-between",
+                                            alignItems: "baseline",
+                                        }}
+                                    >
                                         <Typography variant="caption" color="text.secondary">
-                                            Đơn giá:
+                                            Đơn giá niêm yết:
                                         </Typography>
                                         <Typography
-                                            color="primary.main"
-                                            sx={{ fontWeight: 800, fontSize: 17, fontVariantNumeric: "tabular-nums" }}
+                                            sx={{ fontWeight: 800, fontSize: 18, color: "#0B4F8A", fontVariantNumeric: "tabular-nums" }}
                                         >
                                             {money(item.price)}
                                         </Typography>
@@ -580,10 +949,11 @@ export function ServicesPage({ pricing = false }) {
                                         sx={{
                                             borderRadius: "8px",
                                             textTransform: "none",
-                                            fontWeight: 650,
-                                            mt: 1,
-                                            borderColor: "#cbd5e1",
-                                            "&:hover": { borderColor: "primary.main", bgcolor: "#eff6ff" },
+                                            fontWeight: 700,
+                                            mt: 0.5,
+                                            borderColor: "#90BCE6",
+                                            color: "#0B4F8A",
+                                            "&:hover": { borderColor: "#0B4F8A", bgcolor: "#E6F0FA" },
                                         }}
                                     >
                                         Đăng ký khám và tư vấn
@@ -600,12 +970,12 @@ export function ServicesPage({ pricing = false }) {
                 sx={{
                     mt: 3.5,
                     borderRadius: "12px",
-                    bgcolor: "#eff6ff",
-                    border: "1px solid #bfdbfe",
-                    color: "#1e3a8a",
+                    bgcolor: "#EAF2FA",
+                    border: "1px solid #90BCE6",
+                    color: "#0A2540",
                 }}
             >
-                Đơn giá trên áp dụng cho từng dịch vụ xét nghiệm riêng lẻ. Tổng chi phí một lượt khám sẽ được nhân viên y tế và bác sĩ tư vấn cụ thể tùy theo phác đồ chỉ định thực tế.
+                Đơn giá trên áp dụng cho từng dịch vụ xét nghiệm riêng lẻ. Tổng chi phí một lượt khám sẽ được bác sĩ và nhân viên y tế tư vấn cụ thể tùy theo chỉ định chuyên môn thực tế.
             </Alert>
             <BookingCallout />
         </PublicPage>
@@ -613,36 +983,94 @@ export function ServicesPage({ pricing = false }) {
 }
 
 export function AboutPage() {
+    const clinic = useClinicInfo();
     return (
         <PublicPage
-            title="Về Phòng Khám Đa Khoa"
-            description="Kết nối người bệnh với chuyên khoa, bác sĩ và thông tin khám chữa bệnh trong cùng một nền tảng số hiện đại, an toàn và tận tâm."
+            badge="Giới thiệu đơn vị y tế"
+            title={`Về phòng khám — ${clinic.name}`}
+            description={clinic.description}
         >
+            <Paper
+                variant="outlined"
+                sx={{
+                    p: { xs: 2.75, md: 3.5 },
+                    mb: 3.5,
+                    borderRadius: "16px",
+                    borderColor: "#90BCE6",
+                    bgcolor: "#EAF2FA",
+                }}
+            >
+                <Grid container spacing={2.5}>
+                    <Grid size={{ xs: 12, md: 4 }}>
+                        <Typography variant="caption" sx={{ fontWeight: 750, textTransform: "uppercase", color: "#0B4F8A" }}>
+                            Đơn vị vận hành
+                        </Typography>
+                        <Typography sx={{ fontWeight: 800, fontSize: 18, color: "#0A2540", mt: 0.5 }}>
+                            {clinic.name}
+                        </Typography>
+                        <Typography variant="body2" sx={{ mt: 0.25, color: "#334155" }}>
+                            {clinic.tagline}
+                        </Typography>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                        <Typography variant="caption" sx={{ fontWeight: 750, textTransform: "uppercase", color: "#0B4F8A" }}>
+                            Khung giờ làm việc
+                        </Typography>
+                        <Typography sx={{ fontWeight: 750, fontSize: 16, color: "#0A2540", mt: 0.5 }}>
+                            {clinic.hours}
+                        </Typography>
+                        <Typography variant="body2" sx={{ mt: 0.25, color: "#334155" }}>
+                            Tổng đài: {clinic.phone}
+                        </Typography>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                        <Typography variant="caption" sx={{ fontWeight: 750, textTransform: "uppercase", color: "#0B4F8A" }}>
+                            Cơ sở tiếp nhận ({clinic.locations.length})
+                        </Typography>
+                        <Typography sx={{ fontWeight: 750, fontSize: 16, color: "#0A2540", mt: 0.5 }}>
+                            {clinic.locations.map(item => item.name).join(" · ")}
+                        </Typography>
+                        <Typography variant="body2" sx={{ mt: 0.25, color: "#334155", overflowWrap: "anywhere" }}>
+                            Email: {clinic.email}
+                        </Typography>
+                    </Grid>
+                </Grid>
+            </Paper>
+
             <Grid container spacing={3}>
                 {[
-                    ["Tìm hiểu trước khi đến khám", "Xem các chuyên khoa đang hoạt động, hồ sơ bác sĩ và đánh giá công khai từ cộng đồng để bạn và gia đình chủ động đưa ra lựa chọn tối ưu."],
-                    ["Đăng ký khám thuận tiện", "Tra cứu giờ trống theo lịch làm việc thực tế của bác sĩ và đăng ký nhanh chóng kể cả khi bạn chưa có tài khoản."],
-                    ["Đồng hành sau buổi khám", "Bệnh nhân có tài khoản có thể dễ dàng tra cứu lịch hẹn, hồ sơ bệnh án và kết quả xét nghiệm mọi lúc, mọi nơi."],
+                    [
+                        "Tìm hiểu trước khi đến khám",
+                        "Xem danh sách khoa, chuyên khoa trực thuộc, hồ sơ bác sĩ và đánh giá công khai từ cộng đồng để chủ động đưa ra lựa chọn phù hợp nhất.",
+                    ],
+                    [
+                        "Đăng ký khám thuận tiện",
+                        "Tra cứu giờ trống theo lịch làm việc thực tế của bác sĩ và đăng ký nhanh chóng kể cả khi bạn chưa có tài khoản.",
+                    ],
+                    [
+                        "Đồng hành sau buổi khám",
+                        "Bệnh nhân có tài khoản dễ dàng theo dõi lịch hẹn, hồ sơ bệnh án, đơn thuốc và kết quả xét nghiệm mọi lúc, mọi nơi.",
+                    ],
                 ].map(([title, text]) => (
                     <Grid size={{ xs: 12, md: 4 }} key={title}>
                         <Paper variant="outlined" sx={cardSx}>
                             <Box
                                 sx={{
-                                    width: 44,
-                                    height: 44,
+                                    width: 46,
+                                    height: 46,
                                     borderRadius: "10px",
-                                    bgcolor: "#eff6ff",
-                                    color: "primary.main",
+                                    bgcolor: "#E6F0FA",
+                                    color: "#0B4F8A",
                                     display: "grid",
                                     placeItems: "center",
                                 }}
                             >
-                                <LocalHospitalOutlined sx={{ fontSize: 24 }} />
+                                <HealthAndSafetyOutlined sx={{ fontSize: 24 }} />
                             </Box>
-                            <Typography component="h2" variant="h6" sx={{ fontWeight: 750, fontSize: 17, color: "#1f2937" }}>
+                            <Typography component="h2" variant="h6" sx={{ fontWeight: 800, fontSize: 17.5, color: "#0A2540" }}>
                                 {title}
                             </Typography>
-                            <Typography color="text.secondary" sx={{ lineHeight: 1.75, fontSize: 14 }}>
+                            <Typography sx={{ lineHeight: 1.75, fontSize: 14.5, color: "#334155" }}>
                                 {text}
                             </Typography>
                         </Paper>
@@ -655,7 +1083,7 @@ export function AboutPage() {
                     component={RouterLink}
                     to="/doctors"
                     variant="outlined"
-                    sx={{ borderRadius: "10px", px: 2.5, fontWeight: 650, textTransform: "none", minHeight: 42 }}
+                    sx={{ borderRadius: "10px", px: 2.5, fontWeight: 700, textTransform: "none", minHeight: 44, bgcolor: "#FFFFFF" }}
                 >
                     Đội ngũ bác sĩ
                 </Button>
@@ -663,7 +1091,7 @@ export function AboutPage() {
                     component={RouterLink}
                     to="/contact"
                     variant="outlined"
-                    sx={{ borderRadius: "10px", px: 2.5, fontWeight: 650, textTransform: "none", minHeight: 42 }}
+                    sx={{ borderRadius: "10px", px: 2.5, fontWeight: 700, textTransform: "none", minHeight: 44, bgcolor: "#FFFFFF" }}
                 >
                     Thông tin liên hệ
                 </Button>
@@ -682,24 +1110,11 @@ export function PatientGuidePage() {
 
     return (
         <PublicPage
+            badge="Hướng dẫn người bệnh"
             title="Cẩm nang & hướng dẫn khách hàng"
             description="Tìm hiểu quy trình đặt lịch, chuẩn bị hồ sơ bệnh án và cách khai thác tối đa tiện ích từ cổng dịch vụ bệnh nhân."
         >
-            <Paper
-                elevation={0}
-                sx={{
-                    p: 0.75,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                    borderRadius: "12px",
-                    border: "1px solid #cbd5e1",
-                    bgcolor: "#ffffff",
-                    mb: 3.5,
-                    maxWidth: 560,
-                    boxShadow: "0 1px 3px rgba(15, 23, 42, 0.04)",
-                }}
-            >
+            <Paper elevation={0} sx={{ ...searchPaperSx, mb: 3.5, maxWidth: 580 }}>
                 <TextField
                     placeholder="Tìm kiếm bài viết, hướng dẫn đặt lịch..."
                     value={query}
@@ -711,7 +1126,7 @@ export function PatientGuidePage() {
                         input: {
                             startAdornment: (
                                 <InputAdornment position="start">
-                                    <Search sx={{ color: "text.secondary", ml: 0.5 }} />
+                                    <Search sx={{ color: "#0B4F8A", ml: 0.5 }} />
                                 </InputAdornment>
                             ),
                         },
@@ -740,20 +1155,21 @@ export function PatientGuidePage() {
                                     px: 1.25,
                                     py: 0.35,
                                     borderRadius: "6px",
-                                    bgcolor: "#eff6ff",
-                                    color: "primary.main",
-                                    fontWeight: 700,
-                                    fontSize: 11.5,
+                                    bgcolor: "#E6F0FA",
+                                    border: "1px solid #90BCE6",
+                                    color: "#0B4F8A",
+                                    fontWeight: 750,
+                                    fontSize: 12,
                                     textTransform: "uppercase",
-                                    letterSpacing: "0.03em",
+                                    letterSpacing: "0.02em",
                                 }}
                             >
                                 {article.category}
                             </Box>
-                            <Typography component="h2" variant="h6" sx={{ fontWeight: 750, fontSize: 17, color: "#1f2937" }}>
+                            <Typography component="h2" variant="h6" sx={{ fontWeight: 800, fontSize: 17.5, color: "#0A2540" }}>
                                 {article.title}
                             </Typography>
-                            <Typography color="text.secondary" sx={{ flex: 1, lineHeight: 1.7, fontSize: 13.5 }}>
+                            <Typography sx={{ flex: 1, lineHeight: 1.7, fontSize: 14, color: "#334155" }}>
                                 {article.summary}
                             </Typography>
                             <Button
@@ -763,9 +1179,10 @@ export function PatientGuidePage() {
                                 sx={{
                                     alignSelf: "flex-start",
                                     textTransform: "none",
-                                    fontWeight: 650,
+                                    fontWeight: 750,
                                     px: 0,
-                                    "&:hover": { bgcolor: "transparent", color: "primary.dark" },
+                                    color: "#0B4F8A",
+                                    "&:hover": { bgcolor: "transparent", color: "#083A66" },
                                 }}
                             >
                                 Đọc hướng dẫn
@@ -782,7 +1199,7 @@ export function PatientGuidePage() {
                 sx={{
                     fontWeight: 800,
                     fontSize: { xs: 20, sm: 24 },
-                    color: "#0f2c4d",
+                    color: "#0A2540",
                     mt: 6,
                     mb: 2.5,
                 }}
@@ -798,28 +1215,26 @@ export function PatientGuidePage() {
                         variant="outlined"
                         sx={{
                             borderRadius: "12px !important",
-                            borderColor: "#e5e9f0",
-                            bgcolor: "#ffffff",
+                            borderColor: "#C5D8EC",
+                            bgcolor: "#FFFFFF",
                             "&::before": { display: "none" },
-                            boxShadow: "0 1px 3px rgba(15, 23, 42, 0.02)",
                             "&.Mui-expanded": {
-                                borderColor: "#90caf9",
-                                boxShadow: "0 4px 12px rgba(25, 118, 210, 0.06)",
+                                borderColor: "#0B4F8A",
                             },
                         }}
                     >
                         <AccordionSummary
-                            expandIcon={<ExpandMore sx={{ color: "primary.main" }} />}
+                            expandIcon={<ExpandMore sx={{ color: "#0B4F8A" }} />}
                             id={`faq-${index}`}
                             aria-controls={`faq-answer-${index}`}
-                            sx={{ px: 2.5, py: 1 }}
+                            sx={{ px: 2.5, py: 1.1 }}
                         >
-                            <Typography sx={{ fontWeight: 650, fontSize: 15, color: "#1f2937" }}>
+                            <Typography sx={{ fontWeight: 750, fontSize: 15.5, color: "#0A2540" }}>
                                 {question}
                             </Typography>
                         </AccordionSummary>
                         <AccordionDetails id={`faq-answer-${index}`} sx={{ px: 2.5, pb: 2.5, pt: 0 }}>
-                            <Typography color="text.secondary" sx={{ lineHeight: 1.8, fontSize: 14 }}>
+                            <Typography sx={{ lineHeight: 1.8, fontSize: 14.5, color: "#334155" }}>
                                 {answer}
                             </Typography>
                         </AccordionDetails>
@@ -838,6 +1253,7 @@ export function GuideArticlePage() {
 
     return (
         <PublicPage
+            badge={article?.category || "Cẩm nang y tế"}
             title={article?.title || "Không tìm thấy bài hướng dẫn"}
             description={article?.summary}
         >
@@ -848,25 +1264,29 @@ export function GuideArticlePage() {
                         sx={{
                             p: { xs: 3, md: 4.5 },
                             borderRadius: "16px",
-                            borderColor: "#e5e9f0",
-                            bgcolor: "#ffffff",
-                            boxShadow: "0 2px 8px rgba(15, 23, 42, 0.03)",
+                            borderColor: "#C5D8EC",
+                            bgcolor: "#FFFFFF",
                             mb: 4,
                         }}
                     >
                         {article.sections.map(([title, text], idx) => (
-                            <Box component="section" key={title} sx={{ mb: idx === article.sections.length - 1 ? 0 : 3.5 }}>
+                            <Box
+                                component="section"
+                                key={title}
+                                sx={{
+                                    mb: idx === article.sections.length - 1 ? 0 : 3.5,
+                                    pb: idx === article.sections.length - 1 ? 0 : 3,
+                                    borderBottom: idx === article.sections.length - 1 ? "none" : "1px solid #E2ECF5",
+                                }}
+                            >
                                 <Typography
                                     component="h2"
                                     variant="h6"
-                                    sx={{ fontWeight: 750, fontSize: 17.5, mb: 1.25, color: "#0f2c4d" }}
+                                    sx={{ fontWeight: 800, fontSize: 18.5, mb: 1.25, color: "#0A2540" }}
                                 >
                                     {title}
                                 </Typography>
-                                <Typography
-                                    color="text.secondary"
-                                    sx={{ lineHeight: 1.85, fontSize: 15, color: "#374151" }}
-                                >
+                                <Typography sx={{ lineHeight: 1.85, fontSize: 15.5, color: "#1E293B" }}>
                                     {text}
                                 </Typography>
                             </Box>
@@ -877,7 +1297,7 @@ export function GuideArticlePage() {
                         component={RouterLink}
                         to="/health-guide"
                         variant="outlined"
-                        sx={{ borderRadius: "10px", px: 2.5, fontWeight: 650, textTransform: "none", minHeight: 42 }}
+                        sx={{ borderRadius: "10px", px: 2.5, fontWeight: 700, textTransform: "none", minHeight: 44, bgcolor: "#FFFFFF" }}
                     >
                         Quay lại cẩm nang hướng dẫn
                     </Button>
@@ -893,10 +1313,12 @@ export function GuideArticlePage() {
 }
 
 export function ContactPage() {
+    const clinic = useClinicInfo();
     return (
         <PublicPage
-            title="Liên hệ & Cơ sở phòng khám"
-            description="Đội ngũ hỗ trợ luôn sẵn sàng tiếp nhận, giải đáp thắc mắc và hỗ trợ đặt lịch khám nhanh chóng."
+            badge="Tổng đài & cơ sở y tế"
+            title="Liên hệ & cơ sở phòng khám"
+            description="Đội ngũ lễ tân và tổng đài viên luôn sẵn sàng tiếp nhận, giải đáp thắc mắc và hỗ trợ đặt lịch khám nhanh chóng."
         >
             <Grid container spacing={3}>
                 {/* Contact Card */}
@@ -905,63 +1327,63 @@ export function ContactPage() {
                         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1 }}>
                             <Box
                                 sx={{
-                                    width: 44,
-                                    height: 44,
+                                    width: 46,
+                                    height: 46,
                                     borderRadius: "10px",
-                                    bgcolor: "#eff6ff",
-                                    color: "primary.main",
+                                    bgcolor: "#0B4F8A",
+                                    color: "#FFFFFF",
                                     display: "grid",
                                     placeItems: "center",
                                 }}
                             >
-                                <PhoneOutlined sx={{ fontSize: 24 }} />
+                                <PhoneInTalkOutlined sx={{ fontSize: 24 }} />
                             </Box>
-                            <Typography component="h2" variant="h5" sx={{ fontWeight: 800, fontSize: 19, color: "#0f2c4d" }}>
+                            <Typography component="h2" variant="h5" sx={{ fontWeight: 800, fontSize: 19.5, color: "#0A2540" }}>
                                 Thông tin liên hệ
                             </Typography>
                         </Box>
 
-                        <Stack spacing={2} sx={{ my: 1 }}>
-                            <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
-                                <PhoneOutlined sx={{ color: "primary.main", fontSize: 20 }} />
+                        <Stack spacing={2.25} sx={{ my: 1.5 }}>
+                            <Box sx={{ p: 2, borderRadius: "12px", bgcolor: "#EAF2FA", border: "1px solid #90BCE6", display: "flex", gap: 1.5, alignItems: "center" }}>
+                                <PhoneOutlined sx={{ color: "#0B4F8A", fontSize: 23 }} />
                                 <Box>
-                                    <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                                    <Typography variant="caption" sx={{ display: "block", color: "#334155", fontWeight: 650 }}>
                                         Tổng đài tư vấn & đặt hẹn
                                     </Typography>
                                     <Link
-                                        href={CLINIC.phoneHref}
+                                        href={clinic.phoneHref}
                                         underline="hover"
-                                        sx={{ fontSize: 17, fontWeight: 750, color: "primary.main" }}
+                                        sx={{ fontSize: 19, fontWeight: 800, color: "#0B4F8A" }}
                                     >
-                                        {CLINIC.phone}
+                                        {clinic.phone}
                                     </Link>
                                 </Box>
                             </Box>
 
                             <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
-                                <EmailOutlined sx={{ color: "primary.main", fontSize: 20 }} />
-                                <Box>
+                                <EmailOutlined sx={{ color: "#0B4F8A", fontSize: 21 }} />
+                                <Box sx={{ minWidth: 0 }}>
                                     <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
                                         Thư điện tử (Email)
                                     </Typography>
                                     <Link
-                                        href={`mailto:${CLINIC.email}`}
+                                        href={`mailto:${clinic.email}`}
                                         underline="hover"
-                                        sx={{ fontSize: 14.5, color: "#374151", overflowWrap: "anywhere" }}
+                                        sx={{ fontSize: 15, color: "#0A2540", fontWeight: 650, overflowWrap: "anywhere" }}
                                     >
-                                        {CLINIC.email}
+                                        {clinic.email}
                                     </Link>
                                 </Box>
                             </Box>
 
                             <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
-                                <AccessTimeOutlined sx={{ color: "primary.main", fontSize: 20 }} />
+                                <AccessTimeOutlined sx={{ color: "#0B4F8A", fontSize: 21 }} />
                                 <Box>
                                     <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
-                                        Thời gian làm việc
+                                        Thời gian tiếp nhận
                                     </Typography>
-                                    <Typography sx={{ fontSize: 14.5, color: "#374151", fontWeight: 500 }}>
-                                        {CLINIC.hours}
+                                    <Typography sx={{ fontSize: 15, color: "#0A2540", fontWeight: 650 }}>
+                                        {clinic.hours}
                                     </Typography>
                                 </Box>
                             </Box>
@@ -975,11 +1397,13 @@ export function ContactPage() {
                             startIcon={<CalendarMonthOutlined />}
                             sx={{
                                 alignSelf: "flex-start",
-                                mt: 2,
+                                mt: "auto",
                                 borderRadius: "10px",
                                 px: 3,
-                                fontWeight: 700,
+                                fontWeight: 750,
                                 textTransform: "none",
+                                bgcolor: "#0B4F8A",
+                                "&:hover": { bgcolor: "#083A66" },
                             }}
                         >
                             Đăng ký khám trực tuyến
@@ -990,16 +1414,16 @@ export function ContactPage() {
                 {/* Locations Card */}
                 <Grid size={{ xs: 12, md: 7 }}>
                     <Stack spacing={2.5}>
-                        {CLINIC.locations.map(location => (
+                        {clinic.locations.map(location => (
                             <Paper key={location.name} variant="outlined" sx={cardSx}>
-                                <Box sx={{ display: "flex", gap: 1.5, alignItems: "flex-start" }}>
+                                <Box sx={{ display: "flex", gap: 1.75, alignItems: "flex-start" }}>
                                     <Box
                                         sx={{
-                                            width: 40,
-                                            height: 40,
+                                            width: 44,
+                                            height: 44,
                                             borderRadius: "10px",
-                                            bgcolor: "#eff6ff",
-                                            color: "primary.main",
+                                            bgcolor: "#E6F0FA",
+                                            color: "#0B4F8A",
                                             display: "grid",
                                             placeItems: "center",
                                             flexShrink: 0,
@@ -1007,11 +1431,15 @@ export function ContactPage() {
                                     >
                                         <LocationOnOutlined sx={{ fontSize: 22 }} />
                                     </Box>
-                                    <Box sx={{ flex: 1 }}>
-                                        <Typography component="h2" variant="h6" sx={{ fontWeight: 750, fontSize: 16.5, color: "#1f2937" }}>
+                                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                                        <Typography
+                                            component="h2"
+                                            variant="h6"
+                                            sx={{ fontWeight: 800, fontSize: 17.5, color: "#0A2540" }}
+                                        >
                                             {location.name}
                                         </Typography>
-                                        <Typography color="text.secondary" sx={{ mt: 0.5, fontSize: 14, lineHeight: 1.6 }}>
+                                        <Typography sx={{ mt: 0.5, fontSize: 15, lineHeight: 1.65, color: "#334155" }}>
                                             {location.address}
                                         </Typography>
                                         <Link
@@ -1022,9 +1450,9 @@ export function ContactPage() {
                                             sx={{
                                                 display: "inline-block",
                                                 mt: 1.5,
-                                                fontSize: 13.5,
-                                                fontWeight: 650,
-                                                color: "primary.main",
+                                                fontSize: 14,
+                                                fontWeight: 750,
+                                                color: "#0B4F8A",
                                             }}
                                         >
                                             Xem đường đi trên Google Maps →
@@ -1043,38 +1471,55 @@ export function ContactPage() {
 export function PrivacyPage() {
     return (
         <PublicPage
-            title="Thông tin cá nhân & Chính sách dịch vụ"
-            description="Cam kết bảo vệ dữ liệu, quyền riêng tư của bệnh nhân và hướng dẫn sử dụng thông tin khi tương tác trên website."
+            badge="Cam kết quyền riêng tư y tế"
+            title="Thông tin cá nhân khi đăng ký khám & bảo mật"
+            description="Cam kết bảo vệ dữ liệu y tế, quyền riêng tư của người bệnh và hướng dẫn sử dụng thông tin an toàn trên cổng trực tuyến."
         >
             <Stack spacing={2.5} sx={{ maxWidth: 840 }}>
                 {[
-                    ["Thông tin đăng ký khám", "Khi gửi đăng ký khám, bạn cung cấp họ tên, số điện thoại, lý do khám, bác sĩ và giờ khám đã chọn. Phòng khám chỉ sử dụng thông tin này để tiếp nhận, xác nhận lịch hẹn và liên hệ khi có thay đổi."],
-                    ["Lịch hẹn của khách chưa có tài khoản", "Đăng ký với tư cách khách không tự động tạo tài khoản và không liên kết với tài khoản bạn tạo sau đó. Vui lòng lưu lại mã lịch hẹn để tra cứu hoặc thông báo với lễ tân khi đến khám."],
-                    ["Truy cập hồ sơ & bệnh án điện tử", "Hồ sơ khám bệnh, đơn thuốc và kết quả xét nghiệm chỉ hiển thị khi bạn đăng nhập tài khoản bệnh nhân và được mã hóa bảo mật nghiêm ngặt. Hãy bảo mật mật khẩu và đăng xuất khi dùng thiết bị công cộng."],
-                    ["Quyền chỉnh sửa & hỗ trợ", "Nếu bạn cần cập nhật hoặc điều chỉnh bất kỳ thông tin nào đã cung cấp, vui lòng liên hệ nhân viên tiếp nhận qua hotline hoặc trực tiếp tại quầy lễ tân."],
+                    [
+                        "Thông tin đăng ký khám",
+                        "Khi gửi đăng ký khám, bạn cung cấp họ tên, số điện thoại, lý do khám, bác sĩ và giờ khám đã chọn. Phòng khám chỉ sử dụng thông tin này để tiếp nhận, xác nhận lịch hẹn và liên hệ khi có thay đổi.",
+                    ],
+                    [
+                        "Lịch hẹn của khách chưa có tài khoản",
+                        "Đăng ký với tư cách khách không tự động tạo tài khoản và không liên kết với tài khoản bạn tạo sau đó. Vui lòng lưu lại mã lịch hẹn để tra cứu hoặc thông báo với lễ tân khi đến khám.",
+                    ],
+                    [
+                        "Truy cập hồ sơ & bệnh án điện tử",
+                        "Hồ sơ khám bệnh, đơn thuốc và kết quả xét nghiệm chỉ hiển thị khi bạn đăng nhập tài khoản bệnh nhân và được bảo vệ nghiêm ngặt. Hãy giữ bí mật mật khẩu và đăng xuất khi dùng thiết bị công cộng.",
+                    ],
+                    [
+                        "Quyền chỉnh sửa & hỗ trợ",
+                        "Nếu bạn cần cập nhật hoặc điều chỉnh bất kỳ thông tin nào đã cung cấp, vui lòng liên hệ nhân viên tiếp nhận qua tổng đài hoặc trực tiếp tại quầy lễ tân.",
+                    ],
                 ].map(([title, text]) => (
                     <Paper key={title} variant="outlined" sx={cardSx}>
-                        <Box sx={{ display: "flex", gap: 1.5, alignItems: "flex-start" }}>
+                        <Box sx={{ display: "flex", gap: 1.75, alignItems: "flex-start" }}>
                             <Box
                                 sx={{
-                                    width: 36,
-                                    height: 36,
-                                    borderRadius: "8px",
-                                    bgcolor: "#eff6ff",
-                                    color: "primary.main",
+                                    width: 42,
+                                    height: 42,
+                                    borderRadius: "10px",
+                                    bgcolor: "#E6F0FA",
+                                    color: "#0B4F8A",
                                     display: "grid",
                                     placeItems: "center",
                                     flexShrink: 0,
-                                    mt: 0.25,
+                                    mt: 0.15,
                                 }}
                             >
-                                <ShieldOutlined sx={{ fontSize: 20 }} />
+                                <ShieldOutlined sx={{ fontSize: 22 }} />
                             </Box>
                             <Box>
-                                <Typography component="h2" variant="h6" sx={{ fontWeight: 750, fontSize: 16.5, color: "#1f2937", mb: 0.75 }}>
+                                <Typography
+                                    component="h2"
+                                    variant="h6"
+                                    sx={{ fontWeight: 800, fontSize: 17, color: "#0A2540", mb: 0.75 }}
+                                >
                                     {title}
                                 </Typography>
-                                <Typography color="text.secondary" sx={{ lineHeight: 1.8, fontSize: 14 }}>
+                                <Typography sx={{ lineHeight: 1.8, fontSize: 15, color: "#1E293B" }}>
                                     {text}
                                 </Typography>
                             </Box>
@@ -1088,12 +1533,13 @@ export function PrivacyPage() {
                     variant="outlined"
                     sx={{
                         alignSelf: "flex-start",
-                        mt: 2,
+                        mt: 1,
                         borderRadius: "10px",
                         px: 2.5,
-                        fontWeight: 650,
+                        fontWeight: 700,
                         textTransform: "none",
-                        minHeight: 42,
+                        minHeight: 44,
+                        bgcolor: "#FFFFFF",
                     }}
                 >
                     Liên hệ phòng khám

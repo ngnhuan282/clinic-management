@@ -107,8 +107,16 @@ public class ScheduleReviewService(ApplicationDbContext db, ICurrentUserService 
                 ?? throw new AppException(ErrorCode.SCHEDULE_REQUEST_NOT_FOUND);
             CheckScope(request, reviewer, true);
             if (request.Status != "Pending") throw new AppException(ErrorCode.SCHEDULE_REQUEST_INVALID_STATUS);
+            var settings = await ClinicSettingsService.ReadSnapshotSafeAsync(_db);
+            var slotMinutes = settings.DefaultSlotDurationMinutes is 15 or 20 or 30
+                ? settings.DefaultSlotDurationMinutes
+                : ClinicSetting.DefaultSlotMinutes;
+            var slotCapacity = settings.DefaultMaxPatientsPerSlot > 0
+                ? settings.DefaultMaxPatientsPerSlot
+                : ClinicSetting.DefaultSlotCapacity;
+            var slotStep = TimeSpan.FromMinutes(slotMinutes);
             if (request.StartTime >= request.EndTime ||
-                (request.EndTime - request.StartTime).Ticks % TimeSpan.FromMinutes(30).Ticks != 0 ||
+                (request.EndTime - request.StartTime).Ticks % slotStep.Ticks != 0 ||
                 !request.Doctor.IsActive || !request.Doctor.Department.IsActive || !request.Room.IsActive
                 || request.Doctor.DepartmentId != request.Room.DepartmentId)
                 throw new AppException(ErrorCode.INVALID_REQUEST);
@@ -120,16 +128,16 @@ public class ScheduleReviewService(ApplicationDbContext db, ICurrentUserService 
                     && x.StartTime < request.EndTime && request.StartTime < x.EndTime);
                 if (overlaps) throw new AppException(ErrorCode.DOCTOR_SCHEDULE_CONFLICT);
                 var slots = new List<TimeSlot>();
-                for (var start = request.StartTime; start.Add(TimeSpan.FromMinutes(30)) <= request.EndTime;
-                     start = start.Add(TimeSpan.FromMinutes(30)))
-                    slots.Add(new TimeSlot { StartTime = start, EndTime = start.Add(TimeSpan.FromMinutes(30)) });
+                for (var start = request.StartTime; start.Add(slotStep) <= request.EndTime;
+                     start = start.Add(slotStep))
+                    slots.Add(new TimeSlot { StartTime = start, EndTime = start.Add(slotStep), MaxCapacity = slotCapacity });
                 if (slots.Count == 0) throw new AppException(ErrorCode.INVALID_REQUEST);
                 _db.DoctorSchedules.Add(new DoctorSchedule
                 {
                     RequestId = request.RequestId, DoctorId = request.DoctorId, RoomId = request.RoomId,
                     WorkDate = request.WorkDate, StartTime = request.StartTime, EndTime = request.EndTime,
                     Shift = request.StartTime.Hours < 12 ? Shift.Morning : request.StartTime.Hours < 17 ? Shift.Afternoon : Shift.Evening,
-                    MaxPatients = slots.Count, IsActive = true, Status = "Approved",
+                    MaxPatients = slots.Count * slotCapacity, IsActive = true, Status = "Approved",
                     CreatedAt = DateTime.UtcNow, TimeSlots = slots
                 });
                 request.Status = "Approved";

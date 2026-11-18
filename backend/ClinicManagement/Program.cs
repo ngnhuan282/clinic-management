@@ -1,4 +1,4 @@
-﻿using ClinicManagement.Configurations;
+using ClinicManagement.Configurations;
 using ClinicManagement.Data;
 using ClinicManagement.Exceptions;
 using Microsoft.EntityFrameworkCore;
@@ -116,6 +116,23 @@ namespace ClinicManagement
 
                 builder.Services.AddScoped<ILabTestService, LabTestService>();
             var app = builder.Build();
+
+            if (app.Environment.IsDevelopment())
+            {
+                try
+                {
+                    using var scope = app.Services.CreateScope();
+                    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                    if (db.Database.IsRelational())
+                    {
+                        db.Database.Migrate();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    app.Logger.LogWarning(ex, "Could not auto-apply pending EF Core migrations on startup.");
+                }
+            }
 
             // =========================
             // Global Exception Handler

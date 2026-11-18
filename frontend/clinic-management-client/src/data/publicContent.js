@@ -1,15 +1,128 @@
-// Shared clinic information previously displayed in the patient portal footer.
+// Shared clinic fallback defaults; runtime values are loaded from /api/public/clinic-settings.
 export const CLINIC = {
     name: "Clinic Management System",
+    tagline: "Hệ thống quản lý phòng khám đa khoa",
+    description: "Kết nối người bệnh với các chuyên khoa, bác sĩ uy tín và dịch vụ y tế chuẩn mực. Lựa chọn giờ khám và nhận hỗ trợ nhanh chóng.",
     phone: "1900 6868",
     phoneHref: "tel:19006868",
     email: "contact@medclinic-system.vn",
     hours: "07:30 – 20:00, Thứ Hai – Chủ Nhật",
+    defaultExaminationFee: 150000,
+    patientBookFee: 10000,
+    defaultSlotDurationMinutes: 30,
     locations: [
         { name: "Cơ sở TP. Hồ Chí Minh", address: "128 Nguyễn Trãi, Quận 1, TP. Hồ Chí Minh" },
         { name: "Cơ sở Hà Nội", address: "54 Tràng Thi, Hoàn Kiếm, Hà Nội" },
     ],
 };
+
+export function toPhoneHref(phone) {
+    const cleaned = String(phone || "").replace(/[^\d+]/g, "");
+    return cleaned ? `tel:${cleaned}` : CLINIC.phoneHref;
+}
+
+export function normalizeClinicInfo(settings) {
+    if (!settings) return CLINIC;
+    const locations = Array.isArray(settings.locations) && settings.locations.length > 0
+        ? settings.locations.filter(item => item?.name && item?.address)
+        : [
+            settings.primaryLocationName && settings.primaryLocationAddress
+                ? { name: settings.primaryLocationName, address: settings.primaryLocationAddress }
+                : null,
+            settings.secondaryLocationName && settings.secondaryLocationAddress
+                ? { name: settings.secondaryLocationName, address: settings.secondaryLocationAddress }
+                : null,
+        ].filter(Boolean);
+    const phone = settings.phone?.trim() || CLINIC.phone;
+    return {
+        name: settings.clinicName?.trim() || CLINIC.name,
+        tagline: settings.tagline?.trim() || CLINIC.tagline,
+        description: settings.description?.trim() || CLINIC.description,
+        phone,
+        phoneHref: toPhoneHref(phone),
+        email: settings.email?.trim() || CLINIC.email,
+        hours: settings.workingHours?.trim() || CLINIC.hours,
+        defaultExaminationFee: Number(settings.defaultExaminationFee) > 0
+            ? Number(settings.defaultExaminationFee)
+            : CLINIC.defaultExaminationFee,
+        patientBookFee: Number(settings.patientBookFee) > 0
+            ? Number(settings.patientBookFee)
+            : CLINIC.patientBookFee,
+        defaultSlotDurationMinutes: Number(settings.defaultSlotDurationMinutes) > 0
+            ? Number(settings.defaultSlotDurationMinutes)
+            : CLINIC.defaultSlotDurationMinutes,
+        locations: locations.length > 0 ? locations : CLINIC.locations,
+    };
+}
+
+export function validateClinicSettings(values) {
+    const errors = {};
+    const text = (key, max, label) => {
+        const val = String(values?.[key] ?? "").trim();
+        if (!val) errors[key] = `Vui lòng nhập ${label}.`;
+        else if (val.length > max) errors[key] = `Tối đa ${max} ký tự.`;
+    };
+    text("clinicName", 150, "tên phòng khám");
+    text("tagline", 200, "khẩu hiệu phòng khám");
+    text("description", 600, "mô tả giới thiệu");
+    text("workingHours", 150, "giờ làm việc");
+    text("primaryLocationName", 150, "tên cơ sở chính");
+    text("primaryLocationAddress", 255, "địa chỉ cơ sở chính");
+
+    const phone = String(values?.phone ?? "").trim();
+    const digits = phone.replace(/\D/g, "");
+    if (!phone) errors.phone = "Vui lòng nhập số tổng đài.";
+    else if (phone.length > 30 || digits.length < 6 || digits.length > 15 || !/^[\d\s+\-()]+$/.test(phone)) {
+        errors.phone = "Số điện thoại gồm 6–15 chữ số, có thể chứa dấu +, khoảng trắng hoặc dấu gạch ngang.";
+    }
+
+    const email = String(values?.email ?? "").trim();
+    if (!email) errors.email = "Vui lòng nhập email liên hệ.";
+    else if (email.length > 100 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        errors.email = "Email liên hệ không hợp lệ.";
+    }
+
+    const secName = String(values?.secondaryLocationName ?? "").trim();
+    const secAddr = String(values?.secondaryLocationAddress ?? "").trim();
+    if (secName.length > 150) errors.secondaryLocationName = "Tối đa 150 ký tự.";
+    if (secAddr.length > 255) errors.secondaryLocationAddress = "Tối đa 255 ký tự.";
+    if (Boolean(secName) !== Boolean(secAddr)) {
+        if (!secName) errors.secondaryLocationName = "Nhập tên cơ sở phụ hoặc xóa địa chỉ cơ sở phụ.";
+        if (!secAddr) errors.secondaryLocationAddress = "Nhập địa chỉ cơ sở phụ hoặc xóa tên cơ sở phụ.";
+    }
+
+    const examFee = Number(values?.defaultExaminationFee);
+    if (!Number.isFinite(examFee) || examFee <= 0 || examFee > 100000000) {
+        errors.defaultExaminationFee = "Giá khám mặc định phải lớn hơn 0 và không vượt quá 100.000.000 đ.";
+    }
+
+    const bookFee = Number(values?.patientBookFee);
+    if (!Number.isFinite(bookFee) || bookFee <= 0 || bookFee > 10000000) {
+        errors.patientBookFee = "Giá sổ khám phải lớn hơn 0 và không vượt quá 10.000.000 đ.";
+    }
+
+    const slotMinutes = Number(values?.defaultSlotDurationMinutes);
+    if (![15, 20, 30].includes(slotMinutes)) {
+        errors.defaultSlotDurationMinutes = "Thời lượng mỗi khung giờ khám phải là 15, 20 hoặc 30 phút.";
+    }
+
+    const slotCap = Number(values?.defaultMaxPatientsPerSlot);
+    if (!Number.isInteger(slotCap) || slotCap < 1 || slotCap > 20) {
+        errors.defaultMaxPatientsPerSlot = "Số bệnh nhân tối đa mỗi khung giờ phải từ 1 đến 20.";
+    }
+
+    const lowStock = Number(values?.lowStockThreshold);
+    if (!Number.isInteger(lowStock) || lowStock < 1 || lowStock > 10000) {
+        errors.lowStockThreshold = "Ngưỡng cảnh báo tồn kho thấp phải từ 1 đến 10.000.";
+    }
+
+    const nearExpiry = Number(values?.nearExpiryDays);
+    if (!Number.isInteger(nearExpiry) || nearExpiry < 1 || nearExpiry > 365) {
+        errors.nearExpiryDays = "Số ngày cảnh báo gần hết hạn phải từ 1 đến 365 ngày.";
+    }
+
+    return errors;
+}
 
 export const GUIDES = [
     {

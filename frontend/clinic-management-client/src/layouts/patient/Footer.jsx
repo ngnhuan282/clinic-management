@@ -1,7 +1,14 @@
 import { Box, Container, Grid, Link, Stack, Typography } from "@mui/material";
-import { AccessTimeOutlined, EmailOutlined, LocalHospital, LocationOnOutlined, PhoneInTalkOutlined } from "@mui/icons-material";
+import {
+    AccessTimeOutlined,
+    EmailOutlined,
+    HealthAndSafetyOutlined,
+    LocalHospital,
+    LocationOnOutlined,
+    PhoneInTalkOutlined,
+} from "@mui/icons-material";
 import { Link as RouterLink } from "react-router-dom";
-import { CLINIC } from "../../data/publicContent";
+import { useClinicInfo } from "../../api/publicApi";
 
 const groups = [
     {
@@ -27,15 +34,16 @@ const groups = [
 ];
 
 export default function Footer() {
+    const clinic = useClinicInfo();
     return (
         <Box
             component="footer"
             sx={{
                 mt: "auto",
-                pt: { xs: 6, md: 8 },
-                pb: 3,
-                bgcolor: "#f8fafc",
-                borderTop: "1px solid #e5e9f0",
+                pt: { xs: 6, md: 7.5 },
+                pb: 4,
+                bgcolor: "#EAF2FA",
+                borderTop: "2px solid #C5D8EC",
                 color: "text.primary",
             }}
         >
@@ -43,41 +51,49 @@ export default function Footer() {
                 <Grid container spacing={{ xs: 4, md: 5 }}>
                     {/* Brand Info */}
                     <Grid size={{ xs: 12, md: 4 }}>
-                        <Stack spacing={2.5}>
-                            <Box sx={{ display: "flex", gap: 1.25, alignItems: "center" }}>
+                        <Stack spacing={2.25}>
+                            <Box sx={{ display: "flex", gap: 1.35, alignItems: "center" }}>
                                 <Box
                                     sx={{
-                                        width: 40,
-                                        height: 40,
+                                        width: 44,
+                                        height: 44,
                                         display: "grid",
                                         placeItems: "center",
-                                        bgcolor: "primary.main",
-                                        color: "white",
+                                        bgcolor: "#0B4F8A",
+                                        color: "#FFFFFF",
                                         borderRadius: "10px",
                                     }}
                                 >
-                                    <LocalHospital sx={{ fontSize: 24 }} />
+                                    <LocalHospital sx={{ fontSize: 25 }} />
                                 </Box>
-                                <Box>
-                                    <Typography sx={{ fontWeight: 800, fontSize: 16.5, lineHeight: 1.2, color: "#0f2c4d" }}>
-                                        {CLINIC.name}
+                                <Box sx={{ minWidth: 0 }}>
+                                    <Typography
+                                        sx={{
+                                            fontWeight: 800,
+                                            fontSize: 17,
+                                            lineHeight: 1.2,
+                                            color: "#0A2540",
+                                            overflowWrap: "anywhere",
+                                        }}
+                                    >
+                                        {clinic.name}
                                     </Typography>
-                                    <Typography sx={{ fontSize: 12, color: "text.secondary", fontWeight: 500 }}>
-                                        Hệ thống quản lý phòng khám đa khoa
+                                    <Typography sx={{ fontSize: 12.5, color: "#0B4F8A", fontWeight: 650, mt: 0.25 }}>
+                                        {clinic.tagline}
                                     </Typography>
                                 </Box>
                             </Box>
 
-                            <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.85, maxWidth: 360 }}>
-                                Kết nối người bệnh với các chuyên khoa, bác sĩ uy tín và dịch vụ y tế chuẩn mực. Lựa chọn giờ khám và nhận hỗ trợ nhanh chóng.
+                            <Typography variant="body2" sx={{ lineHeight: 1.8, maxWidth: 360, color: "#334155" }}>
+                                {clinic.description}
                             </Typography>
 
                             <Box
                                 sx={{
                                     p: 2,
                                     borderRadius: "12px",
-                                    bgcolor: "#ffffff",
-                                    border: "1px solid #e2e8f0",
+                                    bgcolor: "#FFFFFF",
+                                    border: "1px solid #B8CCE0",
                                     display: "flex",
                                     alignItems: "center",
                                     gap: 1.5,
@@ -85,11 +101,11 @@ export default function Footer() {
                             >
                                 <Box
                                     sx={{
-                                        width: 42,
-                                        height: 42,
-                                        borderRadius: "50%",
-                                        bgcolor: "#eff6ff",
-                                        color: "primary.main",
+                                        width: 44,
+                                        height: 44,
+                                        borderRadius: "10px",
+                                        bgcolor: "#0B4F8A",
+                                        color: "#FFFFFF",
                                         display: "grid",
                                         placeItems: "center",
                                         flexShrink: 0,
@@ -97,21 +113,21 @@ export default function Footer() {
                                 >
                                     <PhoneInTalkOutlined fontSize="small" />
                                 </Box>
-                                <Box>
-                                    <Typography variant="caption" color="text.secondary" sx={{ display: "block", fontWeight: 600 }}>
+                                <Box sx={{ minWidth: 0 }}>
+                                    <Typography variant="caption" sx={{ display: "block", fontWeight: 700, color: "#475569" }}>
                                         Tổng đài tư vấn & đặt lịch
                                     </Typography>
                                     <Link
-                                        href={CLINIC.phoneHref}
+                                        href={clinic.phoneHref}
                                         underline="hover"
                                         sx={{
-                                            fontSize: 18,
+                                            fontSize: 19,
                                             fontWeight: 800,
-                                            color: "primary.main",
+                                            color: "#0B4F8A",
                                             letterSpacing: "0.02em",
                                         }}
                                     >
-                                        {CLINIC.phone}
+                                        {clinic.phone}
                                     </Link>
                                 </Box>
                             </Box>
@@ -121,21 +137,21 @@ export default function Footer() {
                     {/* Navigation Columns */}
                     {groups.map(({ title, links }) => (
                         <Grid key={title} size={{ xs: 6, md: 2.5 }}>
-                            <Typography sx={{ fontWeight: 750, fontSize: 15, mb: 2.2, color: "#1f2937" }}>
+                            <Typography sx={{ fontWeight: 800, fontSize: 15.5, mb: 2.2, color: "#0A2540" }}>
                                 {title}
                             </Typography>
-                            <Stack spacing={1.5}>
+                            <Stack spacing={1.4}>
                                 {links.map(([label, path]) => (
                                     <Link
                                         key={path}
                                         component={RouterLink}
                                         to={path}
-                                        underline="none"
-                                        color="text.secondary"
+                                        underline="hover"
                                         sx={{
-                                            fontSize: 14,
-                                            transition: "color 0.15s ease",
-                                            "&:hover": { color: "primary.main", transform: "translateX(2px)" },
+                                            fontSize: 14.5,
+                                            color: "#1E293B",
+                                            fontWeight: 550,
+                                            "&:hover": { color: "#0B4F8A" },
                                         }}
                                     >
                                         {label}
@@ -147,18 +163,21 @@ export default function Footer() {
 
                     {/* Locations & Hours */}
                     <Grid size={{ xs: 12, md: 3 }}>
-                        <Typography sx={{ fontWeight: 750, fontSize: 15, mb: 2.2, color: "#1f2937" }}>
+                        <Typography sx={{ fontWeight: 800, fontSize: 15.5, mb: 2.2, color: "#0A2540" }}>
                             Cơ sở & giờ làm việc
                         </Typography>
                         <Stack spacing={2}>
-                            {CLINIC.locations.map(location => (
+                            {clinic.locations.map(location => (
                                 <Box key={location.name} sx={{ display: "flex", gap: 1.25, alignItems: "flex-start" }}>
-                                    <LocationOnOutlined sx={{ fontSize: 18, color: "primary.main", mt: 0.3, flexShrink: 0 }} />
-                                    <Box>
-                                        <Typography variant="body2" sx={{ fontWeight: 650, color: "#1f2937" }}>
+                                    <LocationOnOutlined sx={{ fontSize: 20, color: "#0B4F8A", mt: 0.25, flexShrink: 0 }} />
+                                    <Box sx={{ minWidth: 0 }}>
+                                        <Typography variant="body2" sx={{ fontWeight: 750, color: "#0A2540" }}>
                                             {location.name}
                                         </Typography>
-                                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13, lineHeight: 1.6 }}>
+                                        <Typography
+                                            variant="body2"
+                                            sx={{ fontSize: 13.5, lineHeight: 1.6, color: "#334155", overflowWrap: "anywhere" }}
+                                        >
                                             {location.address}
                                         </Typography>
                                     </Box>
@@ -166,26 +185,25 @@ export default function Footer() {
                             ))}
 
                             <Box sx={{ display: "flex", gap: 1.25, alignItems: "flex-start" }}>
-                                <AccessTimeOutlined sx={{ fontSize: 18, color: "primary.main", mt: 0.3, flexShrink: 0 }} />
+                                <AccessTimeOutlined sx={{ fontSize: 20, color: "#0B4F8A", mt: 0.25, flexShrink: 0 }} />
                                 <Box>
-                                    <Typography variant="body2" sx={{ fontWeight: 650, color: "#1f2937" }}>
+                                    <Typography variant="body2" sx={{ fontWeight: 750, color: "#0A2540" }}>
                                         Giờ tiếp nhận
                                     </Typography>
-                                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13 }}>
-                                        {CLINIC.hours}
+                                    <Typography variant="body2" sx={{ fontSize: 13.5, color: "#334155" }}>
+                                        {clinic.hours}
                                     </Typography>
                                 </Box>
                             </Box>
 
                             <Box sx={{ display: "flex", gap: 1.25, alignItems: "center" }}>
-                                <EmailOutlined sx={{ fontSize: 18, color: "primary.main", flexShrink: 0 }} />
+                                <EmailOutlined sx={{ fontSize: 20, color: "#0B4F8A", flexShrink: 0 }} />
                                 <Link
-                                    href={`mailto:${CLINIC.email}`}
+                                    href={`mailto:${clinic.email}`}
                                     underline="hover"
-                                    color="text.secondary"
-                                    sx={{ fontSize: 13.5, overflowWrap: "anywhere" }}
+                                    sx={{ fontSize: 14, color: "#1E293B", overflowWrap: "anywhere", fontWeight: 550 }}
                                 >
-                                    {CLINIC.email}
+                                    {clinic.email}
                                 </Link>
                             </Box>
                         </Stack>
@@ -195,9 +213,9 @@ export default function Footer() {
                 {/* Bottom Bar */}
                 <Box
                     sx={{
-                        mt: 6,
+                        mt: 5.5,
                         pt: 3,
-                        borderTop: "1px solid #e5e9f0",
+                        borderTop: "1px solid #C5D8EC",
                         display: "flex",
                         flexDirection: { xs: "column", sm: "row" },
                         justifyContent: "space-between",
@@ -205,14 +223,17 @@ export default function Footer() {
                         gap: 2,
                     }}
                 >
-                    <Typography variant="caption" color="text.secondary">
-                        © {new Date().getFullYear()} {CLINIC.name}. Nền tảng quản lý phòng khám và đặt lịch khám trực tuyến.
-                    </Typography>
+                    <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+                        <HealthAndSafetyOutlined sx={{ fontSize: 18, color: "#0B4F8A" }} />
+                        <Typography variant="caption" sx={{ fontWeight: 600, color: "#334155", fontSize: 13 }}>
+                            © {new Date().getFullYear()} {clinic.name}. Hệ thống quản lý phòng khám & đặt lịch khám trực tuyến.
+                        </Typography>
+                    </Stack>
                     <Stack direction="row" spacing={2.5}>
-                        <Link component={RouterLink} to="/privacy" underline="hover" variant="caption" color="text.secondary">
+                        <Link component={RouterLink} to="/privacy" underline="hover" variant="caption" sx={{ color: "#0A2540", fontWeight: 700, fontSize: 13 }}>
                             Chính sách bảo mật
                         </Link>
-                        <Link component={RouterLink} to="/contact" underline="hover" variant="caption" color="text.secondary">
+                        <Link component={RouterLink} to="/contact" underline="hover" variant="caption" sx={{ color: "#0A2540", fontWeight: 700, fontSize: 13 }}>
                             Liên hệ hỗ trợ
                         </Link>
                     </Stack>

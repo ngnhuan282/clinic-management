@@ -1,14 +1,24 @@
 import { Avatar, Box, Button, Chip, Divider, Paper, Stack, Typography } from "@mui/material";
-import { CalendarMonthOutlined, LocationOnOutlined, StarOutlineRounded } from "@mui/icons-material";
+import {
+    CalendarMonthOutlined,
+    LocationOnOutlined,
+    StarOutlineRounded,
+    WorkspacePremiumOutlined,
+} from "@mui/icons-material";
 import { Link } from "react-router-dom";
 
 /**
  * @param {{ doctor: import("../../api/doctorApi").PublicDoctor }} props
  */
 function PublicDoctorCard({ doctor }) {
-    // Generate initials for avatar
     const initials = doctor.fullName
-        ? doctor.fullName.trim().split(" ").slice(-2).map(n => n[0]).join("").toUpperCase()
+        ? doctor.fullName
+            .trim()
+            .split(" ")
+            .slice(-2)
+            .map(n => n[0])
+            .join("")
+            .toUpperCase()
         : "BS";
 
     return (
@@ -18,31 +28,31 @@ function PublicDoctorCard({ doctor }) {
                 p: 2.75,
                 height: "100%",
                 borderRadius: "14px",
-                borderColor: "#e5e9f0",
-                bgcolor: "#ffffff",
+                borderColor: "#C5D8EC",
+                borderTop: "4px solid #0B4F8A",
+                bgcolor: "#FFFFFF",
                 display: "flex",
                 flexDirection: "column",
-                boxShadow: "0 1px 3px rgba(15, 23, 42, 0.03)",
-                transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                boxShadow: "0 2px 8px rgba(10, 37, 64, 0.04)",
+                transition: "border-color 0.15s ease, box-shadow 0.15s ease",
                 "&:hover": {
-                    borderColor: "#90caf9",
-                    transform: "translateY(-3px)",
-                    boxShadow: "0 10px 24px rgba(25, 118, 210, 0.09)",
+                    borderColor: "#0B4F8A",
+                    boxShadow: "0 8px 20px rgba(10, 37, 64, 0.09)",
                 },
             }}
         >
             <Stack spacing={2} sx={{ flex: 1 }}>
                 {/* Header: Avatar + Name + Specialty */}
-                <Stack direction="row" spacing={2} sx={{ alignItems: "flex-start" }}>
+                <Stack direction="row" spacing={1.75} sx={{ alignItems: "flex-start" }}>
                     <Avatar
                         sx={{
-                            width: 52,
-                            height: 52,
-                            bgcolor: "#e0f2fe",
-                            color: "primary.main",
-                            fontWeight: 750,
-                            fontSize: 16,
-                            border: "2px solid #bae6fd",
+                            width: 56,
+                            height: 56,
+                            bgcolor: "#E6F0FA",
+                            color: "#0B4F8A",
+                            fontWeight: 800,
+                            fontSize: 17,
+                            border: "2px solid #90BCE6",
                             flexShrink: 0,
                         }}
                     >
@@ -53,10 +63,10 @@ function PublicDoctorCard({ doctor }) {
                             component="h3"
                             variant="h6"
                             sx={{
-                                fontWeight: 750,
-                                fontSize: 16.5,
-                                color: "#1f2937",
-                                lineHeight: 1.3,
+                                fontWeight: 800,
+                                fontSize: 17,
+                                color: "#0A2540",
+                                lineHeight: 1.32,
                                 overflowWrap: "anywhere",
                             }}
                         >
@@ -64,76 +74,72 @@ function PublicDoctorCard({ doctor }) {
                         </Typography>
                         <Typography
                             variant="body2"
-                            color="primary.main"
-                            sx={{ fontWeight: 600, fontSize: 13.5, mt: 0.4 }}
+                            sx={{ fontWeight: 700, fontSize: 14, mt: 0.4, color: "#0B4F8A" }}
                         >
                             {doctor.departmentName}
                         </Typography>
-                        <Typography
-                            variant="caption"
-                            color="text.secondary"
-                            sx={{ display: "block", mt: 0.2, fontSize: 12 }}
-                        >
-                            {doctor.experienceYears ? `${doctor.experienceYears} năm kinh nghiệm` : "Bác sĩ chuyên khoa"}
-                        </Typography>
+                        <Stack direction="row" spacing={0.5} sx={{ alignItems: "center", mt: 0.5, color: "#334155" }}>
+                            <WorkspacePremiumOutlined sx={{ fontSize: 15, color: "#0B4F8A" }} />
+                            <Typography variant="caption" sx={{ fontSize: 12.5, fontWeight: 650 }}>
+                                {doctor.experienceYears
+                                    ? `${doctor.experienceYears} năm kinh nghiệm`
+                                    : "Bác sĩ chuyên khoa"}
+                            </Typography>
+                        </Stack>
                     </Box>
                 </Stack>
 
                 {/* Biography snippet */}
-                {doctor.biography && (
-                    <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        sx={{
-                            fontSize: 13.5,
-                            lineHeight: 1.6,
-                            display: "-webkit-box",
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: "vertical",
-                            overflow: "hidden",
-                            color: "#4b5563",
-                        }}
-                    >
-                        {doctor.biography}
-                    </Typography>
-                )}
+                <Typography
+                    variant="body2"
+                    sx={{
+                        fontSize: 14,
+                        lineHeight: 1.65,
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                        color: "#334155",
+                    }}
+                >
+                    {doctor.biography || "Tham khảo lịch làm việc thực tế và đặt hẹn khám trực tiếp với bác sĩ."}
+                </Typography>
 
                 {/* Rooms info */}
-                <Box sx={{ mt: "auto", pt: 1 }}>
+                <Box sx={{ mt: "auto", pt: 0.5 }}>
                     <Typography
                         variant="caption"
-                        color="text.secondary"
                         sx={{
                             display: "flex",
                             alignItems: "center",
                             gap: 0.5,
-                            fontWeight: 650,
-                            fontSize: 12,
-                            color: "#64748b",
+                            fontWeight: 700,
+                            fontSize: 12.5,
+                            color: "#475569",
                             mb: 0.75,
                         }}
                     >
-                        <LocationOnOutlined sx={{ fontSize: 14 }} />
-                        Phòng khám sắp tới
+                        <LocationOnOutlined sx={{ fontSize: 15, color: "#0B4F8A" }} />
+                        Phòng khám tiếp nhận
                     </Typography>
                     <Stack direction="row" sx={{ gap: 0.75, flexWrap: "wrap" }}>
                         {doctor.rooms.length === 0 ? (
-                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: 12.5, fontStyle: "italic" }}>
-                                Chưa có lịch phòng khám
+                            <Typography variant="body2" sx={{ fontSize: 13, color: "#475569", fontStyle: "italic" }}>
+                                Chưa cập nhật lịch phòng khám
                             </Typography>
                         ) : (
                             doctor.rooms.map(room => (
                                 <Chip
                                     key={room.roomId}
                                     size="small"
-                                    color="primary"
                                     variant="outlined"
                                     label={`${room.roomCode} - ${room.roomName}`}
                                     sx={{
-                                        fontSize: 11.5,
-                                        fontWeight: 600,
-                                        bgcolor: "#f0f9ff",
-                                        borderColor: "#bae6fd",
+                                        fontSize: 12,
+                                        fontWeight: 650,
+                                        bgcolor: "#E6F0FA",
+                                        borderColor: "#90BCE6",
+                                        color: "#0A2540",
                                         borderRadius: "6px",
                                     }}
                                 />
@@ -143,10 +149,10 @@ function PublicDoctorCard({ doctor }) {
                 </Box>
             </Stack>
 
-            <Divider sx={{ my: 2, borderColor: "#f1f5f9" }} />
+            <Divider sx={{ my: 2, borderColor: "#E2ECF5" }} />
 
             {/* Action Buttons */}
-            <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+            <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap", rowGap: 1 }}>
                 <Button
                     component={Link}
                     to={`/booking?departmentId=${doctor.departmentId}&doctorId=${doctor.doctorId}`}
@@ -155,12 +161,14 @@ function PublicDoctorCard({ doctor }) {
                     startIcon={<CalendarMonthOutlined sx={{ fontSize: 16 }} />}
                     sx={{
                         flex: 1,
+                        minWidth: 112,
+                        minHeight: 40,
                         borderRadius: "8px",
-                        fontWeight: 700,
-                        fontSize: 13,
-                        py: 0.9,
+                        fontWeight: 750,
+                        fontSize: 13.5,
                         textTransform: "none",
-                        boxShadow: "0 2px 6px rgba(25, 118, 210, 0.2)",
+                        bgcolor: "#0B4F8A",
+                        "&:hover": { bgcolor: "#083A66" },
                     }}
                 >
                     Đặt khám
@@ -171,17 +179,18 @@ function PublicDoctorCard({ doctor }) {
                     variant="outlined"
                     size="small"
                     sx={{
+                        minHeight: 40,
                         borderRadius: "8px",
-                        fontWeight: 600,
-                        fontSize: 13,
-                        py: 0.9,
-                        borderColor: "#cbd5e1",
-                        color: "#334155",
+                        fontWeight: 700,
+                        fontSize: 13.5,
+                        px: 1.5,
+                        borderColor: "#B8CCE0",
+                        color: "#0A2540",
                         textTransform: "none",
-                        "&:hover": { borderColor: "primary.main", bgcolor: "#eff6ff" },
+                        "&:hover": { borderColor: "#0B4F8A", bgcolor: "#E6F0FA", color: "#0B4F8A" },
                     }}
                 >
-                    Hồ sơ
+                    Hồ sơ bác sĩ
                 </Button>
                 <Button
                     component={Link}
@@ -189,18 +198,20 @@ function PublicDoctorCard({ doctor }) {
                     size="small"
                     aria-label="Xem đánh giá của bác sĩ"
                     sx={{
+                        minHeight: 40,
                         borderRadius: "8px",
-                        fontWeight: 600,
+                        fontWeight: 650,
                         fontSize: 13,
-                        py: 0.9,
-                        color: "#64748b",
-                        minWidth: 0,
-                        px: 1.25,
+                        color: "#92400E",
+                        bgcolor: "#FFFBEB",
+                        border: "1px solid #FCD34D",
+                        minWidth: 40,
+                        px: 1,
                         textTransform: "none",
-                        "&:hover": { bgcolor: "#f8fafc", color: "primary.main" },
+                        "&:hover": { bgcolor: "#FEF3C7" },
                     }}
                 >
-                    <StarOutlineRounded sx={{ fontSize: 18 }} />
+                    <StarOutlineRounded sx={{ fontSize: 19 }} />
                 </Button>
             </Stack>
         </Paper>

@@ -5,10 +5,29 @@ namespace ClinicManagement.Validators;
 
 public static class CatalogValidators
 {
-    public static string Required(string? value) =>
-        string.IsNullOrWhiteSpace(value)
-            ? throw new AppException(ErrorCode.INVALID_REQUEST)
-            : value.Trim();
+    public static string Required(string? value, int maxLength = 150)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+
+        var trimmed = value.Trim();
+        if (trimmed.Length > maxLength)
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+
+        return trimmed;
+    }
+
+    public static string? Optional(string? value, int maxLength = 500)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+
+        var trimmed = value.Trim();
+        if (trimmed.Length > maxLength)
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+
+        return trimmed;
+    }
 
     public static void ValidateDepartment(int departmentId)
     {
@@ -16,5 +35,5 @@ public static class CatalogValidators
     }
 
     public static (int PageNumber, int PageSize) ValidateQuery(CatalogQuery query) =>
-        (Math.Max(1, query.PageNumber), Math.Clamp(query.PageSize, 1, 100));
+        (Math.Clamp(query.PageNumber, 1, 100_000), Math.Clamp(query.PageSize, 1, 100));
 }

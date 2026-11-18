@@ -32,7 +32,7 @@ public class RegisterExistingBookRequest
 public class CreateBookInvoiceRequest
 {
     [Range(0.01, 1000000000)]
-    public decimal Amount { get; set; }
+    public decimal? Amount { get; set; }
 }
 
 public class CreatePatientBookRequest

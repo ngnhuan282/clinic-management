@@ -6,6 +6,7 @@ namespace ClinicManagement.Services.Interfaces;
 public interface IDepartmentService
 {
     Task<PagedResponse<DepartmentResponse>> GetAsync(CatalogQuery query);
+    Task<List<DepartmentResponse>> GetPublicAsync();
     Task<DepartmentResponse> GetByIdAsync(int id);
     Task<DepartmentResponse> CreateAsync(CreateDepartmentRequest request);
     Task<DepartmentResponse> UpdateAsync(int id, UpdateDepartmentRequest request);
@@ -15,6 +16,7 @@ public interface IDepartmentService
 public interface ISpecializationService
 {
     Task<PagedResponse<SpecializationResponse>> GetAsync(CatalogQuery query);
+    Task<List<PublicSpecializationResponse>> GetPublicAsync(int? departmentId = null);
     Task<SpecializationResponse> GetByIdAsync(int id);
     Task<SpecializationResponse> CreateAsync(CreateSpecializationRequest request);
     Task<SpecializationResponse> UpdateAsync(int id, UpdateSpecializationRequest request);

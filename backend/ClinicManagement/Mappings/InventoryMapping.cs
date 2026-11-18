@@ -7,7 +7,9 @@ public static class InventoryMapping
 {
     public static InventoryResponse ToResponse(
         this Inventory inventory,
-        DateOnly today)
+        DateOnly today,
+        int lowStockThreshold = MedicineMapping.LowStockThreshold,
+        int expiringSoonDays = MedicineMapping.ExpiringSoonDays)
     {
         var daysUntilExpiry =
             inventory.ExpiryDate.DayNumber - today.DayNumber;
@@ -30,32 +32,36 @@ public static class InventoryMapping
             AvailableQuantity = inventory.ExpiryDate >= today
                 ? Math.Max(0, inventory.QuantityInStock)
                 : 0,
-            StockLevel = GetStockLevel(inventory.QuantityInStock),
-            ExpiryStatus = GetExpiryStatus(inventory.ExpiryDate, today),
+            StockLevel = GetStockLevel(inventory.QuantityInStock, lowStockThreshold),
+            ExpiryStatus = GetExpiryStatus(inventory.ExpiryDate, today, expiringSoonDays),
             ExpiryDate = inventory.ExpiryDate,
             DaysUntilExpiry = daysUntilExpiry,
             StockStatus = GetStockStatus(
                 inventory.QuantityInStock,
                 inventory.ExpiryDate,
-                today
+                today,
+                lowStockThreshold,
+                expiringSoonDays
             )
         };
     }
 
-    public static string GetStockLevel(int quantityInStock) =>
+    public static string GetStockLevel(int quantityInStock, int lowStockThreshold = MedicineMapping.LowStockThreshold) =>
         quantityInStock <= 0 ? "OutOfStock"
-        : quantityInStock <= MedicineMapping.LowStockThreshold ? "LowStock"
+        : quantityInStock <= lowStockThreshold ? "LowStock"
         : "InStock";
 
-    public static string GetExpiryStatus(DateOnly expiryDate, DateOnly today) =>
+    public static string GetExpiryStatus(DateOnly expiryDate, DateOnly today, int expiringSoonDays = MedicineMapping.ExpiringSoonDays) =>
         expiryDate < today ? "Expired"
-        : expiryDate <= today.AddDays(MedicineMapping.ExpiringSoonDays) ? "ExpiringSoon"
+        : expiryDate <= today.AddDays(expiringSoonDays) ? "ExpiringSoon"
         : "Valid";
 
     public static string GetStockStatus(
         int quantityInStock,
         DateOnly expiryDate,
-        DateOnly today)
+        DateOnly today,
+        int lowStockThreshold = MedicineMapping.LowStockThreshold,
+        int expiringSoonDays = MedicineMapping.ExpiringSoonDays)
     {
         if (quantityInStock <= 0)
         {
@@ -67,13 +73,12 @@ public static class InventoryMapping
             return "Expired";
         }
 
-        if (quantityInStock <= MedicineMapping.LowStockThreshold)
+        if (quantityInStock <= lowStockThreshold)
         {
             return "LowStock";
         }
 
-        if (expiryDate <= today.AddDays(
-                MedicineMapping.ExpiringSoonDays))
+        if (expiryDate <= today.AddDays(expiringSoonDays))
         {
             return "ExpiringSoon";
         }

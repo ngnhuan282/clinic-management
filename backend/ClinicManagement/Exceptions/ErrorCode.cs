@@ -52,6 +52,27 @@ public sealed class ErrorCode
             HttpStatusCode.Forbidden
         );
 
+    public static readonly ErrorCode DATA_CONCURRENCY_CONFLICT =
+        new(
+            1004,
+            "Data was modified concurrently. Please reload and try again",
+            HttpStatusCode.Conflict
+        );
+
+    public static readonly ErrorCode DATA_IN_USE =
+        new(
+            1005,
+            "Data is referenced by other records and cannot be removed or modified",
+            HttpStatusCode.Conflict
+        );
+
+    public static readonly ErrorCode DATA_DUPLICATE =
+        new(
+            1006,
+            "Duplicate code or unique value already exists",
+            HttpStatusCode.Conflict
+        );
+
     // =========================
     // User
     // =========================
@@ -305,6 +326,12 @@ public sealed class ErrorCode
 
     public static readonly ErrorCode INVENTORY_HAS_DISPENSE_HISTORY =
         new(6019, "Inventory batch has dispensing history and cannot be removed or reassigned", HttpStatusCode.Conflict);
+
+    public static readonly ErrorCode MEDICINE_IN_USE =
+        new(6020, "Medicine is referenced in prescriptions or purchase orders", HttpStatusCode.Conflict);
+
+    public static readonly ErrorCode SUPPLIER_HAS_PURCHASE_ORDERS =
+        new(6021, "Supplier already has purchase orders", HttpStatusCode.Conflict);
 
     // =========================
     // Examination / Medical Record

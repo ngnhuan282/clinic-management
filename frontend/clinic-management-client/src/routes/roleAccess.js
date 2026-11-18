@@ -20,45 +20,62 @@ export const ROLE_LABELS = {
 };
 
 export const INTERNAL_PAGES = [
-    { label: "Thống kê khoa", path: "/internal/department-statistics", roles: ["DepartmentHead"] },
-    { label: "Hồ sơ cá nhân", path: "/internal/profile", roles: INTERNAL_ROLES },
-    { label: "Quản lý đánh giá", path: "/internal/reviews", roles: ["Admin"] },
-    { label: "Thu ngân", path: "/internal/cashier/billing", roles: ["Admin", "Cashier"] },
-    { label: "Lịch làm việc của khoa", path: "/internal/department-schedules", roles: ["DepartmentHead"] },
-    { label: "Tổng quan", path: "/internal/dashboard", roles: INTERNAL_ROLES },
-    { label: "Khám bệnh", path: "/internal/examinations", roles: ["Doctor", "DepartmentHead"] },
-    { label: "Rà soát thuốc thiếu", path: "/internal/doctor/stock-reviews", roles: ["Doctor", "DepartmentHead"] },
-    { label: "Danh mục bệnh", path: "/internal/diseases", roles: ["Admin", "DepartmentHead"] },
-    { label: "Lịch hẹn", path: "/internal/appointments", roles: ["Admin", "Receptionist"] },
-    { label: "Sổ khám bệnh", path: "/internal/patient-books", roles: ["Receptionist"] },
-    { label: "Tài khoản & Vai trò", path: "/internal/users", roles: ["Admin"] },
-    { label: "Vai trò & Phân quyền", path: "/internal/roles-permissions", roles: ["Admin"] },
-    { label: "Khoa", path: "/internal/departments", roles: ["Admin"] },
-    { label: "Chuyên khoa", path: "/internal/specializations", roles: ["Admin"] },
-    { label: "Phòng", path: "/internal/rooms", roles: ["Admin"] },
-    { label: "Lịch bác sĩ", path: "/internal/doctor-schedules", roles: ["Admin"] },
-    { label: "Đăng ký ca làm việc", path: "/internal/doctor/schedule-requests", roles: ["Doctor", "DepartmentHead"] },
-    { label: "Hồ sơ bác sĩ", path: "/internal/doctor/profile", roles: ["Doctor", "DepartmentHead"] },
-    { label: "Duyệt ca khám", path: "/internal/schedule-requests", roles: ["Admin", "DepartmentHead"] },
+    // 1. Tổng quan (luôn đứng đầu tiên trong sidebar)
+    { label: "Tổng quan", path: "/internal/dashboard", group: "Tổng quan", roles: INTERNAL_ROLES },
+
+    // 2. Tiếp đón & Thu ngân
+    { label: "Lịch hẹn", path: "/internal/appointments", group: "Tiếp đón & Thu ngân", roles: ["Admin", "Receptionist"] },
+    { label: "Sổ khám bệnh", path: "/internal/patient-books", group: "Tiếp đón & Thu ngân", roles: ["Receptionist"] },
+    { label: "Thu ngân", path: "/internal/cashier/billing", group: "Tiếp đón & Thu ngân", roles: ["Admin", "Cashier"] },
+
+    // 3. Khám bệnh & Lâm sàng
+    { label: "Khám bệnh", path: "/internal/examinations", group: "Khám bệnh & Lâm sàng", roles: ["Doctor", "DepartmentHead"] },
+    { label: "Chỉ định xét nghiệm", path: "/internal/doctor/lab-orders", group: "Khám bệnh & Lâm sàng", roles: ["Doctor", "DepartmentHead"] },
+    { label: "Hàng chờ xét nghiệm", path: "/internal/technician/lab-queue", group: "Khám bệnh & Lâm sàng", roles: ["LabTechnician"] },
+    { label: "Rà soát thuốc thiếu", path: "/internal/doctor/stock-reviews", group: "Khám bệnh & Lâm sàng", roles: ["Doctor", "DepartmentHead"] },
+    { label: "Đăng ký ca làm việc", path: "/internal/doctor/schedule-requests", group: "Khám bệnh & Lâm sàng", roles: ["Doctor", "DepartmentHead"] },
+    { label: "Lịch làm việc của khoa", path: "/internal/department-schedules", group: "Khám bệnh & Lâm sàng", roles: ["DepartmentHead"] },
+    { label: "Thống kê khoa", path: "/internal/department-statistics", group: "Khám bệnh & Lâm sàng", roles: ["DepartmentHead"] },
+
+    // 4. Lịch trực & Danh mục y tế
+    { label: "Lịch bác sĩ", path: "/internal/doctor-schedules", group: "Lịch trực & Danh mục", roles: ["Admin"] },
+    { label: "Duyệt ca khám", path: "/internal/schedule-requests", group: "Lịch trực & Danh mục", roles: ["Admin", "DepartmentHead"] },
+    { label: "Khoa", path: "/internal/departments", group: "Lịch trực & Danh mục", roles: ["Admin"] },
+    { label: "Chuyên khoa", path: "/internal/specializations", group: "Lịch trực & Danh mục", roles: ["Admin"] },
+    { label: "Phòng", path: "/internal/rooms", group: "Lịch trực & Danh mục", roles: ["Admin"] },
+    { label: "Danh mục bệnh", path: "/internal/diseases", group: "Lịch trực & Danh mục", roles: ["Admin", "DepartmentHead"] },
+    { label: "Xét nghiệm", path: "/internal/lab-test-types", group: "Lịch trực & Danh mục", roles: ["Admin", "Doctor", "DepartmentHead"] },
+
+    // 5. Kho dược & Cấp phát
+    {
+        label: "Quầy cấp thuốc",
+        path: "/internal/pharmacy/dispensing",
+        group: "Kho dược & Cấp phát",
+        roles: ["Admin", "Pharmacist"],
+    },
     {
         label: "Kho dược & Vật tư",
         path: "/internal/medicines",
         to: "/internal/medicines/purchase-orders",
+        group: "Kho dược & Cấp phát",
         roles: ["Admin"],
-    },
-    {
-        label: "Quầy cấp thuốc",
-        path: "/internal/pharmacy/dispensing",
-        roles: ["Admin", "Pharmacist"],
     },
     {
         label: "Tồn kho",
         path: "/internal/pharmacy/inventory",
+        group: "Kho dược & Cấp phát",
         roles: ["Pharmacist"],
     },
-    { label: "Xét nghiệm", path: "/internal/lab-test-types", roles: ["Admin", "Doctor", "DepartmentHead"] },
-    { label: "Chỉ định xét nghiệm", path: "/internal/doctor/lab-orders", roles: ["Doctor", "DepartmentHead"] },
-    { label: "Hàng chờ xét nghiệm", path: "/internal/technician/lab-queue", roles: ["LabTechnician"] },
+
+    // 6. Quản trị hệ thống
+    { label: "Tài khoản & Vai trò", path: "/internal/users", group: "Quản trị hệ thống", roles: ["Admin"] },
+    { label: "Vai trò & Phân quyền", path: "/internal/roles-permissions", group: "Quản trị hệ thống", roles: ["Admin"] },
+    { label: "Quản lý đánh giá", path: "/internal/reviews", group: "Quản trị hệ thống", roles: ["Admin"] },
+    { label: "Cấu hình phòng khám", path: "/internal/settings", group: "Quản trị hệ thống", roles: ["Admin"] },
+
+    // 7. Cá nhân
+    { label: "Hồ sơ bác sĩ", path: "/internal/doctor/profile", group: "Cá nhân", roles: ["Doctor", "DepartmentHead"] },
+    { label: "Hồ sơ cá nhân", path: "/internal/profile", group: "Cá nhân", roles: INTERNAL_ROLES },
 ];
 
 const ADDITIONAL_INTERNAL_ROUTES = [];
@@ -115,7 +132,7 @@ export function canSeePage(value, page) {
             : [];
         if (requiredPermissions.some(code => code.startsWith("accounts.")) && user.role !== "Admin") return false;
         if (page.path === "/internal/schedule-requests" && !page.roles.includes(user.role)) return false;
-        if (["/internal/reviews", "/internal/cashier/billing"].includes(page.path) && !page.roles.includes(user.role)) return false;
+        if (["/internal/reviews", "/internal/settings", "/internal/cashier/billing"].includes(page.path) && !page.roles.includes(user.role)) return false;
         if (["/internal/department-schedules", "/internal/department-statistics"].includes(page.path) && user.role !== "DepartmentHead") return false;
         if (page.path === "/internal/diseases" && !page.roles.includes(user.role)) return false;
         if (page.path === "/internal/pharmacy/inventory" && !page.roles.includes(user.role)) return false;

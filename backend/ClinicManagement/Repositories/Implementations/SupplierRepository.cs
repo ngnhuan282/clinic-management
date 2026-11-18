@@ -64,6 +64,11 @@ public class SupplierRepository : ISupplierRepository
         );
     }
 
+    public Task<bool> HasPurchaseOrdersAsync(int supplierId)
+    {
+        return _context.PurchaseOrders.AnyAsync(x => x.SupplierId == supplierId);
+    }
+
     public Task<bool> ExistsByNameAsync(
         string supplierName,
         int? excludedSupplierId = null)

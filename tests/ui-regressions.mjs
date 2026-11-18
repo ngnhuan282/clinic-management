@@ -46,10 +46,26 @@ async function contextFor(patient = false) {
             return route.abort();
         }
         const json = (result, status = 200, raw = false) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(raw ? result : { code: 1000, result }) });
+        const specializations = [
+            { specializationId: 1, code: "NỘI-TQ", name: "Nội tổng quát chuyên sâu", description: "Khám và theo dõi bệnh lý nội khoa.", departmentId: 1, departmentName: doctor.departmentName },
+        ];
         if (path === "/api/auth/me") return json(user);
         if (path === "/api/auth/refresh") return json({ ...user, accessToken: "ui-regression-token" });
         if (path === "/api/notifications") return json({ ...paginate([]), unreadCount: 0 });
-        if (path === "/api/appointments/departments") return json([{ departmentId: 1, name: doctor.departmentName, description: "Thông tin chuyên khoa Nội tổng quát." }]);
+        if (path === "/api/appointments/departments") return json([{ departmentId: 1, code: "NOI", name: doctor.departmentName, description: "Thông tin chuyên khoa Nội tổng quát.", specializations }]);
+        if (path === "/api/specializations/public") return json(specializations);
+        if (path === "/api/public/clinic-settings") return json({
+            clinicName: "Clinic Management System",
+            tagline: "Hệ thống quản lý phòng khám đa khoa",
+            description: "Kết nối người bệnh với các chuyên khoa và bác sĩ uy tín.",
+            phone: "1900 6868",
+            email: "contact@medclinic-system.vn",
+            workingHours: "07:30 – 20:00, Thứ Hai – Chủ Nhật",
+            locations: [{ name: "Cơ sở TP. Hồ Chí Minh", address: "128 Nguyễn Trãi, Quận 1, TP. Hồ Chí Minh" }],
+            defaultExaminationFee: 150000,
+            patientBookFee: 10000,
+            defaultSlotDurationMinutes: 30,
+        });
         if (path === "/api/rooms/public") return json(doctor.rooms);
         if (path === "/api/doctors/public/1") return json(doctor);
         if (path === "/api/doctors/public") return json(paginate(url.searchParams.get("fullName") === "absent" ? [] : [doctor]));
@@ -103,7 +119,13 @@ try {
         await open(page, path);
         await bounds(page, "Desktop " + path);
     }
-    console.log("PASS Refreshed public routes render from the production build");
+    await open(page, "/specialties");
+    await page.getByText("Nội tổng quát chuyên sâu", { exact: false }).first().waitFor();
+    await page.getByText("Khoa: Nội tổng quát", { exact: true }).waitFor();
+    await open(page, "/specialties/1");
+    await page.getByRole("heading", { name: /Chuyên khoa trực thuộc/ }).waitFor();
+    await page.getByText("Nội tổng quát chuyên sâu", { exact: true }).waitFor();
+    console.log("PASS Refreshed public routes and department-specialization catalog render from the production build");
     await open(page, "/doctors");
     assert.equal(await page.locator("form").count(), 1, "Doctor search has a single form");
     await page.getByLabel("Tên bác sĩ", { exact: true }).fill("absent");

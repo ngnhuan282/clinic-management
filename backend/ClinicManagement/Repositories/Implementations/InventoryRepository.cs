@@ -3,6 +3,7 @@ using ClinicManagement.Data.Entities;
 using ClinicManagement.DTOs.Requests;
 using ClinicManagement.Mappings;
 using ClinicManagement.Repositories.Interfaces;
+using ClinicManagement.Services.Implementations;
 using Microsoft.EntityFrameworkCore;
 
 namespace ClinicManagement.Repositories.Implementations;
@@ -20,7 +21,10 @@ public class InventoryRepository : IInventoryRepository
         InventoryFilterRequest request,
         DateOnly today)
     {
-        var query = BuildFilteredQuery(request, today);
+        var thresholds = await ClinicSettingsService.ReadSnapshotSafeAsync(_context);
+        var lowStock = thresholds.LowStockThreshold > 0 ? thresholds.LowStockThreshold : MedicineMapping.LowStockThreshold;
+        var nearExpiry = thresholds.NearExpiryDays > 0 ? thresholds.NearExpiryDays : MedicineMapping.ExpiringSoonDays;
+        var query = BuildFilteredQuery(request, today, lowStock, nearExpiry);
 
         var totalItems = await query.CountAsync();
 
@@ -98,11 +102,11 @@ public class InventoryRepository : IInventoryRepository
 
     private IQueryable<Inventory> BuildFilteredQuery(
         InventoryFilterRequest request,
-        DateOnly today)
+        DateOnly today,
+        int lowStockThreshold,
+        int expiringSoonDays)
     {
-        var expiringUntil = today.AddDays(
-            MedicineMapping.ExpiringSoonDays
-        );
+        var expiringUntil = today.AddDays(expiringSoonDays);
 
         var query = _context.Inventory
             .Include(x => x.Medicine)
@@ -145,8 +149,8 @@ public class InventoryRepository : IInventoryRepository
         {
             "OutOfStock" => query.Where(x => x.QuantityInStock <= 0),
             "LowStock" => query.Where(x => x.QuantityInStock > 0
-                && x.QuantityInStock <= MedicineMapping.LowStockThreshold),
-            "InStock" => query.Where(x => x.QuantityInStock > MedicineMapping.LowStockThreshold),
+                && x.QuantityInStock <= lowStockThreshold),
+            "InStock" => query.Where(x => x.QuantityInStock > lowStockThreshold),
             _ => query
         };
 
@@ -178,7 +182,8 @@ public class InventoryRepository : IInventoryRepository
                 query,
                 request.StockStatus,
                 today,
-                expiringUntil
+                expiringUntil,
+                lowStockThreshold
             );
         }
 
@@ -189,7 +194,8 @@ public class InventoryRepository : IInventoryRepository
         IQueryable<Inventory> query,
         string stockStatus,
         DateOnly today,
-        DateOnly expiringUntil)
+        DateOnly expiringUntil,
+        int lowStockThreshold)
     {
         var status = stockStatus.Trim();
 
@@ -205,18 +211,15 @@ public class InventoryRepository : IInventoryRepository
             "LowStock" => query.Where(x =>
                 x.QuantityInStock > 0 &&
                 x.ExpiryDate >= today &&
-                x.QuantityInStock <=
-                    MedicineMapping.LowStockThreshold),
+                x.QuantityInStock <= lowStockThreshold),
 
             "ExpiringSoon" => query.Where(x =>
-                x.QuantityInStock >
-                    MedicineMapping.LowStockThreshold &&
+                x.QuantityInStock > lowStockThreshold &&
                 x.ExpiryDate >= today &&
                 x.ExpiryDate <= expiringUntil),
 
             "InStock" => query.Where(x =>
-                x.QuantityInStock >
-                    MedicineMapping.LowStockThreshold &&
+                x.QuantityInStock > lowStockThreshold &&
                 x.ExpiryDate > expiringUntil),
 
             _ => query

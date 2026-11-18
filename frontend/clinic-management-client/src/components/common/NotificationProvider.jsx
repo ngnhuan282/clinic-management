@@ -1,83 +1,202 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import useAuth from "../../hooks/useAuth";
 import notificationApi from "../../api/notificationApi";
 import NotificationContext from "../../store/NotificationContext";
 import { connectNotifications } from "../../services/signalrService";
 import getApiErrorMessage from "../../utils/errorHandler";
+import { clinicToast } from "./clinicUi";
 
 export default function NotificationProvider({ children }) {
     const { userId, role, isAuthenticated } = useAuth();
     const [state, setState] = useState({});
     const [pagination, setPagination] = useState({});
     const pageNumber = pagination.userId === userId ? pagination.pageNumber : 1;
-    const setPageNumber = value => setPagination({ userId, pageNumber: value });
+    const setPageNumber = (value) => setPagination({ userId, pageNumber: value });
     const [reload, setReload] = useState(0);
     const [live, setLive] = useState({ revision: 0 });
     const [clinic, setClinic] = useState({ availabilityRevision: 0 });
-    const refresh = () => setReload(value => value + 1);
+    const [toasts, setToasts] = useState([]);
+    const toastSeq = useRef(0);
+    const toastTimers = useRef(new Map());
+    const refresh = () => setReload((value) => value + 1);
+
+    const dismissToast = useCallback((id) => {
+        const timer = toastTimers.current.get(id);
+        if (timer) {
+            clearTimeout(timer);
+            toastTimers.current.delete(id);
+        }
+        setToasts((current) => current.filter((item) => item.id !== id));
+    }, []);
+
+    const showToast = useCallback(
+        (messageText, severity = "success", duration = 4000) => {
+            if (!messageText) return;
+            const id = ++toastSeq.current;
+            const safeDuration = Number(duration) > 0 ? Number(duration) : 4000;
+            setToasts((current) => [
+                ...current.slice(-3),
+                {
+                    id,
+                    message: String(messageText),
+                    severity: severity === "error" ? "error" : "success",
+                    duration: safeDuration,
+                },
+            ]);
+            const timer = setTimeout(() => {
+                toastTimers.current.delete(id);
+                setToasts((current) => current.filter((item) => item.id !== id));
+            }, safeDuration);
+            toastTimers.current.set(id, timer);
+        },
+        []
+    );
+
+    const toastSuccess = useCallback(
+        (messageText, duration = 4000) => showToast(messageText, "success", duration),
+        [showToast]
+    );
+
+    const toastError = useCallback(
+        (messageText, duration = 4000) => showToast(messageText, "error", duration),
+        [showToast]
+    );
+
+    useEffect(() => {
+        const unsubscribe = clinicToast.subscribe(({ message, severity, duration }) => {
+            showToast(message, severity, duration);
+        });
+        const timers = toastTimers.current;
+        return () => {
+            unsubscribe();
+            timers.forEach((timer) => clearTimeout(timer));
+            timers.clear();
+        };
+    }, [showToast]);
 
     useEffect(() => {
         if (!isAuthenticated) return;
         let disposed = false;
-        Promise.resolve().then(() => { if (!disposed) setState({ userId, loading: true }); });
-        notificationApi.list({ pageNumber, pageSize: 20 }).then(response => {
-            if (!disposed) setState({ userId, ...response.data.result, loading: false });
-        }).catch(error => {
-            if (!disposed) setState({ userId, error: getApiErrorMessage(error), loading: false });
+        Promise.resolve().then(() => {
+            if (!disposed) setState({ userId, loading: true });
         });
-        return () => { disposed = true; };
+        notificationApi
+            .list({ pageNumber, pageSize: 20 })
+            .then((response) => {
+                if (!disposed) setState({ userId, ...response.data.result, loading: false });
+            })
+            .catch((error) => {
+                if (!disposed) setState({ userId, error: getApiErrorMessage(error), loading: false });
+            });
+        return () => {
+            disposed = true;
+        };
     }, [userId, isAuthenticated, pageNumber, reload]);
 
     useEffect(() => {
         if (!isAuthenticated) return;
-        return connectNotifications(message => {
-            setLive(value => ({ userId, message, revision: value.revision + 1 }));
-            refresh();
-        }, () => {
-            setLive(value => ({ userId, revision: value.revision + 1 }));
-            // Re-read scoped APIs on connection/reconnect to recover missed events.
-            setClinic(value => ({ userId, availabilityRevision: (value.availabilityRevision || 0) + 1,
-                departmentCalendarRevision: (value.departmentCalendarRevision || 0) + 1,
-                departmentStatisticsRevision: (value.departmentStatisticsRevision || 0) + 1,
-                labResultsRevision: (value.labResultsRevision || 0) + 1 }));
-            refresh();
-        }, (eventName, payload) => {
-            if (eventName === "LabResultChanged") {
-                if (!Number.isInteger(payload?.labTestId) || payload.labTestId <= 0) return;
-                setClinic(value => ({ ...(value.userId === userId ? value : {}), userId,
-                    labResultsRevision: (value.labResultsRevision || 0) + 1 }));
-                return;
+        return connectNotifications(
+            (message) => {
+                setLive((value) => ({ userId, message, revision: value.revision + 1 }));
+                refresh();
+            },
+            () => {
+                setLive((value) => ({ userId, revision: value.revision + 1 }));
+                setClinic((value) => ({
+                    userId,
+                    availabilityRevision: (value.availabilityRevision || 0) + 1,
+                    departmentCalendarRevision: (value.departmentCalendarRevision || 0) + 1,
+                    departmentStatisticsRevision: (value.departmentStatisticsRevision || 0) + 1,
+                    labResultsRevision: (value.labResultsRevision || 0) + 1,
+                }));
+                refresh();
+            },
+            (eventName, payload) => {
+                if (eventName === "LabResultChanged") {
+                    if (!Number.isInteger(payload?.labTestId) || payload.labTestId <= 0) return;
+                    setClinic((value) => ({
+                        ...(value.userId === userId ? value : {}),
+                        userId,
+                        labResultsRevision: (value.labResultsRevision || 0) + 1,
+                    }));
+                    return;
+                }
+                if (eventName === "DepartmentWorkflowChanged") {
+                    if (
+                        !Number.isInteger(payload?.departmentId) ||
+                        payload.departmentId <= 0 ||
+                        !["Schedules", "Statistics"].includes(payload.area)
+                    ) {
+                        return;
+                    }
+                    setClinic((value) => ({
+                        ...(value.userId === userId ? value : {}),
+                        userId,
+                        departmentCalendarRevision:
+                            (value.departmentCalendarRevision || 0) + (payload.area === "Schedules" ? 1 : 0),
+                        departmentStatisticsRevision: (value.departmentStatisticsRevision || 0) + 1,
+                    }));
+                    if (payload.area === "Schedules") {
+                        setLive((value) => ({
+                            ...(value.userId === userId ? value : {}),
+                            userId,
+                            revision: value.revision + 1,
+                        }));
+                    }
+                    return;
+                }
+                setClinic((value) => ({
+                    ...(value.userId === userId ? value : {}),
+                    userId,
+                    [eventName === "CheckInChanged" ? "AppointmentChanged" : eventName]: payload,
+                    availabilityRevision:
+                        (value.availabilityRevision || 0) + (eventName === "SlotAvailabilityChanged" ? 1 : 0),
+                }));
+                if (eventName !== "SlotAvailabilityChanged") {
+                    setLive((value) => ({
+                        ...(value.userId === userId ? value : {}),
+                        userId,
+                        revision: value.revision + 1,
+                    }));
+                }
             }
-            if (eventName === "DepartmentWorkflowChanged") {
-                if (!Number.isInteger(payload?.departmentId) || payload.departmentId <= 0
-                    || !["Schedules", "Statistics"].includes(payload.area)) return;
-                setClinic(value => ({ ...(value.userId === userId ? value : {}), userId,
-                    departmentCalendarRevision: (value.departmentCalendarRevision || 0) + (payload.area === "Schedules" ? 1 : 0),
-                    departmentStatisticsRevision: (value.departmentStatisticsRevision || 0) + 1 }));
-                if (payload.area === "Schedules")
-                    setLive(value => ({ ...(value.userId === userId ? value : {}), userId, revision: value.revision + 1 }));
-                return;
-            }
-            setClinic(value => ({ ...(value.userId === userId ? value : {}), userId,
-                [eventName === "CheckInChanged" ? "AppointmentChanged" : eventName]: payload,
-                availabilityRevision: (value.availabilityRevision || 0) + (eventName === "SlotAvailabilityChanged" ? 1 : 0) }));
-            if (eventName !== "SlotAvailabilityChanged")
-                setLive(value => ({ ...(value.userId === userId ? value : {}), userId, revision: value.revision + 1 }));
-        });
+        );
     }, [userId, role, isAuthenticated]);
 
     const visible = isAuthenticated && state.userId === userId ? state : {};
     const realtime = isAuthenticated && clinic.userId === userId ? clinic : {};
-    const markRead = async id => { await notificationApi.markRead(id); refresh(); };
-    return <NotificationContext.Provider value={{ ...visible, items: visible.items || [], refresh,
-        pageNumber, setPageNumber, markRead, revision: isAuthenticated && live.userId === userId ? live.revision : 0,
-        message: isAuthenticated && live.userId === userId ? live.message : null,
-        appointmentEvent: realtime.AppointmentChanged, bookInvoiceEvent: realtime.BookInvoiceChanged,
-        patientBookEvent: realtime.PatientBookChanged, slotEvent: realtime.SlotAvailabilityChanged,
-        availabilityRevision: realtime.availabilityRevision || 0,
-        departmentCalendarRevision: realtime.departmentCalendarRevision || 0,
-        labResultsRevision: realtime.labResultsRevision || 0,
-        departmentStatisticsRevision: realtime.departmentStatisticsRevision || 0 }}>
-        {children}
-    </NotificationContext.Provider>;
+    const markRead = async (id) => {
+        await notificationApi.markRead(id);
+        refresh();
+    };
+
+    return (
+        <NotificationContext.Provider
+            value={{
+                ...visible,
+                items: visible.items || [],
+                refresh,
+                pageNumber,
+                setPageNumber,
+                markRead,
+                toasts,
+                showToast,
+                toastSuccess,
+                toastError,
+                dismissToast,
+                revision: isAuthenticated && live.userId === userId ? live.revision : 0,
+                message: isAuthenticated && live.userId === userId ? live.message : null,
+                appointmentEvent: realtime.AppointmentChanged,
+                bookInvoiceEvent: realtime.BookInvoiceChanged,
+                patientBookEvent: realtime.PatientBookChanged,
+                slotEvent: realtime.SlotAvailabilityChanged,
+                availabilityRevision: realtime.availabilityRevision || 0,
+                departmentCalendarRevision: realtime.departmentCalendarRevision || 0,
+                labResultsRevision: realtime.labResultsRevision || 0,
+                departmentStatisticsRevision: realtime.departmentStatisticsRevision || 0,
+            }}
+        >
+            {children}
+        </NotificationContext.Provider>
+    );
 }

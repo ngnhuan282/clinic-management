@@ -16,6 +16,7 @@ public interface IDepartmentRepository
 public interface ISpecializationRepository
 {
     Task<(IReadOnlyList<Specialization> Items, int TotalItems)> GetPageAsync(CatalogQuery query);
+    Task<List<Specialization>> GetActiveAsync(int? departmentId = null);
     Task<Specialization?> GetByIdAsync(int id);
     Task<bool> ExistsDuplicateAsync(string code, string name, int? excludingId = null);
     Task<bool> DepartmentIsActiveAsync(int departmentId);

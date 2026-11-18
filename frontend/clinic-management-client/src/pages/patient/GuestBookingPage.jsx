@@ -22,31 +22,36 @@ import {
     Typography,
 } from "@mui/material";
 import {
+    AccessTimeOutlined,
     CalendarMonthOutlined,
     CheckCircleOutlined,
+    LocalHospitalOutlined,
+    PersonOutlineOutlined,
     RefreshOutlined,
     ShieldOutlined,
 } from "@mui/icons-material";
 import { getAvailableSlots, getDepartments, getDoctorsByDepartment } from "../../api/bookingApi";
-import { createGuestAppointment } from "../../api/publicApi";
+import { createGuestAppointment, useClinicInfo } from "../../api/publicApi";
 import PublicPage, { ResourceState } from "../../components/patient/PublicPage";
 import usePublicResource from "../../hooks/usePublicResource";
-import { CLINIC } from "../../data/publicContent";
 import { clinicToday, validateGuestBooking } from "../../utils/publicBooking";
 import getApiErrorMessage from "../../utils/errorHandler";
 
 const sectionSx = {
     p: { xs: 2.75, md: 3.5 },
     borderRadius: "16px",
-    borderColor: "#e5e9f0",
-    bgcolor: "#ffffff",
-    boxShadow: "0 1px 4px rgba(15, 23, 42, 0.03)",
+    borderColor: "#C5D8EC",
+    bgcolor: "#FFFFFF",
+    boxShadow: "0 2px 10px rgba(10, 37, 64, 0.04)",
 };
 
 const time = value => String(value || "").slice(0, 5);
 const dateLabel = value => value?.split("T")[0].split("-").reverse().join("/");
+const money = value =>
+    new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(value);
 
 export default function GuestBookingPage() {
+    const clinic = useClinicInfo();
     const [params] = useSearchParams();
     const [values, setValues] = useState(() => ({
         departmentId: params.get("departmentId") || "",
@@ -172,7 +177,7 @@ export default function GuestBookingPage() {
     // Receipt View
     if (receipt) {
         return (
-            <PublicPage title="Đăng ký lịch khám thành công">
+            <PublicPage badge="Phiếu tiếp nhận trực tuyến" title="Đăng ký lịch khám thành công">
                 <Paper
                     variant="outlined"
                     sx={{
@@ -180,17 +185,17 @@ export default function GuestBookingPage() {
                         maxWidth: 780,
                         mx: "auto",
                         p: { xs: 3, md: 5 },
-                        borderTop: "4px solid #10b981",
+                        borderTop: "5px solid #0B4F8A",
                     }}
                 >
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 3 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1.75, mb: 3 }}>
                         <Box
                             sx={{
-                                width: 48,
-                                height: 48,
-                                borderRadius: "50%",
-                                bgcolor: "#ecfdf5",
-                                color: "#10b981",
+                                width: 52,
+                                height: 52,
+                                borderRadius: "12px",
+                                bgcolor: "#ECFDF5",
+                                color: "#065F46",
                                 display: "grid",
                                 placeItems: "center",
                                 flexShrink: 0,
@@ -199,11 +204,11 @@ export default function GuestBookingPage() {
                             <CheckCircleOutlined sx={{ fontSize: 32 }} />
                         </Box>
                         <Box>
-                            <Typography component="h2" variant="h5" sx={{ fontWeight: 800, color: "#065f46" }}>
+                            <Typography component="h2" variant="h5" sx={{ fontWeight: 800, color: "#0A2540" }}>
                                 Đã tiếp nhận đăng ký khám
                             </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                                Lịch hẹn đang ở trạng thái chờ xác nhận. Phòng khám sẽ liên hệ qua điện thoại để hỗ trợ bạn.
+                            <Typography variant="body2" sx={{ mt: 0.35, color: "#334155" }}>
+                                Lịch hẹn đang ở trạng thái chờ xác nhận. Lễ tân phòng khám sẽ liên hệ qua điện thoại để hỗ trợ bạn.
                             </Typography>
                         </Box>
                     </Box>
@@ -212,38 +217,50 @@ export default function GuestBookingPage() {
                         variant="outlined"
                         sx={{
                             p: 3,
-                            bgcolor: "#f8fafc",
+                            bgcolor: "#F4F7FA",
                             borderRadius: "12px",
-                            borderColor: "#e2e8f0",
+                            borderColor: "#C5D8EC",
                             mb: 3,
                         }}
                     >
                         <Stack spacing={2}>
                             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 1 }}>
-                                <Typography sx={{ fontSize: 13, color: "text.secondary", fontWeight: 600 }}>
+                                <Typography sx={{ fontSize: 13, color: "#475569", fontWeight: 750, letterSpacing: "0.04em" }}>
                                     MÃ SỐ LỊCH HẸN
                                 </Typography>
-                                <Typography sx={{ fontSize: 20, fontWeight: 800, color: "primary.main", letterSpacing: "0.05em" }}>
+                                <Typography sx={{ fontSize: 22, fontWeight: 800, color: "#0B4F8A", letterSpacing: "0.04em" }}>
                                     #{receipt.appointmentId}
                                 </Typography>
                             </Box>
-                            <Divider sx={{ borderColor: "#e5e9f0" }} />
+                            <Divider sx={{ borderColor: "#CEDCEB" }} />
                             <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2 }}>
                                 <Box>
-                                    <Typography variant="caption" color="text.secondary">Bác sĩ tiếp nhận</Typography>
-                                    <Typography sx={{ fontWeight: 650, color: "#1f2937" }}>{receipt.doctorName}</Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                        Bác sĩ tiếp nhận
+                                    </Typography>
+                                    <Typography sx={{ fontWeight: 750, color: "#0A2540" }}>{receipt.doctorName}</Typography>
                                 </Box>
                                 <Box>
-                                    <Typography variant="caption" color="text.secondary">Chuyên khoa</Typography>
-                                    <Typography sx={{ fontWeight: 650, color: "#1f2937" }}>{receipt.departmentName}</Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                        Chuyên khoa
+                                    </Typography>
+                                    <Typography sx={{ fontWeight: 750, color: "#0A2540" }}>{receipt.departmentName}</Typography>
                                 </Box>
                                 <Box>
-                                    <Typography variant="caption" color="text.secondary">Ngày khám</Typography>
-                                    <Typography sx={{ fontWeight: 650, color: "#1f2937" }}>{dateLabel(receipt.appointmentDate)}</Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                        Ngày khám
+                                    </Typography>
+                                    <Typography sx={{ fontWeight: 750, color: "#0A2540" }}>
+                                        {dateLabel(receipt.appointmentDate)}
+                                    </Typography>
                                 </Box>
                                 <Box>
-                                    <Typography variant="caption" color="text.secondary">Khung giờ</Typography>
-                                    <Typography sx={{ fontWeight: 650, color: "#1f2937" }}>{time(receipt.startTime)} – {time(receipt.endTime)}</Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                        Khung giờ
+                                    </Typography>
+                                    <Typography sx={{ fontWeight: 750, color: "#0B4F8A" }}>
+                                        {time(receipt.startTime)} – {time(receipt.endTime)}
+                                    </Typography>
                                 </Box>
                             </Box>
                         </Stack>
@@ -252,12 +269,16 @@ export default function GuestBookingPage() {
                     <Chip
                         label="Chờ lễ tân xác nhận"
                         color="warning"
-                        sx={{ fontWeight: 700, borderRadius: "6px", mb: 3 }}
+                        variant="outlined"
+                        sx={{ fontWeight: 750, borderRadius: "8px", bgcolor: "#FFFBEB", color: "#92400E", borderColor: "#FCD34D", mb: 3 }}
                     />
 
-                    <Typography color="text.secondary" sx={{ fontSize: 14, lineHeight: 1.8, mb: 4 }}>
+                    <Typography sx={{ fontSize: 14.5, lineHeight: 1.8, color: "#1E293B", mb: 4 }}>
                         Vui lòng lưu lại mã số lịch hẹn trên. Khi cần điều chỉnh hoặc hủy lịch, vui lòng gọi đến tổng đài{" "}
-                        <Link href={CLINIC.phoneHref} sx={{ fontWeight: 700 }}>{CLINIC.phone}</Link> và cung cấp mã này. Lịch hẹn của khách không tự động gắn vào tài khoản tạo sau đó.
+                        <Link href={clinic.phoneHref} sx={{ fontWeight: 750 }}>
+                            {clinic.phone}
+                        </Link>{" "}
+                        và cung cấp mã này. Lịch hẹn của khách không tự động gắn vào tài khoản tạo sau đó.
                     </Typography>
 
                     <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
@@ -266,7 +287,7 @@ export default function GuestBookingPage() {
                             to="/"
                             variant="outlined"
                             size="large"
-                            sx={{ borderRadius: "10px", fontWeight: 650, textTransform: "none" }}
+                            sx={{ borderRadius: "10px", fontWeight: 700, textTransform: "none" }}
                         >
                             Về trang chủ
                         </Button>
@@ -277,7 +298,13 @@ export default function GuestBookingPage() {
                             }}
                             variant="contained"
                             size="large"
-                            sx={{ borderRadius: "10px", fontWeight: 700, textTransform: "none" }}
+                            sx={{
+                                borderRadius: "10px",
+                                fontWeight: 750,
+                                textTransform: "none",
+                                bgcolor: "#0B4F8A",
+                                "&:hover": { bgcolor: "#083A66" },
+                            }}
                         >
                             Đăng ký lịch hẹn khác
                         </Button>
@@ -287,30 +314,35 @@ export default function GuestBookingPage() {
         );
     }
 
+    const step1Done = Boolean(department && doctor);
+    const step2Done = Boolean(selectedSlot);
+    const step3Done = Boolean(values.patientName.trim() && values.patientPhone.trim() && values.reason.trim() && values.consent);
+
     return (
         <PublicPage
-            title="Đăng ký lịch khám trực tuyến"
-            description="Lựa chọn bác sĩ và khung giờ còn trống thuận tiện nhất. Bạn có thể đăng ký ngay mà không bắt buộc phải có tài khoản."
+            badge="Đặt hẹn nhanh không cần tài khoản"
+            title="Đăng ký khám trực tuyến"
+            description="Lựa chọn chuyên khoa, bác sĩ và khung giờ còn trống thuận tiện nhất. Bạn có thể gửi đăng ký ngay hoặc đăng nhập để lưu lịch sử khám lâu dài."
         >
             {/* Login Suggestion Banner */}
             <Alert
                 severity="info"
                 icon={<ShieldOutlined />}
                 sx={{
-                    mb: 4,
-                    borderRadius: "14px",
-                    bgcolor: "#eff6ff",
-                    borderColor: "#bfdbfe",
+                    mb: 3,
+                    borderRadius: "12px",
+                    bgcolor: "#EAF2FA",
+                    borderColor: "#90BCE6",
                     border: "1px solid",
-                    color: "#1e3a8a",
+                    color: "#0A2540",
                 }}
             >
-                Đã có tài khoản?{" "}
+                Đã có tài khoản bệnh nhân?{" "}
                 <Link
                     component={RouterLink}
                     to="/login"
                     state={{ from: { pathname: "/booking", search: params.size ? `?${params}` : "" } }}
-                    sx={{ fontWeight: 700 }}
+                    sx={{ fontWeight: 750 }}
                 >
                     Đăng nhập
                 </Link>{" "}
@@ -319,39 +351,91 @@ export default function GuestBookingPage() {
                     component={RouterLink}
                     to="/register"
                     state={{ from: { pathname: "/booking", search: params.size ? `?${params}` : "" } }}
-                    sx={{ fontWeight: 700 }}
+                    sx={{ fontWeight: 750 }}
                 >
                     đăng ký tài khoản
                 </Link>{" "}
-                để dễ dàng theo dõi lịch sử khám, đơn thuốc và kết quả xét nghiệm trực tuyến.
+                để theo dõi lịch hẹn, đơn thuốc và kết quả xét nghiệm trực tuyến.
             </Alert>
+
+            {/* Visual 3-Step Indicator */}
+            <Grid container spacing={1.5} sx={{ mb: 3.5 }}>
+                {[
+                    ["Bước 1", "Chọn chuyên khoa & bác sĩ", step1Done, true],
+                    ["Bước 2", "Chọn ngày & khung giờ trống", step2Done, step1Done],
+                    ["Bước 3", "Điền thông tin liên hệ", step3Done, step2Done],
+                ].map(([stepLabel, title, done, active]) => (
+                    <Grid key={stepLabel} size={{ xs: 12, sm: 4 }}>
+                        <Paper
+                            variant="outlined"
+                            sx={{
+                                p: 1.75,
+                                borderRadius: "12px",
+                                borderColor: done || active ? "#0B4F8A" : "#CEDCEB",
+                                bgcolor: done ? "#E6F0FA" : active ? "#FFFFFF" : "#F8FAFC",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 1.25,
+                            }}
+                        >
+                            <Box
+                                sx={{
+                                    width: 30,
+                                    height: 30,
+                                    borderRadius: "50%",
+                                    bgcolor: done || active ? "#0B4F8A" : "#94A3B8",
+                                    color: "#FFFFFF",
+                                    display: "grid",
+                                    placeItems: "center",
+                                    fontSize: 13,
+                                    fontWeight: 800,
+                                    flexShrink: 0,
+                                }}
+                            >
+                                {done ? "✓" : stepLabel.slice(-1)}
+                            </Box>
+                            <Box sx={{ minWidth: 0 }}>
+                                <Typography sx={{ fontSize: 11.5, fontWeight: 750, color: done || active ? "#0B4F8A" : "#475569", textTransform: "uppercase" }}>
+                                    {stepLabel}
+                                </Typography>
+                                <Typography noWrap sx={{ fontSize: 14, fontWeight: 750, color: "#0A2540" }}>
+                                    {title}
+                                </Typography>
+                            </Box>
+                        </Paper>
+                    </Grid>
+                ))}
+            </Grid>
 
             <Box component="form" onSubmit={review} noValidate aria-busy={busy}>
                 <Grid container spacing={3.5}>
                     {/* Left Form: 3 Steps */}
                     <Grid size={{ xs: 12, md: 8 }}>
-                        <Stack spacing={3.5}>
+                        <Stack spacing={3}>
                             {/* Step 1: Specialty & Doctor */}
                             <Paper variant="outlined" sx={sectionSx}>
                                 <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2.5 }}>
                                     <Box
                                         sx={{
-                                            width: 32,
-                                            height: 32,
-                                            borderRadius: "50%",
-                                            bgcolor: "primary.main",
-                                            color: "white",
+                                            width: 40,
+                                            height: 40,
+                                            borderRadius: "10px",
+                                            bgcolor: "#0B4F8A",
+                                            color: "#FFFFFF",
                                             display: "grid",
                                             placeItems: "center",
-                                            fontWeight: 800,
-                                            fontSize: 14,
                                         }}
                                     >
-                                        1
+                                        <LocalHospitalOutlined sx={{ fontSize: 22 }} />
                                     </Box>
-                                    <Typography component="h2" variant="h6" sx={{ fontWeight: 750, fontSize: 18, color: "#0f2c4d" }}>
-                                        Chọn Chuyên khoa & Bác sĩ
-                                    </Typography>
+                                    <Box>
+                                        <Typography component="h2" variant="h6" sx={{ fontWeight: 800, fontSize: 18.5, color: "#0A2540" }}>
+                                            1. Chọn chuyên khoa & bác sĩ
+                                        </Typography>
+                                        <Typography sx={{ fontSize: 13.5, color: "#475569" }}>
+                                            Lựa chọn khoa điều trị và bác sĩ bạn mong muốn thăm khám
+                                        </Typography>
+                                    </Box>
                                 </Box>
 
                                 <Stack spacing={2.5}>
@@ -363,7 +447,10 @@ export default function GuestBookingPage() {
                                             required
                                             {...field("departmentId")}
                                             value={department ? values.departmentId : ""}
-                                            helperText={errors.departmentId || "Lựa chọn chuyên khoa phù hợp với nhu cầu khám của bạn"}
+                                            helperText={
+                                                errors.departmentId ||
+                                                "Lựa chọn chuyên khoa phù hợp với triệu chứng hoặc nhu cầu khám"
+                                            }
                                         >
                                             <MenuItem value="">-- Chọn chuyên khoa --</MenuItem>
                                             {departments.data?.map(item => (
@@ -389,7 +476,12 @@ export default function GuestBookingPage() {
                                             {...field("doctorId")}
                                             value={doctor ? values.doctorId : ""}
                                             disabled={!department || busy}
-                                            helperText={errors.doctorId || (!department ? "Vui lòng chọn chuyên khoa trước" : "Chọn bác sĩ trong danh sách")}
+                                            helperText={
+                                                errors.doctorId ||
+                                                (!department
+                                                    ? "Vui lòng chọn chuyên khoa trước"
+                                                    : "Chọn bác sĩ trong danh sách chuyên khoa")
+                                            }
                                         >
                                             <MenuItem value="">-- Chọn bác sĩ --</MenuItem>
                                             {doctors.data?.map(item => (
@@ -414,9 +506,9 @@ export default function GuestBookingPage() {
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 size="small"
-                                                sx={{ textTransform: "none", fontWeight: 600 }}
+                                                sx={{ textTransform: "none", fontWeight: 750, color: "#0B4F8A" }}
                                             >
-                                                Xem hồ sơ & kinh nghiệm của bác sĩ {doctor.fullName} ↗
+                                                Xem hồ sơ & kinh nghiệm của {doctor.title} {doctor.fullName} ↗
                                             </Button>
                                         </Box>
                                     )}
@@ -428,22 +520,25 @@ export default function GuestBookingPage() {
                                 <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2.5 }}>
                                     <Box
                                         sx={{
-                                            width: 32,
-                                            height: 32,
-                                            borderRadius: "50%",
-                                            bgcolor: "primary.main",
-                                            color: "white",
+                                            width: 40,
+                                            height: 40,
+                                            borderRadius: "10px",
+                                            bgcolor: "#0B4F8A",
+                                            color: "#FFFFFF",
                                             display: "grid",
                                             placeItems: "center",
-                                            fontWeight: 800,
-                                            fontSize: 14,
                                         }}
                                     >
-                                        2
+                                        <AccessTimeOutlined sx={{ fontSize: 22 }} />
                                     </Box>
-                                    <Typography component="h2" variant="h6" sx={{ fontWeight: 750, fontSize: 18, color: "#0f2c4d" }}>
-                                        Ngày & Khung giờ khám
-                                    </Typography>
+                                    <Box>
+                                        <Typography component="h2" variant="h6" sx={{ fontWeight: 800, fontSize: 18.5, color: "#0A2540" }}>
+                                            2. Ngày & khung giờ khám
+                                        </Typography>
+                                        <Typography sx={{ fontSize: 13.5, color: "#475569" }}>
+                                            Chọn ngày khám để xem các khung giờ bác sĩ còn trống
+                                        </Typography>
+                                    </Box>
                                 </Box>
 
                                 <Stack spacing={2.5}>
@@ -462,9 +557,27 @@ export default function GuestBookingPage() {
 
                                     {doctor && (
                                         <Box>
-                                            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1.5, color: "#1f2937" }}>
-                                                Khung giờ khám còn trống:
-                                            </Typography>
+                                            <Stack
+                                                direction="row"
+                                                sx={{ justifyContent: "space-between", alignItems: "center", mb: 1.5, flexWrap: "wrap", gap: 1 }}
+                                            >
+                                                <Typography variant="subtitle2" sx={{ fontWeight: 750, fontSize: 14.5, color: "#0A2540" }}>
+                                                    Khung giờ khám còn trống:
+                                                </Typography>
+                                                <Button
+                                                    onClick={() => {
+                                                        update("startTime", "");
+                                                        slots.retry();
+                                                    }}
+                                                    disabled={busy || slots.status === "loading"}
+                                                    startIcon={<RefreshOutlined />}
+                                                    size="small"
+                                                    sx={{ textTransform: "none", fontWeight: 700, color: "#0B4F8A" }}
+                                                >
+                                                    Làm mới giờ trống
+                                                </Button>
+                                            </Stack>
+
                                             <ResourceState resource={slots}>
                                                 {slots.data?.length ? (
                                                     <Box
@@ -472,7 +585,7 @@ export default function GuestBookingPage() {
                                                         aria-label="Giờ khám còn trống"
                                                         sx={{
                                                             display: "grid",
-                                                            gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))",
+                                                            gridTemplateColumns: "repeat(auto-fill, minmax(106px, 1fr))",
                                                             gap: 1.25,
                                                         }}
                                                     >
@@ -480,24 +593,40 @@ export default function GuestBookingPage() {
                                                             const isSelected = values.startTime === slot.startTime;
                                                             return (
                                                                 <Button
-                                                                    id={slot.startTime === available[0]?.startTime ? "guest-startTime" : undefined}
+                                                                    id={
+                                                                        slot.startTime === available[0]?.startTime
+                                                                            ? "guest-startTime"
+                                                                            : undefined
+                                                                    }
                                                                     key={slot.startTime}
                                                                     disabled={!slot.isAvailable || busy}
                                                                     variant={isSelected ? "contained" : "outlined"}
                                                                     aria-pressed={isSelected}
                                                                     onClick={() => update("startTime", slot.startTime)}
                                                                     sx={{
-                                                                        minHeight: 44,
+                                                                        minHeight: 48,
                                                                         borderRadius: "8px",
-                                                                        fontWeight: 700,
-                                                                        fontSize: 14,
+                                                                        fontWeight: 800,
+                                                                        fontSize: 15,
+                                                                        fontVariantNumeric: "tabular-nums",
                                                                         textTransform: "none",
-                                                                        borderColor: slot.isAvailable ? (isSelected ? "primary.main" : "#90caf9") : "#e2e8f0",
-                                                                        bgcolor: isSelected ? "primary.main" : slot.isAvailable ? "#f0fdf4" : "#f3f4f6",
-                                                                        color: isSelected ? "#ffffff" : slot.isAvailable ? "#166534" : "#94a3b8",
-                                                                        boxShadow: isSelected ? "0 2px 8px rgba(25, 118, 210, 0.3)" : "none",
+                                                                        border: slot.isAvailable
+                                                                            ? isSelected
+                                                                                ? "2px solid #0B4F8A"
+                                                                                : "1.5px solid #0B4F8A"
+                                                                            : "1px solid #CBD5E1",
+                                                                        bgcolor: isSelected
+                                                                            ? "#0B4F8A"
+                                                                            : slot.isAvailable
+                                                                            ? "#E6F0FA"
+                                                                            : "#F1F5F9",
+                                                                        color: isSelected
+                                                                            ? "#FFFFFF"
+                                                                            : slot.isAvailable
+                                                                            ? "#0A2540"
+                                                                            : "#64748B",
                                                                         "&:hover": {
-                                                                            bgcolor: isSelected ? "primary.dark" : "#dcfce7",
+                                                                            bgcolor: isSelected ? "#083A66" : "#D2E5F8",
                                                                         },
                                                                     }}
                                                                 >
@@ -518,24 +647,11 @@ export default function GuestBookingPage() {
                                                     </Alert>
                                                 )}
                                             </ResourceState>
-
-                                            <Button
-                                                onClick={() => {
-                                                    update("startTime", "");
-                                                    slots.retry();
-                                                }}
-                                                disabled={busy || slots.status === "loading"}
-                                                startIcon={<RefreshOutlined />}
-                                                size="small"
-                                                sx={{ mt: 1.5, textTransform: "none", fontWeight: 600 }}
-                                            >
-                                                Làm mới giờ trống
-                                            </Button>
                                         </Box>
                                     )}
 
                                     {errors.startTime && (
-                                        <Typography role="alert" color="error" sx={{ fontSize: 13, fontWeight: 500 }}>
+                                        <Typography role="alert" color="error" sx={{ fontSize: 13.5, fontWeight: 650 }}>
                                             {errors.startTime}
                                         </Typography>
                                     )}
@@ -547,51 +663,62 @@ export default function GuestBookingPage() {
                                 <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2.5 }}>
                                     <Box
                                         sx={{
-                                            width: 32,
-                                            height: 32,
-                                            borderRadius: "50%",
-                                            bgcolor: "primary.main",
-                                            color: "white",
+                                            width: 40,
+                                            height: 40,
+                                            borderRadius: "10px",
+                                            bgcolor: "#0B4F8A",
+                                            color: "#FFFFFF",
                                             display: "grid",
                                             placeItems: "center",
-                                            fontWeight: 800,
-                                            fontSize: 14,
                                         }}
                                     >
-                                        3
+                                        <PersonOutlineOutlined sx={{ fontSize: 22 }} />
                                     </Box>
-                                    <Typography component="h2" variant="h6" sx={{ fontWeight: 750, fontSize: 18, color: "#0f2c4d" }}>
-                                        Thông tin người khám
-                                    </Typography>
+                                    <Box>
+                                        <Typography component="h2" variant="h6" sx={{ fontWeight: 800, fontSize: 18.5, color: "#0A2540" }}>
+                                            3. Thông tin người khám
+                                        </Typography>
+                                        <Typography sx={{ fontSize: 13.5, color: "#475569" }}>
+                                            Thông tin liên hệ để lễ tân xác nhận lịch hẹn và đón tiếp tại quầy
+                                        </Typography>
+                                    </Box>
                                 </Box>
 
                                 <Stack spacing={2.5}>
-                                    <TextField
-                                        id="guest-patientName"
-                                        label="Họ và tên người khám"
-                                        placeholder="Ví dụ: Nguyễn Văn A"
-                                        autoComplete="name"
-                                        required
-                                        {...field("patientName")}
-                                        slotProps={{ htmlInput: { maxLength: 100 } }}
-                                    />
-
-                                    <TextField
-                                        id="guest-patientPhone"
-                                        label="Số điện thoại liên hệ"
-                                        placeholder="Ví dụ: 0912345678"
-                                        type="tel"
-                                        autoComplete="tel"
-                                        required
-                                        {...field("patientPhone")}
-                                        slotProps={{ htmlInput: { maxLength: 15 } }}
-                                        helperText={errors.patientPhone || "Phòng khám sẽ gọi vào số này để xác nhận lịch hẹn"}
-                                    />
+                                    <Grid container spacing={2}>
+                                        <Grid size={{ xs: 12, sm: 6 }}>
+                                            <TextField
+                                                id="guest-patientName"
+                                                label="Họ và tên người khám"
+                                                placeholder="Ví dụ: Nguyễn Văn A"
+                                                autoComplete="name"
+                                                required
+                                                {...field("patientName")}
+                                                slotProps={{ htmlInput: { maxLength: 100 } }}
+                                            />
+                                        </Grid>
+                                        <Grid size={{ xs: 12, sm: 6 }}>
+                                            <TextField
+                                                id="guest-patientPhone"
+                                                label="Số điện thoại liên hệ"
+                                                placeholder="Ví dụ: 0912345678"
+                                                type="tel"
+                                                autoComplete="tel"
+                                                required
+                                                {...field("patientPhone")}
+                                                slotProps={{ htmlInput: { maxLength: 15 } }}
+                                                helperText={
+                                                    errors.patientPhone ||
+                                                    "Phòng khám sẽ gọi vào số này để xác nhận lịch hẹn"
+                                                }
+                                            />
+                                        </Grid>
+                                    </Grid>
 
                                     <TextField
                                         id="guest-reason"
                                         label="Triệu chứng hoặc lý do khám"
-                                        placeholder="Mô tả ngắn gọn lý do hoặc các biểu hiện bất thường gần đây..."
+                                        placeholder="Mô tả ngắn gọn lý do khám hoặc biểu hiện sức khỏe cần bác sĩ tư vấn..."
                                         multiline
                                         minRows={3}
                                         required
@@ -599,7 +726,7 @@ export default function GuestBookingPage() {
                                         slotProps={{ htmlInput: { maxLength: 500 } }}
                                     />
 
-                                    <Box sx={{ pt: 1 }}>
+                                    <Box sx={{ pt: 0.5 }}>
                                         <FormControlLabel
                                             control={
                                                 <Checkbox
@@ -611,16 +738,16 @@ export default function GuestBookingPage() {
                                                 />
                                             }
                                             label={
-                                                <Typography variant="body2" sx={{ fontSize: 13.5, lineHeight: 1.6, color: "#374151" }}>
+                                                <Typography variant="body2" sx={{ fontSize: 14, lineHeight: 1.6, color: "#1E293B" }}>
                                                     Tôi xác nhận thông tin cung cấp là chính xác và đồng ý để phòng khám liên hệ qua điện thoại xác nhận lịch khám.{" "}
-                                                    <Link component={RouterLink} to="/privacy" underline="hover">
+                                                    <Link component={RouterLink} to="/privacy" underline="hover" sx={{ fontWeight: 700 }}>
                                                         Chính sách bảo mật
                                                     </Link>
                                                 </Typography>
                                             }
                                         />
                                         {errors.consent && (
-                                            <Typography color="error" role="alert" sx={{ fontSize: 13, mt: 0.5, pl: 4 }}>
+                                            <Typography color="error" role="alert" sx={{ fontSize: 13.5, mt: 0.5, pl: 4 }}>
                                                 {errors.consent}
                                             </Typography>
                                         )}
@@ -637,54 +764,71 @@ export default function GuestBookingPage() {
                             sx={{
                                 ...sectionSx,
                                 position: { md: "sticky" },
-                                top: 96,
-                                bgcolor: "#ffffff",
-                                boxShadow: "0 4px 16px rgba(15, 23, 42, 0.05)",
+                                top: 108,
+                                borderColor: "#90BCE6",
+                                borderTop: "4px solid #0B4F8A",
                             }}
                         >
-                            <Typography component="h2" variant="h6" sx={{ fontWeight: 800, fontSize: 17.5, color: "#0f2c4d", mb: 2 }}>
-                                Tóm tắt đăng ký
+                            <Typography component="h2" variant="h6" sx={{ fontWeight: 800, fontSize: 18.5, color: "#0A2540", mb: 2 }}>
+                                Tóm tắt đăng ký khám
                             </Typography>
 
                             <Stack spacing={2}>
-                                <Box sx={{ p: 2, bgcolor: "#f8fafc", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
-                                    <Stack spacing={1.25}>
+                                <Box sx={{ p: 2.25, bgcolor: "#F4F7FA", borderRadius: "12px", border: "1px solid #C5D8EC" }}>
+                                    <Stack spacing={1.35}>
                                         <Box>
-                                            <Typography variant="caption" color="text.secondary">Chuyên khoa</Typography>
-                                            <Typography sx={{ fontWeight: 650, color: "#1f2937", fontSize: 14 }}>
-                                                {department?.name || <Box component="span" sx={{ color: "#94a3b8" }}>Chưa chọn</Box>}
+                                            <Typography variant="caption" color="text.secondary">
+                                                Chuyên khoa
+                                            </Typography>
+                                            <Typography sx={{ fontWeight: 750, color: "#0A2540", fontSize: 14.5 }}>
+                                                {department?.name || (
+                                                    <Box component="span" sx={{ color: "#64748B", fontWeight: 500 }}>
+                                                        Chưa chọn
+                                                    </Box>
+                                                )}
                                             </Typography>
                                         </Box>
-                                        <Divider sx={{ borderColor: "#edf2f7" }} />
+                                        <Divider sx={{ borderColor: "#DCE7F2" }} />
                                         <Box>
-                                            <Typography variant="caption" color="text.secondary">Bác sĩ</Typography>
-                                            <Typography sx={{ fontWeight: 650, color: "#1f2937", fontSize: 14 }}>
-                                                {doctor?.fullName || <Box component="span" sx={{ color: "#94a3b8" }}>Chưa chọn</Box>}
+                                            <Typography variant="caption" color="text.secondary">
+                                                Bác sĩ
+                                            </Typography>
+                                            <Typography sx={{ fontWeight: 750, color: "#0A2540", fontSize: 14.5 }}>
+                                                {doctor ? `${doctor.title} ${doctor.fullName}` : (
+                                                    <Box component="span" sx={{ color: "#64748B", fontWeight: 500 }}>
+                                                        Chưa chọn
+                                                    </Box>
+                                                )}
                                             </Typography>
                                         </Box>
-                                        <Divider sx={{ borderColor: "#edf2f7" }} />
+                                        <Divider sx={{ borderColor: "#DCE7F2" }} />
                                         <Box>
-                                            <Typography variant="caption" color="text.secondary">Ngày khám</Typography>
-                                            <Typography sx={{ fontWeight: 650, color: "#1f2937", fontSize: 14 }}>
-                                                {dateLabel(values.date) || <Box component="span" sx={{ color: "#94a3b8" }}>Chưa chọn</Box>}
+                                            <Typography variant="caption" color="text.secondary">
+                                                Ngày & giờ khám dự kiến
+                                            </Typography>
+                                            <Typography sx={{ fontWeight: 800, color: "#0B4F8A", fontSize: 15 }}>
+                                                {dateLabel(values.date)}
+                                                {selectedSlot ? ` · ${time(selectedSlot.startTime)}` : " · Chưa chọn giờ"}
                                             </Typography>
                                         </Box>
-                                        <Divider sx={{ borderColor: "#edf2f7" }} />
-                                        <Box>
-                                            <Typography variant="caption" color="text.secondary">Giờ khám dự kiến</Typography>
-                                            <Typography sx={{ fontWeight: 650, color: "primary.main", fontSize: 15 }}>
-                                                {selectedSlot ? time(selectedSlot.startTime) : <Box component="span" sx={{ color: "#94a3b8" }}>Chưa chọn</Box>}
+                                        <Divider sx={{ borderColor: "#DCE7F2" }} />
+                                        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                                            <Typography variant="caption" color="text.secondary">
+                                                Phí khám niêm yết
+                                            </Typography>
+                                            <Typography sx={{ fontWeight: 800, color: "#0A2540", fontSize: 15, fontVariantNumeric: "tabular-nums" }}>
+                                                {money(clinic.defaultExaminationFee)}
                                             </Typography>
                                         </Box>
                                     </Stack>
                                 </Box>
 
-                                <Alert severity="info" sx={{ borderRadius: "10px", fontSize: 12.5, lineHeight: 1.5 }}>
-                                    Lịch đăng ký sẽ ở trạng thái <strong>Chờ xác nhận</strong>. Lễ tân sẽ liên hệ xác nhận giờ khám qua số điện thoại của bạn.
+                                <Alert severity="info" sx={{ borderRadius: "10px", fontSize: 13, lineHeight: 1.55, bgcolor: "#EAF2FA", color: "#0A2540" }}>
+                                    Đặt lịch trực tuyến hoàn toàn <strong>miễn phí</strong>. Lễ tân sẽ liên hệ xác nhận giờ khám qua điện thoại.
                                 </Alert>
 
                                 {error && (
-                                    <Alert severity="error" sx={{ borderRadius: "10px", fontSize: 13 }}>
+                                    <Alert severity="error" sx={{ borderRadius: "10px", fontSize: 13.5 }}>
                                         {error}
                                     </Alert>
                                 )}
@@ -701,21 +845,22 @@ export default function GuestBookingPage() {
                                     }
                                     sx={{
                                         borderRadius: "10px",
-                                        py: 1.35,
+                                        py: 1.45,
                                         fontWeight: 750,
-                                        fontSize: 15,
+                                        fontSize: 15.5,
                                         textTransform: "none",
-                                        boxShadow: "0 4px 12px rgba(25, 118, 210, 0.25)",
+                                        bgcolor: "#0B4F8A",
+                                        "&:hover": { bgcolor: "#083A66" },
                                     }}
                                 >
-                                    Kiểm tra thông tin đăng ký
+                                    Kiểm tra đăng ký khám
                                 </Button>
 
-                                <Box sx={{ textAlign: "center", pt: 1 }}>
-                                    <Typography variant="caption" color="text.secondary">
+                                <Box sx={{ textAlign: "center", pt: 0.5 }}>
+                                    <Typography variant="caption" sx={{ color: "#334155", fontSize: 13 }}>
                                         Cần hỗ trợ? Gọi tổng đài:{" "}
-                                        <Link href={CLINIC.phoneHref} sx={{ fontWeight: 700 }}>
-                                            {CLINIC.phone}
+                                        <Link href={clinic.phoneHref} sx={{ fontWeight: 800, color: "#0B4F8A" }}>
+                                            {clinic.phone}
                                         </Link>
                                     </Typography>
                                 </Box>
@@ -736,72 +881,98 @@ export default function GuestBookingPage() {
                     paper: {
                         sx: {
                             borderRadius: "16px",
-                            boxShadow: "0 20px 40px rgba(15, 23, 42, 0.12)",
                         },
                     },
                 }}
             >
-                <DialogTitle id="guest-confirm-title" sx={{ fontWeight: 800, fontSize: 19, color: "#0f2c4d", pt: 3 }}>
+                <DialogTitle id="guest-confirm-title" sx={{ fontWeight: 800, fontSize: 19.5, color: "#0A2540", pt: 3 }}>
                     Xác nhận thông tin đăng ký khám
                 </DialogTitle>
                 <DialogContent>
                     <Stack spacing={2} sx={{ pt: 1 }}>
-                        <Paper variant="outlined" sx={{ p: 2.5, borderRadius: "12px", bgcolor: "#f8fafc", borderColor: "#e2e8f0" }}>
+                        <Paper variant="outlined" sx={{ p: 2.5, borderRadius: "12px", bgcolor: "#F4F7FA", borderColor: "#C5D8EC" }}>
                             <Stack spacing={1.5}>
-                                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                                    <Typography variant="body2" color="text.secondary">Người khám:</Typography>
-                                    <Typography variant="body2" sx={{ fontWeight: 700 }}>{values.patientName}</Typography>
-                                </Box>
-                                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                                    <Typography variant="body2" color="text.secondary">Số điện thoại:</Typography>
-                                    <Typography variant="body2" sx={{ fontWeight: 700 }}>{values.patientPhone}</Typography>
-                                </Box>
-                                <Divider sx={{ borderColor: "#edf2f7" }} />
-                                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                                    <Typography variant="body2" color="text.secondary">Chuyên khoa:</Typography>
-                                    <Typography variant="body2" sx={{ fontWeight: 700 }}>{department?.name}</Typography>
-                                </Box>
-                                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                                    <Typography variant="body2" color="text.secondary">Bác sĩ:</Typography>
-                                    <Typography variant="body2" sx={{ fontWeight: 700 }}>{doctor?.title} {doctor?.fullName}</Typography>
-                                </Box>
-                                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                                    <Typography variant="body2" color="text.secondary">Thời gian khám:</Typography>
-                                    <Typography variant="body2" sx={{ fontWeight: 700, color: "primary.main" }}>
-                                        {time(values.startTime)} · Ngày {dateLabel(values.date)}
+                                <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
+                                    <Typography variant="body2" color="text.secondary">
+                                        Người khám:
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ fontWeight: 750, color: "#0A2540", textAlign: "right" }}>
+                                        {values.patientName}
                                     </Typography>
                                 </Box>
-                                <Divider sx={{ borderColor: "#edf2f7" }} />
+                                <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
+                                    <Typography variant="body2" color="text.secondary">
+                                        Số điện thoại:
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ fontWeight: 750, color: "#0A2540", textAlign: "right" }}>
+                                        {values.patientPhone}
+                                    </Typography>
+                                </Box>
+                                <Divider sx={{ borderColor: "#DCE7F2" }} />
+                                <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
+                                    <Typography variant="body2" color="text.secondary">
+                                        Chuyên khoa:
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ fontWeight: 750, color: "#0A2540", textAlign: "right" }}>
+                                        {department?.name}
+                                    </Typography>
+                                </Box>
+                                <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
+                                    <Typography variant="body2" color="text.secondary">
+                                        Bác sĩ:
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ fontWeight: 750, color: "#0A2540", textAlign: "right" }}>
+                                        {doctor?.title} {doctor?.fullName}
+                                    </Typography>
+                                </Box>
+                                <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
+                                    <Typography variant="body2" color="text.secondary">
+                                        Thời gian hẹn:
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ fontWeight: 800, color: "#0B4F8A", textAlign: "right" }}>
+                                        {selectedSlot && `${time(selectedSlot.startTime)} – ${time(selectedSlot.endTime)}`},{" "}
+                                        {dateLabel(values.date)}
+                                    </Typography>
+                                </Box>
+                                <Divider sx={{ borderColor: "#DCE7F2" }} />
                                 <Box>
-                                    <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
-                                        Lý do khám:
+                                    <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.35 }}>
+                                        Lý do khám / triệu chứng:
                                     </Typography>
-                                    <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", color: "#374151" }}>
+                                    <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", color: "#0A2540" }}>
                                         {values.reason}
                                     </Typography>
                                 </Box>
                             </Stack>
                         </Paper>
 
-                        <Alert severity="info" sx={{ borderRadius: "10px", fontSize: 13 }}>
-                            Vui lòng kiểm tra kỹ số điện thoại để nhân viên lễ tân có thể liên hệ xác nhận lịch khám.
-                        </Alert>
+                        <Typography variant="body2" sx={{ fontSize: 13.5, lineHeight: 1.6, color: "#334155" }}>
+                            Sau khi gửi, nhân viên tiếp nhận của phòng khám sẽ liên hệ qua số điện thoại để xác nhận lịch hẹn của bạn.
+                        </Typography>
                     </Stack>
                 </DialogContent>
-                <DialogActions sx={{ p: 3, pt: 1, gap: 1 }}>
+                <DialogActions sx={{ px: 3, pb: 3, pt: 1, gap: 1 }}>
                     <Button
                         onClick={() => setConfirming(false)}
                         disabled={busy}
-                        sx={{ borderRadius: "8px", textTransform: "none", fontWeight: 600 }}
+                        variant="outlined"
+                        sx={{ borderRadius: "10px", textTransform: "none", fontWeight: 700 }}
                     >
-                        Chỉnh sửa
+                        Chỉnh sửa lại
                     </Button>
                     <Button
                         variant="contained"
                         onClick={submit}
                         disabled={!ready}
                         startIcon={busy ? <CircularProgress size={16} color="inherit" /> : <CalendarMonthOutlined />}
-                        sx={{ borderRadius: "8px", px: 3, fontWeight: 700, textTransform: "none" }}
+                        sx={{
+                            borderRadius: "10px",
+                            px: 3,
+                            fontWeight: 750,
+                            textTransform: "none",
+                            bgcolor: "#0B4F8A",
+                            "&:hover": { bgcolor: "#083A66" },
+                        }}
                     >
                         {busy ? "Đang gửi đăng ký..." : "Gửi đăng ký khám"}
                     </Button>

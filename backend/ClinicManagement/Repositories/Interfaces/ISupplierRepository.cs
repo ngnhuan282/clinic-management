@@ -20,6 +20,8 @@ public interface ISupplierRepository
         string supplierName,
         int? excludedSupplierId = null);
 
+    Task<bool> HasPurchaseOrdersAsync(int supplierId);
+
     Task AddAsync(Supplier supplier);
 
     void Remove(Supplier supplier);

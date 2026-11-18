@@ -155,6 +155,13 @@ public class SupplierService : ISupplierService
             );
         }
 
+        if (await _supplierRepository.HasPurchaseOrdersAsync(supplierId))
+        {
+            throw new AppException(
+                ErrorCode.SUPPLIER_HAS_PURCHASE_ORDERS
+            );
+        }
+
         _supplierRepository.Remove(supplier);
         await _supplierRepository.SaveChangesAsync();
     }

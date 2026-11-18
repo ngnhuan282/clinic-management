@@ -18,7 +18,9 @@ import {
     ArrowBack,
     CalendarMonthOutlined,
     LocationOnOutlined,
+    MedicalInformationOutlined,
     StarOutlineRounded,
+    WorkspacePremiumOutlined,
 } from "@mui/icons-material";
 import { getPublicDoctor } from "../../api/publicApi";
 import { getAvailableSlots } from "../../api/bookingApi";
@@ -42,13 +44,26 @@ export default function PublicDoctorDetailPage() {
         : "/booking";
 
     const initials = doctor?.fullName
-        ? doctor.fullName.trim().split(" ").slice(-2).map(n => n[0]).join("").toUpperCase()
+        ? doctor.fullName
+              .trim()
+              .split(" ")
+              .slice(-2)
+              .map(n => n[0])
+              .join("")
+              .toUpperCase()
         : "BS";
+
+    const availableSlots = (slots.data || []).filter(slot => slot.isAvailable);
 
     return (
         <PublicPage
+            badge="Hồ sơ chuyên môn bác sĩ"
             title={doctor ? `${doctor.title} ${doctor.fullName}`.trim() : "Hồ sơ bác sĩ"}
-            description={doctor?.departmentName ? `Bác sĩ chuyên khoa ${doctor.departmentName}` : undefined}
+            description={
+                doctor?.departmentName
+                    ? `Bác sĩ điều trị tại chuyên khoa ${doctor.departmentName} — Xem thông tin kinh nghiệm, phòng khám và khung giờ tiếp nhận trực tuyến.`
+                    : undefined
+            }
         >
             <ResourceState resource={resource}>
                 {doctor && (
@@ -60,57 +75,95 @@ export default function PublicDoctorDetailPage() {
                                 sx={{
                                     p: { xs: 3, md: 4 },
                                     borderRadius: "16px",
-                                    borderColor: "#e5e9f0",
-                                    bgcolor: "#ffffff",
-                                    boxShadow: "0 2px 8px rgba(15, 23, 42, 0.04)",
+                                    borderColor: "#C5D8EC",
+                                    bgcolor: "#FFFFFF",
+                                    boxShadow: "0 2px 10px rgba(10, 37, 64, 0.04)",
                                 }}
                             >
-                                <Stack direction="row" spacing={2.5} sx={{ alignItems: "center", mb: 3 }}>
+                                <Stack
+                                    direction={{ xs: "column", sm: "row" }}
+                                    spacing={2.5}
+                                    sx={{ alignItems: { sm: "center" }, mb: 3 }}
+                                >
                                     <Avatar
                                         sx={{
-                                            width: 72,
-                                            height: 72,
-                                            bgcolor: "#e0f2fe",
-                                            color: "primary.main",
-                                            fontSize: 22,
+                                            width: 78,
+                                            height: 78,
+                                            bgcolor: "#E6F0FA",
+                                            color: "#0B4F8A",
+                                            fontSize: 24,
                                             fontWeight: 800,
-                                            border: "3px solid #bae6fd",
+                                            border: "2px solid #90BCE6",
+                                            flexShrink: 0,
                                         }}
                                     >
                                         {initials}
                                     </Avatar>
                                     <Box sx={{ minWidth: 0 }}>
+                                        <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", rowGap: 0.75, mb: 0.75 }}>
+                                            <Chip
+                                                size="small"
+                                                label={doctor.departmentName}
+                                                sx={{
+                                                    bgcolor: "#E6F0FA",
+                                                    color: "#0B4F8A",
+                                                    fontWeight: 750,
+                                                    fontSize: 12.5,
+                                                }}
+                                            />
+                                            <Chip
+                                                size="small"
+                                                icon={<WorkspacePremiumOutlined sx={{ fontSize: 16 }} />}
+                                                label={
+                                                    doctor.experienceYears
+                                                        ? `${doctor.experienceYears} năm kinh nghiệm`
+                                                        : "Bác sĩ chuyên khoa"
+                                                }
+                                                sx={{
+                                                    bgcolor: "#F1F5F9",
+                                                    color: "#0A2540",
+                                                    fontWeight: 700,
+                                                    fontSize: 12.5,
+                                                }}
+                                            />
+                                        </Stack>
                                         <Typography
                                             component="h2"
                                             variant="h5"
-                                            sx={{ fontWeight: 800, fontSize: { xs: 20, sm: 24 }, color: "#0f2c4d" }}
+                                            sx={{ fontWeight: 800, fontSize: { xs: 22, sm: 25 }, color: "#0A2540" }}
                                         >
                                             {doctor.title} {doctor.fullName}
-                                        </Typography>
-                                        <Typography color="primary.main" sx={{ fontWeight: 650, fontSize: 15, mt: 0.5 }}>
-                                            {doctor.departmentName}
-                                        </Typography>
-                                        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
-                                            {doctor.experienceYears ? `${doctor.experienceYears} năm kinh nghiệm chuyên môn` : "Bác sĩ chuyên khoa"}
                                         </Typography>
                                     </Box>
                                 </Stack>
 
-                                <Divider sx={{ my: 2.5, borderColor: "#f1f5f9" }} />
+                                <Divider sx={{ my: 2.5, borderColor: "#E2ECF5" }} />
 
-                                <Typography component="h3" variant="h6" sx={{ fontWeight: 750, fontSize: 17, color: "#1f2937", mb: 1.25 }}>
-                                    Giới thiệu chuyên môn
-                                </Typography>
+                                <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 1.25 }}>
+                                    <MedicalInformationOutlined sx={{ color: "#0B4F8A", fontSize: 21 }} />
+                                    <Typography component="h3" variant="h6" sx={{ fontWeight: 800, fontSize: 17.5, color: "#0A2540" }}>
+                                        Giới thiệu chuyên môn
+                                    </Typography>
+                                </Stack>
                                 <Typography
-                                    color="text.secondary"
-                                    sx={{ lineHeight: 1.85, fontSize: 14.5, whiteSpace: "pre-line", overflowWrap: "anywhere", mb: 3 }}
+                                    sx={{
+                                        lineHeight: 1.85,
+                                        fontSize: 15,
+                                        color: "#1E293B",
+                                        whiteSpace: "pre-line",
+                                        overflowWrap: "anywhere",
+                                        mb: 3,
+                                    }}
                                 >
                                     {doctor.biography || "Bác sĩ chưa cập nhật thông tin giới thiệu chi tiết."}
                                 </Typography>
 
-                                <Typography component="h3" variant="h6" sx={{ fontWeight: 750, fontSize: 17, color: "#1f2937", mb: 1.25 }}>
-                                    Phòng khám sắp tới
-                                </Typography>
+                                <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 1.25 }}>
+                                    <LocationOnOutlined sx={{ color: "#0B4F8A", fontSize: 21 }} />
+                                    <Typography component="h3" variant="h6" sx={{ fontWeight: 800, fontSize: 17.5, color: "#0A2540" }}>
+                                        Phòng khám tiếp nhận sắp tới
+                                    </Typography>
+                                </Stack>
                                 <Stack direction="row" sx={{ flexWrap: "wrap", gap: 1, mb: 3 }}>
                                     {doctor.rooms.length === 0 ? (
                                         <Typography variant="body2" color="text.secondary">
@@ -125,17 +178,18 @@ export default function PublicDoctorDetailPage() {
                                                 variant="outlined"
                                                 sx={{
                                                     borderRadius: "8px",
-                                                    borderColor: "#cbd5e1",
-                                                    bgcolor: "#f8fafc",
-                                                    fontWeight: 600,
-                                                    fontSize: 13,
+                                                    borderColor: "#90BCE6",
+                                                    bgcolor: "#E6F0FA",
+                                                    color: "#0A2540",
+                                                    fontWeight: 700,
+                                                    fontSize: 13.5,
                                                 }}
                                             />
                                         ))
                                     )}
                                 </Stack>
 
-                                <Divider sx={{ my: 2.5, borderColor: "#f1f5f9" }} />
+                                <Divider sx={{ my: 2.5, borderColor: "#E2ECF5" }} />
 
                                 <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
                                     <Button
@@ -143,7 +197,13 @@ export default function PublicDoctorDetailPage() {
                                         to={`/reviews?doctorId=${doctor.doctorId}`}
                                         variant="outlined"
                                         startIcon={<StarOutlineRounded />}
-                                        sx={{ borderRadius: "8px", textTransform: "none", fontWeight: 650, borderColor: "#cbd5e1", color: "#334155" }}
+                                        sx={{
+                                            borderRadius: "10px",
+                                            textTransform: "none",
+                                            fontWeight: 700,
+                                            borderColor: "#B8CCE0",
+                                            color: "#0A2540",
+                                        }}
                                     >
                                         Xem đánh giá bệnh nhân
                                     </Button>
@@ -151,7 +211,7 @@ export default function PublicDoctorDetailPage() {
                                         component={Link}
                                         to={`/specialties/${doctor.departmentId}`}
                                         variant="text"
-                                        sx={{ borderRadius: "8px", textTransform: "none", fontWeight: 650 }}
+                                        sx={{ borderRadius: "10px", textTransform: "none", fontWeight: 750, color: "#0B4F8A" }}
                                     >
                                         Xem chuyên khoa {doctor.departmentName}
                                     </Button>
@@ -166,22 +226,39 @@ export default function PublicDoctorDetailPage() {
                                 sx={{
                                     p: { xs: 3, md: 3.5 },
                                     borderRadius: "16px",
-                                    borderColor: "#e5e9f0",
-                                    bgcolor: "#ffffff",
-                                    boxShadow: "0 2px 8px rgba(15, 23, 42, 0.04)",
+                                    borderColor: "#90BCE6",
+                                    bgcolor: "#FFFFFF",
+                                    boxShadow: "0 4px 16px rgba(10, 37, 64, 0.06)",
                                     position: { md: "sticky" },
-                                    top: 100,
+                                    top: 108,
                                 }}
                             >
-                                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2, color: "primary.main" }}>
-                                    <CalendarMonthOutlined />
-                                    <Typography component="h3" variant="h6" sx={{ fontWeight: 750, fontSize: 18, color: "#0f2c4d" }}>
-                                        Lịch khám còn trống
-                                    </Typography>
-                                </Box>
+                                <Stack direction="row" spacing={1.25} sx={{ alignItems: "center", mb: 1.5 }}>
+                                    <Box
+                                        sx={{
+                                            width: 42,
+                                            height: 42,
+                                            borderRadius: "10px",
+                                            bgcolor: "#0B4F8A",
+                                            color: "#FFFFFF",
+                                            display: "grid",
+                                            placeItems: "center",
+                                        }}
+                                    >
+                                        <CalendarMonthOutlined sx={{ fontSize: 22 }} />
+                                    </Box>
+                                    <Box>
+                                        <Typography component="h3" variant="h6" sx={{ fontWeight: 800, fontSize: 18.5, color: "#0A2540" }}>
+                                            Lịch khám còn trống
+                                        </Typography>
+                                        <Typography sx={{ fontSize: 13, color: "#0B4F8A", fontWeight: 700 }}>
+                                            Cập nhật theo ca trực bác sĩ
+                                        </Typography>
+                                    </Box>
+                                </Stack>
 
-                                <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontSize: 13.5 }}>
-                                    Chọn ngày khám để xem các khung giờ tiếp nhận của bác sĩ:
+                                <Typography variant="body2" sx={{ mb: 2, fontSize: 14, color: "#334155" }}>
+                                    Chọn ngày khám dự kiến để xem các khung giờ tiếp nhận:
                                 </Typography>
 
                                 <TextField
@@ -199,30 +276,33 @@ export default function PublicDoctorDetailPage() {
                                 />
 
                                 <ResourceState resource={slots}>
-                                    {slots.data?.some(slot => slot.isAvailable) ? (
+                                    {availableSlots.length > 0 ? (
                                         <Box sx={{ mb: 2.5 }}>
-                                            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1, fontWeight: 600 }}>
-                                                Các khung giờ còn trống (UTC+7):
+                                            <Typography
+                                                variant="caption"
+                                                sx={{ display: "block", mb: 1.25, fontWeight: 750, color: "#0B4F8A", fontSize: 13 }}
+                                            >
+                                                Còn {availableSlots.length} khung giờ trống:
                                             </Typography>
                                             <Stack direction="row" sx={{ gap: 1, flexWrap: "wrap" }}>
-                                                {slots.data
-                                                    .filter(slot => slot.isAvailable)
-                                                    .map(slot => (
-                                                        <Chip
-                                                            key={slot.startTime}
-                                                            icon={<AccessTimeOutlined sx={{ fontSize: 14 }} />}
-                                                            label={slot.startTime.slice(0, 5)}
-                                                            color="primary"
-                                                            variant="outlined"
-                                                            sx={{
-                                                                borderRadius: "8px",
-                                                                fontWeight: 700,
-                                                                fontSize: 13,
-                                                                bgcolor: "#eff6ff",
-                                                                borderColor: "#bfdbfe",
-                                                            }}
-                                                        />
-                                                    ))}
+                                                {availableSlots.map(slot => (
+                                                    <Chip
+                                                        key={slot.startTime}
+                                                        icon={<AccessTimeOutlined sx={{ fontSize: 15 }} />}
+                                                        label={slot.startTime.slice(0, 5)}
+                                                        variant="outlined"
+                                                        sx={{
+                                                            borderRadius: "8px",
+                                                            fontWeight: 750,
+                                                            fontSize: 13.5,
+                                                            height: 34,
+                                                            bgcolor: "#E6F0FA",
+                                                            borderColor: "#90BCE6",
+                                                            color: "#0A2540",
+                                                            fontVariantNumeric: "tabular-nums",
+                                                        }}
+                                                    />
+                                                ))}
                                             </Stack>
                                         </Box>
                                     ) : (
@@ -232,8 +312,11 @@ export default function PublicDoctorDetailPage() {
                                     )}
                                 </ResourceState>
 
-                                <Typography color="text.secondary" variant="body2" sx={{ mb: 3, fontSize: 12.5, lineHeight: 1.6 }}>
-                                    Giờ khám tính theo múi giờ Việt Nam. Số lượng chỗ có thể thay đổi trước khi bạn hoàn tất đăng ký.
+                                <Typography
+                                    variant="body2"
+                                    sx={{ mb: 3, fontSize: 13, lineHeight: 1.6, color: "#475569" }}
+                                >
+                                    Giờ Việt Nam (UTC+7). Số lượng chỗ trống được cập nhật theo thời gian thực khi bạn gửi đăng ký.
                                 </Typography>
 
                                 <Button
@@ -245,11 +328,12 @@ export default function PublicDoctorDetailPage() {
                                     startIcon={<CalendarMonthOutlined />}
                                     sx={{
                                         borderRadius: "10px",
-                                        py: 1.25,
-                                        fontWeight: 700,
-                                        fontSize: 15,
+                                        py: 1.4,
+                                        fontWeight: 750,
+                                        fontSize: 15.5,
                                         textTransform: "none",
-                                        boxShadow: "0 4px 12px rgba(25, 118, 210, 0.25)",
+                                        bgcolor: "#0B4F8A",
+                                        "&:hover": { bgcolor: "#083A66" },
                                     }}
                                 >
                                     Đặt khám với bác sĩ
@@ -265,7 +349,7 @@ export default function PublicDoctorDetailPage() {
                     component={Link}
                     to="/doctors"
                     startIcon={<ArrowBack />}
-                    sx={{ textTransform: "none", fontWeight: 650, borderRadius: "8px" }}
+                    sx={{ textTransform: "none", fontWeight: 750, borderRadius: "10px", color: "#0B4F8A" }}
                 >
                     Về danh sách bác sĩ
                 </Button>

@@ -1,5 +1,6 @@
 using ClinicManagement.Commons;
 using ClinicManagement.Data;
+using ClinicManagement.Services.Implementations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -9,7 +10,7 @@ namespace ClinicManagement.Controllers;
 [ApiController]
 [Route("api/public")]
 [AllowAnonymous]
-public class PublicClinicController(ApplicationDbContext db) : ControllerBase
+public class PublicClinicController(ApplicationDbContext db, ClinicSettingsService clinicSettings) : ControllerBase
 {
     [HttpGet("services")]
     public async Task<IActionResult> GetServices(CancellationToken cancellationToken)
@@ -20,6 +21,10 @@ public class PublicClinicController(ApplicationDbContext db) : ControllerBase
             .ToListAsync(cancellationToken);
         return Ok(ApiResponse<List<PublicServiceResponse>>.Success(services));
     }
+
+    [HttpGet("clinic-settings")]
+    public async Task<IActionResult> GetClinicSettings(CancellationToken cancellationToken) =>
+        Ok(ApiResponse<PublicClinicSettingsResponse>.Success(await clinicSettings.GetPublicAsync(cancellationToken)));
 }
 
 public record PublicServiceResponse(int Id, string Name, string? Description, decimal Price);

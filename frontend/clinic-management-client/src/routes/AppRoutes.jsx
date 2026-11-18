@@ -7,7 +7,7 @@ import {
     Link,
     useLocation,
 } from "react-router-dom";
-import { Box, Button, Typography } from "@mui/material";
+import { Box, Button, Container, Paper, Typography } from "@mui/material";
 
 import PatientLayout from "../layouts/PatientLayout";
 import InternalLayout from "../layouts/InternalLayout";
@@ -54,6 +54,7 @@ const DepartmentStatisticsPage = lazy(() => import("../pages/internal/Department
 const CashierBillingPage = lazy(() => import("../pages/internal/CashierBillingPage"));
 const AccountProfilePage = lazy(() => import("../pages/internal/AccountProfilePage"));
 const ReviewsManagementPage = lazy(() => import("../pages/internal/admin/ReviewsManagementPage"));
+const ClinicSettingsPage = lazy(() => import("../pages/internal/admin/ClinicSettingsPage"));
 
 const DoctorLabOrdersPage = lazy(() => import("../pages/internal/doctor/DoctorLabOrdersPage"));
 const DoctorAppointmentsPage = lazy(() => import("../pages/internal/doctor/DoctorAppointmentsPage"));
@@ -76,20 +77,38 @@ function UnauthorizedPage() {
     const rolesPage = state?.deniedPath === "/internal/roles-permissions";
 
     return (
-        <Box sx={{ py: 8, px: 3, textAlign: "center" }} role="alert">
-            <Typography variant="h3" component="h1">
-                Không có quyền truy cập
-            </Typography>
+        <Box sx={{ py: { xs: 6, md: 10 }, px: 2, bgcolor: "#F4F8FB", minHeight: "70vh" }} role="alert">
+            <Container maxWidth="sm">
+                <Paper
+                    variant="outlined"
+                    sx={{
+                        p: { xs: 3.5, sm: 5 },
+                        borderRadius: "20px",
+                        borderColor: "#DCE7F2",
+                        bgcolor: "#FFFFFF",
+                        textAlign: "center",
+                        boxShadow: "0 8px 28px rgba(11, 37, 69, 0.05)",
+                    }}
+                >
+                    <Typography
+                        variant="h4"
+                        component="h1"
+                        sx={{ fontWeight: 800, color: "#0B2545", fontSize: { xs: 24, sm: 28 } }}
+                    >
+                        Không có quyền truy cập
+                    </Typography>
 
-            <Typography color="text.secondary" sx={{ my: 2 }}>
-                {rolesPage
-                    ? "Chỉ quản trị viên được truy cập trang Vai trò và phân quyền. Hãy liên hệ quản trị viên nếu bạn cần quyền sử dụng."
-                    : "Tài khoản của bạn chưa được cấp quyền sử dụng chức năng này."}
-            </Typography>
+                    <Typography color="text.secondary" sx={{ my: 2, lineHeight: 1.7, fontSize: 15 }}>
+                        {rolesPage
+                            ? "Chỉ quản trị viên được truy cập trang Vai trò và phân quyền. Hãy liên hệ quản trị viên nếu bạn cần quyền sử dụng."
+                            : "Tài khoản của bạn chưa được cấp quyền sử dụng chức năng này."}
+                    </Typography>
 
-            <Button component={Link} to="/" variant="contained">
-                Về trang chủ
-            </Button>
+                    <Button component={Link} to="/" variant="contained" size="large" sx={{ borderRadius: "10px", px: 3 }}>
+                        Về trang chủ
+                    </Button>
+                </Paper>
+            </Container>
         </Box>
     );
 }
@@ -164,6 +183,7 @@ export default function AppRoutes() {
                         <Route path="profile" element={<AccountProfilePage />} />
                         <Route element={<ProtectedRoute allowedRoles={["Admin"]} />}>
                             <Route path="reviews" element={<ReviewsManagementPage />} />
+                            <Route path="settings" element={<ClinicSettingsPage />} />
                         </Route>
                         <Route element={<ProtectedRoute allowedRoles={["DepartmentHead"]} allowedPermissions={["schedules.viewDepartment"]} />}>
                             <Route path="department-schedules" element={<DepartmentSchedulesPage />} />

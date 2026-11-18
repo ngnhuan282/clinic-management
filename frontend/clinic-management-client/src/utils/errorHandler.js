@@ -1,25 +1,42 @@
 // src/utils/errorHandler.js
 
 const API_ERROR_MESSAGES = {
-    1010: "Tài khoản cần hồ sơ bác sĩ và khoa đang hoạt động. Vui lòng liên hệ quản trị viên.",
-    2007: "Bạn không thể tự khóa tài khoản hoặc đổi vai trò của mình.",
-    2008: "Hệ thống cần ít nhất một quản trị viên đang hoạt động.",
-    2009: "Quyền tài khoản vừa thay đổi. Vui lòng tải lại và thử lại.",
-    9999: "Đã có lỗi không xác định. Vui lòng thử lại.",
     1001: "Yêu cầu không hợp lệ.",
     1002: "Bạn chưa đăng nhập.",
     1003: "Bạn không có quyền thực hiện thao tác này.",
+    1004: "Dữ liệu vừa thay đổi ở phiên khác. Vui lòng tải lại và thử lại.",
+    1005: "Dữ liệu đang được sử dụng ở phân hệ khác nên không thể xóa hoặc thay đổi.",
+    1006: "Dữ liệu bị trùng mã hoặc thông tin đã tồn tại.",
+    1010: "Tài khoản cần hồ sơ bác sĩ và khoa đang hoạt động. Vui lòng liên hệ quản trị viên.",
     2001: "Tài khoản đã tồn tại.",
     2002: "Không tìm thấy người dùng.",
     2003: "Tên đăng nhập hoặc mật khẩu không đúng.",
     2004: "Tài khoản đã bị khóa.",
     2005: "Không tìm thấy vai trò.",
     2006: "Email đã tồn tại.",
+    2007: "Bạn không thể tự khóa tài khoản hoặc đổi vai trò của mình.",
+    2008: "Hệ thống cần ít nhất một quản trị viên đang hoạt động.",
+    2009: "Quyền tài khoản vừa thay đổi. Vui lòng tải lại và thử lại.",
+    2010: "Tên vai trò đã tồn tại.",
+    2011: "Vai trò hệ thống được bảo vệ, không thể đổi tên hoặc xóa.",
+    2012: "Vai trò đang được gán cho tài khoản nên không thể xóa.",
+    2013: "Thông tin vai trò vừa thay đổi ở phiên khác. Vui lòng tải lại và thử lại.",
+    2014: "Mã quyền không hợp lệ hoặc không khả dụng.",
+    2015: "Quản trị viên bắt buộc giữ các quyền quản trị phân quyền.",
+    2016: "Quyền này không hợp lệ đối với vai trò hệ thống đã chọn.",
+    2100: "Không tìm thấy mục danh mục yêu cầu.",
+    2101: "Mã hoặc tên danh mục đã tồn tại.",
+    2102: "Không tìm thấy khoa.",
+    2103: "Khoa không hợp lệ hoặc đang tạm ngưng hoạt động.",
     3001: "Không tìm thấy bác sĩ.",
     4001: "Không tìm thấy bệnh nhân.",
     4002: "Thông tin này khớp với một hồ sơ bệnh nhân đã có sẵn. Vui lòng đến quầy lễ tân để được liên kết hồ sơ.",
+    4003: "Thông tin định danh bệnh nhân không khớp với lịch hẹn.",
+    4004: "Không tìm thấy sổ khám bệnh.",
     4005: "Cần hoàn tất tiếp nhận và đối chiếu sổ khám tại quầy lễ tân trước khi bắt đầu khám.",
     4006: "Số sổ đã được sử dụng hoặc bệnh nhân đã có sổ đang sử dụng.",
+    4007: "Không tìm thấy hóa đơn mua sổ khám.",
+    4008: "Hóa đơn sổ khám phải đã thanh toán và chưa được sử dụng.",
     4009: "Số CCCD này đã thuộc về bệnh nhân khác.",
     4010: "Sổ đang dùng cho lượt khám chưa hoàn tất. Hãy hoàn tất lượt khám trước khi cấp lại sổ.",
     4011: "Tài khoản này đã có hồ sơ bệnh nhân.",
@@ -45,6 +62,8 @@ const API_ERROR_MESSAGES = {
     6017: "Không thể nhập lô thuốc đã hết hạn.",
     6018: "Thuốc trong phiếu phải thuộc nhà cung cấp đã chọn.",
     6019: "Lô thuốc đã có lịch sử cấp phát nên không thể xóa hoặc đổi thông tin nhận diện.",
+    6020: "Thuốc đã phát sinh trong đơn thuốc hoặc phiếu nhập kho nên không thể xóa.",
+    6021: "Nhà cung cấp đã phát sinh phiếu nhập kho nên không thể xóa.",
     7001: "Không tìm thấy bệnh.",
     7002: "Mã bệnh đã tồn tại.",
     7003: "Tên bệnh đã tồn tại.",
@@ -57,46 +76,48 @@ const API_ERROR_MESSAGES = {
     7105: "Cần xác nhận đã ghi sổ giấy trước khi hoàn tất khám.",
     7106: "Trạng thái sổ khám giấy không hợp lệ.",
     7107: "Hồ sơ hoặc đơn thuốc đã thay đổi ở phiên khác. Vui lòng tải lại hồ sơ và đối chiếu sổ giấy trước khi lưu hoặc chốt lượt.",
+    7201: "Không tìm thấy chỉ định xét nghiệm.",
+    7202: "Loại xét nghiệm không tồn tại hoặc đang ngừng sử dụng.",
+    7203: "Chỉ định xét nghiệm này đã có kết quả.",
+    7301: "Bác sĩ hoặc phòng đã có lịch trong khoảng thời gian này.",
+    7302: "Không tìm thấy yêu cầu đăng ký lịch.",
+    7303: "Yêu cầu này không còn ở trạng thái chờ duyệt.",
+    7304: "Không tìm thấy lịch làm việc bác sĩ.",
+    7305: "Lịch làm việc đã có bệnh nhân đặt hẹn nên không thể thay đổi hoặc xóa.",
     7401: "Không tìm thấy đơn thuốc.",
     7402: "Hồ sơ bệnh án này đã có đơn thuốc.",
-    7501: "Lịch hẹn này đã có đánh giá.",
-    7502: "Không tìm thấy đánh giá.",
     7403: "Trạng thái đơn thuốc không hợp lệ.",
     7404: "Đơn thuốc cần có hóa đơn thuốc hoặc hóa đơn cuối đã thanh toán trước khi cấp.",
     7405: "Tồn kho còn hạn không đủ để cấp toàn bộ đơn thuốc.",
     7406: "Trạng thái cấp thuốc vừa thay đổi. Vui lòng tải lại và thử lại.",
+    7407: "Đơn thuốc đã có hóa đơn. Cần xử lý hóa đơn với thu ngân trước khi thay thuốc, đổi số lượng hoặc hủy đơn. Bạn vẫn có thể sửa lời dặn, liều dùng và cách dùng.",
     7408: "Đơn hoặc yêu cầu rà soát vừa thay đổi. Vui lòng tải lại trước khi tiếp tục.",
     7409: "Chưa có tài khoản bác sĩ kê đơn hoặc người nhận thuộc bộ phận thu phí đang hoạt động. Vui lòng kiểm tra phân quyền.",
+    7410: "Cần kiểm tra lại tồn và đóng yêu cầu rà soát đang chờ trước khi giao thuốc.",
     7411: "Phương án điều chỉnh đang chờ thu phí đối soát hóa đơn hoặc hoàn tiền. Chưa thể đóng rà soát và giao thuốc.",
     7412: "Không tìm thấy yêu cầu rà soát thuốc.",
     7413: "Yêu cầu rà soát này đã được bác sĩ phản hồi.",
-    7410: "Cần kiểm tra lại tồn và đóng yêu cầu rà soát đang chờ trước khi giao thuốc.",
-    7407: "Đơn thuốc đã có hóa đơn. Cần xử lý hóa đơn với thu ngân trước khi thay thuốc, đổi số lượng hoặc hủy đơn. Bạn vẫn có thể sửa lời dặn, liều dùng và cách dùng.",
-    7301: "Bác sĩ hoặc phòng đã có lịch trong khoảng thời gian này.",
-    7302: "Không tìm thấy yêu cầu đăng ký lịch.",
-    7303: "Yêu cầu này không còn ở trạng thái chờ duyệt.",
+    7501: "Lịch hẹn này đã có đánh giá.",
+    7502: "Không tìm thấy đánh giá.",
+    9999: "Đã có lỗi không xác định. Vui lòng thử lại.",
 };
 
 const API_MESSAGE_TRANSLATIONS = {
-    "Cannot connect to the server.":
-        "Không thể kết nối tới máy chủ.",
+    "Cannot connect to the server.": "Không thể kết nối tới máy chủ.",
+    "Invalid request": "Yêu cầu không hợp lệ.",
     "Invalid request.": "Yêu cầu không hợp lệ.",
     "One or more validation errors occurred.":
         "Dữ liệu nhập chưa hợp lệ. Vui lòng kiểm tra lại các trường thông tin.",
     "You are not authenticated.": "Bạn chưa đăng nhập.",
-    "You do not have permission.":
-        "Bạn không có quyền thực hiện thao tác này.",
-    "The requested resource was not found.":
-        "Không tìm thấy dữ liệu yêu cầu.",
+    "You do not have permission": "Bạn không có quyền thực hiện thao tác này.",
+    "You do not have permission.": "Bạn không có quyền thực hiện thao tác này.",
+    "The requested resource was not found.": "Không tìm thấy dữ liệu yêu cầu.",
     "This operation conflicts with existing data.":
         "Thao tác bị trùng hoặc xung đột với dữ liệu hiện có.",
-    "Internal server error.":
-        "Máy chủ đang gặp lỗi. Vui lòng thử lại sau.",
+    "Internal server error.": "Máy chủ đang gặp lỗi. Vui lòng thử lại sau.",
     "Medicine name already exists": "Tên thuốc đã tồn tại.",
-    "Medicine category name already exists":
-        "Tên danh mục thuốc đã tồn tại.",
-    "Supplier name already exists":
-        "Tên nhà cung cấp đã tồn tại.",
+    "Medicine category name already exists": "Tên danh mục thuốc đã tồn tại.",
+    "Supplier name already exists": "Tên nhà cung cấp đã tồn tại.",
     "Inventory batch already exists for this medicine and expiry date":
         "Lô tồn kho đã tồn tại cho thuốc và hạn dùng này.",
     "Disease not found": "Không tìm thấy bệnh.",
@@ -115,23 +136,18 @@ const API_MESSAGE_TRANSLATIONS = {
         "Cần có sổ khám giấy trước khi hoàn tất khám.",
     "Paper book update confirmation is required before completing the examination":
         "Cần xác nhận đã ghi sổ giấy trước khi hoàn tất khám.",
-    "Patient book status is invalid":
-        "Trạng thái sổ khám giấy không hợp lệ.",
+    "Patient book status is invalid": "Trạng thái sổ khám giấy không hợp lệ.",
     "Prescription not found": "Không tìm thấy đơn thuốc.",
     "Prescription already exists for this medical record":
         "Hồ sơ bệnh án này đã có đơn thuốc.",
-    "Invalid prescription status":
-        "Trạng thái đơn thuốc không hợp lệ.",
+    "Invalid prescription status": "Trạng thái đơn thuốc không hợp lệ.",
 };
 
 function translateMessage(message) {
     return API_MESSAGE_TRANSLATIONS[message] || message;
 }
 
-export function getApiErrorMessage(
-    error,
-    fallback = "Đã có lỗi xảy ra."
-) {
+export function getApiErrorMessage(error, fallback = "Đã có lỗi xảy ra.") {
     const response = error?.response;
 
     if (!response) {
@@ -148,6 +164,15 @@ export function getApiErrorMessage(
         return data.message;
     }
 
+    if (
+        data?.code === 1001 &&
+        typeof data?.message === "string" &&
+        data.message !== "Invalid request" &&
+        data.message !== "Invalid request."
+    ) {
+        return translateMessage(data.message);
+    }
+
     if (data?.code && API_ERROR_MESSAGES[data.code]) {
         return API_ERROR_MESSAGES[data.code];
     }
@@ -162,14 +187,10 @@ export function getApiErrorMessage(
 
     if (data?.errors) {
         if (Array.isArray(data.errors)) {
-            return data.errors
-                .map(translateMessage)
-                .join(", ");
+            return data.errors.map(translateMessage).join(", ");
         }
 
-        if (
-            typeof data.errors === "object"
-        ) {
+        if (typeof data.errors === "object") {
             return Object.values(data.errors)
                 .flat()
                 .map(translateMessage)
@@ -180,25 +201,18 @@ export function getApiErrorMessage(
     switch (response.status) {
         case 400:
             return "Yêu cầu không hợp lệ.";
-
         case 401:
             return "Bạn chưa đăng nhập.";
-
         case 403:
             return "Bạn không có quyền thực hiện thao tác này.";
-
         case 404:
             return "Không tìm thấy dữ liệu yêu cầu.";
-
         case 409:
             return "Thao tác bị trùng hoặc xung đột với dữ liệu hiện có.";
-
         case 429:
             return "Bạn đã gửi nhiều yêu cầu. Vui lòng chờ ít phút rồi thử lại hoặc liên hệ phòng khám.";
-
         case 500:
             return "Máy chủ đang gặp lỗi. Vui lòng thử lại sau.";
-
         default:
             return fallback;
     }

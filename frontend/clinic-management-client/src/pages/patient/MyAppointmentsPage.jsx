@@ -9,7 +9,6 @@ import {
     DialogActions,
     DialogContent,
     DialogTitle,
-    Divider,
     LinearProgress,
     MenuItem,
     Pagination,
@@ -20,6 +19,7 @@ import {
     Typography,
 } from "@mui/material";
 import {
+    AccessTimeOutlined,
     CalendarMonthOutlined,
     CancelOutlined,
     FilterAltOutlined,
@@ -39,6 +39,8 @@ import {
     clinicButtonSx,
     clinicColors,
     clinicFieldSx,
+    clinicPageCanvasSx,
+    clinicPrimaryButtonSx,
     clinicSecondaryButtonSx,
     clinicSurfaceSx,
 } from "../../components/common/clinicUi";
@@ -51,15 +53,29 @@ const statuses = [
     ["Cancelled", "Đã hủy"],
 ];
 
+const STATUS_BAR_COLOR = {
+    Pending: "#D97706",
+    Confirmed: "#0B4F8A",
+    InProgress: "#1D4ED8",
+    Completed: "#059669",
+    Cancelled: "#DC2626",
+};
+
 const dateText = value => {
     const [year, month, day] = String(value || "").slice(0, 10).split("-");
     return day ? `${day}/${month}/${year}` : "Chưa có ngày khám";
+};
+const dateParts = value => {
+    const [year, month, day] = String(value || "").slice(0, 10).split("-");
+    return day ? { day, month, year } : null;
 };
 const timeText = value => String(value || "").slice(0, 5);
 
 function AppointmentCard({ appointment, onCancel, canCancel }) {
     const { appointmentId, status, checkedInAt, bookVerifiedAt } = appointment;
     const awaitingArrival = !checkedInAt && !["Cancelled", "Completed", "InProgress"].includes(status);
+    const parts = dateParts(appointment.appointmentDate);
+    const barColor = STATUS_BAR_COLOR[status] || "#64748B";
 
     return (
         <Paper
@@ -68,97 +84,171 @@ function AppointmentCard({ appointment, onCancel, canCancel }) {
             variant="outlined"
             sx={{
                 ...clinicSurfaceSx,
-                p: { xs: 2.5, sm: 3.25 },
+                p: { xs: 2.5, sm: 3 },
                 borderRadius: "14px",
-                transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                borderLeft: `5px solid ${barColor}`,
+                transition: "border-color 0.15s ease, box-shadow 0.15s ease",
                 "&:hover": {
-                    borderColor: "#90caf9",
-                    boxShadow: "0 6px 18px rgba(25, 118, 210, 0.07)",
+                    borderColor: "#0B4F8A",
+                    borderLeftColor: barColor,
+                    boxShadow: "0 8px 20px rgba(10, 37, 64, 0.07)",
                 },
             }}
         >
-            <Stack spacing={2}>
+            <Stack spacing={2.25}>
                 <Stack
                     direction={{ xs: "column", sm: "row" }}
-                    spacing={1.5}
+                    spacing={2}
                     sx={{ justifyContent: "space-between", alignItems: { sm: "center" } }}
                 >
-                    <Box>
-                        <Typography
-                            component="h2"
-                            id={`my-appointment-${appointmentId}`}
-                            sx={{ fontSize: 17, fontWeight: 750, color: "#0f2c4d" }}
-                        >
-                            Lịch hẹn #{appointmentId}
-                        </Typography>
-                        <Typography sx={{ mt: 0.5, fontSize: 14, color: clinicColors.muted }}>
-                            {dateText(appointment.appointmentDate)} · {timeText(appointment.startTime)} – {timeText(appointment.endTime)}
-                        </Typography>
-                    </Box>
-                    <Box>
+                    <Stack direction="row" spacing={1.75} sx={{ alignItems: "center", minWidth: 0 }}>
+                        {parts && (
+                            <Box
+                                sx={{
+                                    width: 60,
+                                    height: 62,
+                                    borderRadius: "12px",
+                                    bgcolor: "#E6F0FA",
+                                    border: "1px solid #90BCE6",
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    flexShrink: 0,
+                                }}
+                            >
+                                <Typography sx={{ fontSize: 18, fontWeight: 800, lineHeight: 1.1, color: "#0B4F8A", fontVariantNumeric: "tabular-nums" }}>
+                                    {parts.day}/{parts.month}
+                                </Typography>
+                                <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: "#0A2540", mt: 0.2 }}>
+                                    {parts.year}
+                                </Typography>
+                            </Box>
+                        )}
+                        <Box sx={{ minWidth: 0 }}>
+                            <Typography
+                                component="h2"
+                                id={`my-appointment-${appointmentId}`}
+                                sx={{ fontSize: 18, fontWeight: 800, color: "#0A2540" }}
+                            >
+                                Lịch hẹn #{appointmentId}
+                            </Typography>
+                            <Stack direction="row" spacing={0.75} sx={{ alignItems: "center", mt: 0.4, color: "#0B4F8A" }}>
+                                <AccessTimeOutlined sx={{ fontSize: 16 }} />
+                                <Typography sx={{ fontSize: 14, fontWeight: 750, fontVariantNumeric: "tabular-nums" }}>
+                                    {dateText(appointment.appointmentDate)} · {timeText(appointment.startTime)} – {timeText(appointment.endTime)}
+                                </Typography>
+                            </Stack>
+                        </Box>
+                    </Stack>
+                    <Box sx={{ alignSelf: { xs: "flex-start", sm: "center" } }}>
                         <StatusBadge status={status} />
                     </Box>
                 </Stack>
-
-                <Divider sx={{ borderColor: "#f1f5f9" }} />
 
                 <Box
                     component="dl"
                     sx={{
                         m: 0,
+                        p: 2,
+                        borderRadius: "12px",
+                        bgcolor: "#F4F7FA",
+                        border: "1px solid #DCE7F2",
                         display: "grid",
                         gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
                         gap: 2,
-                        "& dt": { fontSize: 12.5, fontWeight: 600, color: clinicColors.muted, mb: 0.5 },
-                        "& dd": { m: 0, fontSize: 14.5, color: "#1f2937", overflowWrap: "anywhere" },
+                        "& dt": { fontSize: 12, fontWeight: 750, color: clinicColors.muted, mb: 0.35, textTransform: "uppercase", letterSpacing: "0.02em" },
+                        "& dd": { m: 0, fontSize: 15, color: "#0A2540", overflowWrap: "anywhere" },
                     }}
                 >
                     <Box>
                         <Box component="dt">Bác sĩ tiếp nhận</Box>
-                        <Box component="dd" sx={{ fontWeight: 650 }}>{appointment.doctorName || "Đang cập nhật"}</Box>
+                        <Box component="dd" sx={{ fontWeight: 750 }}>
+                            {appointment.doctorName || "Đang cập nhật"}
+                        </Box>
                     </Box>
                     <Box>
                         <Box component="dt">Chuyên khoa</Box>
-                        <Box component="dd">{appointment.departmentName || "Đang cập nhật"}</Box>
+                        <Box component="dd" sx={{ fontWeight: 700, color: "#0B4F8A" }}>
+                            {appointment.departmentName || "Đang cập nhật"}
+                        </Box>
                     </Box>
                     <Box>
                         <Box component="dt">Họ tên người khám</Box>
-                        <Box component="dd">{appointment.patientName}</Box>
+                        <Box component="dd" sx={{ fontWeight: 650 }}>
+                            {appointment.patientName}
+                        </Box>
                     </Box>
                     <Box>
                         <Box component="dt">Lý do khám</Box>
-                        <Box component="dd" sx={{ whiteSpace: "pre-wrap" }}>
+                        <Box component="dd" sx={{ whiteSpace: "pre-wrap", color: "#1E293B" }}>
                             {appointment.reason || "Không có ghi chú"}
                         </Box>
                     </Box>
                 </Box>
 
-                <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ pt: 1.5, borderTop: `1px solid ${clinicColors.border}` }}>
-                    {checkedInAt ? (
-                        <Chip size="small" label="Đã check-in tại quầy" color="success" variant="outlined" sx={{ fontWeight: 600, borderRadius: "6px" }} />
-                    ) : (
-                        awaitingArrival && <Chip size="small" label="Chưa check-in" variant="outlined" sx={{ fontWeight: 600, borderRadius: "6px" }} />
-                    )}
-                    {bookVerifiedAt && (
-                        <Chip size="small" label="Đã xác minh sổ tại quầy" color="success" variant="outlined" sx={{ fontWeight: 600, borderRadius: "6px" }} />
-                    )}
+                <Stack
+                    direction="row"
+                    spacing={1}
+                    useFlexGap
+                    sx={{ flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}
+                >
+                    <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
+                        {checkedInAt ? (
+                            <Chip
+                                size="small"
+                                label="Đã check-in tại quầy"
+                                color="success"
+                                variant="outlined"
+                                sx={{ fontWeight: 700, borderRadius: "8px", bgcolor: "#ECFDF5", color: "#065F46", borderColor: "#6EE7B7" }}
+                            />
+                        ) : (
+                            awaitingArrival && (
+                                <Chip
+                                    size="small"
+                                    label="Chưa check-in"
+                                    variant="outlined"
+                                    sx={{ fontWeight: 650, borderRadius: "8px", bgcolor: "#F8FAFC", borderColor: "#B8CCE0", color: "#334155" }}
+                                />
+                            )
+                        )}
+                        {bookVerifiedAt && (
+                            <Chip
+                                size="small"
+                                label="Đã xác minh sổ tại quầy"
+                                color="success"
+                                variant="outlined"
+                                sx={{ fontWeight: 700, borderRadius: "8px", bgcolor: "#ECFDF5", color: "#065F46", borderColor: "#6EE7B7" }}
+                            />
+                        )}
+                    </Stack>
+
                     {canCancel &&
                         !checkedInAt &&
                         ["Pending", "Confirmed"].includes(status) &&
                         `${appointment.appointmentDate.slice(0, 10)}T${appointment.startTime}` >
-                            new Intl.DateTimeFormat("sv-SE", {
-                                timeZone: "Asia/Ho_Chi_Minh",
-                                dateStyle: "short",
-                                timeStyle: "medium",
-                            })
-                                .format(new Date())
-                                .replace(" ", "T") && (
+                        new Intl.DateTimeFormat("sv-SE", {
+                            timeZone: "Asia/Ho_Chi_Minh",
+                            dateStyle: "short",
+                            timeStyle: "medium",
+                        })
+                            .format(new Date())
+                            .replace(" ", "T") && (
                             <Button
                                 color="error"
+                                variant="outlined"
                                 size="small"
                                 startIcon={<CancelOutlined sx={{ fontSize: 16 }} />}
                                 onClick={() => onCancel(appointment)}
-                                sx={{ textTransform: "none", fontWeight: 650, borderRadius: "6px" }}
+                                sx={{
+                                    textTransform: "none",
+                                    fontWeight: 700,
+                                    borderRadius: "8px",
+                                    borderColor: "#FCA5A5",
+                                    bgcolor: "#FEF2F2",
+                                    color: "#991B1B",
+                                    "&:hover": { bgcolor: "#FEE2E2", borderColor: "#EF4444" },
+                                }}
                             >
                                 Hủy lịch hẹn
                             </Button>
@@ -166,13 +256,33 @@ function AppointmentCard({ appointment, onCancel, canCancel }) {
                 </Stack>
 
                 {status === "Pending" && (
-                    <Typography sx={{ fontSize: 13, lineHeight: 1.7, color: "#d97706", bgcolor: "#fffbeb", p: 1.5, borderRadius: "8px" }}>
+                    <Typography
+                        sx={{
+                            fontSize: 13.5,
+                            lineHeight: 1.65,
+                            color: "#92400E",
+                            bgcolor: "#FFFBEB",
+                            border: "1px solid #FCD34D",
+                            p: 1.5,
+                            borderRadius: "10px",
+                        }}
+                    >
                         Lịch hẹn đang chờ lễ tân xác nhận. Bạn chưa hoàn tất thủ tục check-in tại quầy.
                     </Typography>
                 )}
                 {status === "Confirmed" && !checkedInAt && (
-                    <Typography sx={{ fontSize: 13, lineHeight: 1.7, color: clinicColors.muted, bgcolor: "#f8fafc", p: 1.5, borderRadius: "8px" }}>
-                        Lịch đã được xác nhận. Khi đến khám, hãy đến quầy lễ tân để xác minh sổ và check-in; nếu chưa có, mất hoặc quên sổ, hãy báo lễ tân để được hỗ trợ.
+                    <Typography
+                        sx={{
+                            fontSize: 13.5,
+                            lineHeight: 1.65,
+                            color: "#0A2540",
+                            bgcolor: "#EAF2FA",
+                            border: "1px solid #90BCE6",
+                            p: 1.5,
+                            borderRadius: "10px",
+                        }}
+                    >
+                        Lịch đã được xác nhận. Khi đến khám, vui lòng ghé quầy lễ tân trước 10–15 phút để xác minh sổ khám và check-in.
                     </Typography>
                 )}
             </Stack>
@@ -196,8 +306,8 @@ export default function MyAppointmentsPage() {
             await cancelMyAppointment(cancelTarget.appointmentId);
             setCancelTarget(null);
             refresh();
-        } catch (error) {
-            setCancelError(getApiErrorMessage(error));
+        } catch (err) {
+            setCancelError(getApiErrorMessage(err));
             refresh();
         } finally {
             setCancelling(false);
@@ -205,27 +315,21 @@ export default function MyAppointmentsPage() {
     }
 
     return (
-        <Box sx={{ bgcolor: "#f8fafc", minHeight: "85vh", py: { xs: 3.5, md: 5.5 } }}>
+        <Box sx={clinicPageCanvasSx}>
             <Container maxWidth="lg">
                 <Stack spacing={3}>
                     <ClinicPageHeader
+                        eyebrow="Theo dõi lịch khám"
                         title="Lịch hẹn của tôi"
                         icon={CalendarMonthOutlined}
-                        description="Theo dõi các lịch hẹn đã đặt, trạng thái tiếp nhận và hướng dẫn thủ tục check-in tại phòng khám."
+                        description="Quản lý các lịch hẹn đã đặt, kiểm tra trạng thái tiếp nhận và hướng dẫn chuẩn bị trước khi đến quầy."
                         actions={
                             <Button
                                 component={Link}
                                 to="/booking"
                                 variant="contained"
                                 startIcon={<CalendarMonthOutlined />}
-                                sx={{
-                                    borderRadius: "10px",
-                                    fontWeight: 700,
-                                    textTransform: "none",
-                                    minHeight: 42,
-                                    px: 2.5,
-                                    boxShadow: "0 2px 6px rgba(25, 118, 210, 0.25)",
-                                }}
+                                sx={{ ...clinicPrimaryButtonSx, px: 2.5 }}
                             >
                                 Đặt lịch khám mới
                             </Button>
@@ -238,7 +342,7 @@ export default function MyAppointmentsPage() {
                     <Paper variant="outlined" sx={{ ...clinicSurfaceSx, p: { xs: 2.5, sm: 3 }, borderRadius: "14px" }}>
                         <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2, color: "primary.main" }}>
                             <FilterAltOutlined fontSize="small" />
-                            <Typography sx={{ fontSize: 14.5, fontWeight: 700 }}>
+                            <Typography sx={{ fontSize: 15, fontWeight: 750, color: "#0A2540" }}>
                                 Tìm kiếm & lọc lịch hẹn
                             </Typography>
                         </Box>
@@ -283,7 +387,7 @@ export default function MyAppointmentsPage() {
                             <Button
                                 onClick={resetFilters}
                                 startIcon={<RestartAltOutlined />}
-                                sx={{ ...clinicButtonSx, whiteSpace: "nowrap", borderRadius: "8px" }}
+                                sx={{ ...clinicButtonSx, whiteSpace: "nowrap" }}
                             >
                                 Đặt lại
                             </Button>
@@ -292,22 +396,34 @@ export default function MyAppointmentsPage() {
                                 disabled={loading || Boolean(dateError)}
                                 onClick={refresh}
                                 startIcon={<RefreshOutlined />}
-                                sx={{ ...clinicSecondaryButtonSx, whiteSpace: "nowrap", borderRadius: "8px" }}
+                                sx={{ ...clinicSecondaryButtonSx, whiteSpace: "nowrap" }}
                             >
                                 Làm mới
                             </Button>
                         </Stack>
                     </Paper>
 
-                    {dateError && <Alert severity="warning" sx={{ borderRadius: "10px" }}>{dateError}</Alert>}
+                    {dateError && (
+                        <Alert severity="warning" sx={{ borderRadius: "10px" }}>
+                            {dateError}
+                        </Alert>
+                    )}
                     {error && (
-                        <Alert severity="error" sx={{ borderRadius: "10px" }} action={<Button color="inherit" onClick={refresh}>Thử lại</Button>}>
+                        <Alert
+                            severity="error"
+                            sx={{ borderRadius: "10px" }}
+                            action={
+                                <Button color="inherit" onClick={refresh}>
+                                    Thử lại
+                                </Button>
+                            }
+                        >
                             {error}
                         </Alert>
                     )}
 
                     {/* Content List */}
-                    <Stack spacing={2} aria-busy={loading}>
+                    <Stack spacing={2.25} aria-busy={loading}>
                         {loading ? (
                             <>
                                 <LinearProgress aria-label="Đang tải lịch hẹn" sx={{ borderRadius: 1 }} />
@@ -316,7 +432,7 @@ export default function MyAppointmentsPage() {
                                         <Stack spacing={1.5}>
                                             <Skeleton width="40%" height={30} />
                                             <Skeleton width="60%" />
-                                            <Skeleton variant="rounded" height={90} sx={{ borderRadius: "10px" }} />
+                                            <Skeleton variant="rounded" height={96} sx={{ borderRadius: "10px" }} />
                                         </Stack>
                                     </Paper>
                                 ))}
@@ -325,16 +441,17 @@ export default function MyAppointmentsPage() {
                             !error &&
                             !dateError && (
                                 <>
-                                    <Typography aria-live="polite" sx={{ fontSize: 13.5, color: clinicColors.muted, fontWeight: 500 }}>
+                                    <Typography aria-live="polite" sx={{ fontSize: 14, color: clinicColors.muted, fontWeight: 650 }}>
                                         {data?.totalItems || 0} lịch hẹn{filtered ? " phù hợp" : ""}
                                     </Typography>
                                     {!data?.items.length && (
                                         <Paper variant="outlined" sx={{ ...clinicSurfaceSx, p: 4, borderRadius: "14px" }}>
                                             <EmptyState
+                                                title={filtered ? "Không tìm thấy lịch hẹn phù hợp" : "Chưa có lịch hẹn nào"}
                                                 message={
                                                     filtered
-                                                        ? "Không có lịch hẹn phù hợp với bộ lọc."
-                                                        : "Bạn chưa có lịch hẹn. Chọn Đặt lịch khám để đặt lịch mới."
+                                                        ? "Không có lịch hẹn phù hợp với bộ lọc hiện tại."
+                                                        : "Bạn chưa có lịch hẹn. Chọn Đặt lịch khám mới để đăng ký buổi khám."
                                                 }
                                             />
                                         </Paper>
@@ -356,7 +473,7 @@ export default function MyAppointmentsPage() {
                                             spacing={1.5}
                                             sx={{ justifyContent: "space-between", alignItems: { sm: "center" }, pt: 1 }}
                                         >
-                                            <Typography sx={{ fontSize: 13, color: clinicColors.muted }}>
+                                            <Typography sx={{ fontSize: 13.5, color: clinicColors.muted }}>
                                                 Trang {filters.pageNumber}/{data.totalPages} · {data.totalItems} lịch hẹn
                                             </Typography>
                                             <Pagination
@@ -367,7 +484,11 @@ export default function MyAppointmentsPage() {
                                                 shape="rounded"
                                                 size="small"
                                                 getItemAriaLabel={(type, value) =>
-                                                    type === "next" ? "Trang tiếp" : type === "previous" ? "Trang trước" : `Trang ${value}`
+                                                    type === "next"
+                                                        ? "Trang tiếp"
+                                                        : type === "previous"
+                                                            ? "Trang trước"
+                                                            : `Trang ${value}`
                                                 }
                                             />
                                         </Stack>
@@ -384,30 +505,28 @@ export default function MyAppointmentsPage() {
                     onClose={cancelling ? undefined : () => setCancelTarget(null)}
                     fullWidth
                     maxWidth="xs"
-                    slotProps={{
-                        paper: {
-                            sx: {
-                                borderRadius: "16px",
-                                p: 1,
-                            },
-                        },
-                    }}
                 >
-                    <DialogTitle sx={{ fontWeight: 800, fontSize: 18, color: "#0f2c4d" }}>
+                    <DialogTitle sx={{ fontWeight: 800, fontSize: 18.5, color: "#0A2540", pt: 3 }}>
                         Hủy lịch hẹn #{cancelTarget?.appointmentId}
                     </DialogTitle>
                     <DialogContent>
-                        <Typography sx={{ fontSize: 14.5, color: "#374151", lineHeight: 1.6 }}>
-                            Bạn có chắc chắn muốn hủy lịch khám ngày <strong>{dateText(cancelTarget?.appointmentDate)}</strong> lúc{" "}
+                        <Typography sx={{ fontSize: 15, color: "#1E293B", lineHeight: 1.65 }}>
+                            Bạn có chắc chắn muốn hủy lịch khám ngày{" "}
+                            <strong>{dateText(cancelTarget?.appointmentDate)}</strong> lúc{" "}
                             <strong>{timeText(cancelTarget?.startTime)}</strong> không?
                         </Typography>
-                        {cancelError && <Alert severity="error" sx={{ mt: 2, borderRadius: "8px" }}>{cancelError}</Alert>}
+                        {cancelError && (
+                            <Alert severity="error" sx={{ mt: 2, borderRadius: "10px" }}>
+                                {cancelError}
+                            </Alert>
+                        )}
                     </DialogContent>
-                    <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
+                    <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
                         <Button
                             disabled={cancelling}
                             onClick={() => setCancelTarget(null)}
-                            sx={{ borderRadius: "8px", textTransform: "none", fontWeight: 600 }}
+                            variant="outlined"
+                            sx={{ borderRadius: "10px", textTransform: "none", fontWeight: 700 }}
                         >
                             Giữ lịch hẹn
                         </Button>
@@ -416,7 +535,7 @@ export default function MyAppointmentsPage() {
                             variant="contained"
                             disabled={cancelling}
                             onClick={confirmCancellation}
-                            sx={{ borderRadius: "8px", textTransform: "none", fontWeight: 700 }}
+                            sx={{ borderRadius: "10px", textTransform: "none", fontWeight: 750 }}
                         >
                             {cancelling ? "Đang hủy..." : "Xác nhận hủy"}
                         </Button>

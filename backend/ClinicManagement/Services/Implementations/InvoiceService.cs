@@ -24,7 +24,10 @@ public class InvoiceService(
                 .Distinct()
                 .ToListAsync();
 
-            const decimal examinationFee = 150000m;
+            var settings = await ClinicSettingsService.ReadSnapshotSafeAsync(context);
+            var examinationFee = settings.DefaultExaminationFee > 0
+                ? settings.DefaultExaminationFee
+                : ClinicSetting.DefaultExamFee;
             var appointments = await context.Appointments
                 .Where(appointment => !billedAppointments.Contains(appointment.AppointmentId))
                 .ToListAsync();

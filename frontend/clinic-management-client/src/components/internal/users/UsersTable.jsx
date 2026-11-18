@@ -1,25 +1,189 @@
-import { Box, Button, Chip, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from "@mui/material";
+import {
+    Box,
+    Button,
+    Chip,
+    Stack,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    Typography,
+} from "@mui/material";
+import { LockOpenRounded, LockOutlined, ManageAccountsRounded } from "@mui/icons-material";
+import { AdminEditIcon, clinicColors, clinicTableSx } from "../../common/clinicUi";
 import { ROLE_LABELS } from "../../../routes/roleAccess";
 
-const date = value => new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(value));
+const date = (value) =>
+    new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(value));
 
 export default function UsersTable({ items, userId, canEdit, canAssignRole, onAction }) {
-    return <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 3 }}>
-        <Table aria-label="Danh sách tài khoản" sx={{ minWidth: 900 }}>
-            <TableHead><TableRow><TableCell>Tài khoản</TableCell><TableCell>Vai trò</TableCell><TableCell>Hồ sơ bác sĩ / Khoa</TableCell><TableCell>Liên hệ</TableCell><TableCell>Trạng thái</TableCell><TableCell>Ngày tạo</TableCell><TableCell align="right">Thao tác</TableCell></TableRow></TableHead>
-            <TableBody>{items.map(user => <TableRow key={user.userId}>
-                <TableCell><Typography sx={{ fontWeight: 650, overflowWrap: "anywhere", maxWidth: 220 }}>{user.fullName}</Typography><Typography variant="body2" color="text.secondary">{user.username}{user.userId === userId ? " · Bạn" : ""}</Typography></TableCell>
-                <TableCell><Chip size="small" label={ROLE_LABELS[user.role] || user.role} variant="outlined" /></TableCell>
-                <TableCell>{user.doctorId ? <Box><Typography variant="body2">{user.doctorName}</Typography><Typography variant="caption" color="text.secondary">{user.departmentName}</Typography></Box> : <Typography variant="body2" color="text.secondary">{["Doctor", "DepartmentHead"].includes(user.role) ? "Chưa liên kết hồ sơ bác sĩ" : "—"}</Typography>}</TableCell>
-                <TableCell sx={{ overflowWrap: "anywhere", maxWidth: 220 }}><Typography variant="body2">{user.email || "—"}</Typography><Typography variant="caption" color="text.secondary">{user.phone || "Chưa có số điện thoại"}</Typography></TableCell>
-                <TableCell><Chip size="small" label={user.status ? "Hoạt động" : "Đã khóa"} color={user.status ? "success" : "default"} /></TableCell>
-                <TableCell sx={{ whiteSpace: "nowrap" }}>{date(user.createdAt)}</TableCell>
-                <TableCell align="right"><Stack spacing={0.5} sx={{ alignItems: "flex-end" }}>
-                    <Button size="small" disabled={!canEdit} aria-label={`Sửa thông tin ${user.username}`} onClick={() => onAction("edit", user)}>Sửa thông tin</Button>
-                    <Button size="small" disabled={!canAssignRole || user.userId === userId} aria-label={`Đổi vai trò ${user.username}`} onClick={() => onAction("role", user)}>Đổi vai trò</Button>
-                    <Button size="small" color={user.status ? "warning" : "success"} disabled={!canEdit || user.userId === userId} aria-label={`${user.status ? "Khóa" : "Mở khóa"} ${user.username}`} onClick={() => onAction("status", user)}>{user.status ? "Khóa" : "Mở khóa"}</Button>
-                </Stack></TableCell>
-            </TableRow>)}</TableBody>
-        </Table>
-    </TableContainer>;
+    return (
+        <TableContainer sx={{ overflowX: "auto" }}>
+            <Table aria-label="Danh sách tài khoản" sx={{ ...clinicTableSx, minWidth: 960 }}>
+                <TableHead>
+                    <TableRow>
+                        <TableCell>Tài khoản</TableCell>
+                        <TableCell>Vai trò</TableCell>
+                        <TableCell>Hồ sơ bác sĩ / Khoa</TableCell>
+                        <TableCell>Liên hệ</TableCell>
+                        <TableCell>Trạng thái</TableCell>
+                        <TableCell>Ngày tạo</TableCell>
+                        <TableCell align="right">Thao tác</TableCell>
+                    </TableRow>
+                </TableHead>
+                <TableBody>
+                    {items.map((user) => (
+                        <TableRow key={user.userId} hover>
+                            <TableCell>
+                                <Typography
+                                    sx={{
+                                        fontWeight: 700,
+                                        color: clinicColors.heading,
+                                        overflowWrap: "anywhere",
+                                        maxWidth: 230,
+                                    }}
+                                >
+                                    {user.fullName}
+                                </Typography>
+                                <Typography variant="body2" sx={{ color: "#64748B", fontSize: 13 }}>
+                                    @{user.username}
+                                    {user.userId === userId ? " · Bạn" : ""}
+                                </Typography>
+                            </TableCell>
+
+                            <TableCell>
+                                <Chip
+                                    size="small"
+                                    label={ROLE_LABELS[user.role] || user.role}
+                                    sx={{
+                                        bgcolor: "#E8F2FC",
+                                        color: clinicColors.primary,
+                                        border: "1px solid #BFDBFE",
+                                        fontWeight: 650,
+                                    }}
+                                />
+                            </TableCell>
+
+                            <TableCell>
+                                {user.doctorId ? (
+                                    <Box>
+                                        <Typography sx={{ fontSize: 13.5, fontWeight: 650, color: clinicColors.heading }}>
+                                            {user.doctorName}
+                                        </Typography>
+                                        <Typography variant="caption" sx={{ color: "#64748B" }}>
+                                            {user.departmentName}
+                                        </Typography>
+                                    </Box>
+                                ) : (
+                                    <Typography variant="body2" color="text.secondary">
+                                        {["Doctor", "DepartmentHead"].includes(user.role)
+                                            ? "Chưa liên kết hồ sơ bác sĩ"
+                                            : "—"}
+                                    </Typography>
+                                )}
+                            </TableCell>
+
+                            <TableCell sx={{ overflowWrap: "anywhere", maxWidth: 230 }}>
+                                <Typography sx={{ fontSize: 13.5 }}>{user.email || "—"}</Typography>
+                                <Typography variant="caption" sx={{ color: "#64748B" }}>
+                                    {user.phone || "Chưa có số điện thoại"}
+                                </Typography>
+                            </TableCell>
+
+                            <TableCell>
+                                <Chip
+                                    size="small"
+                                    label={user.status ? "Hoạt động" : "Đã khóa"}
+                                    sx={{
+                                        bgcolor: user.status ? "#DCFCE7" : "#F1F5F9",
+                                        color: user.status ? "#065F46" : "#475569",
+                                        border: `1px solid ${user.status ? "#86EFAC" : "#CBD5E1"}`,
+                                        fontWeight: 650,
+                                    }}
+                                />
+                            </TableCell>
+
+                            <TableCell sx={{ whiteSpace: "nowrap", color: "#475569" }}>
+                                {date(user.createdAt)}
+                            </TableCell>
+
+                            <TableCell align="right">
+                                <Stack
+                                    direction="row"
+                                    spacing={0.75}
+                                    useFlexGap
+                                    sx={{ justifyContent: "flex-end", flexWrap: "wrap" }}
+                                >
+                                    <Button
+                                        size="small"
+                                        variant="outlined"
+                                        startIcon={<AdminEditIcon sx={{ fontSize: 16 }} />}
+                                        disabled={!canEdit}
+                                        aria-label={`Sửa thông tin ${user.username}`}
+                                        onClick={() => onAction("edit", user)}
+                                        sx={{
+                                            borderRadius: "8px",
+                                            textTransform: "none",
+                                            fontWeight: 650,
+                                            fontSize: 12.5,
+                                            borderColor: "#BFDBFE",
+                                            color: clinicColors.primary,
+                                            bgcolor: "#F8FBFF",
+                                        }}
+                                    >
+                                        Sửa
+                                    </Button>
+
+                                    <Button
+                                        size="small"
+                                        variant="outlined"
+                                        startIcon={<ManageAccountsRounded sx={{ fontSize: 16 }} />}
+                                        disabled={!canAssignRole || user.userId === userId}
+                                        aria-label={`Đổi vai trò ${user.username}`}
+                                        onClick={() => onAction("role", user)}
+                                        sx={{
+                                            borderRadius: "8px",
+                                            textTransform: "none",
+                                            fontWeight: 650,
+                                            fontSize: 12.5,
+                                            borderColor: "#CBD5E1",
+                                            color: "#334155",
+                                        }}
+                                    >
+                                        Vai trò
+                                    </Button>
+
+                                    <Button
+                                        size="small"
+                                        variant="outlined"
+                                        color={user.status ? "warning" : "success"}
+                                        startIcon={
+                                            user.status ? (
+                                                <LockOutlined sx={{ fontSize: 16 }} />
+                                            ) : (
+                                                <LockOpenRounded sx={{ fontSize: 16 }} />
+                                            )
+                                        }
+                                        disabled={!canEdit || user.userId === userId}
+                                        aria-label={`${user.status ? "Khóa" : "Mở khóa"} ${user.username}`}
+                                        onClick={() => onAction("status", user)}
+                                        sx={{
+                                            borderRadius: "8px",
+                                            textTransform: "none",
+                                            fontWeight: 650,
+                                            fontSize: 12.5,
+                                        }}
+                                    >
+                                        {user.status ? "Khóa" : "Mở khóa"}
+                                    </Button>
+                                </Stack>
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+        </TableContainer>
+    );
 }

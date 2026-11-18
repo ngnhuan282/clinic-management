@@ -3,6 +3,7 @@ using ClinicManagement.Data.Entities;
 using ClinicManagement.DTOs.Requests;
 using ClinicManagement.Mappings;
 using ClinicManagement.Repositories.Interfaces;
+using ClinicManagement.Services.Implementations;
 using Microsoft.EntityFrameworkCore;
 
 namespace ClinicManagement.Repositories.Implementations;
@@ -19,7 +20,10 @@ public class MedicineRepository : IMedicineRepository
     public async Task<(IEnumerable<Medicine> Items, int TotalItems)> GetPagedAsync(
         MedicineFilterRequest request)
     {
-        var query = BuildFilteredQuery(request);
+        var thresholds = await ClinicSettingsService.ReadSnapshotSafeAsync(_context);
+        var lowStock = thresholds.LowStockThreshold > 0 ? thresholds.LowStockThreshold : MedicineMapping.LowStockThreshold;
+        var nearExpiry = thresholds.NearExpiryDays > 0 ? thresholds.NearExpiryDays : MedicineMapping.ExpiringSoonDays;
+        var query = BuildFilteredQuery(request, lowStock, nearExpiry);
 
         var totalItems = await query.CountAsync();
 
@@ -53,6 +57,12 @@ public class MedicineRepository : IMedicineRepository
             .FirstOrDefaultAsync(x => x.MedicineId == medicineId);
     }
 
+    public async Task<bool> IsReferencedAsync(int medicineId)
+    {
+        return await _context.PrescriptionDetails.AnyAsync(x => x.MedicineId == medicineId)
+            || await _context.PurchaseOrderDetails.AnyAsync(x => x.MedicineId == medicineId);
+    }
+
     public Task<bool> ExistsByNameAsync(
         string medicineName,
         int? excludedMedicineId = null)
@@ -82,10 +92,12 @@ public class MedicineRepository : IMedicineRepository
     }
 
     private IQueryable<Medicine> BuildFilteredQuery(
-        MedicineFilterRequest request)
+        MedicineFilterRequest request,
+        int lowStockThreshold,
+        int expiringSoonDays)
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var expiringUntil = today.AddDays(MedicineMapping.ExpiringSoonDays);
+        var expiringUntil = today.AddDays(expiringSoonDays);
 
         var query = _context.Medicines
             .Include(x => x.Category)
@@ -129,7 +141,8 @@ public class MedicineRepository : IMedicineRepository
                 query,
                 request.StockStatus,
                 today,
-                expiringUntil
+                expiringUntil,
+                lowStockThreshold
             );
         }
 
@@ -140,7 +153,8 @@ public class MedicineRepository : IMedicineRepository
         IQueryable<Medicine> query,
         string stockStatus,
         DateOnly today,
-        DateOnly expiringUntil)
+        DateOnly expiringUntil,
+        int lowStockThreshold)
     {
         var status = stockStatus.Trim();
 
@@ -162,7 +176,7 @@ public class MedicineRepository : IMedicineRepository
                     (int?)i.QuantityInStock) ?? 0) > 0 &&
                 (x.Inventories.Sum(i =>
                     (int?)i.QuantityInStock) ?? 0)
-                    <= MedicineMapping.LowStockThreshold),
+                    <= lowStockThreshold),
 
             "ExpiringSoon" => query.Where(x =>
                 !x.Inventories.Any(i =>
@@ -170,7 +184,7 @@ public class MedicineRepository : IMedicineRepository
                     i.ExpiryDate < today) &&
                 (x.Inventories.Sum(i =>
                     (int?)i.QuantityInStock) ?? 0) >
-                    MedicineMapping.LowStockThreshold &&
+                    lowStockThreshold &&
                 x.Inventories.Any(i =>
                     i.QuantityInStock > 0 &&
                     i.ExpiryDate >= today &&
@@ -186,7 +200,7 @@ public class MedicineRepository : IMedicineRepository
                     i.ExpiryDate <= expiringUntil) &&
                 (x.Inventories.Sum(i =>
                     (int?)i.QuantityInStock) ?? 0) >
-                    MedicineMapping.LowStockThreshold),
+                    lowStockThreshold),
 
             _ => query
         };

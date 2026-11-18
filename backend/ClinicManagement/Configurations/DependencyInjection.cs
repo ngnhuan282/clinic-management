@@ -22,6 +22,7 @@ public static class DependencyInjection
         services.AddScoped<IReviewService, ReviewService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<RbacService>();
+        services.AddScoped<ClinicSettingsService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 

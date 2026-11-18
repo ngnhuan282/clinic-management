@@ -198,6 +198,15 @@ public class DoctorScheduleService(ApplicationDbContext context, ICurrentUserSer
 
         // Bulk delete bypasses change tracking entirely, so the stale tracked slots from the
         // Include above never conflict with the brand-new ones added below.
+        var existingSlotIds = schedule.TimeSlots.Select(x => x.SlotId).ToList();
+        if (existingSlotIds.Count > 0)
+        {
+            await _context.Appointments
+                .Where(x => x.TimeSlotId.HasValue
+                    && existingSlotIds.Contains(x.TimeSlotId.Value)
+                    && x.Status == AppointmentStatusConstants.Cancelled)
+                .ExecuteUpdateAsync(s => s.SetProperty(a => a.TimeSlotId, (Guid?)null));
+        }
         await _context.TimeSlots.Where(x => x.ScheduleId == id).ExecuteDeleteAsync();
 
         schedule.RoomId = request.RoomId;
@@ -340,9 +349,12 @@ public class DoctorScheduleService(ApplicationDbContext context, ICurrentUserSer
     private async Task<(int RoomId, DateOnly WorkDate, TimeSpan Start, TimeSpan End)> ValidateRequestAsync(
         CreateDoctorScheduleRequest request, int doctorId)
     {
+        var settings = await ClinicSettingsService.ReadSnapshotSafeAsync(_context);
+        var slotMinutes = settings.DefaultSlotDurationMinutes;
+        if (slotMinutes is not (15 or 20 or 30)) slotMinutes = ClinicSetting.DefaultSlotMinutes;
         if (request.RoomId <= 0 || request.WorkDate == default || !TimeSpan.TryParse(request.StartTime, out var start)
             || !TimeSpan.TryParse(request.EndTime, out var end) || start < TimeSpan.Zero || start >= end
-            || end >= TimeSpan.FromDays(1) || (end - start).Ticks % TimeSpan.FromMinutes(30).Ticks != 0)
+            || end >= TimeSpan.FromDays(1) || (end - start).Ticks % TimeSpan.FromMinutes(slotMinutes).Ticks != 0)
             throw new AppException(ErrorCode.INVALID_REQUEST);
         var departmentId = await _context.Doctors.Where(x => x.DoctorId == doctorId && x.IsActive && x.Department.IsActive)
             .Select(x => (int?)x.DepartmentId).SingleOrDefaultAsync();

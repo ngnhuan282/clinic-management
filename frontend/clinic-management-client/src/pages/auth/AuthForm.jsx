@@ -1,6 +1,32 @@
 import { useEffect, useRef, useState } from "react";
-import { Alert, Box, Button, Checkbox, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, IconButton, InputAdornment, Link, Stack, TextField, Typography } from "@mui/material";
-import { ArrowForward, BadgeOutlined, LockOutlined, MailOutlined, PersonOutlined, PhoneOutlined, VisibilityOffOutlined, VisibilityOutlined } from "@mui/icons-material";
+import {
+    Alert,
+    Box,
+    Button,
+    Checkbox,
+    CircularProgress,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    FormControlLabel,
+    IconButton,
+    InputAdornment,
+    Link,
+    Stack,
+    TextField,
+    Typography,
+} from "@mui/material";
+import {
+    ArrowForward,
+    BadgeOutlined,
+    LockOutlined,
+    MailOutlined,
+    PersonOutlined,
+    PhoneOutlined,
+    VisibilityOffOutlined,
+    VisibilityOutlined,
+} from "@mui/icons-material";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import * as authApi from "../../api/authApi";
@@ -10,35 +36,61 @@ import { canAccessPath, homeForRole } from "../../routes/roleAccess";
 
 function AuthField({ name, label, icon: Icon, error, password = false, ...props }) {
     const [visible, setVisible] = useState(false);
-    return <Box sx={{ minWidth: 0 }}>
-        <Typography component="label" htmlFor={`auth-${name}`} sx={{ display: "block", mb: 0.9, fontSize: 13.5, fontWeight: 650, color: "#1f2937" }}>
-            {label} <Box component="span" sx={{ color: "error.main" }} aria-hidden="true">*</Box>
-        </Typography>
-        <TextField {...props} id={`auth-${name}`} name={name} required fullWidth
-            type={password ? (visible ? "text" : "password") : props.type || "text"}
-            error={Boolean(error)} helperText={error}
-            slotProps={{
-                htmlInput: { ...props.slotProps?.htmlInput, "aria-label": label },
-                input: {
-                    startAdornment: <InputAdornment position="start"><Icon sx={{ color: "#94a3b8", fontSize: 20 }} /></InputAdornment>,
-                    endAdornment: password ? <InputAdornment position="end"><IconButton size="small" aria-label={`${visible ? "Ẩn" : "Hiện"} ${label.toLowerCase()}`} aria-pressed={visible} onClick={() => setVisible(!visible)} edge="end">
-                        {visible ? <VisibilityOffOutlined fontSize="small" /> : <VisibilityOutlined fontSize="small" />}
-                    </IconButton></InputAdornment> : undefined,
-                },
-            }}
-            sx={{
-                "& .MuiOutlinedInput-root": {
-                    minHeight: 46,
-                    borderRadius: "10px",
-                    bgcolor: "#ffffff",
-                    borderColor: "#cbd5e1",
-                    transition: "all 0.15s ease",
-                    "&:hover": { borderColor: "#94a3b8" },
-                    "&.Mui-focused": { borderColor: "primary.main", boxShadow: "0 0 0 3px rgba(25, 118, 210, 0.12)" },
-                },
-                "& input": { py: 1.25, fontSize: 14.5 },
-            }} />
-    </Box>;
+    return (
+        <Box sx={{ minWidth: 0 }}>
+            <Typography
+                component="label"
+                htmlFor={`auth-${name}`}
+                sx={{ display: "block", mb: 0.85, fontSize: 14, fontWeight: 700, color: "#0A2540" }}
+            >
+                {label}{" "}
+                <Box component="span" sx={{ color: "error.main" }} aria-hidden="true">
+                    *
+                </Box>
+            </Typography>
+            <TextField
+                {...props}
+                id={`auth-${name}`}
+                name={name}
+                required
+                fullWidth
+                type={password ? (visible ? "text" : "password") : props.type || "text"}
+                error={Boolean(error)}
+                helperText={error}
+                slotProps={{
+                    htmlInput: { ...props.slotProps?.htmlInput, "aria-label": label },
+                    input: {
+                        startAdornment: (
+                            <InputAdornment position="start">
+                                <Icon sx={{ color: "#475569", fontSize: 20 }} />
+                            </InputAdornment>
+                        ),
+                        endAdornment: password ? (
+                            <InputAdornment position="end">
+                                <IconButton
+                                    size="small"
+                                    aria-label={`${visible ? "Ẩn" : "Hiện"} ${label.toLowerCase()}`}
+                                    aria-pressed={visible}
+                                    onClick={() => setVisible(!visible)}
+                                    edge="end"
+                                >
+                                    {visible ? <VisibilityOffOutlined fontSize="small" /> : <VisibilityOutlined fontSize="small" />}
+                                </IconButton>
+                            </InputAdornment>
+                        ) : undefined,
+                    },
+                }}
+                sx={{
+                    "& .MuiOutlinedInput-root": {
+                        minHeight: 48,
+                        borderRadius: "10px",
+                        bgcolor: "#FFFFFF",
+                    },
+                    "& input": { py: 1.3, fontSize: 15 },
+                }}
+            />
+        </Box>
+    );
 }
 
 function validate(values, register, confirmed) {
@@ -47,13 +99,17 @@ function validate(values, register, confirmed) {
     if (!values.password) errors.password = "Vui lòng nhập mật khẩu.";
     if (register) {
         if (!values.fullName.trim()) errors.fullName = "Vui lòng nhập họ và tên.";
-        if (!/^\+?[\d\s().-]{8,15}$/.test(values.phone.trim()) || !/\d{3}/.test(values.phone)) errors.phone = "Vui lòng nhập số điện thoại hợp lệ (8–15 ký tự).";
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim())) errors.email = "Vui lòng nhập địa chỉ email hợp lệ.";
+        if (!/^\+?[\d\s().-]{8,15}$/.test(values.phone.trim()) || !/\d{3}/.test(values.phone))
+            errors.phone = "Vui lòng nhập số điện thoại hợp lệ (8–15 ký tự).";
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim()))
+            errors.email = "Vui lòng nhập địa chỉ email hợp lệ.";
         if (values.password.length < 8) errors.password = "Mật khẩu cần ít nhất 8 ký tự.";
-        if (values.confirmPassword !== values.password || !values.confirmPassword) errors.confirmPassword = "Mật khẩu xác nhận chưa khớp.";
+        if (values.confirmPassword !== values.password || !values.confirmPassword)
+            errors.confirmPassword = "Mật khẩu xác nhận chưa khớp.";
         if (!confirmed) errors.confirmed = "Vui lòng xác nhận thông tin đăng ký.";
     }
-    if (new TextEncoder().encode(values.password).length > 72) errors.password = "Mật khẩu quá dài. Vui lòng sử dụng mật khẩu ngắn hơn.";
+    if (new TextEncoder().encode(values.password).length > 72)
+        errors.password = "Mật khẩu quá dài. Vui lòng sử dụng mật khẩu ngắn hơn.";
     return errors;
 }
 
@@ -63,7 +119,14 @@ export default function AuthForm({ register }) {
         const activeRequest = request;
         return () => activeRequest.current?.abort();
     }, []);
-    const [values, setValues] = useState({ username: "", fullName: "", email: "", phone: "", password: "", confirmPassword: "" });
+    const [values, setValues] = useState({
+        username: "",
+        fullName: "",
+        email: "",
+        phone: "",
+        password: "",
+        confirmPassword: "",
+    });
     const [errors, setErrors] = useState({});
     const [error, setError] = useState("");
     const [busy, setBusy] = useState(false);
@@ -73,11 +136,16 @@ export default function AuthForm({ register }) {
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const location = useLocation();
-    const fieldProps = name => ({ value: values[name], error: errors[name], disabled: busy, onChange: event => {
-        setValues(current => ({ ...current, [name]: event.target.value }));
-        setErrors(current => ({ ...current, [name]: undefined }));
-        setError("");
-    } });
+    const fieldProps = name => ({
+        value: values[name],
+        error: errors[name],
+        disabled: busy,
+        onChange: event => {
+            setValues(current => ({ ...current, [name]: event.target.value }));
+            setErrors(current => ({ ...current, [name]: undefined }));
+            setError("");
+        },
+    });
 
     async function submit(event) {
         event.preventDefault();
@@ -93,55 +161,231 @@ export default function AuthForm({ register }) {
         request.current = new AbortController();
         const signal = request.current.signal;
         const payload = { username: values.username.trim(), password: values.password };
-        if (register) Object.assign(payload, { fullName: values.fullName.trim(), email: values.email.trim(), phone: values.phone.trim() });
+        if (register)
+            Object.assign(payload, {
+                fullName: values.fullName.trim(),
+                email: values.email.trim(),
+                phone: values.phone.trim(),
+            });
         try {
-            const { accessToken, ...user } = await (register ? authApi.register(payload, signal) : authApi.login(payload, signal));
+            const { accessToken, ...user } = await (register
+                ? authApi.register(payload, signal)
+                : authApi.login(payload, signal));
             if (signal.aborted) return;
             dispatch(setCredentials({ accessToken, user, remember: !register && remember }));
             const from = location.state?.from;
             const fallback = homeForRole(user);
-            const destination = from?.pathname?.startsWith("/") && !from.pathname.startsWith("//")
-                && canAccessPath(user, from.pathname)
-                ? `${from.pathname}${from.search || ""}${from.hash || ""}` : fallback;
+            const destination =
+                from?.pathname?.startsWith("/") &&
+                !from.pathname.startsWith("//") &&
+                canAccessPath(user, from.pathname)
+                    ? `${from.pathname}${from.search || ""}${from.hash || ""}`
+                    : fallback;
             navigate(destination, { replace: true });
         } catch (err) {
             if (signal.aborted) return;
             const apiErrors = err.response?.data?.errors;
             if (apiErrors && !Array.isArray(apiErrors)) {
-                setErrors(Object.fromEntries(Object.entries(apiErrors).map(([key, messages]) => [key[0].toLowerCase() + key.slice(1), [].concat(messages).join(" ")])));
+                setErrors(
+                    Object.fromEntries(
+                        Object.entries(apiErrors).map(([key, messages]) => [
+                            key[0].toLowerCase() + key.slice(1),
+                            [].concat(messages).join(" "),
+                        ])
+                    )
+                );
                 setError("Vui lòng kiểm tra lại thông tin đã nhập.");
             } else setError(getApiErrorMessage(err));
-        } finally { setBusy(false); }
+        } finally {
+            setBusy(false);
+        }
     }
 
-    return <>
-        <Box component="form" noValidate onSubmit={submit} aria-busy={busy}>
-            <Stack spacing={2.5}>
-                {error && <Alert severity="error">{error}</Alert>}
-                <Box sx={{ display: "grid", gridTemplateColumns: register ? { xs: "1fr", sm: "1fr 1fr" } : "1fr", gap: 2.5 }}>
-                    <AuthField name="username" label="Tên đăng nhập" icon={PersonOutlined} placeholder="Nhập tên đăng nhập của bạn" autoComplete="username" slotProps={{ htmlInput: { maxLength: 50 } }} {...fieldProps("username")} />
-                    {register && <AuthField name="fullName" label="Họ và tên" icon={BadgeOutlined} placeholder="Nguyễn Văn An" autoComplete="name" slotProps={{ htmlInput: { maxLength: 100 } }} {...fieldProps("fullName")} />}
-                    {register && <AuthField name="phone" label="Số điện thoại di động" icon={PhoneOutlined} type="tel" placeholder="Ví dụ: 0912345678" autoComplete="tel" slotProps={{ htmlInput: { maxLength: 15 } }} {...fieldProps("phone")} />}
-                    {register && <AuthField name="email" label="Địa chỉ email" icon={MailOutlined} type="email" placeholder="Ví dụ: ban@email.com" autoComplete="email" slotProps={{ htmlInput: { maxLength: 100 } }} {...fieldProps("email")} />}
-                    <AuthField name="password" label="Mật khẩu" icon={LockOutlined} password placeholder={register ? "Tối thiểu 8 ký tự" : "Nhập mật khẩu của bạn"} autoComplete={register ? "new-password" : "current-password"} slotProps={{ htmlInput: { maxLength: 72 } }} {...fieldProps("password")} />
-                    {register && <AuthField name="confirmPassword" label="Xác nhận mật khẩu" icon={LockOutlined} password placeholder="Nhập lại mật khẩu vừa tạo" autoComplete="new-password" slotProps={{ htmlInput: { maxLength: 72 } }} {...fieldProps("confirmPassword")} />}
-                </Box>
-                {register ? <Box>
-                    <FormControlLabel sx={{ alignItems: "flex-start", m: 0, "& .MuiCheckbox-root": { p: 0, mr: 1.25, mt: 0.15 } }} control={<Checkbox id="auth-confirmed" checked={confirmed} disabled={busy} onChange={e => { setConfirmed(e.target.checked); setErrors(current => ({ ...current, confirmed: undefined })); }} size="small" />} label={<Typography sx={{ fontSize: 14, lineHeight: 1.6 }}>Tôi xác nhận thông tin đăng ký ở trên là chính xác.</Typography>} />
-                    {errors.confirmed && <Typography role="alert" sx={{ mt: 0.75, fontSize: 12 }} color="error">{errors.confirmed}</Typography>}
-                </Box> : <Stack direction={{ xs: "column", sm: "row" }} sx={{ justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, gap: 1 }}>
-                    <FormControlLabel sx={{ m: 0, "& .MuiCheckbox-root": { p: 0, mr: 1 } }} control={<Checkbox checked={remember} disabled={busy} onChange={e => setRemember(e.target.checked)} size="small" />} label={<Typography sx={{ fontSize: 13 }}>Ghi nhớ đăng nhập trên thiết bị này</Typography>} />
-                    <Link component="button" type="button" onClick={() => setHelpOpen(true)} sx={{ fontSize: 13, fontWeight: 600 }}>Quên mật khẩu?</Link>
-                </Stack>}
-                <Button variant="contained" type="submit" disabled={busy} fullWidth endIcon={busy ? <CircularProgress size={18} color="inherit" /> : <ArrowForward />} sx={{ minHeight: 48, borderRadius: "10px", fontSize: 15, fontWeight: 750, textTransform: "none", bgcolor: register ? "primary.main" : "#0f4c81", boxShadow: "0 3px 10px rgba(25, 118, 210, 0.25)", "&:hover": { bgcolor: register ? "primary.dark" : "#093358", boxShadow: "0 4px 14px rgba(25, 118, 210, 0.35)" } }}>
-                    {busy ? "Đang xử lý…" : register ? "Đăng ký tài khoản" : "Đăng nhập"}
-                </Button>
-            </Stack>
-        </Box>
-        <Dialog open={helpOpen} onClose={() => setHelpOpen(false)} maxWidth="xs" fullWidth aria-labelledby="auth-help-title" slotProps={{ paper: { sx: { borderRadius: "16px", p: 1 } } }}>
-            <DialogTitle id="auth-help-title" sx={{ fontWeight: 750 }}>Hỗ trợ đăng nhập</DialogTitle>
-            <DialogContent><Typography variant="body2" sx={{ lineHeight: 1.8, color: "text.secondary" }}>Nếu bạn quên mật khẩu, vui lòng liên hệ quầy tiếp nhận của phòng khám để được hỗ trợ xác minh tài khoản. Chuẩn bị tên đăng nhập và thông tin liên hệ đã đăng ký.</Typography></DialogContent>
-            <DialogActions sx={{ pb: 2, px: 3 }}><Button onClick={() => setHelpOpen(false)} variant="contained" sx={{ borderRadius: "8px", textTransform: "none", fontWeight: 650 }}>Đã hiểu</Button></DialogActions>
-        </Dialog>
-    </>;
+    return (
+        <>
+            <Box component="form" noValidate onSubmit={submit} aria-busy={busy}>
+                <Stack spacing={2.5}>
+                    {error && <Alert severity="error">{error}</Alert>}
+                    <Box
+                        sx={{
+                            display: "grid",
+                            gridTemplateColumns: register ? { xs: "1fr", sm: "1fr 1fr" } : "1fr",
+                            gap: 2.25,
+                        }}
+                    >
+                        <AuthField
+                            name="username"
+                            label="Tên đăng nhập"
+                            icon={PersonOutlined}
+                            placeholder="Nhập tên đăng nhập của bạn"
+                            autoComplete="username"
+                            slotProps={{ htmlInput: { maxLength: 50 } }}
+                            {...fieldProps("username")}
+                        />
+                        {register && (
+                            <AuthField
+                                name="fullName"
+                                label="Họ và tên"
+                                icon={BadgeOutlined}
+                                placeholder="Nguyễn Văn An"
+                                autoComplete="name"
+                                slotProps={{ htmlInput: { maxLength: 100 } }}
+                                {...fieldProps("fullName")}
+                            />
+                        )}
+                        {register && (
+                            <AuthField
+                                name="phone"
+                                label="Số điện thoại di động"
+                                icon={PhoneOutlined}
+                                type="tel"
+                                placeholder="Ví dụ: 0912345678"
+                                autoComplete="tel"
+                                slotProps={{ htmlInput: { maxLength: 15 } }}
+                                {...fieldProps("phone")}
+                            />
+                        )}
+                        {register && (
+                            <AuthField
+                                name="email"
+                                label="Địa chỉ email"
+                                icon={MailOutlined}
+                                type="email"
+                                placeholder="Ví dụ: ban@email.com"
+                                autoComplete="email"
+                                slotProps={{ htmlInput: { maxLength: 100 } }}
+                                {...fieldProps("email")}
+                            />
+                        )}
+                        <AuthField
+                            name="password"
+                            label="Mật khẩu"
+                            icon={LockOutlined}
+                            password
+                            placeholder={register ? "Tối thiểu 8 ký tự" : "Nhập mật khẩu của bạn"}
+                            autoComplete={register ? "new-password" : "current-password"}
+                            slotProps={{ htmlInput: { maxLength: 72 } }}
+                            {...fieldProps("password")}
+                        />
+                        {register && (
+                            <AuthField
+                                name="confirmPassword"
+                                label="Xác nhận mật khẩu"
+                                icon={LockOutlined}
+                                password
+                                placeholder="Nhập lại mật khẩu vừa tạo"
+                                autoComplete="new-password"
+                                slotProps={{ htmlInput: { maxLength: 72 } }}
+                                {...fieldProps("confirmPassword")}
+                            />
+                        )}
+                    </Box>
+
+                    {register ? (
+                        <Box>
+                            <FormControlLabel
+                                sx={{ alignItems: "flex-start", m: 0, "& .MuiCheckbox-root": { p: 0, mr: 1.25, mt: 0.15 } }}
+                                control={
+                                    <Checkbox
+                                        id="auth-confirmed"
+                                        checked={confirmed}
+                                        disabled={busy}
+                                        onChange={e => {
+                                            setConfirmed(e.target.checked);
+                                            setErrors(current => ({ ...current, confirmed: undefined }));
+                                        }}
+                                        size="small"
+                                    />
+                                }
+                                label={
+                                    <Typography sx={{ fontSize: 14.5, lineHeight: 1.6 }}>
+                                        Tôi xác nhận thông tin đăng ký ở trên là chính xác.
+                                    </Typography>
+                                }
+                            />
+                            {errors.confirmed && (
+                                <Typography role="alert" sx={{ mt: 0.75, fontSize: 12.5 }} color="error">
+                                    {errors.confirmed}
+                                </Typography>
+                            )}
+                        </Box>
+                    ) : (
+                        <Stack
+                            direction={{ xs: "column", sm: "row" }}
+                            sx={{ justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, gap: 1 }}
+                        >
+                            <FormControlLabel
+                                sx={{ m: 0, "& .MuiCheckbox-root": { p: 0, mr: 1 } }}
+                                control={
+                                    <Checkbox
+                                        checked={remember}
+                                        disabled={busy}
+                                        onChange={e => setRemember(e.target.checked)}
+                                        size="small"
+                                    />
+                                }
+                                label={<Typography sx={{ fontSize: 14 }}>Ghi nhớ đăng nhập trên thiết bị này</Typography>}
+                            />
+                            <Link
+                                component="button"
+                                type="button"
+                                onClick={() => setHelpOpen(true)}
+                                sx={{ fontSize: 14, fontWeight: 700 }}
+                            >
+                                Quên mật khẩu?
+                            </Link>
+                        </Stack>
+                    )}
+
+                    <Button
+                        variant="contained"
+                        type="submit"
+                        disabled={busy}
+                        fullWidth
+                        endIcon={busy ? <CircularProgress size={18} color="inherit" /> : <ArrowForward />}
+                        sx={{
+                            minHeight: 50,
+                            borderRadius: "10px",
+                            fontSize: 15.5,
+                            fontWeight: 750,
+                            textTransform: "none",
+                            bgcolor: "#0B4F8A",
+                            "&:hover": {
+                                bgcolor: "#083A66",
+                            },
+                        }}
+                    >
+                        {busy ? "Đang xử lý…" : register ? "Đăng ký tài khoản" : "Đăng nhập"}
+                    </Button>
+                </Stack>
+            </Box>
+
+            <Dialog
+                open={helpOpen}
+                onClose={() => setHelpOpen(false)}
+                maxWidth="xs"
+                fullWidth
+                aria-labelledby="auth-help-title"
+                slotProps={{ paper: { sx: { borderRadius: "16px", p: 1 } } }}
+            >
+                <DialogTitle id="auth-help-title" sx={{ fontWeight: 800, color: "#0A2540" }}>
+                    Hỗ trợ đăng nhập
+                </DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" sx={{ lineHeight: 1.8, color: "text.secondary" }}>
+                        Nếu bạn quên mật khẩu, vui lòng liên hệ quầy tiếp nhận hoặc tổng đài của phòng khám để được hỗ trợ xác minh tài khoản. Hãy chuẩn bị tên đăng nhập và số điện thoại đã đăng ký.
+                    </Typography>
+                </DialogContent>
+                <DialogActions sx={{ pb: 2, px: 3 }}>
+                    <Button
+                        onClick={() => setHelpOpen(false)}
+                        variant="contained"
+                        sx={{ borderRadius: "10px", textTransform: "none", fontWeight: 700 }}
+                    >
+                        Đã hiểu
+                    </Button>
+                </DialogActions>
+            </Dialog>
+        </>
+    );
 }

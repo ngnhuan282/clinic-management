@@ -1,11 +1,17 @@
 import { useRef, useState } from "react";
 import { Alert, Box, Button, Container, Paper, Stack, TextField, Typography } from "@mui/material";
-import { PersonOutlineOutlined, SaveOutlined } from "@mui/icons-material";
+import { BadgeOutlined, PersonOutlineOutlined, SaveOutlined } from "@mui/icons-material";
 import { createMyPatientProfile, getMyPatientProfile, updateMyPatientProfile } from "../../api/patientApi";
 import { useMyProfile } from "../../hooks/useMyProfile";
 import AccountProfile, { ProfileLoadingState } from "../../components/common/AccountProfile";
 import ClinicPageHeader from "../../components/common/ClinicPageHeader";
-import { clinicColors, clinicFieldSx, clinicPrimaryButtonSx, clinicSurfaceSx } from "../../components/common/clinicUi";
+import {
+    clinicColors,
+    clinicFieldSx,
+    clinicPageCanvasSx,
+    clinicPrimaryButtonSx,
+    clinicSurfaceSx,
+} from "../../components/common/clinicUi";
 import getApiErrorMessage from "../../utils/errorHandler";
 
 const toForm = profile => ({
@@ -53,26 +59,48 @@ function PatientProfileForm({ profile, saving, error, onSave, saved, onEdit, cre
             sx={{
                 ...clinicSurfaceSx,
                 p: { xs: 2.5, sm: 3.5 },
-                borderRadius: "14px",
-                borderColor: "#e5e9f0",
-                boxShadow: "0 1px 3px rgba(15, 23, 42, 0.03)",
+                borderRadius: "16px",
             }}
             aria-busy={saving}
         >
             <Stack spacing={2.5}>
-                <Box>
-                    <Typography component="h2" sx={{ fontSize: 18, fontWeight: 750, color: "#0f2c4d" }}>
-                        Hồ sơ khám bệnh
-                    </Typography>
-                    <Typography sx={{ mt: 0.5, fontSize: 13.5, color: clinicColors.muted, lineHeight: 1.6 }}>
-                        Thông tin định danh này được sử dụng tự động khi bạn đặt lịch khám và làm thủ tục check-in tại quầy lễ tân.
-                    </Typography>
-                </Box>
+                <Stack direction="row" spacing={1.5} sx={{ alignItems: "flex-start" }}>
+                    <Box
+                        sx={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: "10px",
+                            bgcolor: "#E6F0FA",
+                            color: clinicColors.primary,
+                            display: "grid",
+                            placeItems: "center",
+                            flexShrink: 0,
+                        }}
+                    >
+                        <BadgeOutlined sx={{ fontSize: 22 }} />
+                    </Box>
+                    <Box>
+                        <Typography component="h2" sx={{ fontSize: 18.5, fontWeight: 800, color: clinicColors.heading }}>
+                            Hồ sơ khám bệnh
+                        </Typography>
+                        <Typography sx={{ mt: 0.4, fontSize: 14, color: clinicColors.muted, lineHeight: 1.6 }}>
+                            Thông tin định danh y tế được sử dụng khi bạn đặt lịch khám và làm thủ tục check-in tại quầy lễ tân.
+                        </Typography>
+                    </Box>
+                </Stack>
 
-                {error && <Alert severity="error" sx={{ borderRadius: "10px" }}>{error}</Alert>}
-                {saved && <Alert severity="success" sx={{ borderRadius: "10px" }}>Đã lưu thông tin hồ sơ thành công.</Alert>}
+                {error && (
+                    <Alert severity="error" sx={{ borderRadius: "10px" }}>
+                        {error}
+                    </Alert>
+                )}
+                {saved && (
+                    <Alert severity="success" sx={{ borderRadius: "10px" }}>
+                        Đã lưu hồ sơ khám bệnh thành công.
+                    </Alert>
+                )}
 
-                <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2.5 }}>
+                <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2.25 }}>
                     <TextField
                         required
                         fullWidth
@@ -124,7 +152,7 @@ function PatientProfileForm({ profile, saving, error, onSave, saved, onEdit, cre
                     />
                 </Box>
 
-                <Box sx={{ borderTop: "1px solid #E2E8F0", pt: 2.5, display: "flex", justifyContent: "flex-end" }}>
+                <Box sx={{ borderTop: "1px solid #E2ECF5", pt: 2.5, display: "flex", justifyContent: "flex-end" }}>
                     <Button
                         type="submit"
                         variant="contained"
@@ -132,9 +160,8 @@ function PatientProfileForm({ profile, saving, error, onSave, saved, onEdit, cre
                         startIcon={<SaveOutlined />}
                         sx={{
                             ...clinicPrimaryButtonSx,
-                            borderRadius: "8px",
                             px: 3,
-                            fontWeight: 700,
+                            fontWeight: 750,
                             width: { xs: "100%", sm: "auto" },
                         }}
                     >
@@ -165,7 +192,17 @@ function CreateProfileSection({ onCreated }) {
             setCreating(false);
         }
     };
-    return <PatientProfileForm profile={EMPTY_PROFILE} saving={creating} error={error} onSave={create} saved={false} onEdit={() => setError("")} createMode />;
+    return (
+        <PatientProfileForm
+            profile={EMPTY_PROFILE}
+            saving={creating}
+            error={error}
+            onSave={create}
+            saved={false}
+            onEdit={() => setError("")}
+            createMode
+        />
+    );
 }
 
 function PatientProfileSection({ onRetry }) {
@@ -184,26 +221,51 @@ function PatientProfileSection({ onRetry }) {
     };
 
     if (status === "loading") return <ProfileLoadingState title="Hồ sơ khám bệnh" />;
-    if (status === "error" && errorStatus === 404 && errorCode === 4001) return <Stack spacing={2}>
-        <Alert severity="info" sx={{ borderRadius: 2 }}>Bạn chưa có hồ sơ khám bệnh tại phòng khám. Hãy điền thông tin bên dưới để tạo hồ sơ.</Alert>
-        <CreateProfileSection onCreated={onRetry} />
-        <Box><Button onClick={onRetry}>Kiểm tra lại hồ sơ</Button></Box>
-    </Stack>;
-    if (status === "error") return <Alert severity="error" action={<Button color="inherit" onClick={onRetry}>Thử lại</Button>}>{error}</Alert>;
-    return <PatientProfileForm key={`${JSON.stringify(profile)}-${saveRevision}`} profile={profile} saving={saving} error={error} onSave={save} saved={saved} onEdit={() => setSaved(false)} />;
+    if (status === "error" && errorStatus === 404 && errorCode === 4001)
+        return (
+            <Stack spacing={2}>
+                <Alert severity="info" sx={{ borderRadius: "12px", bgcolor: "#EAF2FA", border: "1px solid #90BCE6", color: "#0A2540" }}>
+                    Bạn chưa có hồ sơ khám bệnh tại phòng khám. Hãy điền thông tin định danh bên dưới để khởi tạo hồ sơ bệnh nhân.
+                </Alert>
+                <CreateProfileSection onCreated={onRetry} />
+                <Box>
+                    <Button onClick={onRetry} size="small">
+                        Kiểm tra lại hồ sơ
+                    </Button>
+                </Box>
+            </Stack>
+        );
+    if (status === "error")
+        return (
+            <Alert severity="error" action={<Button color="inherit" onClick={onRetry}>Thử lại</Button>}>
+                {error}
+            </Alert>
+        );
+    return (
+        <PatientProfileForm
+            key={`${JSON.stringify(profile)}-${saveRevision}`}
+            profile={profile}
+            saving={saving}
+            error={error}
+            onSave={save}
+            saved={saved}
+            onEdit={() => setSaved(false)}
+        />
+    );
 }
 
 export default function PatientProfilePage() {
     const [revision, setRevision] = useState(0);
 
     return (
-        <Box sx={{ bgcolor: "#f8fafc", minHeight: "85vh", py: { xs: 3.5, md: 5.5 } }}>
+        <Box sx={clinicPageCanvasSx}>
             <Container maxWidth="lg">
                 <Stack spacing={3}>
                     <ClinicPageHeader
+                        eyebrow="Quản lý thông tin y tế"
                         title="Hồ sơ cá nhân"
                         icon={PersonOutlineOutlined}
-                        description="Quản lý thông tin tài khoản đăng nhập và hồ sơ y tế bệnh nhân của bạn."
+                        description="Đồng bộ thông tin tài khoản đăng nhập và hồ sơ khám chữa bệnh để làm thủ tục nhanh chóng hơn."
                     />
                     <AccountProfile />
                     <PatientProfileSection key={revision} onRetry={() => setRevision(value => value + 1)} />

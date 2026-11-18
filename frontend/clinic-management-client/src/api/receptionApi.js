@@ -37,8 +37,8 @@ export async function getPatientBookRequests(patientId) {
     return result(await axiosClient.get(`/patients/${patientId}/book-requests`));
 }
 
-export async function createBookInvoice(patientId, amount) {
-    return result(await axiosClient.post(`/patients/${patientId}/book-invoices`, { amount }));
+export async function createBookInvoice(patientId, amount = null) {
+    return result(await axiosClient.post(`/patients/${patientId}/book-invoices`, amount != null ? { amount } : {}));
 }
 
 export async function markBookInvoicePaid(invoiceId) {

@@ -1,10 +1,10 @@
 # Báo cáo đối chiếu chức năng theo danh sách đăng ký
 
-Ngày cập nhật: **16/11/2026**. Mã nguồn nền: nhánh main, HEAD **a9d740a**, kèm các bản sửa sau merge trong lần rà soát này. Giữ tên file có ngày 04/11 để các liên kết hiện có không bị hỏng; nội dung bên dưới phản ánh trạng thái ngày 16/11.
+Ngày cập nhật: **18/11/2026**. Mã nguồn nền: nhánh main, HEAD **fb7913f**, kèm bổ sung hoàn thiện danh mục công khai (I.1) và cấu hình phòng khám (III.9). Giữ tên file có ngày 04/11 để các liên kết hiện có không bị hỏng; nội dung bên dưới phản ánh trạng thái ngày 18/11.
 
 Nguồn yêu cầu: [BB_DoAn_ChucNangtheoDSDK (2).docx](<BB_DoAn_ChucNangtheoDSDK (2).docx>). Đã đọc trực tiếp nội dung DOCX và đối chiếu đủ **71 mục**, giữ nguyên nhóm và thứ tự I.1–IX.5.
 
-**Kết quả hiện tại: 53/71 mục đã có triển khai chính, 16/71 mục một phần, 2/71 mục chưa có luồng đáp ứng.** Lần 04/11 ghi nhận 42/26/3; lần này có thêm 11 mục đạt triển khai chính. Hai chức năng chưa có là **III.9 Cấu hình phòng khám** và **VII.4 Lập hóa đơn thuốc hoặc cuối lượt**. Các khoảng trống lớn còn nằm ở hóa đơn/thanh toán theo lượt, liên kết xét nghiệm, nhân sự và báo cáo theo kỳ.
+**Kết quả hiện tại: 55/71 mục đã có triển khai chính, 15/71 mục một phần, 1/71 mục chưa có luồng đáp ứng.** Lần 16/11 ghi nhận 53/16/2; lần này hoàn thành thêm 2 mục của Nhuận (**I.1 Xem thông tin công khai** và **III.9 Cấu hình phòng khám**). Chức năng chưa có còn lại là **VII.4 Lập hóa đơn thuốc hoặc cuối lượt**. Các khoảng trống lớn còn nằm ở hóa đơn/thanh toán theo lượt, liên kết xét nghiệm, nhân sự và báo cáo theo kỳ.
 
 Đây là đối chiếu triển khai frontend/API/service/entity/migration, có bổ sung kiểm thử trên database SQL Server LocalDB tạm và trình duyệt. “Đã có” không có nghĩa đã nghiệm thu đầy đủ trên database đang vận hành. Không thay đổi database ứng dụng trong lần rà soát này.
 
@@ -20,16 +20,16 @@ Mỗi mục tài liệu được tính một lần; số lượng kiểm thử k
 
 | Nhóm | Tổng mục | Đã có | Một phần | Chưa có |
 |---|---:|---:|---:|---:|
-| I. Khách chưa đăng nhập | 4 | 3 | 1 | 0 |
+| I. Khách chưa đăng nhập | 4 | 4 | 0 | 0 |
 | II. Bệnh nhân | 10 | 9 | 1 | 0 |
-| III. Quản trị viên | 12 | 9 | 2 | 1 |
+| III. Quản trị viên | 12 | 10 | 2 | 0 |
 | IV. Trưởng khoa | 7 | 6 | 1 | 0 |
 | V. Bác sĩ | 9 | 8 | 1 | 0 |
 | VI. Nhân viên lễ tân | 10 | 9 | 1 | 0 |
 | VII. Thu ngân | 8 | 1 | 6 | 1 |
 | VIII. Dược sĩ | 6 | 5 | 1 | 0 |
 | IX. Kỹ thuật viên xét nghiệm | 5 | 3 | 2 | 0 |
-| **Tổng** | **71** | **53** | **16** | **2** |
+| **Tổng** | **71** | **55** | **15** | **1** |
 
 ## Nguồn phân công
 
@@ -43,7 +43,7 @@ Bản cũ dùng [bảng tiến độ][progress-source] để suy ra người ph�
 
 | Mã | Chức năng theo tài liệu | Phụ trách trong tài liệu | Trạng thái | Đã có và phần còn thiếu |
 |---|---|---|---|---|
-| I.1 | Xem thông tin công khai | Nhuận | **Một phần** | Đã có trang chủ, giới thiệu, dịch vụ, hướng dẫn, liên hệ và route /specialties. Tuy nhiên danh sách/chi tiết “Chuyên khoa” chỉ đọc Departments; chưa công bố danh mục Specializations và quan hệ khoa–chuyên khoa riêng như mô hình hiện tại. API /api/specializations vẫn yêu cầu catalog.manage. [Trang công khai][public-pages], [Routes][routes], [API danh mục][catalog-api]. |
+| I.1 | Xem thông tin công khai | Nhuận | **Đã có** | Có trang chủ, giới thiệu, dịch vụ, bảng giá, hướng dẫn, liên hệ và thông tin phòng khám đọc trực tiếp từ cấu hình quản trị. Đã mở công khai GET /api/specializations/public, GET /api/departments/public, bổ sung danh sách Specializations trực thuộc trong GET /api/appointments/departments và hiển thị đầy đủ cả Khoa lẫn Chuyên khoa theo quan hệ khoa–chuyên khoa tại trang chủ, /specialties và /specialties/{departmentId}. [Trang công khai][public-pages], [API danh mục][catalog-api], [API công khai][public-api]. |
 | I.2 | Tra cứu bác sĩ | Phú | **Đã có** | Có tìm theo tên, lọc khoa/phòng, xem hồ sơ chuyên môn, học vị, kinh nghiệm và các phòng khám sắp tới. Bộ lọc khoa dùng DepartmentId; không coi đây là bộ lọc SpecializationId độc lập. [Tra cứu bác sĩ][doctor-search], [DoctorService][doctor]. |
 | I.3 | Xem khung giờ khám trước đăng nhập | Phú | **Đã có** | Khách xem hồ sơ bác sĩ, chọn ngày và xem khung giờ trống trước đăng nhập; chỉ công bố ca Approved. API lịch đã được sửa để không báo trống giờ đã có lịch hẹn khi bộ đếm CurrentBooked chưa cập nhật. [Hồ sơ công khai][public-doctor], [BookingService][booking], [DoctorScheduleService][schedule]. |
 | I.4 | Truy cập đăng ký và đăng nhập | Nhuận | **Đã có** | Có /register, /login và đường dẫn từ cổng bệnh nhân. [Routes][routes]. |
@@ -75,7 +75,7 @@ Bản cũ dùng [bảng tiến độ][progress-source] để suy ra người ph�
 | III.6 | Quản lý loại xét nghiệm | Thoại | **Đã có** | Có thêm, sửa, tra cứu loại xét nghiệm, mô tả, giá và trạng thái. [LabTestTypeService][lab-types], [Trang loại xét nghiệm][lab-types-page]. |
 | III.7 | Quản lý nhập kho thuốc | Nguyên | **Đã có** | Phiếu nhập nhiều dòng thuốc/lô; số lượng, giá nhập, số lô, hạn dùng; nhận hàng cập nhật tồn trong giao dịch, kiểm tra phiếu đã nhận và lô hết hạn. [PurchaseOrderService][purchase], [Trang phiếu nhập][purchase-page]. |
 | III.8 | Theo dõi tồn kho | Nguyên | **Đã có** | Có tra cứu theo thuốc/lô và phân loại còn hàng, ít hàng, hết hàng, gần hết hạn, hết hạn. [InventoryService][inventory], [Trang tồn kho][inventory-page]. |
-| III.9 | Cấu hình phòng khám | Nhuận | **Chưa có** | Chưa có trang/API/mô hình quản trị thông tin phòng khám, giá khám, giá sổ và tham số vận hành. Nội dung công khai hiện nằm trong file; InvoiceService vẫn cố định phí khám 150.000 đồng. [Hàng chờ hóa đơn][invoice-queue], [Nội dung công khai][public-content], [Routes][routes]. |
+| III.9 | Cấu hình phòng khám | Nhuận | **Đã có** | Đã bổ sung bảng/migration ClinicSettings, API GET/PUT /api/clinic-settings (chỉ Admin, lưu vết RbacAudits), GET /api/public/clinic-settings và trang /internal/settings quản trị thông tin phòng khám, cơ sở, giờ làm việc, giá khám mặc định, giá sổ khám và tham số vận hành (thời lượng khung giờ, số bệnh nhân tối đa/khung giờ, ngưỡng tồn thấp và ngày cận hạn). Phí khám tại InvoiceService, phí sổ mặc định tại ReceptionService, duyệt ca khám và cảnh báo kho đọc trực tiếp từ cấu hình. [ClinicSettingsService][clinic-settings-service], [ClinicSettingsController][clinic-settings-api], [Trang cấu hình][clinic-settings-page]. |
 | III.10 | Duyệt lịch của Trưởng khoa | Nhuận | **Đã có** | Có Admin duyệt/từ chối yêu cầu lịch của Trưởng khoa, kiểm tra trùng bác sĩ/phòng/thời gian, bắt buộc lý do từ chối và chặn tự duyệt. [ScheduleReviewService][schedule-review], [Trang duyệt lịch][schedule-review-page]. |
 | III.11 | Quản lý đánh giá | Nhuận | **Đã có** | Có quản lý ẩn/hiện và API /api/reviews/admin/statistics: số lượng, điểm trung bình tất cả/công khai theo bác sĩ; lọc và phân trang độc lập. Không có đánh giá trả null. [ReviewService][review], [Trang đánh giá][review-admin], [Bảng điểm][doctor-ratings]. |
 | III.12 | Xem báo cáo toàn phòng khám | Thoại | **Một phần** | Có Dashboard doanh thu, lượt khám, tồn kho. API revenue có from/to; giao diện hiện chỉ gọi summary và chưa có chọn kỳ. Chưa có báo cáo lượt khám theo kỳ tùy chọn đầy đủ. [AdminDashboardController][dashboard-api], [Dashboard][dashboard-page]. |
@@ -179,12 +179,11 @@ Các thay đổi migration sửa đường khởi tạo/nâng cấp bị lỗi, 
 2. **Xét nghiệm theo lượt và điều kiện Paid (V.6, IV.7, IX.2–IX.3):** LabTest.PatientId/DoctorId hiện là ID tài khoản; thiếu AppointmentId/MedicalRecordId và chỉ định cho khách trực tiếp không có User. Hàng chờ mới kiểm tra có InvoiceDetail; API nộp kết quả vẫn chấp nhận chỉ định chưa thu tiền. Còn thiếu bước nhận/bắt đầu và trạng thái đang thực hiện. Thông báo kết quả đã có, nhưng không khắc phục được các thiếu sót này. [LabTestService][lab], [LabTest][lab-entity].
 3. **Đối soát thiếu thuốc (VIII.6/VII.8):** đã có dừng toàn đơn và phương án bác sĩ; sau AwaitingBilling chưa có bước Thu ngân đối soát/hoàn tiền, áp dụng phương án rồi mở lại cấp thuốc. Adjustment Invoice chung chưa thay thế được bước này. [Rà soát đơn][stock-review], [Cấp thuốc][dispensing-review].
 4. **Nhân sự và hồ sơ bệnh nhân (III.4/VI.2):** API hồ sơ Doctor và API sửa Patient đã có, nhưng cần màn hình sử dụng tương ứng; bổ sung mô hình/quản lý Staff và vị trí công việc. Không còn lỗi form sửa tài khoản chỉ báo thành công. [DoctorService][doctor], [ReceptionPatientsController][reception-api], [Trang tài khoản][users-page].
-5. **Cấu hình và báo cáo (III.9/III.12):** cần nguồn cấu hình quản trị cho thông tin phòng khám, phí khám, phí sổ và tham số; Dashboard cần chọn kỳ và dữ liệu lượt khám theo kỳ. Hiện API doanh thu có from/to nhưng giao diện mới dùng summary. [Dashboard][dashboard-page], [API Dashboard][dashboard-api], [Nội dung công khai][public-content].
-6. **Danh mục công khai (I.1):** trang /specialties đã hoạt động nhưng hiện dùng Departments để hiển thị chuyên khoa; cần công bố cả Specializations theo khoa hoặc làm rõ lại mô hình nghiệp vụ. Không tính chỉ có route công khai là hoàn thành cả hai danh mục.
+5. **Báo cáo theo kỳ (III.12):** Dashboard cần chọn kỳ và dữ liệu lượt khám theo kỳ tùy chọn đầy đủ. Hiện API doanh thu có from/to nhưng giao diện mới dùng summary. [Dashboard][dashboard-page], [API Dashboard][dashboard-api].
 
 Kiểm thử hành trình D9 xác nhận 4 khoảng trống tích hợp: **LAB_VISIT_BINDING, MEDICINE_FINAL_QUEUE, WALKIN_LAB_IDENTITY, LAB_RESULT_PAYMENT_GUARD**. Kết quả 131 kiểm tra đường hiện có đạt không đồng nghĩa luồng đầy đủ đã nghiệm thu; các trạng thái một phần/chưa có phía trên vẫn giữ nguyên.
 
-## Kiểm tra đã chạy ngày 16/11/2026
+## Kiểm tra đã chạy ngày 18/11/2026
 
 Các runner tích hợp chỉ tạo database tên ngẫu nhiên và xóa database do chính chúng tạo; không dùng database ứng dụng.
 
@@ -192,12 +191,12 @@ Các runner tích hợp chỉ tạo database tên ngẫu nhiên và xóa databas
 |---|---|---|
 | Build backend và hai fixture Release với --no-restore | Đạt, không có lỗi biên dịch | Backend chính và chương trình kiểm thử biên dịch được. Fixture UI có cảnh báo NU1900 như ghi bên dưới. |
 | npm run build / npm run lint | Đạt | Frontend đóng gói production và lint thành công. |
-| npm test trong frontend | **98/98 đạt**, không bỏ qua | Unit test hiện có, gồm phân quyền hồ sơ Trưởng khoa, chỉ số sinh tồn và điều hướng thông báo. |
+| npm test trong frontend | **100/100 đạt**, không bỏ qua | Unit test hiện có cùng phân quyền trang cấu hình Admin, chuẩn hóa/kiểm tra dữ liệu cấu hình phòng khám. |
 | Week2Verification --core-workflow | **100 kiểm tra đạt** | Hồ sơ Doctor/Admin/Patient, Trưởng khoa sửa đúng hồ sơ của mình, lịch/giờ trống, sổ và kiểm tra Paid ở API đổi trạng thái. |
-| Week2Verification --migrations-only | **27 kiểm tra đạt** | Database mới, dữ liệu cũ, nâng/hạ cấp migration, Voided/Replaced, người cấp sổ, cấu trúc đã có từ nhánh khác và vai trò có ID tùy chỉnh. |
-| Week2Verification --medical-record-vitals | **118 kiểm tra đạt** | Lưu/đọc/xóa chỉ số, kiểm tra dữ liệu, quyền, xung đột và xác nhận sổ cho cả bệnh nhân web lẫn trực tiếp. |
-| Week2Verification --hoang | **74 kiểm tra đạt** | Hủy lịch của mình, quyền/phạm vi người dùng, tiếp nhận, yêu cầu/cấp lại sổ và lịch sử. |
-| UiRefreshVerification/smoke.mjs --admin-completion --remaining-roles | **47 kiểm tra đạt**, đủ **45 migration** | API Admin/tài khoản/đánh giá, vai trò Cashier, kết quả xét nghiệm, thông báo/SignalR, đồng thời và rollback. Database tạm đã được xóa. |
+| Week2Verification --migrations-only | **27 kiểm tra đạt** | Database mới, dữ liệu cũ, nâng/hạ cấp toàn chuỗi 46 migration (gồm ClinicSettings), Voided/Replaced, người cấp sổ và vai trò có ID tùy chỉnh. |
+| Week2Verification --medical-record-vitals | **118 kiểm tra đạt** (16/11) | Lưu/đọc/xóa chỉ số, kiểm tra dữ liệu, quyền, xung đột và xác nhận sổ cho cả bệnh nhân web lẫn trực tiếp. |
+| Week2Verification --hoang | **74 kiểm tra đạt** (16/11) | Hủy lịch của mình, quyền/phạm vi người dùng, tiếp nhận, yêu cầu/cấp lại sổ và lịch sử. |
+| UiRefreshVerification/smoke.mjs --admin-completion --remaining-roles | **56 kiểm tra đạt**, đủ **46 migration** | API Admin/tài khoản/đánh giá, cấu hình phòng khám (401/403/validation/audit/áp dụng phí khám & phí sổ), danh mục công khai Khoa–Chuyên khoa, vai trò Cashier, kết quả xét nghiệm và SignalR. Database tạm đã được xóa. |
 | tests/ui-regressions.mjs trên bản production | Đạt, UI_REGRESSIONS_SUCCESS | Route công khai, tìm bác sĩ, tạo hồ sơ, chi tiết xét nghiệm, đặt lịch, lịch sử trình duyệt và bố cục 320–1440 px; API được giả lập. |
 | Week2Verification --d9 | **131 kiểm tra đường hiện có đạt, còn 4 khoảng trống tích hợp** | Hành trình web/trực tiếp, sổ, khám/kê đơn/cấp thuốc theo FEFO và bảo vệ lịch sử; chưa đạt nghiệm thu D9 đầy đủ. |
 | tests/c8c9-ui.mjs | **266 kiểm tra API và 9 kịch bản trình duyệt đạt** | Tranh chấp đặt/đổi lịch, thu tiền sổ đồng thời, tiếp nhận, yêu cầu sổ, Paid, phát sổ, check-in, cho tạo yêu cầu cấp lại sau yêu cầu Issued, tải lại giờ trống và khôi phục kết nối SignalR. |
@@ -211,7 +210,7 @@ Build ban đầu trong sandbox gặp spawn EPERM của Node/Vite; đã chạy l�
 1. Nối hóa đơn theo lượt và hàng chờ Book/Medicine/Final; ghi nhận từng lần thanh toán và số dư.
 2. Gắn xét nghiệm với hồ sơ/lượt khám, hỗ trợ bệnh nhân trực tiếp và bảo vệ điều kiện Paid ở mọi API thực hiện xét nghiệm.
 3. Hoàn tất đối soát/hoàn tiền của đơn thiếu thuốc; bổ sung toàn bộ hóa đơn/lịch sử thu cho bệnh nhân.
-4. Hoàn thiện màn hình nhân sự, sửa hồ sơ bệnh nhân tại tiếp nhận, danh mục chuyên khoa công khai, cấu hình phòng khám và báo cáo theo kỳ.
+4. Hoàn thiện màn hình nhân sự, sửa hồ sơ bệnh nhân tại tiếp nhận và báo cáo theo kỳ.
 
 [home]: ../frontend/clinic-management-client/src/pages/patient/HomePage.jsx
 [navbar]: ../frontend/clinic-management-client/src/layouts/patient/Navbar.jsx
@@ -327,3 +326,6 @@ Build ban đầu trong sandbox gặp spawn EPERM của Node/Vite; đã chạy l�
 [cashier-migration]: ../backend/ClinicManagement/Migrations/20261109100000_CompleteCashierRole.cs
 [notification-navigation]: ../frontend/clinic-management-client/src/utils/notificationNavigation.js
 [catalog-api]: ../backend/ClinicManagement/Controllers/CatalogControllers.cs
+[clinic-settings-service]: ../backend/ClinicManagement/Services/Implementations/ClinicSettingsService.cs
+[clinic-settings-api]: ../backend/ClinicManagement/Controllers/ClinicSettingsController.cs
+[clinic-settings-page]: ../frontend/clinic-management-client/src/pages/internal/admin/ClinicSettingsPage.jsx

@@ -21,10 +21,12 @@ public partial class ReceptionService : IReceptionService
     private readonly INotificationService _notifications;
     private readonly IPatientRepository _patientRepository;
     private readonly ICurrentUserService _currentUser;
+    private readonly ClinicSettingsService? _clinicSettings;
 
     public ReceptionService(IReceptionRepository receptionRepository,
         IAppointmentRepository appointmentRepository, ILogger<ReceptionService> logger,
-        INotificationService notifications, IPatientRepository patientRepository, ICurrentUserService currentUser)
+        INotificationService notifications, IPatientRepository patientRepository, ICurrentUserService currentUser,
+        ClinicSettingsService? clinicSettings = null)
     {
         _receptionRepository = receptionRepository;
         _appointmentRepository = appointmentRepository;
@@ -32,6 +34,7 @@ public partial class ReceptionService : IReceptionService
         _notifications = notifications;
         _patientRepository = patientRepository;
         _currentUser = currentUser;
+        _clinicSettings = clinicSettings;
     }
 
     public async Task<List<PatientMatchResponse>> FindPatientsAsync(string search)
@@ -126,12 +129,13 @@ public partial class ReceptionService : IReceptionService
     public async Task<BookInvoiceResponse> CreateBookInvoiceAsync(int patientId,
         CreateBookInvoiceRequest request)
     {
-        if (request.Amount <= 0) throw new AppException(ErrorCode.INVALID_REQUEST);
+        var amount = request.Amount ?? (await (_clinicSettings?.GetSnapshotAsync() ?? Task.FromResult(ClinicSetting.CreateSeed()))).PatientBookFee;
+        if (amount <= 0) throw new AppException(ErrorCode.INVALID_REQUEST);
         await RequirePatientAsync(patientId);
         var invoice = new BookInvoice
         {
             PatientId = patientId,
-            Amount = request.Amount,
+            Amount = amount,
             Status = "Unpaid",
             CreatedAt = DateTime.UtcNow
         };

@@ -18,6 +18,8 @@ public interface IMedicineRepository
         int? excludedMedicineId = null
     );
 
+    Task<bool> IsReferencedAsync(int medicineId);
+
     Task AddAsync(Medicine medicine);
 
     void Remove(Medicine medicine);

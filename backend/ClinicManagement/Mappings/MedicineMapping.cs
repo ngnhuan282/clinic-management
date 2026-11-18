@@ -11,7 +11,9 @@ public static class MedicineMapping
 
     public static MedicineResponse ToResponse(
         this Medicine medicine,
-        DateOnly today)
+        DateOnly today,
+        int lowStockThreshold = LowStockThreshold,
+        int expiringSoonDays = ExpiringSoonDays)
     {
         var activeInventories = medicine.Inventories
             .Where(x => x.QuantityInStock > 0)
@@ -42,7 +44,9 @@ public static class MedicineMapping
             StockStatus = GetStockStatus(
                 totalQuantity,
                 nearestExpiryDate,
-                today
+                today,
+                lowStockThreshold,
+                expiringSoonDays
             )
         };
     }
@@ -66,7 +70,9 @@ public static class MedicineMapping
     public static string GetStockStatus(
         int totalQuantity,
         DateOnly? nearestExpiryDate,
-        DateOnly today)
+        DateOnly today,
+        int lowStockThreshold = LowStockThreshold,
+        int expiringSoonDays = ExpiringSoonDays)
     {
         if (totalQuantity <= 0)
         {
@@ -79,13 +85,13 @@ public static class MedicineMapping
             return "Expired";
         }
 
-        if (totalQuantity <= LowStockThreshold)
+        if (totalQuantity <= lowStockThreshold)
         {
             return "LowStock";
         }
 
         if (nearestExpiryDate.HasValue &&
-            nearestExpiryDate.Value <= today.AddDays(ExpiringSoonDays))
+            nearestExpiryDate.Value <= today.AddDays(expiringSoonDays))
         {
             return "ExpiringSoon";
         }

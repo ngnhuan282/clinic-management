@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { canAccessPath, canSeePage, homeForRole, INTERNAL_PAGES, redirectForProtectedRoute } from "../src/routes/roleAccess.js";
+import { CLINIC, normalizeClinicInfo, validateClinicSettings } from "../src/data/publicContent.js";
 
 test("doctor profile navigation and access include DepartmentHead and exclude other staff", () => {
     const path = "/internal/doctor/profile";
@@ -220,4 +221,89 @@ test("an authenticated account with an empty custom role still has access to its
     assert.equal(redirectForProtectedRoute(user, "/profile"), null);
     assert.equal(redirectForProtectedRoute({ isAuthenticated: false }, "/profile"), "/login");
     assert.equal(canAccessPath(user, "/internal/users"), false);
+});
+
+test("clinic settings page is strictly restricted to Admin in navigation and route guards", () => {
+    const path = "/internal/settings";
+    const page = INTERNAL_PAGES.find(item => item.path === path);
+    assert.ok(page, "Clinic settings page is registered in INTERNAL_PAGES");
+    assert.equal(canSeePage({ role: "Admin", permissions: [] }, page), true);
+    assert.equal(canAccessPath({ role: "Admin", permissions: [] }, path), true);
+    assert.equal(redirectForProtectedRoute({ isAuthenticated: true, role: "Admin", permissions: [] }, path, { allowedRoles: ["Admin"] }), null);
+    assert.equal(redirectForProtectedRoute({ isAuthenticated: false }, path, { allowedRoles: ["Admin"] }), "/internal/login");
+    for (const role of ["DepartmentHead", "Doctor", "Receptionist", "Cashier", "Pharmacist", "LabTechnician", "Patient", "CustomAdmin"]) {
+        assert.equal(canSeePage({ role, permissions: ["catalog.manage"] }, page), false);
+        assert.equal(canAccessPath({ role, permissions: ["catalog.manage"] }, path), false);
+        assert.equal(redirectForProtectedRoute({ isAuthenticated: true, role, permissions: ["catalog.manage"] }, path, { allowedRoles: ["Admin"] }), "/403");
+    }
+});
+
+test("clinic settings normalization and validation enforce valid fees, slot durations and locations", () => {
+    assert.equal(normalizeClinicInfo(null).defaultExaminationFee, CLINIC.defaultExaminationFee);
+    const normalized = normalizeClinicInfo({
+        clinicName: "Phòng khám Đa khoa MediFlow",
+        tagline: "Chăm sóc tận tâm",
+        description: "Mô tả phòng khám",
+        phone: "1900 8899",
+        email: "support@mediflow.vn",
+        workingHours: "07:00 - 19:30",
+        primaryLocationName: "Cơ sở Quận 3",
+        primaryLocationAddress: "45 Võ Văn Tần, Quận 3",
+        defaultExaminationFee: 180000,
+        patientBookFee: 15000,
+        defaultSlotDurationMinutes: 20,
+    });
+    assert.equal(normalized.name, "Phòng khám Đa khoa MediFlow");
+    assert.equal(normalized.phoneHref, "tel:19008899");
+    assert.equal(normalized.locations.length, 1);
+    assert.equal(normalized.defaultExaminationFee, 180000);
+    assert.equal(normalized.patientBookFee, 15000);
+
+    const validForm = {
+        clinicName: "Phòng khám Đa khoa MediFlow",
+        tagline: "Chăm sóc tận tâm",
+        description: "Mô tả phòng khám",
+        phone: "1900 8899",
+        email: "support@mediflow.vn",
+        workingHours: "07:00 - 19:30",
+        primaryLocationName: "Cơ sở Quận 3",
+        primaryLocationAddress: "45 Võ Văn Tần, Quận 3",
+        secondaryLocationName: "",
+        secondaryLocationAddress: "",
+        defaultExaminationFee: "180000",
+        patientBookFee: "15000",
+        defaultSlotDurationMinutes: "30",
+        defaultMaxPatientsPerSlot: "2",
+        lowStockThreshold: "15",
+        nearExpiryDays: "45",
+    };
+    assert.deepEqual(validateClinicSettings(validForm), {});
+
+    const invalid = validateClinicSettings({
+        ...validForm,
+        phone: "abc",
+        email: "bad-email",
+        secondaryLocationName: "Cơ sở 2",
+        secondaryLocationAddress: "",
+        defaultExaminationFee: "0",
+        patientBookFee: "-5000",
+        defaultSlotDurationMinutes: "25",
+        defaultMaxPatientsPerSlot: "0",
+        lowStockThreshold: "0",
+        nearExpiryDays: "400",
+    });
+    assert.deepEqual(
+        Object.keys(invalid).sort(),
+        [
+            "phone",
+            "email",
+            "secondaryLocationAddress",
+            "defaultExaminationFee",
+            "patientBookFee",
+            "defaultSlotDurationMinutes",
+            "defaultMaxPatientsPerSlot",
+            "lowStockThreshold",
+            "nearExpiryDays",
+        ].sort()
+    );
 });

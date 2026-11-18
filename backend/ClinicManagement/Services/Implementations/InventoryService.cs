@@ -13,25 +13,38 @@ public class InventoryService : IInventoryService
 {
     private readonly IInventoryRepository _inventoryRepository;
     private readonly IMedicineRepository _medicineRepository;
+    private readonly ClinicSettingsService? _clinicSettings;
 
     public InventoryService(
         IInventoryRepository inventoryRepository,
-        IMedicineRepository medicineRepository)
+        IMedicineRepository medicineRepository,
+        ClinicSettingsService? clinicSettings = null)
     {
         _inventoryRepository = inventoryRepository;
         _medicineRepository = medicineRepository;
+        _clinicSettings = clinicSettings;
+    }
+
+    private async Task<(int LowStock, int NearExpiry)> GetThresholdsAsync()
+    {
+        if (_clinicSettings is null)
+            return (MedicineMapping.LowStockThreshold, MedicineMapping.ExpiringSoonDays);
+        var s = await _clinicSettings.GetSnapshotAsync();
+        return (s.LowStockThreshold > 0 ? s.LowStockThreshold : MedicineMapping.LowStockThreshold,
+            s.NearExpiryDays > 0 ? s.NearExpiryDays : MedicineMapping.ExpiringSoonDays);
     }
 
     public async Task<PagedResponse<InventoryResponse>> GetPagedAsync(
         InventoryFilterRequest request)
     {
         var today = ClinicClock.Today;
+        var (lowStock, nearExpiry) = await GetThresholdsAsync();
 
         var (items, totalItems) =
             await _inventoryRepository.GetPagedAsync(request, today);
 
         var responses = items
-            .Select(x => x.ToResponse(today))
+            .Select(x => x.ToResponse(today, lowStock, nearExpiry))
             .ToList();
 
         return new PagedResponse<InventoryResponse>(
@@ -45,11 +58,12 @@ public class InventoryService : IInventoryService
     public async Task<InventorySummaryResponse> GetSummaryAsync()
     {
         var today = ClinicClock.Today;
+        var (lowStock, nearExpiry) = await GetThresholdsAsync();
         var inventoryItems =
             await _inventoryRepository.GetAllAsync();
 
         var responses = inventoryItems
-            .Select(x => x.ToResponse(today))
+            .Select(x => x.ToResponse(today, lowStock, nearExpiry))
             .ToList();
 
         return new InventorySummaryResponse
@@ -87,8 +101,9 @@ public class InventoryService : IInventoryService
         }
 
         var today = ClinicClock.Today;
+        var (lowStock, nearExpiry) = await GetThresholdsAsync();
 
-        return inventory.ToResponse(today);
+        return inventory.ToResponse(today, lowStock, nearExpiry);
     }
 
     public async Task<InventoryResponse> CreateAsync(

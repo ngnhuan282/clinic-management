@@ -1,7 +1,10 @@
 import { useEffect } from "react";
 import { Box, Breadcrumbs, Button, Container, GlobalStyles, Link as MuiLink, Stack, Typography } from "@mui/material";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import ClinicPageHeader from "../../components/common/ClinicPageHeader";
+import { clinicPageCanvasSx, clinicSecondaryButtonSx } from "../../components/common/clinicUi";
 import ErrorState from "../../components/common/ErrorState";
 import Loading from "../../components/common/Loading";
 import PatientMedicalHistoryDetail from "../../components/patient/medical-history/PatientMedicalHistoryDetail";
@@ -49,25 +52,56 @@ function PatientMedicalHistoryDetailPage() {
     };
 
     return (
-        <Box className="patient-medical-history-detail" sx={{ bgcolor: "#F5F9FD", py: { xs: 3, md: 4 }, minHeight: "65vh", "& *": { letterSpacing: 0 } }}>
+        <Box className="patient-medical-history-detail" sx={{ ...clinicPageCanvasSx, "& *": { letterSpacing: 0 } }}>
             <GlobalStyles styles={printStyles} />
             <Container maxWidth="lg">
                 <Stack spacing={3} sx={{ minWidth: 0 }}>
                     <Box className="medical-history-no-print">
-                        <Breadcrumbs sx={{ fontSize: 12, mb: 2 }}>
-                            <MuiLink component={Link} to="/" underline="hover" color="inherit">Trang chủ</MuiLink>
-                            <MuiLink component="button" onClick={returnToHistory} underline="hover" color="inherit" sx={{ fontSize: "inherit" }}>Lịch sử khám</MuiLink>
-                            <Typography variant="caption" sx={{ color: "#005DAC", fontWeight: 700 }}>Chi tiết lượt khám</Typography>
+                        <Breadcrumbs sx={{ fontSize: 13, mb: 2 }}>
+                            <MuiLink component={Link} to="/" underline="hover" color="inherit">
+                                Trang chủ
+                            </MuiLink>
+                            <MuiLink
+                                component="button"
+                                onClick={returnToHistory}
+                                underline="hover"
+                                color="inherit"
+                                sx={{ fontSize: "inherit" }}
+                            >
+                                Lịch sử khám
+                            </MuiLink>
+                            <Typography variant="caption" sx={{ color: "primary.main", fontWeight: 700, fontSize: 13 }}>
+                                Chi tiết lượt khám
+                            </Typography>
                         </Breadcrumbs>
-                        <Stack direction={{ xs: "column", sm: "row" }} sx={{ gap: 2, alignItems: { sm: "center" }, justifyContent: "space-between" }}>
-                            <Typography component="h1" variant="h4" sx={{ color: "#111827", fontWeight: 800, lineHeight: 1.3 }}>Chi tiết lượt khám</Typography>
-                            <Button variant="outlined" startIcon={<ArrowBackRoundedIcon />} onClick={returnToHistory}
-                                sx={{ flexShrink: 0, alignSelf: { xs: "flex-start", sm: "center" } }}>Quay lại lịch sử</Button>
-                        </Stack>
+
+                        <ClinicPageHeader
+                            eyebrow="Hồ sơ lâm sàng & đơn thuốc"
+                            title="Chi tiết lượt khám"
+                            icon={AssignmentOutlinedIcon}
+                            description="Thông tin chẩn đoán, chỉ số sinh tồn, đơn thuốc chỉ định và hóa đơn thuốc của buổi khám."
+                            actions={
+                                <Button
+                                    variant="outlined"
+                                    startIcon={<ArrowBackRoundedIcon />}
+                                    onClick={returnToHistory}
+                                    sx={clinicSecondaryButtonSx}
+                                >
+                                    Quay lại lịch sử
+                                </Button>
+                            }
+                        />
                     </Box>
-                    {!recordId ? <ErrorState message="Mã hồ sơ không hợp lệ." /> : loading ? <Loading /> : error ?
-                        <ErrorState message={error} onRetry={reload} /> : detail &&
-                        <PatientMedicalHistoryDetail detail={detail} />}
+
+                    {!recordId ? (
+                        <ErrorState message="Mã hồ sơ không hợp lệ." />
+                    ) : loading ? (
+                        <Loading />
+                    ) : error ? (
+                        <ErrorState message={error} onRetry={reload} />
+                    ) : (
+                        detail && <PatientMedicalHistoryDetail detail={detail} />
+                    )}
                 </Stack>
             </Container>
         </Box>

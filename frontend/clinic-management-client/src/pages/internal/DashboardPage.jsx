@@ -1,29 +1,56 @@
-
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
     Alert,
     Box,
     Button,
-    Card,
-    CardContent,
-    CircularProgress,
+    Chip,
+    LinearProgress,
+    Paper,
     Stack,
     Typography,
 } from "@mui/material";
 import {
-    ArrowForwardOutlined,
+    AccountCircleRounded,
+    AdminPanelSettingsRounded,
+    ArrowForwardRounded,
+    AssignmentIndRounded,
+    BarChartRounded,
+    BiotechRounded,
+    CalendarMonthRounded,
+    DashboardRounded,
+    DomainRounded,
+    EditCalendarRounded,
+    EventAvailableRounded,
+    EventNoteRounded,
+    FactCheckRounded,
+    Inventory2Rounded,
+    LocalPharmacyRounded,
+    ManageAccountsRounded,
+    MedicalInformationRounded,
+    MedicalServicesRounded,
+    MeetingRoomRounded,
+    MenuBookRounded,
+    MedicationRounded,
+    PaymentsRounded,
+    ScienceRounded,
+    SettingsRounded,
     ShieldOutlined,
-    AttachMoneyOutlined,
-    EventAvailableOutlined,
-    MedicalServicesOutlined,
-    Inventory2Outlined,
-    WarningAmberOutlined,
-    RefreshOutlined,
+    StarOutlineRounded,
+    WarningAmberRounded,
 } from "@mui/icons-material";
 import { Link } from "react-router-dom";
+import axiosClient from "../../api/axiosClient";
+import ClinicPageHeader, { AdminStatCard } from "../../components/common/ClinicPageHeader";
+import {
+    AdminRefreshIcon,
+    adminAccents,
+    clinicColors,
+    clinicSecondaryButtonSx,
+    clinicSurfaceSx,
+} from "../../components/common/clinicUi";
 import useAuth from "../../hooks/useAuth";
 import { INTERNAL_PAGES, ROLE_LABELS, canSeePage } from "../../routes/roleAccess";
-import axiosClient from "../../api/axiosClient";
+import getApiErrorMessage from "../../utils/errorHandler";
 
 const formatCurrency = (value) =>
     new Intl.NumberFormat("vi-VN", {
@@ -35,71 +62,61 @@ const formatCurrency = (value) =>
 const formatNumber = (value) =>
     new Intl.NumberFormat("vi-VN").format(value ?? 0);
 
-function StatCard({ title, value, description, icon, loading }) {
-    return (
-        <Card variant="outlined" sx={{ height: "100%", borderRadius: 3 }}>
-            <CardContent sx={{ p: 2.5 }}>
-                <Stack
-                    direction="row"
-                    sx={{ justifyContent: "space-between", alignItems: "flex-start" }}
-                    spacing={2}
-                >
-                    <Box sx={{ minWidth: 0 }}>
-                        <Typography color="text.secondary" variant="body2">
-                            {title}
-                        </Typography>
-
-                        {loading ? (
-                            <CircularProgress size={25} sx={{ mt: 2 }} />
-                        ) : (
-                            <Typography
-                                variant="h5"
-                                component="p"
-                                fontWeight={700}
-                                sx={{ mt: 1, overflowWrap: "anywhere" }}
-                            >
-                                {value}
-                            </Typography>
-                        )}
-
-                        <Typography
-                            color="text.secondary"
-                            variant="caption"
-                            sx={{ display: "block", mt: 1 }}
-                        >
-                            {description}
-                        </Typography>
-                    </Box>
-
-                    <Box
-                        sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            flexShrink: 0,
-                            width: 44,
-                            height: 44,
-                            borderRadius: 2,
-                            bgcolor: "action.hover",
-                            color: "primary.main",
-                        }}
-                    >
-                        {icon}
-                    </Box>
-                </Stack>
-            </CardContent>
-        </Card>
-    );
-}
+const PAGE_CARD_META = {
+    "/internal/appointments": { icon: EventAvailableRounded, tone: "blue", desc: "Tiếp nhận, xác nhận lịch khám trực tuyến và check-in tại quầy." },
+    "/internal/patient-books": { icon: MenuBookRounded, tone: "teal", desc: "Quản lý cấp mới, đối chiếu và cấp lại sổ khám bệnh giấy." },
+    "/internal/cashier/billing": { icon: PaymentsRounded, tone: "emerald", desc: "Thu phí khám, xét nghiệm, tính BHYT và lập chứng từ điều chỉnh." },
+    "/internal/examinations": { icon: MedicalServicesRounded, tone: "blue", desc: "Theo dõi hàng chờ khám, ghi nhận sinh hiệu, chẩn đoán và kê đơn." },
+    "/internal/doctor/lab-orders": { icon: BiotechRounded, tone: "sky", desc: "Chỉ định xét nghiệm cận lâm sàng và xem kết quả trả về theo thời gian thực." },
+    "/internal/technician/lab-queue": { icon: ScienceRounded, tone: "purple", desc: "Tiếp nhận mẫu xét nghiệm đã thanh toán và cập nhật kết quả." },
+    "/internal/doctor/stock-reviews": { icon: FactCheckRounded, tone: "amber", desc: "Phản hồi và điều chỉnh đơn thuốc khi kho dược báo thiếu tồn." },
+    "/internal/doctor/schedule-requests": { icon: EditCalendarRounded, tone: "teal", desc: "Đăng ký ca trực và theo dõi trạng thái phê duyệt." },
+    "/internal/department-schedules": { icon: EventNoteRounded, tone: "sky", desc: "Xem lịch trực đã phê duyệt của các bác sĩ và buồng khám trong khoa." },
+    "/internal/department-statistics": { icon: BarChartRounded, tone: "purple", desc: "Thống kê lượt khám và tiến độ duyệt ca trực của khoa phụ trách." },
+    "/internal/doctor-schedules": { icon: CalendarMonthRounded, tone: "blue", desc: "Sắp xếp ca trực bác sĩ theo tuần, phòng khám và khung giờ nhận bệnh." },
+    "/internal/schedule-requests": { icon: FactCheckRounded, tone: "amber", desc: "Xem xét, phê duyệt hoặc từ chối yêu cầu đăng ký lịch trực." },
+    "/internal/departments": { icon: DomainRounded, tone: "blue", desc: "Quản lý danh mục khoa chuyên môn và trạng thái hoạt động." },
+    "/internal/specializations": { icon: MedicalInformationRounded, tone: "sky", desc: "Cấu hình chuyên khoa trực thuộc từng khoa lâm sàng." },
+    "/internal/rooms": { icon: MeetingRoomRounded, tone: "teal", desc: "Quản lý buồng khám, vị trí tầng và phân bổ khoa phụ trách." },
+    "/internal/diseases": { icon: MedicalInformationRounded, tone: "purple", desc: "Danh mục mã bệnh ICD và tên bệnh chuẩn hóa cho hồ sơ bệnh án." },
+    "/internal/lab-test-types": { icon: ScienceRounded, tone: "sky", desc: "Danh mục dịch vụ xét nghiệm, đơn giá và trạng thái triển khai." },
+    "/internal/pharmacy/dispensing": { icon: LocalPharmacyRounded, tone: "emerald", desc: "Đối chiếu hóa đơn, xuất thuốc theo FEFO và gửi yêu cầu rà soát." },
+    "/internal/medicines": { icon: MedicationRounded, tone: "emerald", desc: "Quản lý thuốc, danh mục, nhà cung cấp, tồn kho và phiếu nhập lô." },
+    "/internal/pharmacy/inventory": { icon: Inventory2Rounded, tone: "teal", desc: "Tra cứu số lượng tồn khả dụng, hạn dùng và cảnh báo lô thuốc." },
+    "/internal/users": { icon: ManageAccountsRounded, tone: "blue", desc: "Quản lý tài khoản nhân sự, gán vai trò, liên kết bác sĩ và xuất CSV." },
+    "/internal/roles-permissions": { icon: AdminPanelSettingsRounded, tone: "purple", desc: "Thiết lập ma trận phân quyền chi tiết và nhật ký kiểm toán RBAC." },
+    "/internal/reviews": { icon: StarOutlineRounded, tone: "amber", desc: "Tổng hợp điểm hài lòng theo bác sĩ và kiểm duyệt nhận xét công khai." },
+    "/internal/settings": { icon: SettingsRounded, tone: "blue", desc: "Cấu hình thông tin phòng khám, giá khám mặc định, giá sổ và ngưỡng kho." },
+    "/internal/doctor/profile": { icon: AssignmentIndRounded, tone: "sky", desc: "Cập nhật học hàm, học vị, kinh nghiệm và tiểu sử hiển thị công khai." },
+    "/internal/profile": { icon: AccountCircleRounded, tone: "teal", desc: "Cập nhật họ tên, email và số điện thoại liên hệ của tài khoản." },
+};
 
 export default function DashboardPage() {
     const { user, role, userId } = useAuth();
+    const isAdmin = role === "Admin";
 
-    const pages = INTERNAL_PAGES.filter(
-        (page) => canSeePage(user, page) && !page.path.endsWith("dashboard")
+    const pages = useMemo(
+        () =>
+            INTERNAL_PAGES.filter(
+                (page) => canSeePage(user, page) && !page.path.endsWith("dashboard")
+            ),
+        [user]
     );
 
-    const isAdmin = role === "Admin";
+    const groupedModules = useMemo(() => {
+        const groups = [];
+        const map = new Map();
+        pages.forEach((page) => {
+            const groupName = page.group || "Chức năng nghiệp vụ";
+            if (!map.has(groupName)) {
+                const section = { title: groupName, items: [] };
+                map.set(groupName, section);
+                groups.push(section);
+            }
+            map.get(groupName).items.push(page);
+        });
+        return groups;
+    }, [pages]);
 
     const [state, setState] = useState(null);
     const [revision, setRevision] = useState(0);
@@ -108,17 +125,29 @@ export default function DashboardPage() {
     const summary = visible?.summary;
     const loading = isAdmin && !visible;
     const error = visible?.error;
-    const loadDashboard = () => setRevision(value => value + 1);
+    const loadDashboard = () => setRevision((value) => value + 1);
 
     useEffect(() => {
-        if (!JSON.parse(requestKey).isAdmin) return;
+        if (!JSON.parse(requestKey).isAdmin) return undefined;
         const controller = new AbortController();
-        axiosClient.get("/admin-dashboard/summary", { signal: controller.signal })
-            .then(response => {
-                if (!controller.signal.aborted) setState({ requestKey, summary: response.data });
-            }).catch(error => {
-                if (!controller.signal.aborted) setState({ requestKey, error: error.response?.data?.message
-                    || "Không thể tải dữ liệu Dashboard. Hãy kiểm tra quyền Admin và trạng thái backend." });
+        axiosClient
+            .get("/admin-dashboard/summary", { signal: controller.signal })
+            .then((response) => {
+                if (!controller.signal.aborted) {
+                    const data = response.data?.result ?? response.data;
+                    setState({ requestKey, summary: data });
+                }
+            })
+            .catch((err) => {
+                if (!controller.signal.aborted && err.name !== "CanceledError") {
+                    setState({
+                        requestKey,
+                        error: getApiErrorMessage(
+                            err,
+                            "Không thể tải dữ liệu tổng quan phòng khám."
+                        ),
+                    });
+                }
             });
         return () => controller.abort();
     }, [requestKey]);
@@ -127,48 +156,36 @@ export default function DashboardPage() {
     const revenueStats = summary?.revenue;
     const inventoryStats = summary?.inventory;
 
+    const totalRevenue = Number(revenueStats?.totalThisMonth || 0);
+    const patientPaid = Number(revenueStats?.patientPaymentsThisMonth || 0);
+    const insurancePaid = Number(revenueStats?.insurancePaymentsThisMonth || 0);
+    const patientRatio = totalRevenue > 0 ? Math.min(100, Math.round((patientPaid / totalRevenue) * 100)) : 0;
+    const insuranceRatio = totalRevenue > 0 ? Math.max(0, 100 - patientRatio) : 0;
+
     return (
-        <Stack spacing={3}>
-            <Box>
-                <Typography variant="overline" color="primary">
-                    {ROLE_LABELS[role] || role}
-                </Typography>
-
-                <Typography variant="h4" component="h1" fontWeight={700}>
-                    Xin chào, {user?.fullName || "bạn"}
-                </Typography>
-
-                <Typography color="text.secondary" sx={{ mt: 1 }}>
-                    Tổng quan hoạt động phòng khám và các chức năng dành cho vai trò của bạn.
-                </Typography>
-            </Box>
-
-            {isAdmin && (
-                <Stack spacing={2}>
-                    <Stack
-                        direction={{ xs: "column", sm: "row" }}
-                        sx={{ justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" } }}
-                        spacing={1}
-                    >
-                        <Box>
-                            <Typography variant="h5" component="h2" fontWeight={700}>
-                                Tổng quan phòng khám
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                                Số liệu được tải từ hệ thống backend.
-                            </Typography>
-                        </Box>
-
+        <Stack spacing={3.5} sx={{ pb: 4, minWidth: 0 }}>
+            <ClinicPageHeader
+                eyebrow={`Không gian làm việc · ${ROLE_LABELS[role] || role}`}
+                title={`Xin chào, ${user?.fullName || "bạn"}`}
+                description="Theo dõi nhanh chỉ số vận hành trong ngày và truy cập trực tiếp các phân hệ nghiệp vụ theo quyền hạn được cấp."
+                icon={DashboardRounded}
+                actions={
+                    isAdmin ? (
                         <Button
                             variant="outlined"
-                            startIcon={<RefreshOutlined />}
+                            startIcon={<AdminRefreshIcon />}
                             onClick={loadDashboard}
                             disabled={loading}
+                            sx={clinicSecondaryButtonSx}
                         >
-                            Làm mới
+                            Làm mới dữ liệu
                         </Button>
-                    </Stack>
+                    ) : null
+                }
+            />
 
+            {isAdmin && (
+                <Stack spacing={2.5}>
                     {error && (
                         <Alert
                             severity="error"
@@ -177,6 +194,7 @@ export default function DashboardPage() {
                                     Thử lại
                                 </Button>
                             }
+                            sx={{ borderRadius: "12px" }}
                         >
                             {error}
                         </Alert>
@@ -188,40 +206,44 @@ export default function DashboardPage() {
                             gridTemplateColumns: {
                                 xs: "1fr",
                                 sm: "repeat(2, minmax(0, 1fr))",
-                                lg: "repeat(4, minmax(0, 1fr))",
+                                xl: "repeat(4, minmax(0, 1fr))",
                             },
-                            gap: 2,
+                            gap: 2.25,
                         }}
                     >
-                        <StatCard
+                        <AdminStatCard
                             title="Doanh thu tháng này"
                             value={formatCurrency(revenueStats?.totalThisMonth)}
-                            description="Tổng hóa đơn đã thanh toán"
-                            icon={<AttachMoneyOutlined />}
+                            subtitle="Tổng giá trị hóa đơn đã thanh toán"
+                            icon={PaymentsRounded}
+                            tone="blue"
                             loading={loading && !summary}
                         />
 
-                        <StatCard
-                            title="Lượt khám hoàn tất hôm nay"
+                        <AdminStatCard
+                            title="Hoàn tất khám hôm nay"
                             value={formatNumber(appointmentStats?.completedToday)}
-                            description="Lịch khám có trạng thái Completed"
-                            icon={<EventAvailableOutlined />}
+                            subtitle="Số ca đã kết thúc hồ sơ khám trong ngày"
+                            icon={EventAvailableRounded}
+                            tone="emerald"
                             loading={loading && !summary}
                         />
 
-                        <StatCard
+                        <AdminStatCard
                             title="Đang khám hôm nay"
                             value={formatNumber(appointmentStats?.inProgressToday)}
-                            description="Lịch khám có trạng thái InProgress"
-                            icon={<MedicalServicesOutlined />}
+                            subtitle="Bệnh nhân đang được bác sĩ tiếp nhận"
+                            icon={MedicalServicesRounded}
+                            tone="sky"
                             loading={loading && !summary}
                         />
 
-                        <StatCard
-                            title="Tổng số lượng thuốc tồn"
+                        <AdminStatCard
+                            title="Tổng đơn vị thuốc tồn"
                             value={formatNumber(inventoryStats?.totalStockQuantity)}
-                            description="Tổng số đơn vị trong các lô thuốc"
-                            icon={<Inventory2Outlined />}
+                            subtitle="Tổng tồn thực tế trong các lô dược phẩm"
+                            icon={Inventory2Rounded}
+                            tone="purple"
                             loading={loading && !summary}
                         />
                     </Box>
@@ -233,126 +255,310 @@ export default function DashboardPage() {
                                 xs: "1fr",
                                 md: "repeat(3, minmax(0, 1fr))",
                             },
-                            gap: 2,
+                            gap: 2.25,
                         }}
                     >
-                        <StatCard
+                        <AdminStatCard
                             title="Lượt khám hoàn tất tháng này"
                             value={formatNumber(appointmentStats?.completedThisMonth)}
-                            description="Tính theo ngày hẹn"
-                            icon={<EventAvailableOutlined />}
+                            subtitle="Tổng hợp theo lịch hẹn trong tháng hiện tại"
+                            icon={CalendarMonthRounded}
+                            tone="teal"
                             loading={loading && !summary}
                         />
 
-                        <StatCard
-                            title="Thuốc tồn kho thấp"
+                        <AdminStatCard
+                            title="Thuốc sắp chạm ngưỡng hết"
                             value={formatNumber(inventoryStats?.lowStockMedicines)}
-                            description="Thuốc có tổng tồn không quá 10 đơn vị"
-                            icon={<WarningAmberOutlined />}
+                            subtitle="Các mặt hàng có tổng tồn ≤ ngưỡng cảnh báo"
+                            icon={WarningAmberRounded}
+                            tone="amber"
                             loading={loading && !summary}
                         />
 
-                        <StatCard
+                        <AdminStatCard
                             title="Lô thuốc đã hết hạn"
                             value={formatNumber(inventoryStats?.expiredBatches)}
-                            description="Các lô có ngày hết hạn trước hôm nay"
-                            icon={<WarningAmberOutlined />}
+                            subtitle="Lô có hạn dùng trước ngày hôm nay cần xử lý"
+                            icon={WarningAmberRounded}
+                            tone="rose"
                             loading={loading && !summary}
                         />
                     </Box>
 
                     {summary && (
-                        <Card variant="outlined" sx={{ borderRadius: 3 }}>
-                            <CardContent>
-                                <Typography variant="h6" fontWeight={700}>
-                                    Chi tiết doanh thu tháng này
-                                </Typography>
+                        <Paper variant="outlined" sx={{ ...clinicSurfaceSx, p: { xs: 2.5, md: 3 } }}>
+                            <Stack
+                                direction={{ xs: "column", sm: "row" }}
+                                spacing={1.5}
+                                sx={{ justifyContent: "space-between", alignItems: { sm: "center" }, mb: 2.5 }}
+                            >
+                                <Box>
+                                    <Typography sx={{ fontSize: 17, fontWeight: 800, color: clinicColors.heading }}>
+                                        Cơ cấu doanh thu tháng hiện tại
+                                    </Typography>
+                                    <Typography sx={{ fontSize: 13.5, color: clinicColors.muted, mt: 0.25 }}>
+                                        Phân bổ giữa chi phí người bệnh tự chi trả và quỹ Bảo hiểm Y tế thanh toán.
+                                    </Typography>
+                                </Box>
+                                <Chip
+                                    label={`Tổng cộng: ${formatCurrency(totalRevenue)}`}
+                                    sx={{
+                                        bgcolor: "#E8F2FC",
+                                        color: clinicColors.primary,
+                                        fontWeight: 750,
+                                        borderRadius: "9px",
+                                    }}
+                                />
+                            </Stack>
 
-                                <Stack
-                                    direction={{ xs: "column", sm: "row" }}
-                                    spacing={3}
-                                    sx={{ mt: 2 }}
+                            <Box
+                                sx={{
+                                    display: "grid",
+                                    gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" },
+                                    gap: 2,
+                                }}
+                            >
+                                <Paper
+                                    variant="outlined"
+                                    sx={{
+                                        p: 2,
+                                        borderRadius: "12px",
+                                        bgcolor: "#F8FAFC",
+                                        borderColor: "#E2ECF5",
+                                    }}
                                 >
-                                    <Box>
-                                        <Typography variant="body2" color="text.secondary">
-                                            Tổng doanh thu
-                                        </Typography>
-                                        <Typography fontWeight={700}>
-                                            {formatCurrency(revenueStats?.totalThisMonth)}
-                                        </Typography>
-                                    </Box>
+                                    <Typography sx={{ fontSize: 12.5, fontWeight: 700, color: "#64748B" }}>
+                                        Tổng doanh thu ghi nhận
+                                    </Typography>
+                                    <Typography sx={{ mt: 0.75, fontSize: 21, fontWeight: 800, color: clinicColors.primary }}>
+                                        {formatCurrency(totalRevenue)}
+                                    </Typography>
+                                    <LinearProgress
+                                        variant="determinate"
+                                        value={totalRevenue > 0 ? 100 : 0}
+                                        sx={{
+                                            mt: 1.5,
+                                            height: 6,
+                                            borderRadius: 99,
+                                            bgcolor: "#DCE8F5",
+                                            "& .MuiLinearProgress-bar": { bgcolor: clinicColors.primary },
+                                        }}
+                                    />
+                                </Paper>
 
-                                    <Box>
-                                        <Typography variant="body2" color="text.secondary">
-                                            Phần bệnh nhân thanh toán
+                                <Paper
+                                    variant="outlined"
+                                    sx={{
+                                        p: 2,
+                                        borderRadius: "12px",
+                                        bgcolor: "#F8FAFC",
+                                        borderColor: "#E2ECF5",
+                                    }}
+                                >
+                                    <Stack direction="row" sx={{ justifyContent: "space-between" }}>
+                                        <Typography sx={{ fontSize: 12.5, fontWeight: 700, color: "#64748B" }}>
+                                            Bệnh nhân thực trả
                                         </Typography>
-                                        <Typography fontWeight={700}>
-                                            {formatCurrency(revenueStats?.patientPaymentsThisMonth)}
+                                        <Typography sx={{ fontSize: 12.5, fontWeight: 750, color: "#0284C7" }}>
+                                            {patientRatio}%
                                         </Typography>
-                                    </Box>
+                                    </Stack>
+                                    <Typography sx={{ mt: 0.75, fontSize: 21, fontWeight: 800, color: "#0284C7" }}>
+                                        {formatCurrency(patientPaid)}
+                                    </Typography>
+                                    <LinearProgress
+                                        variant="determinate"
+                                        value={patientRatio}
+                                        sx={{
+                                            mt: 1.5,
+                                            height: 6,
+                                            borderRadius: 99,
+                                            bgcolor: "#E0F2FE",
+                                            "& .MuiLinearProgress-bar": { bgcolor: "#0284C7" },
+                                        }}
+                                    />
+                                </Paper>
 
-                                    <Box>
-                                        <Typography variant="body2" color="text.secondary">
-                                            Phần bảo hiểm
+                                <Paper
+                                    variant="outlined"
+                                    sx={{
+                                        p: 2,
+                                        borderRadius: "12px",
+                                        bgcolor: "#F8FAFC",
+                                        borderColor: "#E2ECF5",
+                                    }}
+                                >
+                                    <Stack direction="row" sx={{ justifyContent: "space-between" }}>
+                                        <Typography sx={{ fontSize: 12.5, fontWeight: 700, color: "#64748B" }}>
+                                            Bảo hiểm Y tế chi trả
                                         </Typography>
-                                        <Typography fontWeight={700}>
-                                            {formatCurrency(revenueStats?.insurancePaymentsThisMonth)}
+                                        <Typography sx={{ fontSize: 12.5, fontWeight: 750, color: "#059669" }}>
+                                            {insuranceRatio}%
                                         </Typography>
-                                    </Box>
-                                </Stack>
-                            </CardContent>
-                        </Card>
+                                    </Stack>
+                                    <Typography sx={{ mt: 0.75, fontSize: 21, fontWeight: 800, color: "#059669" }}>
+                                        {formatCurrency(insurancePaid)}
+                                    </Typography>
+                                    <LinearProgress
+                                        variant="determinate"
+                                        value={insuranceRatio}
+                                        sx={{
+                                            mt: 1.5,
+                                            height: 6,
+                                            borderRadius: 99,
+                                            bgcolor: "#DCFCE7",
+                                            "& .MuiLinearProgress-bar": { bgcolor: "#059669" },
+                                        }}
+                                    />
+                                </Paper>
+                            </Box>
+                        </Paper>
                     )}
                 </Stack>
             )}
 
-            <Box>
-                <Typography variant="h5" component="h2" fontWeight={700} sx={{ mb: 2 }}>
-                    Chức năng hệ thống
-                </Typography>
+            {groupedModules.map((section) => (
+                <Box key={section.title}>
+                    <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 1.75 }}>
+                        <Box
+                            sx={{
+                                width: 6,
+                                height: 20,
+                                borderRadius: 99,
+                                bgcolor: clinicColors.primary,
+                            }}
+                        />
+                        <Typography component="h2" sx={{ fontSize: 18, fontWeight: 800, color: clinicColors.heading }}>
+                            {section.title}
+                        </Typography>
+                        <Chip
+                            size="small"
+                            label={`${section.items.length} mục`}
+                            sx={{
+                                height: 22,
+                                fontSize: 11.5,
+                                fontWeight: 700,
+                                bgcolor: "#E8F2FC",
+                                color: clinicColors.primary,
+                            }}
+                        />
+                    </Stack>
 
-                <Box
-                    sx={{
-                        display: "grid",
-                        gridTemplateColumns: {
-                            xs: "1fr",
-                            md: "repeat(2, minmax(0, 1fr))",
-                        },
-                        gap: 2,
-                    }}
-                >
-                    {pages.map((page) => (
-                        <Card key={page.path} variant="outlined" sx={{ borderRadius: 3 }}>
-                            <CardContent>
-                                <Typography variant="h6">{page.label}</Typography>
+                    <Box
+                        sx={{
+                            display: "grid",
+                            gridTemplateColumns: {
+                                xs: "1fr",
+                                sm: "repeat(2, minmax(0, 1fr))",
+                                lg: "repeat(3, minmax(0, 1fr))",
+                            },
+                            gap: 2,
+                        }}
+                    >
+                        {section.items.map((page) => {
+                            const meta = PAGE_CARD_META[page.path] || {
+                                icon: DashboardRounded,
+                                tone: "blue",
+                                desc: "Truy cập và thao tác dữ liệu nghiệp vụ.",
+                            };
+                            const Icon = meta.icon;
+                            const accent = adminAccents[meta.tone] || adminAccents.blue;
 
-                                <Button
+                            return (
+                                <Paper
+                                    key={page.path}
                                     component={Link}
                                     to={page.to || page.path}
-                                    endIcon={<ArrowForwardOutlined />}
-                                    sx={{ mt: 1 }}
+                                    variant="outlined"
+                                    sx={{
+                                        ...clinicSurfaceSx,
+                                        p: 2.5,
+                                        textDecoration: "none",
+                                        color: "inherit",
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        justifyContent: "space-between",
+                                        gap: 2,
+                                        transition: "border-color 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease",
+                                        "&:hover": {
+                                            borderColor: clinicColors.primary,
+                                            transform: "translateY(-2px)",
+                                            boxShadow: "0 10px 24px rgba(11, 79, 138, 0.08)",
+                                        },
+                                    }}
                                 >
-                                    Mở chức năng
-                                </Button>
-                            </CardContent>
-                        </Card>
-                    ))}
+                                    <Stack direction="row" spacing={1.75} sx={{ alignItems: "flex-start" }}>
+                                        <Box
+                                            sx={{
+                                                width: 44,
+                                                height: 44,
+                                                borderRadius: "12px",
+                                                flexShrink: 0,
+                                                display: "grid",
+                                                placeItems: "center",
+                                                bgcolor: accent.soft,
+                                                color: accent.main,
+                                                border: `1px solid ${accent.border}`,
+                                            }}
+                                        >
+                                            <Icon sx={{ fontSize: 22 }} />
+                                        </Box>
+
+                                        <Box sx={{ minWidth: 0 }}>
+                                            <Typography
+                                                sx={{
+                                                    fontSize: 16,
+                                                    fontWeight: 750,
+                                                    color: clinicColors.heading,
+                                                    lineHeight: 1.35,
+                                                }}
+                                            >
+                                                {page.label}
+                                            </Typography>
+                                            <Typography
+                                                sx={{
+                                                    mt: 0.5,
+                                                    fontSize: 13.5,
+                                                    color: clinicColors.muted,
+                                                    lineHeight: 1.55,
+                                                }}
+                                            >
+                                                {meta.desc}
+                                            </Typography>
+                                        </Box>
+                                    </Stack>
+
+                                    <Stack
+                                        direction="row"
+                                        spacing={0.5}
+                                        sx={{
+                                            alignItems: "center",
+                                            color: clinicColors.primary,
+                                            fontSize: 13.5,
+                                            fontWeight: 700,
+                                        }}
+                                    >
+                                        <span>Mở chức năng</span>
+                                        <ArrowForwardRounded sx={{ fontSize: 17 }} />
+                                    </Stack>
+                                </Paper>
+                            );
+                        })}
+                    </Box>
                 </Box>
-            </Box>
+            ))}
 
             {!pages.length && !isAdmin && (
-                <Card variant="outlined" sx={{ borderRadius: 3 }}>
-                    <CardContent sx={{ p: 4 }}>
-                        <ShieldOutlined color="primary" />
-                        <Typography variant="h6" sx={{ mt: 1 }}>
-                            Chưa có chức năng khả dụng
-                        </Typography>
-                        <Typography color="text.secondary" sx={{ mt: 1 }}>
-                            Vai trò này chưa có quyền truy cập các chức năng được triển khai.
-                            Hãy liên hệ quản trị viên nếu cần thay đổi quyền.
-                        </Typography>
-                    </CardContent>
-                </Card>
+                <Paper variant="outlined" sx={{ ...clinicSurfaceSx, p: 4 }}>
+                    <ShieldOutlined sx={{ color: clinicColors.primary, fontSize: 28 }} />
+                    <Typography variant="h6" sx={{ mt: 1, fontWeight: 750 }}>
+                        Chưa có chức năng khả dụng
+                    </Typography>
+                    <Typography color="text.secondary" sx={{ mt: 0.75 }}>
+                        Vai trò này chưa có quyền truy cập các chức năng được triển khai. Hãy liên hệ quản trị viên nếu cần cấp quyền.
+                    </Typography>
+                </Paper>
             )}
         </Stack>
     );

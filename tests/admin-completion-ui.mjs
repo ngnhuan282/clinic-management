@@ -192,6 +192,43 @@ try {
         await page.goto(site + "/internal/users", { waitUntil: "domcontentloaded" });
         await page.getByRole("table", { name: "Danh sách tài khoản" }).waitFor();
     }
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto(site + "/internal/settings", { waitUntil: "domcontentloaded" });
+    await page.getByRole("heading", { level: 1, name: "Cấu hình phòng khám" }).waitFor();
+    await page.getByLabel("Tên phòng khám", { exact: false }).fill("");
+    await page.getByRole("button", { name: "Lưu cấu hình", exact: true }).click();
+    await page.getByText("Vui lòng nhập tên phòng khám.", { exact: true }).waitFor();
+    check(true, "Clinic settings UI validates required fields before calling API");
+    await page.getByRole("button", { name: "Khôi phục đang lưu", exact: true }).click();
+    await page.getByLabel("Tên phòng khám", { exact: false }).fill("Phòng khám Đa khoa MediFlow");
+    await page.getByLabel("Tổng đài liên hệ", { exact: false }).fill("1900 6899");
+    await page.getByLabel("Giá khám mặc định (VNĐ)", { exact: false }).fill("175000");
+    await page.getByLabel("Giá sổ khám bệnh (VNĐ)", { exact: false }).fill("12000");
+    const settingsSaved = page.waitForResponse(response => response.request().method() === "PUT" && new URL(response.url()).pathname === "/api/clinic-settings");
+    await page.getByRole("button", { name: "Lưu cấu hình", exact: true }).click();
+    assert.equal((await settingsSaved).status(), 200);
+    await page.getByText("Đã lưu cấu hình phòng khám thành công.", { exact: true }).waitFor();
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.getByRole("heading", { level: 1, name: "Cấu hình phòng khám" }).waitFor();
+    check(await page.getByLabel("Tên phòng khám", { exact: false }).inputValue() === "Phòng khám Đa khoa MediFlow"
+        && await page.getByLabel("Giá khám mặc định (VNĐ)", { exact: false }).inputValue() === "175000"
+        && await page.getByLabel("Giá sổ khám bệnh (VNĐ)", { exact: false }).inputValue() === "12000",
+        "Saved clinic settings survive a full browser reload");
+    await page.screenshot({ path: ".tmp/admin-completion/settings-desktop.png", fullPage: true });
+    for (const width of [768, 390, 320]) {
+        await page.setViewportSize({ width, height: 900 });
+        check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), "Settings page bounds at " + width);
+    }
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto(site + "/specialties", { waitUntil: "domcontentloaded" });
+    await page.getByRole("heading", { name: /Danh mục chuyên khoa theo khoa/ }).waitFor();
+    await page.getByText("Nội tim mạch kiểm thử", { exact: true }).first().waitFor();
+    await page.goto(site + "/pricing", { waitUntil: "domcontentloaded" });
+    await page.getByText(/175\.000/).first().waitFor();
+    await page.getByText(/12\.000/).first().waitFor();
+    await page.goto(site + "/contact", { waitUntil: "domcontentloaded" });
+    await page.getByRole("link", { name: "1900 6899", exact: true }).first().waitFor();
+    check(true, "Public specialties, pricing and contact pages reflect live database catalog and configured clinic settings");
     check(errors.length === 0, "No browser runtime errors in completed Admin workflows");
     console.log("ADMIN_COMPLETION_UI_SUCCESS checks=" + checks);
 } catch (error) {

@@ -94,6 +94,18 @@ public class BookingService : IBookingService
                 Name = x.Name,
                 Description = x.Description,
                 PublicInformation = PublicSpecialtyContent.ForCode(x.Code),
+                Specializations = x.Specializations
+                    .Where(s => s.IsActive)
+                    .OrderBy(s => s.Name).ThenBy(s => s.SpecializationId)
+                    .Select(s => new PublicSpecializationResponse
+                    {
+                        SpecializationId = s.SpecializationId,
+                        Code = s.Code,
+                        Name = s.Name,
+                        Description = s.Description,
+                        DepartmentId = x.DepartmentId,
+                        DepartmentName = x.Name
+                    }).ToList(),
                 IsActive = x.IsActive,
                 CreatedAt = x.CreatedAt,
                 UpdatedAt = x.UpdatedAt
@@ -517,6 +529,7 @@ public class BookingService : IBookingService
 
         appointment.Status =
             AppointmentStatusConstants.Cancelled;
+        appointment.TimeSlotId = null;
 
         var notifications = await _notifications.StageAppointmentChangedAsync(appointment, "Cancelled");
         await _appointmentRepository.SaveChangesAsync();

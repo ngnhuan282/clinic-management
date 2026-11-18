@@ -2,10 +2,13 @@ import { useState } from "react";
 import {
     Alert,
     Box,
+    Breadcrumbs,
     Button,
+    Chip,
     Container,
     Grid,
     InputAdornment,
+    Link,
     MenuItem,
     Pagination,
     Paper,
@@ -14,8 +17,15 @@ import {
     TextField,
     Typography,
 } from "@mui/material";
-import { FilterAltOutlined, PersonSearchOutlined, RestartAltOutlined, Search } from "@mui/icons-material";
-import { useSearchParams } from "react-router-dom";
+import {
+    ChevronRight,
+    FilterAltOutlined,
+    HomeOutlined,
+    PersonSearchOutlined,
+    RestartAltOutlined,
+    Search,
+} from "@mui/icons-material";
+import { Link as RouterLink, useSearchParams } from "react-router-dom";
 
 import { getDepartments } from "../../api/bookingApi";
 import { getPublicRooms } from "../../api/roomApi";
@@ -78,61 +88,128 @@ export default function DoctorSearchPage() {
 
     const totalPages = data?.totalPages ?? 0;
     const doctors = data?.items ?? [];
+    const activeDepartment = departments.find(d => String(d.departmentId) === filters.departmentId);
+    const activeRoom = rooms.find(r => String(r.roomId) === filters.roomId);
 
     return (
-        <Box sx={{ bgcolor: "#f8fafc", minHeight: "80vh", py: { xs: 3.5, md: 5.5 } }}>
-            <Container maxWidth="lg">
-                {/* Header */}
-                <Box sx={{ mb: 4 }}>
-                    <Typography
-                        component="h1"
-                        sx={{
-                            fontSize: { xs: 26, sm: 32, md: 36 },
-                            fontWeight: 800,
-                            letterSpacing: "-0.02em",
-                            color: "#0f2c4d",
-                            lineHeight: 1.25,
-                            mb: 1,
-                        }}
+        <Box sx={{ bgcolor: "#F4F7FA", minHeight: "82vh", pb: { xs: 5, md: 7 } }}>
+            {/* Solid Calm Blue Header Band */}
+            <Box
+                sx={{
+                    pt: { xs: 3, md: 4.5 },
+                    pb: { xs: 3.5, md: 5 },
+                    mb: { xs: 3, md: 4 },
+                    bgcolor: "#EAF2FA",
+                    borderBottom: "1px solid #C5D8EC",
+                }}
+            >
+                <Container maxWidth="lg">
+                    <Breadcrumbs
+                        separator={<ChevronRight sx={{ fontSize: 16, color: "#64748B" }} />}
+                        aria-label="Đường dẫn"
+                        sx={{ mb: { xs: 2, md: 2.5 }, fontSize: 14 }}
                     >
-                        Tra cứu đội ngũ bác sĩ
-                    </Typography>
-                    <Typography color="text.secondary" sx={{ fontSize: { xs: 14.5, sm: 15.5 }, lineHeight: 1.6 }}>
-                        Tìm kiếm bác sĩ theo họ tên, chuyên khoa điều trị hoặc phòng khám để nắm rõ thông tin trước khi đăng ký.
-                    </Typography>
-                </Box>
+                        <Link
+                            component={RouterLink}
+                            to="/"
+                            underline="hover"
+                            sx={{ display: "flex", alignItems: "center", gap: 0.5, color: "#334155", fontWeight: 550 }}
+                        >
+                            <HomeOutlined sx={{ fontSize: 17 }} />
+                            Trang chủ
+                        </Link>
+                        <Typography color="primary.main" sx={{ fontSize: "inherit", fontWeight: 750 }}>
+                            Đội ngũ bác sĩ
+                        </Typography>
+                    </Breadcrumbs>
 
-                {/* Filter Form Card */}
+                    <Box sx={{ maxWidth: 780 }}>
+                        <Typography
+                            component="h1"
+                            sx={{
+                                fontSize: { xs: 26, sm: 32, md: 38 },
+                                fontWeight: 800,
+                                letterSpacing: "-0.02em",
+                                color: "#0A2540",
+                                lineHeight: 1.25,
+                                mb: 1.25,
+                            }}
+                        >
+                            Tra cứu bác sĩ chuyên khoa
+                        </Typography>
+                        <Typography sx={{ fontSize: { xs: 15, sm: 16 }, lineHeight: 1.7, color: "#334155" }}>
+                            Tìm kiếm bác sĩ theo họ tên, chuyên khoa điều trị hoặc phòng khám tiếp nhận để chủ động lựa chọn trước khi đặt lịch.
+                        </Typography>
+                    </Box>
+                </Container>
+            </Box>
+
+            <Container maxWidth="lg">
+                {/* Single Filter Form Card */}
                 <Paper
                     component="form"
                     onSubmit={applyFilters}
                     variant="outlined"
                     sx={{
                         p: { xs: 2.5, sm: 3 },
-                        mb: 4,
+                        mb: 3.5,
                         borderRadius: "14px",
-                        borderColor: "#e5e9f0",
-                        bgcolor: "#ffffff",
-                        boxShadow: "0 2px 8px rgba(15, 23, 42, 0.04)",
+                        borderColor: "#C5D8EC",
+                        bgcolor: "#FFFFFF",
+                        boxShadow: "0 2px 10px rgba(10, 37, 64, 0.04)",
                     }}
                 >
-                    <Stack spacing={2}>
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1, color: "primary.main" }}>
-                            <FilterAltOutlined fontSize="small" />
-                            <Typography sx={{ fontWeight: 700, fontSize: 14.5 }}>
-                                Bộ lọc tìm kiếm
-                            </Typography>
-                        </Box>
+                    <Stack spacing={2.25}>
+                        <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 1 }}>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1, color: "primary.main" }}>
+                                <FilterAltOutlined fontSize="small" />
+                                <Typography sx={{ fontWeight: 750, fontSize: 15.5, color: "#0A2540" }}>
+                                    Bộ lọc tìm kiếm bác sĩ
+                                </Typography>
+                            </Box>
+                            {(filters.fullName || filters.departmentId || filters.roomId) && (
+                                <Stack direction="row" sx={{ flexWrap: "wrap", gap: 0.75 }}>
+                                    {filters.fullName && (
+                                        <Chip
+                                            size="small"
+                                            label={`Từ khóa: "${filters.fullName}"`}
+                                            sx={{ bgcolor: "#E6F0FA", color: "#0B4F8A", fontWeight: 700 }}
+                                        />
+                                    )}
+                                    {activeDepartment && (
+                                        <Chip
+                                            size="small"
+                                            label={`Khoa: ${activeDepartment.name}`}
+                                            sx={{ bgcolor: "#E6F0FA", color: "#0B4F8A", fontWeight: 700 }}
+                                        />
+                                    )}
+                                    {activeRoom && (
+                                        <Chip
+                                            size="small"
+                                            label={`Phòng: ${activeRoom.roomCode}`}
+                                            sx={{ bgcolor: "#F1F5F9", color: "#0A2540", fontWeight: 700 }}
+                                        />
+                                    )}
+                                </Stack>
+                            )}
+                        </Stack>
 
                         <Grid container spacing={2}>
                             <Grid size={{ xs: 12, md: 4 }}>
                                 <TextField
                                     label="Tên bác sĩ"
+                                    placeholder="Nhập họ tên bác sĩ..."
                                     value={draft.fullName}
                                     onChange={event => setDraft({ ...draft, fullName: event.target.value })}
                                     slotProps={{
                                         htmlInput: { maxLength: 100 },
-                                        input: { startAdornment: <InputAdornment position="start"><Search fontSize="small" /></InputAdornment> },
+                                        input: {
+                                            startAdornment: (
+                                                <InputAdornment position="start">
+                                                    <Search fontSize="small" sx={{ color: "#475569" }} />
+                                                </InputAdornment>
+                                            ),
+                                        },
                                     }}
                                     fullWidth
                                 />
@@ -146,7 +223,7 @@ export default function DoctorSearchPage() {
                                     onChange={event => setDraft({ ...draft, departmentId: event.target.value })}
                                     disabled={departmentResource.status !== "ready"}
                                 >
-                                    <MenuItem value="">Tất cả</MenuItem>
+                                    <MenuItem value="">Tất cả chuyên khoa</MenuItem>
                                     {departments.map(department => (
                                         <MenuItem key={department.departmentId} value={String(department.departmentId)}>
                                             {department.name}
@@ -163,7 +240,7 @@ export default function DoctorSearchPage() {
                                     onChange={event => setDraft({ ...draft, roomId: event.target.value })}
                                     disabled={roomResource.status !== "ready"}
                                 >
-                                    <MenuItem value="">Tất cả</MenuItem>
+                                    <MenuItem value="">Tất cả phòng khám</MenuItem>
                                     {rooms.map(room => (
                                         <MenuItem key={room.roomId} value={String(room.roomId)}>
                                             {`${room.roomCode} - ${room.roomName}`}
@@ -172,9 +249,24 @@ export default function DoctorSearchPage() {
                                 </TextField>
                             </Grid>
                         </Grid>
-                        <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                            <Button type="submit" variant="contained" startIcon={<Search />}>Tìm kiếm</Button>
-                            <Button variant="outlined" onClick={resetFilters} startIcon={<RestartAltOutlined />}>Xóa lọc</Button>
+
+                        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
+                            <Button
+                                type="submit"
+                                variant="contained"
+                                startIcon={<Search />}
+                                sx={{ px: 3, bgcolor: "#0B4F8A", "&:hover": { bgcolor: "#083A66" } }}
+                            >
+                                Tìm kiếm
+                            </Button>
+                            <Button
+                                variant="outlined"
+                                onClick={resetFilters}
+                                startIcon={<RestartAltOutlined />}
+                                sx={{ borderColor: "#B8CCE0", color: "#0A2540" }}
+                            >
+                                Xóa lọc
+                            </Button>
                         </Stack>
                     </Stack>
                 </Paper>
@@ -202,7 +294,7 @@ export default function DoctorSearchPage() {
                     <Grid container spacing={2.5}>
                         {Array.from({ length: 6 }).map((_, index) => (
                             <Grid key={index} size={{ xs: 12, sm: 6, md: 4 }}>
-                                <Skeleton variant="rounded" height={220} sx={{ borderRadius: "14px" }} />
+                                <Skeleton variant="rounded" height={240} sx={{ borderRadius: "14px" }} />
                             </Grid>
                         ))}
                     </Grid>
@@ -227,20 +319,34 @@ export default function DoctorSearchPage() {
                         variant="outlined"
                         sx={{
                             p: { xs: 4, sm: 6 },
-                            borderRadius: "16px",
+                            borderRadius: "14px",
                             textAlign: "center",
-                            bgcolor: "#ffffff",
-                            borderColor: "#e5e9f0",
+                            bgcolor: "#FFFFFF",
+                            borderColor: "#CEDCEB",
                         }}
                     >
-                        <PersonSearchOutlined sx={{ fontSize: 56, color: "#94a3b8", mb: 1.5 }} />
-                        <Typography sx={{ fontWeight: 700, fontSize: 18, color: "#1f2937", mb: 0.5 }}>
+                        <Box
+                            sx={{
+                                width: 64,
+                                height: 64,
+                                mx: "auto",
+                                mb: 2,
+                                borderRadius: "50%",
+                                display: "grid",
+                                placeItems: "center",
+                                bgcolor: "#E6F0FA",
+                                color: "#0B4F8A",
+                            }}
+                        >
+                            <PersonSearchOutlined sx={{ fontSize: 34 }} />
+                        </Box>
+                        <Typography sx={{ fontWeight: 800, fontSize: 19, color: "#0A2540", mb: 0.75 }}>
                             Không tìm thấy bác sĩ phù hợp
                         </Typography>
-                        <Typography color="text.secondary" sx={{ fontSize: 14, mb: 2.5, maxWidth: 440, mx: "auto" }}>
-                            Hãy thử tìm kiếm với từ khóa khác hoặc xóa bớt tiêu chí lọc chuyên khoa và phòng khám.
+                        <Typography color="text.secondary" sx={{ fontSize: 14.5, mb: 2.5, maxWidth: 460, mx: "auto" }}>
+                            Không tìm thấy bác sĩ phù hợp với bộ lọc hiện tại. Hãy thử từ khóa khác hoặc xóa bớt tiêu chí lọc chuyên khoa và phòng khám.
                         </Typography>
-                        <Button variant="outlined" onClick={resetFilters} sx={{ borderRadius: "8px", textTransform: "none" }}>
+                        <Button variant="outlined" onClick={resetFilters} sx={{ borderRadius: "10px", textTransform: "none" }}>
                             Xóa bộ lọc tìm kiếm
                         </Button>
                     </Paper>
@@ -249,12 +355,25 @@ export default function DoctorSearchPage() {
                 {/* Doctors List */}
                 {status === "ready" && doctors.length > 0 && (
                     <>
-                        <Box sx={{ mb: 2.5, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 1 }}>
-                            <Typography sx={{ fontSize: 14, color: "text.secondary", fontWeight: 500 }}>
-                                Tìm thấy <Box component="span" sx={{ fontWeight: 700, color: "#1f2937" }}>{data.totalItems}</Box> bác sĩ
+                        <Box
+                            sx={{
+                                mb: 2.5,
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                flexWrap: "wrap",
+                                gap: 1,
+                            }}
+                        >
+                            <Typography sx={{ fontSize: 14.5, color: "#334155", fontWeight: 550 }}>
+                                Tìm thấy{" "}
+                                <Box component="span" sx={{ fontWeight: 800, color: "#0A2540" }}>
+                                    {data.totalItems}
+                                </Box>{" "}
+                                bác sĩ đang tiếp nhận khám
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
-                                Tối đa {DOCTOR_PAGE_SIZE} bác sĩ/trang
+                                Hiển thị tối đa {DOCTOR_PAGE_SIZE} bác sĩ/trang
                             </Typography>
                         </Box>
 
@@ -268,7 +387,7 @@ export default function DoctorSearchPage() {
 
                         {/* Pagination */}
                         {totalPages > 1 && (
-                            <Stack sx={{ mt: 4, alignItems: "center" }}>
+                            <Stack sx={{ mt: 4.5, alignItems: "center" }}>
                                 <Pagination
                                     page={filters.pageNumber}
                                     count={totalPages}

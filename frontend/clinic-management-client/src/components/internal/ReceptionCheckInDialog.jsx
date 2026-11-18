@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, FormLabel, MenuItem, Radio, RadioGroup, Stack, TextField, Typography } from "@mui/material";
 import { checkInAppointment, createBookRequest, findPatientMatches, getBookInvoices, getPatientBookRequests, getPatientBooks, issueBook, matchAppointmentPatient, registerExistingBook } from "../../api/receptionApi";
+import { useClinicInfo } from "../../api/publicApi";
 import { getApiErrorMessage } from "../../utils/errorHandler";
 import useNotifications from "../../hooks/useNotifications";
 
 export default function ReceptionCheckInDialog({ appointment, onClose, onCheckedIn }) {
     const { revision } = useNotifications();
+    const clinic = useClinicInfo();
     const [linkedPatientId, setPatientId] = useState(null);
     const patientId = appointment?.patientProfileId || linkedPatientId;
     const [matches, setMatches] = useState([]);
@@ -130,7 +132,7 @@ export default function ReceptionCheckInDialog({ appointment, onClose, onChecked
                     </Box>
                     {bookSituation !== "present" && <Alert severity="warning">
                         {bookSituation === "none" ? "Bệnh nhân chưa có sổ." : bookSituation === "lost" ? "Bệnh nhân báo mất sổ." : "Bệnh nhân quên mang sổ."}
-                        {" Tạo yêu cầu mua/cấp lại sổ và hướng dẫn bệnh nhân sang Thu ngân thanh toán. Phát sổ khi nhận được xác nhận Paid."}
+                        {` Tạo yêu cầu mua/cấp lại sổ (phí sổ cấu hình: ${clinic.patientBookFee.toLocaleString("vi-VN")} ₫) và hướng dẫn bệnh nhân sang Thu ngân thanh toán. Phát sổ khi nhận được xác nhận Paid.`}
                     </Alert>}
                     {recordsLoaded && books.length === 0 && <Typography variant="body2" color="text.secondary">Chưa có sổ khám. Ghi nhận sổ cũ mang theo hoặc cấp sổ mới sau thanh toán.</Typography>}
                     {bookSituation === "present" && <>

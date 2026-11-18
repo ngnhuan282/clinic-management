@@ -9,7 +9,7 @@ namespace ClinicManagement.Repositories.Implementations;
 internal static class CatalogQueryExtensions
 {
     public static (int Page, int Size) Normalize(this CatalogQuery query) =>
-        (Math.Max(1, query.PageNumber), Math.Clamp(query.PageSize, 1, 100));
+        (Math.Clamp(query.PageNumber, 1, 100_000), Math.Clamp(query.PageSize, 1, 100));
 }
 
 public class DepartmentRepository(ApplicationDbContext context) : IDepartmentRepository
@@ -26,6 +26,7 @@ public class DepartmentRepository(ApplicationDbContext context) : IDepartmentRep
     public Task<Department?> GetByIdAsync(int id) => context.Departments.FirstOrDefaultAsync(x => x.DepartmentId == id);
     public Task<List<Department>> GetActiveAsync() => context.Departments
         .AsNoTracking()
+        .Include(x => x.Specializations.Where(s => s.IsActive))
         .Where(x => x.IsActive)
         .OrderBy(x => x.Name)
         .ToListAsync();
@@ -46,6 +47,12 @@ public class SpecializationRepository(ApplicationDbContext context) : ISpecializ
         return (await items.OrderBy(x => x.Name).Skip((page - 1) * size).Take(size).ToListAsync(), total);
     }
     public Task<Specialization?> GetByIdAsync(int id) => context.Specializations.Include(x => x.Department).FirstOrDefaultAsync(x => x.SpecializationId == id);
+    public Task<List<Specialization>> GetActiveAsync(int? departmentId = null) => context.Specializations
+        .AsNoTracking()
+        .Include(x => x.Department)
+        .Where(x => x.IsActive && x.Department.IsActive && (!departmentId.HasValue || x.DepartmentId == departmentId.Value))
+        .OrderBy(x => x.Department.Name).ThenBy(x => x.Name).ThenBy(x => x.SpecializationId)
+        .ToListAsync();
     public Task<bool> ExistsDuplicateAsync(string code, string name, int? excludingId = null) => context.Specializations.AnyAsync(x => (excludingId == null || x.SpecializationId != excludingId) && (x.Code == code || x.Name == name));
     public Task<bool> DepartmentIsActiveAsync(int departmentId) => context.Departments.AnyAsync(x => x.DepartmentId == departmentId && x.IsActive);
     public Task AddAsync(Specialization entity) { context.Specializations.Add(entity); return Task.CompletedTask; }
