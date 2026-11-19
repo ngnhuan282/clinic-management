@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json.Nodes;
+using ClinicManagement.Commons;
 using ClinicManagement.Data;
 using ClinicManagement.Data.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -319,6 +320,97 @@ internal static class CoreWorkflowChecks
         await Send(HttpMethod.Patch, $"api/doctors/admin/{newDoctorId}/status", false, token: adminToken);
         var afterDeactivation = (await Send(HttpMethod.Get, $"api/doctors/admin/{newDoctorId}", token: adminToken))!["result"]!;
         check(!afterDeactivation["isActive"]!.GetValue<bool>(), "Admin can deactivate a doctor profile, and still see it afterwards");
+
+        // === Admin CRUD for job positions ===
+        var createdPosition = (await Send(HttpMethod.Post, "api/job-positions", new { code = "CW-POS", name = "Core workflow position", description = "Test" }, token: adminToken))!["result"]!;
+        var newPositionId = createdPosition["jobPositionId"]!.GetValue<int>();
+        check(createdPosition["isActive"]!.GetValue<bool>(), "Admin creates a job position, active by default");
+
+        var duplicateError = (await Send(HttpMethod.Post, "api/job-positions", new { code = "CW-POS", name = "Duplicate code" }, status: 409, token: adminToken))!;
+        check(duplicateError["code"]!.GetValue<int>() == 2101, "Duplicate job position code is rejected as CATALOG_DUPLICATE");
+
+        await Send(HttpMethod.Post, "api/job-positions", new { code = "CW-POS-2", name = "Forbidden" }, status: 403, token: doctorToken);
+
+        var editedPosition = (await Send(HttpMethod.Put, $"api/job-positions/{newPositionId}", new { code = "CW-POS", name = "Renamed position", isActive = true }, token: adminToken))!["result"]!;
+        check(editedPosition["name"]!.GetValue<string>() == "Renamed position", "Admin renames a job position without tripping its own duplicate check");
+
+        await Send(HttpMethod.Patch, $"api/job-positions/{newPositionId}/status", false, token: adminToken);
+        var fetchedPosition = (await Send(HttpMethod.Get, $"api/job-positions/{newPositionId}", token: adminToken))!["result"]!;
+        check(!fetchedPosition["isActive"]!.GetValue<bool>(), "Admin can deactivate a job position, and still see it afterwards");
+
+        // === Admin CRUD for staff profiles ===
+        await Send(HttpMethod.Post, "api/staff", new { fullName = "New Staff", jobPositionId = 999999 }, status: 400, token: adminToken);
+
+        var createdStaff = (await Send(HttpMethod.Post, "api/staff", new { fullName = "New Staff", jobPositionId = newPositionId }, status: 400, token: adminToken))!;
+        check(createdStaff["code"]!.GetValue<int>() == 3102, "Creating staff against an inactive job position is rejected as INVALID_JOB_POSITION");
+
+        var activePosition = (await Send(HttpMethod.Post, "api/job-positions", new { code = "CW-ACTIVE", name = "Active position" }, token: adminToken))!["result"]!;
+        var activePositionId = activePosition["jobPositionId"]!.GetValue<int>();
+
+        await Send(HttpMethod.Post, "api/staff", new { fullName = "New Staff", jobPositionId = activePositionId }, status: 403, token: doctorToken);
+
+        var staff = (await Send(HttpMethod.Post, "api/staff", new { fullName = "New Staff", jobPositionId = activePositionId }, token: adminToken))!["result"]!;
+        var newStaffId = staff["staffId"]!.GetValue<int>();
+        check(staff["isActive"]!.GetValue<bool>() && staff["userId"] is null, "Admin creates a staff profile, active and unlinked by default");
+
+        var fetchedStaff = (await Send(HttpMethod.Get, $"api/staff/{newStaffId}", token: adminToken))!["result"]!;
+        check(fetchedStaff["jobPositionName"]!.GetValue<string>() == "Active position", "Admin reads the newly created staff profile with its job position name");
+
+        var editedStaff = (await Send(HttpMethod.Put, $"api/staff/{newStaffId}", new { fullName = "Updated Staff", jobPositionId = activePositionId, isActive = true }, token: adminToken))!["result"]!;
+        check(editedStaff["fullName"]!.GetValue<string>() == "Updated Staff", "Admin updates the staff profile");
+
+        await Send(HttpMethod.Patch, $"api/staff/{newStaffId}/status", false, token: adminToken);
+        var afterStaffDeactivation = (await Send(HttpMethod.Get, $"api/staff/{newStaffId}", token: adminToken))!["result"]!;
+        check(!afterStaffDeactivation["isActive"]!.GetValue<bool>(), "Admin can deactivate a staff profile, and still see it afterwards");
+        await Send(HttpMethod.Patch, $"api/staff/{newStaffId}/status", true, token: adminToken);
+
+        await Send(HttpMethod.Post, "api/staff", new { fullName = new string('a', 101), jobPositionId = activePositionId }, status: 400, token: adminToken);
+        await Send(HttpMethod.Post, "api/job-positions", new { code = new string('c', 21), name = "Code too long" }, status: 400, token: adminToken);
+        await Send(HttpMethod.Post, "api/job-positions", new { code = "CW-LEN", name = new string('n', 101) }, status: 400, token: adminToken);
+
+        // A staff profile whose job position is deactivated later must stay editable if the position is unchanged.
+        var laterPosition = (await Send(HttpMethod.Post, "api/job-positions", new { code = "CW-LATER", name = "Later deactivated" }, token: adminToken))!["result"]!;
+        var laterPositionId = laterPosition["jobPositionId"]!.GetValue<int>();
+        var laterStaffId = (await Send(HttpMethod.Post, "api/staff", new { fullName = "Later Staff", jobPositionId = laterPositionId }, token: adminToken))!["result"]!["staffId"]!.GetValue<int>();
+        await Send(HttpMethod.Patch, $"api/job-positions/{laterPositionId}/status", false, token: adminToken);
+        var keptPosition = (await Send(HttpMethod.Put, $"api/staff/{laterStaffId}", new { fullName = "Later Staff Renamed", jobPositionId = laterPositionId, isActive = true }, token: adminToken))!["result"]!;
+        check(keptPosition["fullName"]!.GetValue<string>() == "Later Staff Renamed", "Staff stays editable while keeping a job position that was deactivated afterwards");
+        var movedToInactive = (await Send(HttpMethod.Put, $"api/staff/{laterStaffId}", new { fullName = "Later Staff", jobPositionId = newPositionId, isActive = true }, status: 400, token: adminToken))!;
+        check(movedToInactive["code"]!.GetValue<int>() == 3102, "Moving staff to a different inactive job position is still rejected as INVALID_JOB_POSITION");
+
+        // === Staff account link ===
+        var secondStaff = (await Send(HttpMethod.Post, "api/staff", new { fullName = "Second Staff", jobPositionId = activePositionId }, token: adminToken))!["result"]!;
+        var secondStaffId = secondStaff["staffId"]!.GetValue<int>();
+
+        // Dedicated users for the link flow — NOT the shared testreceptionist/receptionToken, because
+        // linking bumps SecurityVersion and revokes refresh tokens, which would invalidate receptionToken
+        // for the many existing checks later in this file that still rely on it.
+        var receptionistRoleId = (await db.Roles.SingleAsync(x => x.RoleName == RoleConstants.Receptionist)).RoleId;
+        var staffReceptionUser = new User { Username = "cw-staff-reception", FullName = "Staff reception candidate", RoleId = receptionistRoleId, Status = true, PasswordHash = "x", CreatedAt = DateTime.UtcNow };
+        db.Users.Add(staffReceptionUser);
+        db.Users.Add(new User { Username = "cw-inactive-reception", FullName = "Inactive reception", RoleId = receptionistRoleId, Status = false, PasswordHash = "x", CreatedAt = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+        var staffReceptionUserId = staffReceptionUser.UserId;
+
+        var linkable = (await Send(HttpMethod.Get, "api/staff/linkable-users", token: adminToken))!["result"]!.AsArray();
+        check(linkable.Any(x => x!["username"]!.GetValue<string>() == "cw-staff-reception"), "Linkable users include an unlinked Receptionist account");
+        check(!linkable.Any(x => x!["username"]!.GetValue<string>() == "cw-inactive-reception"), "Linkable users exclude a locked (Status = false) account");
+
+        await Send(HttpMethod.Patch, $"api/staff/{newStaffId}/account", new { userId = staffReceptionUserId }, status: 403, token: receptionToken);
+
+        var wrongRoleUserId = (await db.Users.AsNoTracking().SingleAsync(x => x.Username == "cwdoctor")).UserId;
+        var wrongRoleLink = (await Send(HttpMethod.Patch, $"api/staff/{newStaffId}/account", new { userId = wrongRoleUserId }, status: 403, token: adminToken))!;
+        check(wrongRoleLink["code"]!.GetValue<int>() == 1003, "Linking an account whose role is not a staff role is rejected as UNAUTHORIZED");
+        // wrongRoleLink is rejected before any mutation, so doctorToken (for cwdoctor) stays valid for its later uses in this file.
+
+        var linkedStaff = (await Send(HttpMethod.Patch, $"api/staff/{newStaffId}/account", new { userId = staffReceptionUserId }, token: adminToken))!["result"]!;
+        check(linkedStaff["userId"]!.GetValue<int>() == staffReceptionUserId, "Admin links a staff profile to a Receptionist account");
+
+        var conflictLink = (await Send(HttpMethod.Patch, $"api/staff/{secondStaffId}/account", new { userId = staffReceptionUserId }, status: 400, token: adminToken))!;
+        check(conflictLink["code"]!.GetValue<int>() == 1001, "Linking an account already linked to a different staff profile is rejected as INVALID_REQUEST");
+
+        var linkableAfter = (await Send(HttpMethod.Get, "api/staff/linkable-users", token: adminToken))!["result"]!.AsArray();
+        check(!linkableAfter.Any(x => x!["username"]!.GetValue<string>() == "cw-staff-reception"), "Linkable users exclude an account already linked to a staff profile");
 
         // === Reception updates an existing patient's profile ===
         await Send(HttpMethod.Put, $"api/patients/{patientProfileId}", new

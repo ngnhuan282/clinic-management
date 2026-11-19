@@ -166,6 +166,16 @@ public sealed class ErrorCode
         );
 
     // =========================
+    // Staff
+    // =========================
+
+    public static readonly ErrorCode STAFF_NOT_FOUND =
+        new(3101, "Staff not found", HttpStatusCode.NotFound);
+
+    public static readonly ErrorCode INVALID_JOB_POSITION =
+        new(3102, "Job position is invalid or inactive", HttpStatusCode.BadRequest);
+
+    // =========================
     // Patient
     // =========================
 

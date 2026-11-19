@@ -73,6 +73,8 @@ try
     if (args.Contains("--week8") || args.Contains("--week8-ui") || args.Contains("--week10") || args.Contains("--week10-ui"))
         await Week8Checks.VerifyMigrationAsync(db, Check);
     Check(await db.Departments.CountAsync() == 3 && await db.Rooms.CountAsync() == 3 && await db.Specializations.CountAsync() == 3, "Catalog master data seeded");
+    Check(await db.JobPositions.CountAsync() == 4 && await db.JobPositions.CountAsync(x => x.IsActive) == 4,
+        "Job position catalog seeded with 4 active positions");
     if (args.Contains("--migrations-only") || args.Contains("--billing-migrations-only"))
     {
         await BillingMigrationChecks.RunAsync(db, Check);

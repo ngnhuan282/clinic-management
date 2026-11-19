@@ -11,6 +11,12 @@ public static class CatalogMappings
         IsActive = entity.IsActive, CreatedAt = entity.CreatedAt, UpdatedAt = entity.UpdatedAt
     };
 
+    public static JobPositionResponse ToResponse(this JobPosition entity) => new()
+    {
+        JobPositionId = entity.JobPositionId, Code = entity.Code, Name = entity.Name, Description = entity.Description,
+        IsActive = entity.IsActive, CreatedAt = entity.CreatedAt, UpdatedAt = entity.UpdatedAt
+    };
+
     public static SpecializationResponse ToResponse(this Specialization entity) => new()
     {
         SpecializationId = entity.SpecializationId, Code = entity.Code, Name = entity.Name, Description = entity.Description,

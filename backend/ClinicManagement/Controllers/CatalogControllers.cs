@@ -45,3 +45,14 @@ public class RoomsController(IRoomService service) : CatalogControllerBase
     [HttpPut("{id:int}")] public async Task<IActionResult> Update(int id, UpdateRoomRequest request) => Ok(ApiResponse<RoomResponse>.Success(await service.UpdateAsync(id, request), "Room updated"));
     [HttpPatch("{id:int}/status")] public async Task<IActionResult> Status(int id, [FromBody] bool isActive) { await service.UpdateStatusAsync(id, isActive); return Ok(ApiResponse<object>.Success(null, "Room status updated")); }
 }
+
+[Route("api/job-positions")]
+[Authorize(Policy = PermissionCodes.CatalogManage)]
+public class JobPositionsController(IJobPositionService service) : CatalogControllerBase
+{
+    [HttpGet] public async Task<IActionResult> Get([FromQuery] CatalogQuery query) => Ok(ApiResponse<PagedResponse<JobPositionResponse>>.Success(await service.GetAsync(query)));
+    [HttpGet("{id:int}")] public async Task<IActionResult> GetById(int id) => Ok(ApiResponse<JobPositionResponse>.Success(await service.GetByIdAsync(id)));
+    [HttpPost] public async Task<IActionResult> Create(CreateJobPositionRequest request) => Ok(ApiResponse<JobPositionResponse>.Success(await service.CreateAsync(request), "Job position created"));
+    [HttpPut("{id:int}")] public async Task<IActionResult> Update(int id, UpdateJobPositionRequest request) => Ok(ApiResponse<JobPositionResponse>.Success(await service.UpdateAsync(id, request), "Job position updated"));
+    [HttpPatch("{id:int}/status")] public async Task<IActionResult> Status(int id, [FromBody] bool isActive) { await service.UpdateStatusAsync(id, isActive); return Ok(ApiResponse<object>.Success(null, "Job position status updated")); }
+}

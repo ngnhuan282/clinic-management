@@ -32,3 +32,12 @@ public interface IRoomService
     Task<RoomResponse> UpdateAsync(int id, UpdateRoomRequest request);
     Task UpdateStatusAsync(int id, bool isActive);
 }
+
+public interface IJobPositionService
+{
+    Task<PagedResponse<JobPositionResponse>> GetAsync(CatalogQuery query);
+    Task<JobPositionResponse> GetByIdAsync(int id);
+    Task<JobPositionResponse> CreateAsync(CreateJobPositionRequest request);
+    Task<JobPositionResponse> UpdateAsync(int id, UpdateJobPositionRequest request);
+    Task UpdateStatusAsync(int id, bool isActive);
+}

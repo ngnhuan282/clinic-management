@@ -32,7 +32,11 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<Room> Rooms => Set<Room>();
 
+    public DbSet<JobPosition> JobPositions => Set<JobPosition>();
+
     public DbSet<Doctor> Doctors => Set<Doctor>();
+
+    public DbSet<Staff> StaffProfiles => Set<Staff>();
 
     public DbSet<Appointment> Appointments => Set<Appointment>();
     public DbSet<Patient> Patients => Set<Patient>();
@@ -228,6 +232,18 @@ public class ApplicationDbContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
+        modelBuilder.Entity<Staff>(entity =>
+        {
+            entity.HasKey(x => x.StaffId);
+            entity.Property(x => x.FullName).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.IsActive).HasDefaultValue(true);
+            entity.Property(x => x.CreatedAt).HasDefaultValueSql("GETDATE()");
+            entity.Property(x => x.UpdatedAt).HasDefaultValueSql("GETDATE()");
+            entity.HasIndex(x => x.UserId).IsUnique().HasFilter("[UserId] IS NOT NULL");
+            entity.HasOne(x => x.JobPosition).WithMany().HasForeignKey(x => x.JobPositionId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+        });
+
         modelBuilder.Entity<DoctorScheduleRequest>(entity =>
         {
             entity.HasKey(x => x.RequestId);
@@ -418,6 +434,24 @@ public class ApplicationDbContext : DbContext
                 new Room { RoomId = 1, RoomNumber = "P101", Name = "Phòng khám Nội 1", RoomType = "Khám bệnh", DepartmentId = 1, Location = "Tầng 1", IsActive = true, CreatedAt = new DateTime(2026, 1, 1), UpdatedAt = new DateTime(2026, 1, 1) },
                 new Room { RoomId = 2, RoomNumber = "P201", Name = "Phòng khám Nhi 1", RoomType = "Khám bệnh", DepartmentId = 2, Location = "Tầng 2", IsActive = true, CreatedAt = new DateTime(2026, 1, 1), UpdatedAt = new DateTime(2026, 1, 1) },
                 new Room { RoomId = 3, RoomNumber = "P301", Name = "Phòng khám Răng hàm mặt 1", RoomType = "Khám bệnh", DepartmentId = 3, Location = "Tầng 3", IsActive = true, CreatedAt = new DateTime(2026, 1, 1), UpdatedAt = new DateTime(2026, 1, 1) });
+        });
+
+        modelBuilder.Entity<JobPosition>(entity =>
+        {
+            entity.HasKey(x => x.JobPositionId);
+            entity.Property(x => x.Code).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.Name).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.Description).HasMaxLength(500);
+            entity.Property(x => x.IsActive).HasDefaultValue(true);
+            entity.Property(x => x.CreatedAt).HasDefaultValueSql("GETDATE()");
+            entity.Property(x => x.UpdatedAt).HasDefaultValueSql("GETDATE()");
+            entity.HasIndex(x => x.Code).IsUnique();
+            entity.HasIndex(x => x.Name).IsUnique();
+            entity.HasData(
+                new JobPosition { JobPositionId = 1, Code = "RECEPTION", Name = "Lễ tân", IsActive = true, CreatedAt = new DateTime(2026, 1, 1), UpdatedAt = new DateTime(2026, 1, 1) },
+                new JobPosition { JobPositionId = 2, Code = "CASHIER", Name = "Thu ngân", IsActive = true, CreatedAt = new DateTime(2026, 1, 1), UpdatedAt = new DateTime(2026, 1, 1) },
+                new JobPosition { JobPositionId = 3, Code = "PHARMACIST", Name = "Dược sĩ", IsActive = true, CreatedAt = new DateTime(2026, 1, 1), UpdatedAt = new DateTime(2026, 1, 1) },
+                new JobPosition { JobPositionId = 4, Code = "LABTECH", Name = "KTV xét nghiệm", IsActive = true, CreatedAt = new DateTime(2026, 1, 1), UpdatedAt = new DateTime(2026, 1, 1) });
         });
 
         // =========================

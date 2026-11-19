@@ -13,22 +13,7 @@ import {
     clinicSurfaceSx,
 } from "../../components/common/clinicUi";
 import getApiErrorMessage from "../../utils/errorHandler";
-
-const toForm = profile => ({
-    fullName: profile.fullName ?? "",
-    phone: profile.phone ?? "",
-    birthDate: profile.birthDate ? profile.birthDate.slice(0, 10) : "",
-    identityNumber: profile.identityNumber ?? "",
-    insuranceCode: profile.insuranceCode ?? "",
-});
-
-const toPayload = form => ({
-    fullName: form.fullName.trim(),
-    phone: form.phone.trim(),
-    birthDate: form.birthDate || null,
-    identityNumber: form.identityNumber.trim() || null,
-    insuranceCode: form.insuranceCode.trim() || null,
-});
+import { toPatientProfileForm as toForm, toPatientProfilePayload as toPayload } from "../../utils/patientProfileForm";
 
 function PatientProfileForm({ profile, saving, error, onSave, saved, onEdit, createMode = false }) {
     const [form, setForm] = useState(() => toForm(profile));

@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, FormLabel, MenuItem, Radio, RadioGroup, Stack, TextField, Typography } from "@mui/material";
-import { checkInAppointment, createBookRequest, findPatientMatches, getBookInvoices, getPatientBookRequests, getPatientBooks, issueBook, matchAppointmentPatient, registerExistingBook } from "../../api/receptionApi";
+import { checkInAppointment, createBookRequest, findPatientMatches, getBookInvoices, getPatientBookRequests, getPatientBooks, getPatientProfile, issueBook, matchAppointmentPatient, registerExistingBook, updatePatientProfile } from "../../api/receptionApi";
+import { CloseRounded, EditRounded, PersonOutlineRounded, SaveRounded } from "@mui/icons-material";
 import { useClinicInfo } from "../../api/publicApi";
+import { clinicColors } from "../common/clinicUi";
 import { getApiErrorMessage } from "../../utils/errorHandler";
+import { toPatientProfileForm, toPatientProfilePayload, validatePatientProfileForm } from "../../utils/patientProfileForm";
 import useNotifications from "../../hooks/useNotifications";
 
 export default function ReceptionCheckInDialog({ appointment, onClose, onCheckedIn }) {
@@ -26,6 +29,12 @@ export default function ReceptionCheckInDialog({ appointment, onClose, onChecked
     const [situation, setSituation] = useState(null);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
+    const [editingProfile, setEditingProfile] = useState(false);
+    const [profileForm, setProfileForm] = useState(null);
+    const [profileErrors, setProfileErrors] = useState({});
+    const [profileBusy, setProfileBusy] = useState(false);
+    const [profileError, setProfileError] = useState("");
+    const [profileSaved, setProfileSaved] = useState(false);
 
     const refreshBooks = useCallback(async () => {
         if (!patientId) return;
@@ -63,6 +72,39 @@ export default function ReceptionCheckInDialog({ appointment, onClose, onChecked
         try { await action(); }
         catch (err) { setError(getApiErrorMessage(err)); }
         finally { setBusy(false); }
+    }
+
+    async function openProfileEdit() {
+        setProfileBusy(true);
+        setProfileError("");
+        try {
+            const profile = await getPatientProfile(patientId);
+            setProfileForm(toPatientProfileForm(profile));
+            setProfileErrors({});
+            setProfileSaved(false);
+            setEditingProfile(true);
+        } catch (err) {
+            setProfileError(getApiErrorMessage(err));
+        } finally {
+            setProfileBusy(false);
+        }
+    }
+
+    async function saveProfile() {
+        const errors = validatePatientProfileForm(profileForm);
+        setProfileErrors(errors);
+        if (Object.keys(errors).length > 0) return;
+        setProfileBusy(true);
+        setProfileError("");
+        try {
+            await updatePatientProfile(patientId, toPatientProfilePayload(profileForm));
+            setProfileSaved(true);
+            setEditingProfile(false);
+        } catch (err) {
+            setProfileError(getApiErrorMessage(err));
+        } finally {
+            setProfileBusy(false);
+        }
     }
 
     const recordsLoaded = loadedPatientId === patientId && !recordsLoading;
@@ -117,7 +159,59 @@ export default function ReceptionCheckInDialog({ appointment, onClose, onChecked
                         })}>Tạo hồ sơ mới</Button>
                     </Stack>
                 </> : <>
-                    <Typography variant="body2">Hồ sơ bệnh nhân #{patientId}</Typography>
+                    <Box sx={{ border: "1px solid #D8E4F0", borderRadius: "12px", bgcolor: "#F8FBFF", p: 2 }}>
+                        <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", justifyContent: "space-between" }}>
+                            <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", minWidth: 0 }}>
+                                <Box sx={{ width: 38, height: 38, borderRadius: "10px", bgcolor: "#E6F0FA", color: clinicColors.primary, display: "grid", placeItems: "center", flexShrink: 0 }}>
+                                    <PersonOutlineRounded sx={{ fontSize: 22 }} />
+                                </Box>
+                                <Box sx={{ minWidth: 0 }}>
+                                    <Typography sx={{ fontSize: 14.5, fontWeight: 750, color: clinicColors.heading }}>Hồ sơ bệnh nhân</Typography>
+                                    <Typography sx={{ fontSize: 12.5, color: clinicColors.muted }}>Mã hồ sơ #{patientId}</Typography>
+                                </Box>
+                            </Stack>
+                            <Button size="small" variant="outlined" disabled={profileBusy}
+                                startIcon={editingProfile ? <CloseRounded /> : <EditRounded />}
+                                onClick={() => (editingProfile ? setEditingProfile(false) : openProfileEdit())}
+                                sx={{ borderRadius: "8px", textTransform: "none", fontWeight: 650, flexShrink: 0, bgcolor: "#fff" }}>
+                                {editingProfile ? "Đóng" : "Sửa hồ sơ"}
+                            </Button>
+                        </Stack>
+                        {profileSaved && !editingProfile && <Alert severity="success" sx={{ mt: 1.5, borderRadius: "10px" }}>Đã lưu hồ sơ bệnh nhân.</Alert>}
+                        {profileError && <Alert severity="error" sx={{ mt: 1.5, borderRadius: "10px" }}>{profileError}</Alert>}
+                        {editingProfile && profileForm && <Box component="form" noValidate
+                            onSubmit={event => { event.preventDefault(); saveProfile(); }}
+                            sx={{ mt: 2, pt: 2, borderTop: "1px solid #D8E4F0" }}>
+                            <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, "& .MuiOutlinedInput-root": { bgcolor: "#fff" } }}>
+                                <TextField required size="small" label="Họ và tên" value={profileForm.fullName} disabled={profileBusy}
+                                    error={Boolean(profileErrors.fullName)} helperText={profileErrors.fullName}
+                                    onChange={event => setProfileForm(current => ({ ...current, fullName: event.target.value }))}
+                                    slotProps={{ htmlInput: { maxLength: 100 } }} sx={{ gridColumn: { sm: "1 / -1" } }} />
+                                <TextField required size="small" type="tel" label="Số điện thoại" value={profileForm.phone} disabled={profileBusy}
+                                    error={Boolean(profileErrors.phone)} helperText={profileErrors.phone}
+                                    onChange={event => setProfileForm(current => ({ ...current, phone: event.target.value }))}
+                                    slotProps={{ htmlInput: { maxLength: 15 } }} />
+                                <TextField size="small" type="date" label="Ngày sinh" value={profileForm.birthDate} disabled={profileBusy}
+                                    onChange={event => setProfileForm(current => ({ ...current, birthDate: event.target.value }))}
+                                    slotProps={{ inputLabel: { shrink: true } }} />
+                                <TextField size="small" label="Số CCCD / CMND" value={profileForm.identityNumber} disabled={profileBusy}
+                                    error={Boolean(profileErrors.identityNumber)} helperText={profileErrors.identityNumber}
+                                    onChange={event => setProfileForm(current => ({ ...current, identityNumber: event.target.value }))}
+                                    slotProps={{ htmlInput: { maxLength: 20 } }} />
+                                <TextField size="small" label="Mã thẻ Bảo hiểm y tế" value={profileForm.insuranceCode} disabled={profileBusy}
+                                    error={Boolean(profileErrors.insuranceCode)} helperText={profileErrors.insuranceCode}
+                                    onChange={event => setProfileForm(current => ({ ...current, insuranceCode: event.target.value }))}
+                                    slotProps={{ htmlInput: { maxLength: 30 } }} />
+                            </Box>
+                            <Stack direction="row" spacing={1} sx={{ mt: 2, justifyContent: "flex-end" }}>
+                                <Button disabled={profileBusy} onClick={() => setEditingProfile(false)} sx={{ textTransform: "none", fontWeight: 650 }}>Hủy</Button>
+                                <Button type="submit" variant="contained" disabled={profileBusy} startIcon={<SaveRounded />}
+                                    sx={{ borderRadius: "8px", textTransform: "none", fontWeight: 700 }}>
+                                    {profileBusy ? "Đang lưu..." : "Lưu hồ sơ"}
+                                </Button>
+                            </Stack>
+                        </Box>}
+                    </Box>
                     {!recordsLoaded && <Typography variant="body2" color="text.secondary">Đang tải sổ khám và hóa đơn...</Typography>}
                     <Box>
                         <FormLabel id="book-situation-label">Tình trạng sổ khi đến quầy</FormLabel>

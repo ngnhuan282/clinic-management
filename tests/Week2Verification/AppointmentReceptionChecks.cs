@@ -45,6 +45,13 @@ internal static class AppointmentReceptionChecks
         var doctorLogin = await Login("testdoctor");
         var doctor = Token(doctorLogin);
         var doctorId = Id(doctorLogin, "userId");
+
+        await Send(HttpMethod.Get, $"patients/{profile.PatientId}", own, status: 403);
+        var fetchedProfile = (await Send(HttpMethod.Get, $"patients/{profile.PatientId}", reception))!;
+        check(Id(fetchedProfile, "patientId") == profile.PatientId && fetchedProfile["phone"]!.GetValue<string>() == profile.Phone,
+            "Reception fetches a single Patient profile by id to prefill an edit form");
+        await Send(HttpMethod.Get, "patients/999999", reception, status: 404);
+
         var future = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTime.UtcNow, "Asia/Ho_Chi_Minh").Date.AddDays(10);
         var schedule = new DoctorSchedule { DoctorId = 1, RoomId = 1, WorkDate = DateOnly.FromDateTime(future),
             StartTime = TimeSpan.FromHours(8), EndTime = TimeSpan.FromHours(12), Status = "Approved", MaxPatients = 8, CreatedAt = DateTime.UtcNow };

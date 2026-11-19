@@ -6,6 +6,7 @@ namespace ClinicManagement.Services.Interfaces;
 public interface IReceptionService
 {
     Task<List<PatientMatchResponse>> FindPatientsAsync(string search);
+    Task<PatientMatchResponse> GetPatientAsync(int patientId);
     Task<AppointmentResponse> MatchAppointmentPatientAsync(int appointmentId, int? patientProfileId);
     Task<List<PatientBookResponse>> GetBooksAsync(int patientId);
     Task<PatientBookResponse> RegisterExistingBookAsync(int patientId, RegisterExistingBookRequest request);

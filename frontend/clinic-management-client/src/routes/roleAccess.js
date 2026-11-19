@@ -45,6 +45,7 @@ export const INTERNAL_PAGES = [
     { label: "Phòng", path: "/internal/rooms", group: "Lịch trực & Danh mục", roles: ["Admin"] },
     { label: "Danh mục bệnh", path: "/internal/diseases", group: "Lịch trực & Danh mục", roles: ["Admin", "DepartmentHead"] },
     { label: "Xét nghiệm", path: "/internal/lab-test-types", group: "Lịch trực & Danh mục", roles: ["Admin", "Doctor", "DepartmentHead"] },
+    { label: "Vị trí công việc", path: "/internal/job-positions", group: "Lịch trực & Danh mục", roles: ["Admin"] },
 
     // 5. Kho dược & Cấp phát
     {
@@ -69,6 +70,8 @@ export const INTERNAL_PAGES = [
 
     // 6. Quản trị hệ thống
     { label: "Tài khoản & Vai trò", path: "/internal/users", group: "Quản trị hệ thống", roles: ["Admin"] },
+    { label: "Hồ sơ bác sĩ (Quản trị)", path: "/internal/doctors-management", group: "Quản trị hệ thống", roles: ["Admin"] },
+    { label: "Hồ sơ nhân viên", path: "/internal/staff-management", group: "Quản trị hệ thống", roles: ["Admin"] },
     { label: "Vai trò & Phân quyền", path: "/internal/roles-permissions", group: "Quản trị hệ thống", roles: ["Admin"] },
     { label: "Quản lý đánh giá", path: "/internal/reviews", group: "Quản trị hệ thống", roles: ["Admin"] },
     { label: "Cấu hình phòng khám", path: "/internal/settings", group: "Quản trị hệ thống", roles: ["Admin"] },
@@ -87,10 +90,13 @@ const PAGE_PERMISSIONS = {
     "/internal/appointments": "appointments.view",
     "/internal/patient-books": "appointments.checkIn",
     "/internal/users": "accounts.view",
+    "/internal/doctors-management": "staff.manage",
+    "/internal/staff-management": "staff.manage",
     "/internal/roles-permissions": "accounts.manageRoles",
     "/internal/departments": "catalog.manage",
     "/internal/specializations": "catalog.manage",
     "/internal/rooms": "catalog.manage",
+    "/internal/job-positions": "catalog.manage",
     "/internal/doctor-schedules": "schedules.manage",
     "/internal/schedule-requests": "schedules.review",
     "/internal/medicines": [
