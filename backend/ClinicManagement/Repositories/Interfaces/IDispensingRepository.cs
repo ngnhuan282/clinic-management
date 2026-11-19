@@ -21,14 +21,10 @@ public interface IDispensingRepository
     );
 
     Task<IReadOnlyList<Invoice>> GetPaidMedicineInvoicesAsync(
-        IReadOnlyCollection<int> appointmentIds, bool onlyPaid = true
+        IReadOnlyCollection<int> appointmentIds
     );
 
-    Task<Invoice?> GetPaidMedicineInvoiceAsync(
-        int appointmentId,
-        int prescriptionId,
-        IReadOnlyCollection<int> prescriptionDetailIds, int patientId, bool onlyPaid = true
-    );
+    Task<IReadOnlyDictionary<int, Invoice>> GetReconciledMedicineInvoicesAsync(IReadOnlyCollection<int> prescriptionIds);
 
     Task AddDispenseDetailsAsync(
         IEnumerable<DispenseDetail> dispenseDetails

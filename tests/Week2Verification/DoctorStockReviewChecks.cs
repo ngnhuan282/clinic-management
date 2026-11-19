@@ -256,6 +256,28 @@ internal static class DoctorStockReviewChecks
                     $"{status} official proposal cannot be revised, resent or withdrawn in the same round");
             check(await db.PrescriptionStockReviewDecisions.CountAsync() == auditCount && await db.Notifications.CountAsync() == notificationCount,
                 $"{status} repeated responses do not add audits or notifications");
+            if (status == "Paid")
+            {
+                var cashierId = await db.Users.Where(x => x.Username == "testadmin").Select(x => x.UserId).SingleAsync();
+                db.PrescriptionStockReviewDecisions.Add(new PrescriptionStockReviewDecision
+                {
+                    PrescriptionStockReviewId = id, DoctorUserId = cashierId,
+                    Action = "BillingAdjusted", Outcome = "BillingReconciled",
+                    Reason = "D7 adjustment document",
+                    BeforeJson = """{"originalInvoiceId":1,"paidAmount":20000}""",
+                    AfterJson = """{"adjustmentPatientAmount":-8000,"paymentStatus":"Refunded"}""",
+                    CreatedAt = DateTime.UtcNow
+                });
+                await db.SaveChangesAsync();
+                var afterBilling = await Detail(id);
+                var decisions = afterBilling["review"]!["decisions"]!.AsArray();
+                check(afterBilling["review"]!["workflowStatus"]!.GetValue<string>() == "WaitingBilling"
+                    && afterBilling["prescription"]!["details"]![0]!["quantity"]!.GetValue<int>() == originalQuantity
+                    && decisions.Count == 2 && decisions[0]!["action"]!.GetValue<string>() == "BillingAdjusted"
+                    && decisions[0]!["before"] == null && decisions[0]!["after"] == null
+                    && decisions[1]!["after"]!["details"]![0]!["quantity"]!.GetValue<int>() == 12,
+                    "D7 billing receipt stays in the audit log without replacing the doctor's proposal or authorizing handover");
+            }
             await Login("reviewpharmacist");
             pharmacyDetail = await PharmacyDetail(rxId);
             check((await Send(HttpMethod.Post, $"api/dispensing/{rxId}/stock-reviews/recheck", Recheck(pharmacyDetail), 409))["code"]!.GetValue<int>() == 7411,

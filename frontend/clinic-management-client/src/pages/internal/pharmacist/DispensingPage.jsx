@@ -1,4 +1,4 @@
-import { Box, Chip, Paper, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, Chip, Paper, Stack, Typography } from "@mui/material";
 import VerifiedOutlinedIcon from "@mui/icons-material/VerifiedOutlined";
 import { useLocation, useNavigate } from "react-router-dom";
 import ErrorState from "../../../components/common/ErrorState";
@@ -10,7 +10,7 @@ import useAuth from "../../../hooks/useAuth";
 import useDispensing from "../../../hooks/useDispensing";
 
 function DispensingPage() {
-    const { filters, queueItems, pagination, summary, loading, error, updateFilters, resetFilters, loadQueue } = useDispensing();
+    const { filters, queueItems, pagination, summary, loading, error, refreshWarning, updateFilters, resetFilters, loadQueue } = useDispensing();
     const { userId } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
@@ -37,6 +37,9 @@ function DispensingPage() {
             <DispensingStatCards summary={summary} />
             <DispensingFilters filters={filters} onChange={updateFilters} onReset={resetFilters} onRefresh={loadQueue} refreshing={loading} />
             {error && <ErrorState message={error} onRetry={loadQueue} />}
+            {refreshWarning && <Alert severity="warning" action={<Button color="inherit" onClick={() => loadQueue({ background: true })}>Thử lại</Button>}>
+                Chưa cập nhật được dữ liệu quầy. Đang hiển thị dữ liệu đã tải trước đó. {refreshWarning}
+            </Alert>}
             {loading ? <Paper elevation={0} sx={{ border: "1px solid #E5E9F0", borderRadius: 2 }}><Loading /></Paper> :
                 <DispensingTable items={queueItems} pagination={pagination} filters={filters} onSelect={openDetail}
                     onPageChange={(pageNumber) => updateFilters({ pageNumber })}

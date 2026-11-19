@@ -30,7 +30,7 @@ function StockReviewHistory({ reviews, footer, showEmptyResponse = true }) {
                     const code = `RS-${String(review.reviewId).padStart(5, "0")}`;
                     const status = getStockReviewStatusConfig(review);
                     const recheckResult = getStockReviewRecheckResultConfig(review);
-                    const paid = review.paymentStatus === "Paid";
+                    const paid = ["Paid", "ReconciledPaid"].includes(review.paymentStatus);
                     const previousRound = index > 0;
                     const frameSx = { minWidth: 0, border: "1px solid #D9E2EF", borderRadius: 1,
                         bgcolor: "#FFFFFF", boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)" };
@@ -74,7 +74,9 @@ function StockReviewHistory({ reviews, footer, showEmptyResponse = true }) {
                         {(showEmptyResponse || Boolean(review.decisions?.length)) && <Box>
                             <Stack direction="row" spacing={1} sx={{ mb: 1, alignItems: "center" }}>
                                 <FactCheckOutlinedIcon color="primary" fontSize="small" />
-                                <Typography component="h4" variant="body2" sx={{ fontWeight: 700 }}>Phản hồi của bác sĩ</Typography>
+                                <Typography component="h4" variant="body2" sx={{ fontWeight: 700 }}>
+                                    {review.decisions?.some(decision => decision.action === "BillingAdjusted") ? "Phản hồi và chứng từ điều chỉnh" : "Phản hồi của bác sĩ"}
+                                </Typography>
                             </Stack>
                             {review.decisions?.length ? <StockReviewDecisionHistory key={`${review.reviewId}-${review.decisions[0].decisionId}`} decisions={review.decisions} />
                                 : <Typography variant="body2" sx={{ pl: 3.5, color: "#6B7280" }}>Chưa có phản hồi.</Typography>}

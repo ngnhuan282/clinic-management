@@ -6,11 +6,20 @@ namespace ClinicManagement.Mappings;
 
 public static class DispensingMapping
 {
+    public static bool RequiresPaperBookConfirmationAfterReconciliation(this Prescription prescription) =>
+        prescription.Status == PrescriptionStatusConstants.Issued && prescription.HasAppliedBillingProposal()
+        && (prescription.MedicalRecord.PaperBookUpdatedAt == null
+            || prescription.MedicalRecord.Appointment.Status != AppointmentStatusConstants.Completed);
+
+    public static bool HasSettledDispensingInvoice(this Prescription prescription, Invoice? invoice) =>
+        invoice != null && (invoice.Status == "Paid" || prescription.HasAppliedBillingProposal());
+
     public static DispensingListItemResponse ToDispensingListItem(
         this Prescription prescription,
         Invoice? paidInvoice,
         DateOnly today)
     {
+        var isPaid = prescription.HasSettledDispensingInvoice(paidInvoice);
         return new DispensingListItemResponse
         {
             ShortageItems = prescription.Status == PrescriptionStatusConstants.Dispensed ? 0
@@ -34,13 +43,14 @@ public static class DispensingMapping
             PrescriptionStatus = prescription.Status,
             WorkflowStatus = GetWorkflowStatus(
                 prescription.Status,
-                paidInvoice?.Status == "Paid",
+                isPaid,
                 prescription.Details.All(x => x.Quantity <= x.Medicine.Inventories
                     .Where(i => i.ExpiryDate >= today && i.QuantityInStock > 0).Sum(i => i.QuantityInStock)),
                 prescription.StockReviews.Any(x => x.Status == "Pending")
+                    || prescription.RequiresPaperBookConfirmationAfterReconciliation()
             ),
             InvoiceId = paidInvoice?.Id,
-            PaymentStatus = paidInvoice?.Status ?? "Unpaid",
+            PaymentStatus = isPaid ? "Paid" : paidInvoice?.Status ?? "Unpaid",
             DispensedAt = prescription.DispensedAt
         };
     }
@@ -58,8 +68,9 @@ public static class DispensingMapping
             ))
             .ToList();
         var hasSufficientStock = medicines.All(x => x.IsFulfillable);
-        var isPaid = paidInvoice?.Status == "Paid";
+        var isPaid = prescription.HasSettledDispensingInvoice(paidInvoice);
         var hasPendingReview = prescription.StockReviews.Any(x => x.Status == "Pending");
+        var requiresPaperBook = prescription.RequiresPaperBookConfirmationAfterReconciliation();
 
         return new DispensingResponse
         {
@@ -79,7 +90,7 @@ public static class DispensingMapping
             PrescriptionStatus = prescription.Status,
             WorkflowStatus = GetWorkflowStatus(
                 prescription.Status,
-                isPaid, hasSufficientStock, hasPendingReview
+                isPaid, hasSufficientStock, hasPendingReview || requiresPaperBook
             ),
             PatientName = prescription.MedicalRecord.Appointment.PatientName,
             PatientPhone = prescription.MedicalRecord.Appointment.PatientPhone,
@@ -87,12 +98,13 @@ public static class DispensingMapping
             Notes = prescription.Notes,
             InvoiceId = paidInvoice?.Id,
             BillingStage = paidInvoice?.BillingStage,
-            PaymentStatus = paidInvoice?.Status ?? "Unpaid",
+            PaymentStatus = isPaid ? "Paid" : paidInvoice?.Status ?? "Unpaid",
+            RequiresPaperBookConfirmation = requiresPaperBook,
             HasSufficientStock = hasSufficientStock,
             CanDispense =
                 prescription.Status == PrescriptionStatusConstants.Issued &&
                 isPaid &&
-                hasSufficientStock && !hasPendingReview,
+                hasSufficientStock && !hasPendingReview && !requiresPaperBook,
             DispensedByUserId = prescription.DispensedByUserId,
             DispensedByName = prescription.DispensedByUser?.FullName,
             DispensedAt = prescription.DispensedAt,

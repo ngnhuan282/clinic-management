@@ -5,6 +5,8 @@ import { getDispensingPaymentLabel } from "../src/components/internal/pharmacy/d
 test("dispensing distinguishes partial payment without labeling it paid", () => {
     assert.equal(getDispensingPaymentLabel("Paid"), "Đã thanh toán");
     assert.equal(getDispensingPaymentLabel("PartiallyPaid"), "Thanh toán một phần");
+    assert.equal(getDispensingPaymentLabel("Refunded"), "Đã ghi chứng từ hoàn tiền");
+    assert.equal(getDispensingPaymentLabel("AdjustedPaid"), "Đã ghi chứng từ điều chỉnh");
     assert.equal(getDispensingPaymentLabel("Unpaid"), "Chưa thanh toán");
 });
 

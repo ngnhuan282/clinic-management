@@ -46,6 +46,9 @@ export function getReviewStatusLabel(status) {
 export function getDispensingPaymentLabel(status) {
     if (status === "Paid") return "Đã thanh toán";
     if (status === "PartiallyPaid") return "Thanh toán một phần";
+    if (status === "Refunded") return "Đã ghi chứng từ hoàn tiền";
+    if (status === "AdjustedPaid") return "Đã ghi chứng từ điều chỉnh";
+    if (status === "ReconciledPaid") return "Đã đối soát và thanh toán đủ";
     return "Chưa thanh toán";
 }
 

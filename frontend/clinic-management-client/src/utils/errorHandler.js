@@ -64,6 +64,7 @@ const API_ERROR_MESSAGES = {
     6019: "Lô thuốc đã có lịch sử cấp phát nên không thể xóa hoặc đổi thông tin nhận diện.",
     6020: "Thuốc đã phát sinh trong đơn thuốc hoặc phiếu nhập kho nên không thể xóa.",
     6021: "Nhà cung cấp đã phát sinh phiếu nhập kho nên không thể xóa.",
+    6022: "Phiếu nhập vừa được xử lý ở phiên khác. Vui lòng tải lại và thử lại.",
     7001: "Không tìm thấy bệnh.",
     7002: "Mã bệnh đã tồn tại.",
     7003: "Tên bệnh đã tồn tại.",

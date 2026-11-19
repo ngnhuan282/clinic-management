@@ -26,7 +26,7 @@ public record StockReviewPrescriptionItem(int MedicineId, string MedicineName, s
     int Quantity, string Dosage, string Instructions);
 public record StockReviewPrescriptionSnapshot(string? Notes, IReadOnlyList<StockReviewPrescriptionItem> Details);
 public record StockReviewDecisionResponse(int DecisionId, string Action, string Outcome, string Reason,
-    string DoctorName, DateTime CreatedAt, StockReviewPrescriptionSnapshot Before, StockReviewPrescriptionSnapshot After);
+    string DoctorName, DateTime CreatedAt, StockReviewPrescriptionSnapshot? Before, StockReviewPrescriptionSnapshot? After);
 
 public class DoctorStockReviewResponse
 {
@@ -35,6 +35,7 @@ public class DoctorStockReviewResponse
     public DateTime PrescriptionUpdatedAt { get; set; }
     public bool HasMedicineInvoice { get; set; }
     public bool CanRespond { get; set; }
+    public bool CanApplyProposal { get; set; }
 }
 
 public record DoctorStockReviewListItem(int ReviewId, int PrescriptionId, string PrescriptionCode,

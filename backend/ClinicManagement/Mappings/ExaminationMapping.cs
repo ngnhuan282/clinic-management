@@ -42,6 +42,7 @@ public static class ExaminationMapping
             PatientBookId = appointment.PatientBookId,
             PatientBookNumber = appointment.PatientBook?.BookNumber,
             BookVerifiedAt = appointment.BookVerifiedAt,
+            CheckedInAt = appointment.CheckedInAt,
             PatientName = appointment.PatientName,
             PatientPhone = appointment.PatientPhone,
             AppointmentDate = appointment.AppointmentDate,

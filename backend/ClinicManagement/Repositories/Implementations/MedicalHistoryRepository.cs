@@ -82,8 +82,9 @@ public class MedicalHistoryRepository(ApplicationDbContext db) : IMedicalHistory
         return await db.Invoices.AsNoTracking()
             .Include(x => x.InvoiceDetails)
             .Where(x => x.AppointmentId == record.AppointmentId && x.PatientId == billingPatientId
+                && x.InvoiceType == "Standard"
                 && (x.BillingStage == "Medicine" || x.BillingStage == "Final")
-                && (x.Status == "Paid" || x.Status == "Unpaid")
+                && (x.Status == "Paid" || x.Status == "Unpaid" || x.Status == "PartiallyPaid")
                 && x.InvoiceDetails.Any(line =>
                     (line.SourceType == "Prescription" && line.SourceId == prescriptionId)
                     || (line.SourceType == "PrescriptionDetail" && detailIds.Contains(line.SourceId))))

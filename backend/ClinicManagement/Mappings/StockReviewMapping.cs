@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ClinicManagement.Commons;
 using ClinicManagement.Data.Entities;
 using ClinicManagement.DTOs.Responses;
 
@@ -21,20 +22,24 @@ public static class StockReviewMapping
         Decisions = review.Decisions.OrderByDescending(x => x.PrescriptionStockReviewDecisionId).Select(x =>
             new StockReviewDecisionResponse(x.PrescriptionStockReviewDecisionId, x.Action, x.Outcome, x.Reason,
                 x.DoctorUser.FullName, DateTime.SpecifyKind(x.CreatedAt, DateTimeKind.Utc),
-                JsonSerializer.Deserialize<StockReviewPrescriptionSnapshot>(x.BeforeJson)!,
-                JsonSerializer.Deserialize<StockReviewPrescriptionSnapshot>(x.AfterJson)!)).ToList()
+                x.Action == StockReviewBillingConfirmation.BillingAction ? null : JsonSerializer.Deserialize<StockReviewPrescriptionSnapshot>(x.BeforeJson),
+                x.Action == StockReviewBillingConfirmation.BillingAction ? null : JsonSerializer.Deserialize<StockReviewPrescriptionSnapshot>(x.AfterJson))).ToList()
     };
 
     public static bool IsAwaitingBilling(this PrescriptionStockReview review) =>
-        review.Decisions.OrderByDescending(x => x.PrescriptionStockReviewDecisionId).FirstOrDefault()?.Outcome == "AwaitingBilling";
+        review.Decisions.MaxBy(x => x.PrescriptionStockReviewDecisionId) is { } latest
+        && (latest.Action == StockReviewBillingConfirmation.BillingAction || latest.Outcome == "AwaitingBilling");
+
+    public static bool HasAppliedBillingProposal(this Prescription prescription) =>
+        prescription.StockReviews.Any(r => r.Decisions.Any(d => d.Action == StockReviewBillingConfirmation.ApplyAction));
 
     public static string GetReviewWorkflowStatus(this PrescriptionStockReview review) => review.Status switch
     {
         "Resolved" => "Completed",
         "StillShortage" => "StillShortage",
+        _ when review.IsAwaitingBilling() => "WaitingBilling",
         _ => review.Decisions.OrderByDescending(x => x.PrescriptionStockReviewDecisionId).FirstOrDefault()?.Outcome switch
         {
-            "AwaitingBilling" => "WaitingBilling",
             "Kept" or "Applied" => "WaitingPharmacyRecheck",
             _ => "PendingDoctor"
         }

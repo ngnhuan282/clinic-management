@@ -88,6 +88,8 @@ public static class MedicalHistoryMapping
             // Older invoices may lack the insurance split; do not present missing values as zero paid.
             var hasFinancialSplit = invoice.InsuranceAmount >= 0 && invoice.PatientAmount >= 0
                 && invoice.InsuranceAmount + invoice.PatientAmount == invoice.TotalAmount;
+            var hasPartialPayment = hasFinancialSplit && invoice.Status == "PartiallyPaid"
+                && invoice.PaidAmount > 0 && invoice.PaidAmount < invoice.PatientAmount;
             return new PatientMedicineInvoiceResponse
             {
                 InvoiceId = invoice.Id,
@@ -99,6 +101,8 @@ public static class MedicalHistoryMapping
                 TotalAmount = invoice.TotalAmount,
                 InsuranceAmount = hasFinancialSplit ? invoice.InsuranceAmount : null,
                 PatientAmount = hasFinancialSplit ? invoice.PatientAmount : null,
+                PaidAmount = hasPartialPayment ? invoice.PaidAmount : null,
+                RemainingAmount = hasPartialPayment ? invoice.PatientAmount - invoice.PaidAmount : null,
                 Details = invoice.InvoiceDetails.OrderBy(x => x.Id).Select(line => new PatientMedicineInvoiceItemResponse
                 {
                     InvoiceDetailId = line.Id,

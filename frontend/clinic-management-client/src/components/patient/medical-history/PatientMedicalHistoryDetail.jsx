@@ -1,4 +1,4 @@
-import { Avatar, Box, Button, Chip, Paper, Stack, Typography } from "@mui/material";
+import { Avatar, Box, Button, Chip, Stack, Typography } from "@mui/material";
 import PrintOutlinedIcon from "@mui/icons-material/PrintOutlined";
 import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
 import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
@@ -12,28 +12,40 @@ import PatientMedicineBillingSection from "./PatientMedicineBillingSection";
 import formatDate from "../../../utils/formatDate";
 import { Link } from "react-router-dom";
 
+const detailBandSx = {
+    minWidth: 0,
+    bgcolor: "#FFFFFF",
+    border: "1px solid #C5D8EC",
+    borderRadius: "8px",
+    overflow: "hidden",
+};
+
+const detailHeadingSx = {
+    gap: 1.25,
+    alignItems: "center",
+    px: { xs: 2, sm: 2.5 },
+    py: 1.5,
+    minHeight: 52,
+    bgcolor: "#EAF2FA",
+    borderBottom: "1px solid #C5D8EC",
+    "& > .MuiSvgIcon-root": { color: "#0B4F8A", fontSize: 20, flexShrink: 0 },
+    "& > h3": { color: "#0A2540", fontWeight: 800, lineHeight: 1.5, fontSize: 15 },
+};
+
 function ClinicalSection({ id, title, icon: Icon, children }) {
     return (
         <Box component="section" aria-labelledby={id} sx={{ minWidth: 0, display: "flex", flexDirection: "column" }}>
             <Stack
                 direction="row"
                 className="medical-history-field-heading"
-                sx={{
-                    gap: 1.25,
-                    alignItems: "center",
-                    px: 2.5,
-                    py: 1.85,
-                    minHeight: 56,
-                    bgcolor: "#EAF2FA",
-                    borderBottom: "1px solid #C5D8EC",
-                }}
+                sx={detailHeadingSx}
             >
-                <Icon sx={{ color: "#0B4F8A", fontSize: 20, flexShrink: 0 }} />
-                <Typography id={id} component="h3" variant="subtitle2" sx={{ color: "#0A2540", fontWeight: 800, lineHeight: 1.5, fontSize: 15 }}>
+                <Icon />
+                <Typography id={id} component="h3" variant="subtitle2">
                     {title}
                 </Typography>
             </Stack>
-            <Box className="medical-history-clinical-content" sx={{ p: 2.5, flex: 1, minHeight: { xs: 88, md: 120 } }}>
+            <Box className="medical-history-clinical-content" sx={{ p: { xs: 2, sm: 2.5 }, flex: 1 }}>
                 {children}
             </Box>
         </Box>
@@ -58,19 +70,8 @@ function PatientMedicalHistoryDetail({ detail }) {
         ["Sổ khám", record.patientBookNumber || "Chưa ghi nhận"],
     ];
 
-    return (
-        <Paper
-            component="section"
-            aria-labelledby="patient-record-title"
-            elevation={0}
-            sx={{
-                border: "1px solid #C5D8EC",
-                borderRadius: "16px",
-                overflow: "hidden",
-                bgcolor: "#FFFFFF",
-                boxShadow: "0 2px 12px rgba(10, 37, 64, 0.04)",
-            }}
-        >
+    const identity = (
+        <Box className="medical-history-detail-band" sx={detailBandSx}>
             <Stack
                 direction={{ xs: "column", sm: "row" }}
                 sx={{
@@ -122,7 +123,6 @@ function PatientMedicalHistoryDetail({ detail }) {
                     alignItems: "center",
                     gap: 3,
                     gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(0, 1fr) minmax(0, 1.1fr)" },
-                    borderBottom: "1px solid #C5D8EC",
                 }}
             >
                 <Stack direction="row" sx={{ gap: 2, alignItems: "center", minWidth: 0 }}>
@@ -197,17 +197,24 @@ function PatientMedicalHistoryDetail({ detail }) {
                     ))}
                 </Box>
             </Box>
+        </Box>
+    );
 
+    return (
+        <Stack
+            component="section"
+            aria-labelledby="patient-record-title"
+            className="medical-history-record-layout"
+            sx={{ minWidth: 0, gap: { xs: 2, sm: 3 } }}
+        >
+            {identity}
             <Box
                 className="medical-history-clinical-grid"
                 sx={{
                     display: "grid",
-                    borderBottom: "1px solid #C5D8EC",
+                    gap: 2,
                     gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(3, minmax(0, 1fr))" },
-                    "& > section + section": {
-                        borderLeft: { md: "1px solid #C5D8EC" },
-                        borderTop: { xs: "1px solid #C5D8EC", md: 0 },
-                    },
+                    "& > section": detailBandSx,
                 }}
             >
                 <ClinicalSection
@@ -280,27 +287,40 @@ function PatientMedicalHistoryDetail({ detail }) {
                 </ClinicalSection>
             </Box>
 
-            <Box sx={{ borderBottom: "1px solid #C5D8EC" }}>
+            <Box
+                className="medical-history-detail-band medical-history-vitals-band"
+                sx={{
+                    ...detailBandSx,
+                    "& dl": {
+                        gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "repeat(4, minmax(0, 1fr))" },
+                        gap: { xs: 1.5, sm: 2 },
+                    },
+                }}
+            >
                 <ClinicalSection id="patient-record-vital-signs" title="Chỉ số sinh tồn" icon={MonitorHeartOutlinedIcon}>
                     <MedicalRecordVitalSigns record={record} />
                 </ClinicalSection>
             </Box>
 
-            <MedicalHistoryPrescriptionSection prescription={prescription} embedded />
+            <Box
+                className="medical-history-detail-band medical-history-prescription-band"
+                sx={{ ...detailBandSx, "& > * > .MuiStack-root:first-of-type": detailHeadingSx }}
+            >
+                <MedicalHistoryPrescriptionSection prescription={prescription} embedded />
+            </Box>
 
             {prescription && (
-                <PatientMedicineBillingSection
-                    billing={detail.medicineBilling}
-                    prescriptionCode={prescription.prescriptionCode}
-                />
+                <Box className="medical-history-detail-band" sx={{ ...detailBandSx, "& > section": { borderTop: 0 } }}>
+                    <PatientMedicineBillingSection
+                        billing={detail.medicineBilling}
+                        prescriptionCode={prescription.prescriptionCode}
+                    />
+                </Box>
             )}
 
             <Box
                 className="medical-history-no-print"
                 sx={{
-                    p: 2.5,
-                    borderTop: "1px solid #C5D8EC",
-                    bgcolor: "#F4F7FA",
                     display: "flex",
                     gap: 1.5,
                     justifyContent: "flex-end",
@@ -323,7 +343,7 @@ function PatientMedicalHistoryDetail({ detail }) {
                     Đặt lịch khám mới
                 </Button>
             </Box>
-        </Paper>
+        </Stack>
     );
 }
 
