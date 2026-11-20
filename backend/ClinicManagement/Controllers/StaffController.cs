@@ -1,8 +1,9 @@
+using ClinicManagement.DTOs.Requests.Staff;
+using ClinicManagement.DTOs.Responses.Shared;
+using ClinicManagement.DTOs.Responses.Staff;
 using ClinicManagement.Commons;
 using ClinicManagement.Data;
 using ClinicManagement.Data.Entities;
-using ClinicManagement.DTOs.Requests;
-using ClinicManagement.DTOs.Responses;
 using ClinicManagement.Exceptions;
 using ClinicManagement.Hubs;
 using ClinicManagement.Services.Interfaces;
@@ -10,7 +11,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using System.ComponentModel.DataAnnotations;
 using System.Data;
 using System.Text.Json;
 
@@ -103,9 +103,4 @@ public class StaffController(
         foreach (var userId in affectedIds) connections.DisconnectUser(userId);
         return Ok(ApiResponse<object>.Success(new { staff.StaffId, staff.UserId }));
     }
-}
-
-public class LinkStaffAccountRequest
-{
-    [Required, Range(1, int.MaxValue)] public int? UserId { get; set; }
 }

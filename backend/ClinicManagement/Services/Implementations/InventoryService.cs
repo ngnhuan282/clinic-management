@@ -1,6 +1,7 @@
+using ClinicManagement.DTOs.Requests.Inventory;
+using ClinicManagement.DTOs.Responses.Inventory;
+using ClinicManagement.DTOs.Responses.Shared;
 using ClinicManagement.Data.Entities;
-using ClinicManagement.DTOs.Requests;
-using ClinicManagement.DTOs.Responses;
 using ClinicManagement.Exceptions;
 using ClinicManagement.Helpers;
 using ClinicManagement.Mappings;

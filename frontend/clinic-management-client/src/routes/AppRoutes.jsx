@@ -30,6 +30,7 @@ const LabResultsPage = lazy(() => import("../pages/patient/LabResultsPage"));
 const DoctorSearchPage = lazy(() => import("../pages/patient/DoctorSearchPage"));
 const ProfilePage = lazy(() => import("../pages/ProfilePage"));
 const PatientMedicalHistoryPage = lazy(() => import("../pages/patient/PatientMedicalHistoryPage"));
+const PatientInvoicesPage = lazy(() => import("../pages/patient/PatientInvoicesPage"));
 const PatientMedicalHistoryDetailPage = lazy(() => import("../pages/patient/PatientMedicalHistoryDetailPage"));
 const ReviewsPage = lazy(() => import("../pages/patient/ReviewsPage"));
 const AuthPage = lazy(() => import("../pages/auth/AuthPage"));
@@ -165,6 +166,7 @@ export default function AppRoutes() {
                         <Route path="/lab-results" element={<LabResultsPage />} />
                         <Route path="/my-reviews" element={<ReviewsPage own />} />
                         <Route path="/medical-records" element={<PatientMedicalHistoryPage />} />
+                        <Route path="/invoices" element={<PatientInvoicesPage />} />
                         <Route path="/medical-records/:medicalRecordId" element={<PatientMedicalHistoryDetailPage />} />
                     </Route>
 

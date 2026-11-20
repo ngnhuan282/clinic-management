@@ -40,6 +40,14 @@ Screenshots are written to `.tmp/guest-portal/`.
 
 This disposable fixture runs the existing backend against a randomly named SQL Server LocalDB database. It calls `Database.MigrateAsync()` and checks the migration history; it never uses `EnsureCreated` or generates a replacement schema from the model.
 
+Lab result and notification scenarios prepare paid Standard invoices through
+`PaidLabFixture` before submitting results. These rows are fixture prerequisites;
+they do not test cashier payment. Run `tests/Week2Verification -- --post-merge`
+after a Release build to verify the real invoice/payment APIs, unpaid and partial
+payment guards, visit binding, colliding patient/account IDs, book-source
+deduplication, and the refund-to-doctor-proposal workflow. No payment guard is
+disabled for the UI fixture.
+
 ```powershell
 dotnet build tests/UiRefreshVerification -c Release
 node tests/UiRefreshVerification/smoke.mjs

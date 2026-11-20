@@ -10,6 +10,7 @@ import {
 import invoiceApi from '../../api/invoiceApi';
 import getApiErrorMessage from '../../utils/errorHandler';
 import useAuth from '../../hooks/useAuth';
+import { escapeReceiptHtml as html } from '../../utils/receiptHtml';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -27,6 +28,7 @@ const STATUS_CONFIG = {
   PartiallyPaid: { color: 'orange', label: 'Thanh toán một phần' },
   Paid: { color: 'green', label: 'Đã thanh toán đủ' },
   Refunded: { color: 'purple', label: 'Đã hoàn tiền' },
+  Adjusted: { color: 'blue', label: 'Đã điều chỉnh' },
 };
 
 export default function CashierBillingPage() {
@@ -64,7 +66,10 @@ export default function CashierBillingPage() {
 
   const [adjustmentModalOpen, setAdjustmentModalOpen] = useState(false);
   const [selectedInvoiceForAdjust, setSelectedInvoiceForAdjust] = useState(null);
+  const [adjustmentPreview, setAdjustmentPreview] = useState(null);
+  const [adjustmentBusy, setAdjustmentBusy] = useState(false);
   const [adjForm] = Form.useForm();
+  const reviewForAdjustment = Form.useWatch('prescriptionStockReviewId', adjForm);
 
   const pendingKey = JSON.stringify({ userId, stage, pendingRevision });
   const historyKey = JSON.stringify({ userId, ...historyFilter });
@@ -200,19 +205,22 @@ export default function CashierBillingPage() {
 
   // Mở modal điều chỉnh / hoàn tiền (VII.8)
   const handleOpenAdjustmentModal = (record) => {
+    setAdjustmentPreview(null);
     setSelectedInvoiceForAdjust(record);
     adjForm.setFieldsValue({
       reason: '',
       adjustmentAmount: 0,
+      adjustmentInsuranceAmount: 0,
       paymentMethod: 'Cash',
       referenceCode: '',
-      prescriptionStockReviewId: undefined,
+      prescriptionStockReviewId: record.pendingStockReviewId ?? null,
     });
     setAdjustmentModalOpen(true);
   };
 
-  const handleCreateAdjustment = async (values) => {
-    if (!selectedInvoiceForAdjust || !canCreate) return;
+  const handlePreviewAdjustment = async (values) => {
+    if (!selectedInvoiceForAdjust || !canCreate || !canRecordPayment || adjustmentBusy) return;
+    setAdjustmentBusy(true);
     try {
       const dto = {
         originalInvoiceId: selectedInvoiceForAdjust.id,
@@ -220,25 +228,36 @@ export default function CashierBillingPage() {
         reason: values.reason,
         paymentMethod: values.paymentMethod,
         referenceCode: values.referenceCode || null,
-        adjustmentTotalAmount: values.adjustmentAmount,
-        adjustmentInsuranceAmount: 0,
-        adjustmentPatientAmount: values.adjustmentAmount,
-        items: [
-          {
-            sourceType: 'Adjustment',
-            sourceId: selectedInvoiceForAdjust.id,
-            itemName: `Điều chỉnh cho Hóa đơn #${selectedInvoiceForAdjust.id}`,
-            unitPrice: values.adjustmentAmount,
-            quantity: 1,
-          },
-        ],
+        adjustmentTotalAmount: values.adjustmentAmount ?? 0,
+        adjustmentInsuranceAmount: values.adjustmentInsuranceAmount || 0,
       };
-      await invoiceApi.createAdjustment(dto);
-      message.success('Tạo chứng từ điều chỉnh & đối soát thành công!');
+      const { data } = await invoiceApi.previewAdjustment(dto);
+      setAdjustmentPreview({ dto, ...data });
+    } catch (err) {
+      message.error(getApiErrorMessage(err));
+    } finally {
+      setAdjustmentBusy(false);
+    }
+  };
+
+  const handleConfirmAdjustment = async () => {
+    if (!adjustmentPreview || adjustmentBusy) return;
+    const { dto, totalChange, insuranceChange, patientChange, refundAmount, remainingAmount, patientAmount, netPaid } = adjustmentPreview;
+    setAdjustmentBusy(true);
+    try {
+      await invoiceApi.createAdjustment({
+        ...dto, adjustmentTotalAmount: totalChange, adjustmentInsuranceAmount: insuranceChange,
+        adjustmentPatientAmount: patientChange, expectedRefundAmount: refundAmount, expectedRemainingAmount: remainingAmount,
+        expectedPatientAmount: patientAmount, expectedNetPaid: netPaid,
+      });
+      message.success('Đã lưu chứng từ điều chỉnh.');
       setAdjustmentModalOpen(false);
       fetchHistory();
     } catch (err) {
       message.error(getApiErrorMessage(err));
+      setAdjustmentPreview(null);
+    } finally {
+      setAdjustmentBusy(false);
     }
   };
 
@@ -258,7 +277,7 @@ export default function CashierBillingPage() {
     const rowsHtml = invoice.details.map((d, idx) => `
       <tr>
         <td style="text-align:center">${idx + 1}</td>
-        <td>${d.itemName}</td>
+        <td>${html(d.itemName)}</td>
         <td style="text-align:right">${Number(d.unitPrice).toLocaleString('vi-VN')} đ</td>
         <td style="text-align:center">${d.quantity}</td>
         <td style="text-align:right">${Number(d.totalPrice).toLocaleString('vi-VN')} đ</td>
@@ -268,11 +287,11 @@ export default function CashierBillingPage() {
     const paymentInfoHtml = specificPayment
       ? `
         <div class="box">
-          <p><strong>Số phiếu:</strong> ${specificPayment.receiptNumber}</p>
+          <p><strong>Số phiếu:</strong> ${html(specificPayment.receiptNumber)}</p>
           <p><strong>Thời gian giao dịch:</strong> ${new Date(specificPayment.paidAt).toLocaleString('vi-VN')}</p>
           <p><strong>Số tiền giao dịch lần này:</strong> <span style="font-size:16px;font-weight:bold">${Number(specificPayment.amount).toLocaleString('vi-VN')} VNĐ</span></p>
-          <p><strong>Phương thức:</strong> ${specificPayment.paymentMethod} ${specificPayment.referenceCode ? `(Mã đối chiếu: ${specificPayment.referenceCode})` : ''}</p>
-          <p><strong>Ghi chú:</strong> ${specificPayment.note || 'Không có'}</p>
+          <p><strong>Phương thức:</strong> ${html(specificPayment.paymentMethod)} ${specificPayment.referenceCode ? `(Mã đối chiếu: ${html(specificPayment.referenceCode)})` : ''}</p>
+          <p><strong>Ghi chú:</strong> ${html(specificPayment.note || 'Không có')}</p>
         </div>
       `
       : '';
@@ -302,14 +321,14 @@ export default function CashierBillingPage() {
           </div>
           <div class="meta">
             <div>
-              <div><strong>Bệnh nhân:</strong> ${invoice.patientName} (Mã BN: #${invoice.patientId})</div>
-              <div><strong>Số điện thoại:</strong> ${invoice.patientPhone || '---'}</div>
+              <div><strong>Bệnh nhân:</strong> ${html(invoice.patientName)} (Mã BN: #${invoice.patientId})</div>
+              <div><strong>Số điện thoại:</strong> ${html(invoice.patientPhone || '---')}</div>
               <div><strong>Mã lượt khám:</strong> ${invoice.appointmentId ? `#${invoice.appointmentId}` : 'Cấp sổ / Lẻ'}</div>
             </div>
             <div style="text-align:right">
               <div><strong>Ngày lập HĐ:</strong> ${new Date(invoice.createdAt).toLocaleString('vi-VN')}</div>
-              <div><strong>Phân hệ thu:</strong> ${STAGE_LABELS[invoice.billingStage] || invoice.billingStage}</div>
-              <div><strong>Trạng thái HĐ:</strong> ${STATUS_CONFIG[invoice.status]?.label || invoice.status}</div>
+              <div><strong>Phân hệ thu:</strong> ${html(STAGE_LABELS[invoice.billingStage] || invoice.billingStage)}</div>
+              <div><strong>Trạng thái HĐ:</strong> ${html(STATUS_CONFIG[invoice.status]?.label || invoice.status)}</div>
             </div>
           </div>
           ${paymentInfoHtml}
@@ -418,7 +437,7 @@ export default function CashierBillingPage() {
       key: 'paid',
       render: (_, r) => (
         <Space direction="vertical" size={0}>
-          <Text style={{ color: '#3f8600' }}>Đã thu: {r.paidAmount?.toLocaleString()} đ</Text>
+          <Text style={{ color: '#3f8600' }}>{r.invoiceType === 'Standard' ? 'Đã thu ròng' : 'Thu / hoàn'}: {r.paidAmount?.toLocaleString()} đ</Text>
           {r.remainingAmount > 0 && <Text type="danger">Còn lại: {r.remainingAmount?.toLocaleString()} đ</Text>}
         </Space>
       ),
@@ -450,7 +469,7 @@ export default function CashierBillingPage() {
           >
             Chi tiết & Phiếu thu
           </Button>
-          {record.invoiceType === 'Standard' && record.remainingAmount > 0 && (
+          {record.invoiceType === 'Standard' && record.remainingAmount > 0 && !record.pendingStockReviewId && (
             <Button
               size="small"
               type="primary"
@@ -466,10 +485,10 @@ export default function CashierBillingPage() {
               size="small"
               type="dashed"
               icon={<EditOutlined />}
-              disabled={!canCreate}
+              disabled={!canCreate || !canRecordPayment}
               onClick={() => handleOpenAdjustmentModal(record)}
             >
-              Điều chỉnh
+              {record.pendingStockReviewId ? "Đối soát đơn thuốc" : "Điều chỉnh"}
             </Button>
           )}
         </Space>
@@ -824,24 +843,34 @@ export default function CashierBillingPage() {
       <Modal
         title={`Lập chứng từ điều chỉnh cho Hóa đơn gốc #${selectedInvoiceForAdjust?.id || ''}`}
         open={adjustmentModalOpen}
-        onCancel={() => setAdjustmentModalOpen(false)}
-        onOk={() => adjForm.submit()}
-        okText="Tạo chứng từ điều chỉnh"
+        onCancel={() => { if (!adjustmentBusy) setAdjustmentModalOpen(false); }}
+        onOk={() => adjustmentPreview ? handleConfirmAdjustment() : adjForm.submit()}
+        confirmLoading={adjustmentBusy}
+        okText={adjustmentPreview?.refundAmount > 0 ? "Xác nhận đã hoàn tiền" : adjustmentPreview ? "Lưu chứng từ" : "Xem số dư mới"}
         cancelText="Hủy"
       >
-        <Form form={adjForm} layout="vertical" onFinish={handleCreateAdjustment}>
-          <Form.Item name="reason" label="Lý do điều chỉnh / hoàn tiền" rules={[{ required: true, message: 'Vui lòng nhập lý do!' }]}>
-            <Input.TextArea rows={3} placeholder="Ví dụ: Hoàn tiền thuốc thiếu kho theo yêu cầu rà soát của Dược, hoặc thu thêm chênh lệch..." />
+        <Form form={adjForm} layout="vertical" onFinish={handlePreviewAdjustment} disabled={Boolean(adjustmentPreview) || adjustmentBusy}>
+          <Form.Item name="prescriptionStockReviewId" label="Mã phiếu rà soát thiếu thuốc">
+            <InputNumber min={1} precision={0} style={{ width: '100%' }} placeholder="Nhập mã phiếu để tính chênh lệch đơn thuốc" />
           </Form.Item>
-          <Form.Item name="adjustmentAmount" label="Số tiền điều chỉnh (VNĐ)" rules={[{ required: true, message: 'Vui lòng nhập số tiền!' }]}>
+          <Form.Item name="reason" label="Lý do điều chỉnh / hoàn tiền" rules={[{ required: true, message: 'Vui lòng nhập lý do!' }]}>
+            <Input.TextArea rows={2} maxLength={450} />
+          </Form.Item>
+          {!reviewForAdjustment && <>
+          <Button htmlType="button" style={{ marginBottom: 12 }} onClick={() => adjForm.setFieldsValue({
+            adjustmentAmount: -(selectedInvoiceForAdjust?.totalAmount ?? 0),
+            adjustmentInsuranceAmount: -(selectedInvoiceForAdjust?.insuranceAmount ?? 0),
+          })}>Hủy toàn bộ phí trên hóa đơn</Button>
+          <Form.Item name="adjustmentAmount" label="Mức tăng hoặc giảm tổng chi phí (VNĐ)" rules={[{ required: true, message: 'Vui lòng nhập số tiền!' }]}>
             <InputNumber
               style={{ width: '100%' }}
-              placeholder="Số âm (VD: -50000) nếu hoàn tiền, số dương (VD: 50000) nếu thu thêm"
+              placeholder="Nhập số âm để giảm phí"
             />
           </Form.Item>
-          <Form.Item name="prescriptionStockReviewId" label="Mã phiếu rà soát tồn kho thuốc (nếu điều chỉnh đơn AwaitingBilling)">
-            <InputNumber style={{ width: '100%' }} placeholder="Để trống nếu hệ thống tự tìm theo lượt khám" />
+          <Form.Item name="adjustmentInsuranceAmount" label="Phần điều chỉnh bảo hiểm (VNĐ)" initialValue={0}>
+            <InputNumber style={{ width: '100%' }} placeholder="Phần chênh lệch bảo hiểm; còn lại là tiền bệnh nhân" />
           </Form.Item>
+          </>}
           <Form.Item name="paymentMethod" label="Phương thức hoàn / thu tiền" initialValue="Cash">
             <Select>
               <Option value="Cash">Tiền mặt</Option>
@@ -850,9 +879,24 @@ export default function CashierBillingPage() {
             </Select>
           </Form.Item>
           <Form.Item name="referenceCode" label="Mã giao dịch / chứng từ đối chiếu">
-            <Input placeholder="Mã ủy nhiệm chi / giao dịch hoàn tiền (nếu có)" />
+            <Input maxLength={100} placeholder="Mã giao dịch hoàn tiền (nếu có)" />
           </Form.Item>
         </Form>
+        {adjustmentPreview && (
+          <Space direction="vertical" style={{ width: '100%' }}>
+            <Descriptions bordered size="small" column={1}>
+              {[
+                ['Chênh lệch tổng chi phí', adjustmentPreview.totalChange],
+                ['Chênh lệch phần BHYT', adjustmentPreview.insuranceChange],
+                ['Bệnh nhân phải trả sau điều chỉnh', adjustmentPreview.patientAmount],
+                ['Đã thu ròng trước điều chỉnh', adjustmentPreview.netPaid],
+                ['Cần hoàn tại quầy', adjustmentPreview.refundAmount],
+                ['Còn phải thu', adjustmentPreview.remainingAmount],
+              ].map(([label, amount]) => <Descriptions.Item key={label} label={label}>{amount.toLocaleString('vi-VN')} đ</Descriptions.Item>)}
+            </Descriptions>
+            <Button disabled={adjustmentBusy} onClick={() => setAdjustmentPreview(null)}>Sửa nội dung</Button>
+          </Space>
+        )}
       </Modal>
     </div>
   );

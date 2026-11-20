@@ -1,8 +1,10 @@
 using System.Data;
+using ClinicManagement.DTOs.Responses.Notifications;
+using ClinicManagement.DTOs.Responses.Schedules;
+using ClinicManagement.DTOs.Responses.Shared;
 using ClinicManagement.Commons;
 using ClinicManagement.Data;
 using ClinicManagement.Data.Entities;
-using ClinicManagement.DTOs.Responses;
 using ClinicManagement.Exceptions;
 using ClinicManagement.Services.Interfaces;
 using Microsoft.Data.SqlClient;

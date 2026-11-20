@@ -1,5 +1,9 @@
-using ClinicManagement.DTOs.Requests;
-using ClinicManagement.DTOs.Responses;
+using ClinicManagement.DTOs.Requests.Schedules;
+using ClinicManagement.DTOs.Responses.Appointments;
+using ClinicManagement.DTOs.Responses.Catalog;
+using ClinicManagement.DTOs.Responses.Schedules;
+using ClinicManagement.DTOs.Responses.Shared;
+
 
 namespace ClinicManagement.Services.Interfaces;
 

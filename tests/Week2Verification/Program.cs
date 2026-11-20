@@ -116,6 +116,12 @@ try
         await Task.Delay(200);
     }
     await Send(HttpMethod.Get, "swagger/v1/swagger.json");
+    if (args.Contains("--post-merge"))
+    {
+        await PostMergeChecks.RunAsync(client, db, password, Check);
+        Console.WriteLine($"SUCCESS: {checks} post-merge regression checks passed.");
+        return;
+    }
     if (args.Contains("--hoang"))
     {
         await AppointmentReceptionChecks.RunAsync(client, db, password, Check);

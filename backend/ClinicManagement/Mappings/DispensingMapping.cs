@@ -1,6 +1,6 @@
+using ClinicManagement.DTOs.Responses.Dispensing;
 using ClinicManagement.Commons;
 using ClinicManagement.Data.Entities;
-using ClinicManagement.DTOs.Responses;
 
 namespace ClinicManagement.Mappings;
 

@@ -1,9 +1,11 @@
 using System.Data;
 using System.Text.Json;
+using ClinicManagement.DTOs.Requests.Prescriptions;
+using ClinicManagement.DTOs.Requests.StockReviews;
+using ClinicManagement.DTOs.Responses.Shared;
+using ClinicManagement.DTOs.Responses.StockReviews;
 using ClinicManagement.Commons;
 using ClinicManagement.Data.Entities;
-using ClinicManagement.DTOs.Requests;
-using ClinicManagement.DTOs.Responses;
 using ClinicManagement.Exceptions;
 using ClinicManagement.Mappings;
 using Microsoft.Data.SqlClient;
@@ -149,7 +151,8 @@ public partial class PrescriptionService
                 && x.InvoiceType == "Adjustment").OrderByDescending(x => x.Id).FirstOrDefaultAsync();
         return latestAdjustment != null && latestAdjustment.Id == confirmation.AdjustmentInvoiceId
             && latestAdjustment.PatientId == patientId && latestAdjustment.AppointmentId == appointment.AppointmentId
-            && latestAdjustment.BillingStage == original.BillingStage && latestAdjustment.Status is "Paid" or "Refunded"
+            && latestAdjustment.BillingStage == original.BillingStage
+            && (latestAdjustment.Status is "Paid" or "Refunded" || latestAdjustment.Status == "Adjusted" && original.Status == "Paid")
             ? (proposal, confirmation) : null;
     }
 

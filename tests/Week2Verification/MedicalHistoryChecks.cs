@@ -549,7 +549,7 @@ internal static class MedicalHistoryChecks
         var recordPath = $"api/medical-records/{record["medicalRecordId"]}";
         var oldVersion = record["updatedAt"]!.GetValue<string>();
         var medicineIds = await db.Medicines.OrderBy(x => x.MedicineId).Select(x => x.MedicineId).Take(3).ToArrayAsync();
-        var rows = new List<ClinicManagement.DTOs.Requests.SavePrescriptionDetailRequest> {
+        var rows = new List<ClinicManagement.DTOs.Requests.Prescriptions.SavePrescriptionDetailRequest> {
             new() { MedicineId = medicineIds[0], Quantity = 2, Dosage = "One daily", Instructions = "After meals" },
             new() { MedicineId = medicineIds[1], Quantity = 3, Dosage = "One daily", Instructions = "After meals" }
         };

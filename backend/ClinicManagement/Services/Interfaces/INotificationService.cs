@@ -1,4 +1,5 @@
-using ClinicManagement.DTOs.Responses;
+using ClinicManagement.DTOs.Responses.Notifications;
+using ClinicManagement.DTOs.Responses.Shared;
 using ClinicManagement.Data.Entities;
 
 namespace ClinicManagement.Services.Interfaces;

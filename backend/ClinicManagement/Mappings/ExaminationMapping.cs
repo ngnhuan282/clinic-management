@@ -1,5 +1,6 @@
+using ClinicManagement.DTOs.Responses.Diseases;
+using ClinicManagement.DTOs.Responses.Examinations;
 using ClinicManagement.Data.Entities;
-using ClinicManagement.DTOs.Responses;
 
 namespace ClinicManagement.Mappings;
 

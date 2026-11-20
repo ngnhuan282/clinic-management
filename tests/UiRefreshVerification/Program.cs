@@ -204,10 +204,12 @@ try
         var result = (await Api(HttpMethod.Post, "api/LabTests", new { patientId = patient.UserId, labTestTypeId = labTypeIds[index % 13], clinicalDiagnosis = "Kiểm tra chỉ số theo chỉ định khám sức khỏe." }, staff["uidoctor"].Access))!;
         var id = result["id"]!.GetValue<int>();
         labTestIds.Add(id);
+        await PaidLabFixture.AddAsync(db, id);
         if (index < 14) await Api(HttpMethod.Post, "api/LabTests/results", new { labTestId = id, resultSummary = index == 0 ? "Hemoglobin: 135 g/L. Bạch cầu: 6,8 G/L. Tiểu cầu: 245 G/L." : "Các chỉ số trong giới hạn tham chiếu.", note = "Mang kết quả đến lần tái khám để bác sĩ tư vấn." }, staff["uilab"].Access);
     }
     var foreignLab = (await Api(HttpMethod.Post, "api/LabTests", new { patientId = other.UserId, labTestTypeId = labTypeIds[0], clinicalDiagnosis = "Kết quả của bệnh nhân khác" }, staff["uidoctor"].Access))!;
     var foreignLabId = foreignLab["id"]!.GetValue<int>();
+    await PaidLabFixture.AddAsync(db, foreignLabId);
     await Api(HttpMethod.Post, "api/LabTests/results", new { labTestId = foreignLabId, resultSummary = "Kết quả riêng của bệnh nhân khác." }, staff["uilab"].Access);
 
     foreach (var path in new[] { "api/auth/me", "api/patients/me", "api/LabTests", "api/LabTestTypes", "api/diseases", "api/schedule-requests", "api/reviews/my-appointments" })

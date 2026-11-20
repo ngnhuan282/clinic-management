@@ -1,7 +1,9 @@
+using ClinicManagement.DTOs.Requests.Patients;
+using ClinicManagement.DTOs.Requests.Reception;
+using ClinicManagement.DTOs.Responses.Appointments;
+using ClinicManagement.DTOs.Responses.Reception;
 using ClinicManagement.Commons;
 using ClinicManagement.Data.Entities;
-using ClinicManagement.DTOs.Requests;
-using ClinicManagement.DTOs.Responses;
 using ClinicManagement.Exceptions;
 using ClinicManagement.Repositories.Interfaces;
 using ClinicManagement.Services.Interfaces;
@@ -152,7 +154,8 @@ public partial class ReceptionService : IReceptionService
         await using var transaction = await _receptionRepository.BeginTransactionAsync();
         var invoice = await _receptionRepository.GetBookInvoiceAsync(invoiceId)
             ?? throw new AppException(ErrorCode.BOOK_INVOICE_NOT_FOUND);
-        if (invoice.Status != "Unpaid") throw new AppException(ErrorCode.BOOK_INVOICE_INVALID_STATUS);
+        if (invoice.Status != "Unpaid" || await _receptionRepository.HasCashierBookInvoiceAsync(invoiceId))
+            throw new AppException(ErrorCode.BOOK_INVOICE_INVALID_STATUS);
         invoice.Status = "Paid";
         invoice.PaidAt = DateTime.UtcNow;
         // A paid book waits as Pending until reception issues its real number.

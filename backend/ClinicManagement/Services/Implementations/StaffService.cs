@@ -1,6 +1,7 @@
+using ClinicManagement.DTOs.Requests.Staff;
+using ClinicManagement.DTOs.Responses.Shared;
+using ClinicManagement.DTOs.Responses.Staff;
 using ClinicManagement.Data.Entities;
-using ClinicManagement.DTOs.Requests;
-using ClinicManagement.DTOs.Responses;
 using ClinicManagement.Exceptions;
 using ClinicManagement.Repositories.Interfaces;
 using ClinicManagement.Services.Interfaces;

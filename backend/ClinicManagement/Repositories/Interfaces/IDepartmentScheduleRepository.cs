@@ -1,4 +1,5 @@
-using ClinicManagement.DTOs.Responses;
+using ClinicManagement.DTOs.Responses.Schedules;
+
 
 namespace ClinicManagement.Repositories.Interfaces;
 

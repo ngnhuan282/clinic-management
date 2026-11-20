@@ -1,9 +1,13 @@
 using System.Data;
+using ClinicManagement.DTOs.Requests.Schedules;
+using ClinicManagement.DTOs.Responses.Appointments;
+using ClinicManagement.DTOs.Responses.Catalog;
+using ClinicManagement.DTOs.Responses.Notifications;
+using ClinicManagement.DTOs.Responses.Schedules;
+using ClinicManagement.DTOs.Responses.Shared;
 using ClinicManagement.Commons;
 using ClinicManagement.Data;
 using ClinicManagement.Data.Entities;
-using ClinicManagement.DTOs.Requests;
-using ClinicManagement.DTOs.Responses;
 using ClinicManagement.Exceptions;
 using ClinicManagement.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;

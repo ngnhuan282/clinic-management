@@ -5,10 +5,10 @@ namespace ClinicManagement.Repositories.Interfaces;
 public interface IAppointmentRepository
 {
     Task<(List<Appointment> Items, int Total)> GetPageAsync(
-        ClinicManagement.DTOs.Requests.AppointmentQuery request);
+        ClinicManagement.DTOs.Requests.Appointments.AppointmentQuery request);
 
     Task<(List<Appointment> Items, int Total)> GetOwnPageAsync(
-        ClinicManagement.DTOs.Requests.AppointmentQuery request, int patientUserId);
+        ClinicManagement.DTOs.Requests.Appointments.AppointmentQuery request, int patientUserId);
 
     Task<Appointment?> GetByIdAsync(int appointmentId);
     Task<Appointment?> GetByIdForUpdateAsync(int appointmentId);

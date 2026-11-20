@@ -1,7 +1,7 @@
+using ClinicManagement.DTOs.Requests.Laboratory;
+using ClinicManagement.DTOs.Responses.Laboratory;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using ClinicManagement.DTOs.LabTests;
-using ClinicManagement.DTOs.LabTestResults;
 
 namespace ClinicManagement.Services
 {

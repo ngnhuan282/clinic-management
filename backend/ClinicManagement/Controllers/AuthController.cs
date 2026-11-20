@@ -1,7 +1,9 @@
+using ClinicManagement.DTOs.Requests.Auth;
+using ClinicManagement.DTOs.Requests.Users;
+using ClinicManagement.DTOs.Responses.Auth;
+using ClinicManagement.DTOs.Responses.Users;
 using ClinicManagement.Commons;
 using ClinicManagement.Configurations;
-using ClinicManagement.DTOs.Requests;
-using ClinicManagement.DTOs.Responses;
 using ClinicManagement.Exceptions;
 using ClinicManagement.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;

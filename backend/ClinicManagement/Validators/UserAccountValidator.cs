@@ -1,6 +1,6 @@
 using System.Text;
 using System.Text.RegularExpressions;
-using ClinicManagement.DTOs.Requests;
+using ClinicManagement.DTOs.Requests.Users;
 using ClinicManagement.Exceptions;
 
 namespace ClinicManagement.Validators;

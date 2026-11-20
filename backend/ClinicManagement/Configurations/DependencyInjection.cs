@@ -17,7 +17,7 @@ public static class DependencyInjection
         services.AddScoped<IDepartmentStatisticsService, DepartmentStatisticsService>();
         services.AddScoped<IVisitReportQuery, VisitReportQuery>();
         services.AddScoped<IDepartmentStatisticsRepository, DepartmentStatisticsRepository>();
-        services.AddScoped<FluentValidation.IValidator<ClinicManagement.DTOs.Requests.DepartmentStatisticsQuery>,
+        services.AddScoped<FluentValidation.IValidator<ClinicManagement.DTOs.Requests.Reports.DepartmentStatisticsQuery>,
             ClinicManagement.Validators.DepartmentStatisticsQueryValidator>();
         services.AddScoped<IReviewService, ReviewService>();
         services.AddScoped<IUserService, UserService>();

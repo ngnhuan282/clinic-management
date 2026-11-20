@@ -41,6 +41,7 @@ import {
 import { Link } from "react-router-dom";
 import axiosClient from "../../api/axiosClient";
 import ClinicPageHeader, { AdminStatCard } from "../../components/common/ClinicPageHeader";
+import AdminPeriodReport from "../../components/internal/AdminPeriodReport";
 import {
     AdminRefreshIcon,
     adminAccents,
@@ -159,8 +160,8 @@ export default function DashboardPage() {
     const totalRevenue = Number(revenueStats?.totalThisMonth || 0);
     const patientPaid = Number(revenueStats?.patientPaymentsThisMonth || 0);
     const insurancePaid = Number(revenueStats?.insurancePaymentsThisMonth || 0);
-    const patientRatio = totalRevenue > 0 ? Math.min(100, Math.round((patientPaid / totalRevenue) * 100)) : 0;
-    const insuranceRatio = totalRevenue > 0 ? Math.max(0, 100 - patientRatio) : 0;
+    const patientRatio = totalRevenue > 0 ? Math.max(0, Math.min(100, Math.round((patientPaid / totalRevenue) * 100))) : 0;
+    const insuranceRatio = totalRevenue > 0 ? Math.max(0, Math.min(100, Math.round((insurancePaid / totalRevenue) * 100))) : 0;
 
     return (
         <Stack spacing={3.5} sx={{ pb: 4, minWidth: 0 }}>
@@ -186,6 +187,7 @@ export default function DashboardPage() {
 
             {isAdmin && (
                 <Stack spacing={2.5}>
+                    <AdminPeriodReport userId={userId} revision={revision} />
                     {error && (
                         <Alert
                             severity="error"
@@ -214,7 +216,7 @@ export default function DashboardPage() {
                         <AdminStatCard
                             title="Doanh thu tháng này"
                             value={formatCurrency(revenueStats?.totalThisMonth)}
-                            subtitle="Tổng giá trị hóa đơn đã thanh toán"
+                            subtitle="Thực thu sau hoàn tiền và BHYT ghi trên chứng từ"
                             icon={PaymentsRounded}
                             tone="blue"
                             loading={loading && !summary}
@@ -298,7 +300,7 @@ export default function DashboardPage() {
                                         Cơ cấu doanh thu tháng hiện tại
                                     </Typography>
                                     <Typography sx={{ fontSize: 13.5, color: clinicColors.muted, mt: 0.25 }}>
-                                        Phân bổ giữa chi phí người bệnh tự chi trả và quỹ Bảo hiểm Y tế thanh toán.
+                                        Thực thu sau hoàn tiền và phần BHYT ghi trên chứng từ.
                                     </Typography>
                                 </Box>
                                 <Chip
@@ -391,7 +393,7 @@ export default function DashboardPage() {
                                 >
                                     <Stack direction="row" sx={{ justifyContent: "space-between" }}>
                                         <Typography sx={{ fontSize: 12.5, fontWeight: 700, color: "#64748B" }}>
-                                            Bảo hiểm Y tế chi trả
+                                            BHYT ghi trên chứng từ
                                         </Typography>
                                         <Typography sx={{ fontSize: 12.5, fontWeight: 750, color: "#059669" }}>
                                             {insuranceRatio}%

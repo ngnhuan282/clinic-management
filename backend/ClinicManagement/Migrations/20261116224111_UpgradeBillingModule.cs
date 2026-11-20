@@ -41,13 +41,18 @@ END
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.Sql(@"
-IF OBJECT_ID(N'[dbo].[InvoicePayments]', N'U') IS NULL
+IF OBJECT_ID(N'[dbo].[InvoicePayments]', N'U') IS NOT NULL
 BEGIN
     DROP TABLE [dbo].[InvoicePayments];
 END
 
 IF COL_LENGTH(N'dbo.Invoices', N'PaidAmount') IS NOT NULL
 BEGIN
+    DECLARE @defaultName sysname;
+    SELECT @defaultName = dc.name FROM sys.default_constraints dc
+    JOIN sys.columns c ON c.object_id = dc.parent_object_id AND c.column_id = dc.parent_column_id
+    WHERE c.object_id = OBJECT_ID(N'dbo.Invoices') AND c.name = N'PaidAmount';
+    IF @defaultName IS NOT NULL EXEC(N'ALTER TABLE [dbo].[Invoices] DROP CONSTRAINT [' + @defaultName + N']');
     ALTER TABLE [dbo].[Invoices] DROP COLUMN [PaidAmount];
 END
 ");

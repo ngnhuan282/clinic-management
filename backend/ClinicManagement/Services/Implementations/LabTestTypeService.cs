@@ -1,5 +1,6 @@
+using ClinicManagement.DTOs.Requests.Laboratory;
+using ClinicManagement.DTOs.Responses.Laboratory;
 using ClinicManagement.Data.Entities;
-using ClinicManagement.DTOs.LabTestTypes;
 using ClinicManagement.Repositories.Interfaces;
 using ClinicManagement.Services.Interfaces;
 

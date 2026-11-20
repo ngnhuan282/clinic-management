@@ -1,8 +1,9 @@
 using System.Data;
+using ClinicManagement.DTOs.Requests.PurchaseOrders;
+using ClinicManagement.DTOs.Responses.PurchaseOrders;
+using ClinicManagement.DTOs.Responses.Shared;
 using ClinicManagement.Commons;
 using ClinicManagement.Data.Entities;
-using ClinicManagement.DTOs.Requests;
-using ClinicManagement.DTOs.Responses;
 using ClinicManagement.Exceptions;
 using ClinicManagement.Mappings;
 using ClinicManagement.Repositories.Interfaces;

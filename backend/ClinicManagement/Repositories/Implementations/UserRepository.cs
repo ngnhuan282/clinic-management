@@ -1,9 +1,9 @@
+using ClinicManagement.DTOs.Requests.Users;
+using ClinicManagement.DTOs.Responses.Users;
 using ClinicManagement.Data;
 using ClinicManagement.Data.Entities;
 using ClinicManagement.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
-using ClinicManagement.DTOs.Requests;
-using ClinicManagement.DTOs.Responses;
 
 namespace ClinicManagement.Repositories.Implementations;
 
@@ -28,7 +28,7 @@ public class UserRepository : IUserRepository
     public Task<User?> GetByIdAsync(int userId) =>
         _context.Users.Include(x => x.Role).SingleOrDefaultAsync(x => x.UserId == userId);
 
-    public async Task<(List<User> Items, int Total)> GetPageAsync(ClinicManagement.DTOs.Requests.UserQuery request)
+    public async Task<(List<User> Items, int Total)> GetPageAsync(ClinicManagement.DTOs.Requests.Users.UserQuery request)
     {
         var query = Filter(request).Include(x => x.Role);
         var total = await query.CountAsync();

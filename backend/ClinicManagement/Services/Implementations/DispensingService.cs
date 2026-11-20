@@ -1,9 +1,12 @@
 using System.Data;
 using System.Text.Json;
+using ClinicManagement.DTOs.Requests.Dispensing;
+using ClinicManagement.DTOs.Requests.StockReviews;
+using ClinicManagement.DTOs.Responses.Dispensing;
+using ClinicManagement.DTOs.Responses.Shared;
+using ClinicManagement.DTOs.Responses.StockReviews;
 using ClinicManagement.Commons;
 using ClinicManagement.Data.Entities;
-using ClinicManagement.DTOs.Requests;
-using ClinicManagement.DTOs.Responses;
 using ClinicManagement.Exceptions;
 using ClinicManagement.Mappings;
 using ClinicManagement.Repositories.Interfaces;

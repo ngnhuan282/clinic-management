@@ -2,6 +2,8 @@ using System.Data;
 using System.Net.Mail;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using ClinicManagement.DTOs.Requests.ClinicSettings;
+using ClinicManagement.DTOs.Responses.ClinicSettings;
 using ClinicManagement.Data;
 using ClinicManagement.Data.Entities;
 using ClinicManagement.Exceptions;
@@ -10,63 +12,6 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace ClinicManagement.Services.Implementations;
-
-public sealed record ClinicLocationDto(string Name, string Address);
-
-public sealed record PublicClinicSettingsResponse(
-    string ClinicName,
-    string Tagline,
-    string Description,
-    string Phone,
-    string Email,
-    string WorkingHours,
-    IReadOnlyList<ClinicLocationDto> Locations,
-    decimal DefaultExaminationFee,
-    decimal PatientBookFee,
-    int DefaultSlotDurationMinutes);
-
-public sealed record ClinicSettingsResponse(
-    int ClinicSettingId,
-    string ClinicName,
-    string Tagline,
-    string Description,
-    string Phone,
-    string Email,
-    string WorkingHours,
-    string PrimaryLocationName,
-    string PrimaryLocationAddress,
-    string? SecondaryLocationName,
-    string? SecondaryLocationAddress,
-    decimal DefaultExaminationFee,
-    decimal PatientBookFee,
-    int DefaultSlotDurationMinutes,
-    int DefaultMaxPatientsPerSlot,
-    int LowStockThreshold,
-    int NearExpiryDays,
-    DateTime UpdatedAt,
-    int? UpdatedByUserId,
-    string? UpdatedByFullName);
-
-[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
-public sealed class UpdateClinicSettingsRequest
-{
-    public string? ClinicName { get; set; }
-    public string? Tagline { get; set; }
-    public string? Description { get; set; }
-    public string? Phone { get; set; }
-    public string? Email { get; set; }
-    public string? WorkingHours { get; set; }
-    public string? PrimaryLocationName { get; set; }
-    public string? PrimaryLocationAddress { get; set; }
-    public string? SecondaryLocationName { get; set; }
-    public string? SecondaryLocationAddress { get; set; }
-    public decimal? DefaultExaminationFee { get; set; }
-    public decimal? PatientBookFee { get; set; }
-    public int? DefaultSlotDurationMinutes { get; set; }
-    public int? DefaultMaxPatientsPerSlot { get; set; }
-    public int? LowStockThreshold { get; set; }
-    public int? NearExpiryDays { get; set; }
-}
 
 public class ClinicSettingsService(ApplicationDbContext db, ICurrentUserService currentUser)
 {

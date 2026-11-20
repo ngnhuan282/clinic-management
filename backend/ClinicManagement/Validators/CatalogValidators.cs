@@ -1,4 +1,4 @@
-using ClinicManagement.DTOs.Requests;
+using ClinicManagement.DTOs.Requests.Catalog;
 using ClinicManagement.Exceptions;
 
 namespace ClinicManagement.Validators;

@@ -1,9 +1,9 @@
 using System.Data;
+using ClinicManagement.DTOs.Requests.Laboratory;
+using ClinicManagement.DTOs.Responses.Laboratory;
 using ClinicManagement.Commons;
 using ClinicManagement.Data;
 using ClinicManagement.Data.Entities;
-using ClinicManagement.DTOs.LabTests;
-using ClinicManagement.DTOs.LabTestResults;
 using ClinicManagement.Exceptions;
 using ClinicManagement.Services.Interfaces;
 using Microsoft.Data.SqlClient;
@@ -23,10 +23,10 @@ public class LabTestService(ApplicationDbContext context, INotificationService n
         ?? throw new AppException(ErrorCode.LAB_TEST_TYPE_NOT_FOUND);
 
     var doctorEntity = await context.Doctors.AsNoTracking()
-        .SingleOrDefaultAsync(d => d.UserId == doctorId);
+        .SingleOrDefaultAsync(d => d.UserId == doctorId && d.IsActive);
 
     bool IsAssignedToDoctor(int? appDoctorId) =>
-        appDoctorId.HasValue && (appDoctorId.Value == doctorId || (doctorEntity != null && appDoctorId.Value == doctorEntity.DoctorId));
+        doctorEntity != null && appDoctorId == doctorEntity.DoctorId;
 
     Appointment? appointment = null;
     MedicalRecord? medicalRecord = null;
@@ -64,6 +64,11 @@ public class LabTestService(ApplicationDbContext context, INotificationService n
             .SingleOrDefaultAsync(m => m.AppointmentId == appById.AppointmentId);
     }
 
+    if (appointment != null && (appointment.Status == AppointmentStatusConstants.Cancelled
+        || (request.PatientProfileId.HasValue && request.PatientProfileId != appointment.PatientProfileId)
+        || (request.PatientId.HasValue && request.PatientId != appointment.PatientId && request.PatientId != appointment.PatientProfileId)))
+        throw new AppException(ErrorCode.INVALID_REQUEST);
+
     int? resolvedAppointmentId = appointment?.AppointmentId;
     int? resolvedMedicalRecordId = medicalRecord?.MedicalRecordId;
     int resolvedPatientId = 0;
@@ -77,6 +82,8 @@ public class LabTestService(ApplicationDbContext context, INotificationService n
             .SingleOrDefaultAsync(x => x.UserId == candidateUserId.Value && x.Status && x.Role.RoleName == RoleConstants.Patient)
             ?? throw new AppException(ErrorCode.PATIENT_NOT_FOUND);
         resolvedPatientId = patientUser.UserId;
+        candidateProfileId ??= await context.Patients.AsNoTracking()
+            .Where(p => p.UserId == patientUser.UserId).Select(p => (int?)p.PatientId).SingleOrDefaultAsync();
     }
     else if (candidateProfileId is > 0)
     {
@@ -112,6 +119,7 @@ public class LabTestService(ApplicationDbContext context, INotificationService n
                 ?? throw new AppException(ErrorCode.PATIENT_NOT_FOUND);
 
             resolvedPatientId = profileById.UserId ?? profileById.PatientId;
+            candidateProfileId = profileById.PatientId;
         }
     }
     else if (!string.IsNullOrWhiteSpace(request.WalkInPatientName) && !string.IsNullOrWhiteSpace(request.WalkInPatientPhone))
@@ -135,6 +143,7 @@ public class LabTestService(ApplicationDbContext context, INotificationService n
         }
 
         resolvedPatientId = existingWalkIn.PatientId;
+        candidateProfileId = existingWalkIn.PatientId;
     }
     else
     {
@@ -144,17 +153,17 @@ public class LabTestService(ApplicationDbContext context, INotificationService n
     if (resolvedAppointmentId == null && resolvedPatientId > 0)
     {
         var profileIds = await context.Patients.AsNoTracking()
-            .Where(p => p.UserId == resolvedPatientId || p.PatientId == resolvedPatientId)
+            .Where(p => candidateProfileId.HasValue ? p.PatientId == candidateProfileId.Value : p.UserId == resolvedPatientId)
             .Select(p => p.PatientId)
             .ToListAsync();
 
         var today = DateTime.UtcNow.AddHours(7).Date;
         var latestApp = await context.Appointments.AsNoTracking()
             .Where(a => a.Status != AppointmentStatusConstants.Cancelled
-                && (a.DoctorId == doctorId || (doctorEntity != null && a.DoctorId == doctorEntity.DoctorId))
-                && ((a.PatientId.HasValue && a.PatientId.Value == resolvedPatientId)
+                && doctorEntity != null && a.DoctorId == doctorEntity.DoctorId
+                && ((!candidateProfileId.HasValue && a.PatientId.HasValue && a.PatientId.Value == resolvedPatientId)
                     || (a.PatientProfileId.HasValue && profileIds.Contains(a.PatientProfileId.Value))))
-            .OrderBy(a => Math.Abs((a.AppointmentDate.Date - today).TotalDays))
+            .OrderBy(a => Math.Abs(EF.Functions.DateDiffDay(a.AppointmentDate, today)))
             .ThenByDescending(a => a.AppointmentId)
             .FirstOrDefaultAsync();
 
@@ -174,6 +183,7 @@ public class LabTestService(ApplicationDbContext context, INotificationService n
         MedicalRecordId = resolvedMedicalRecordId,
         DoctorId = doctorId,
         PatientId = resolvedPatientId,
+        PatientProfileId = candidateProfileId,
         LabTestTypeId = request.LabTestTypeId,
         ClinicalDiagnosis = request.ClinicalDiagnosis?.Trim() ?? string.Empty,
         Status = "Pending",
@@ -297,7 +307,9 @@ public async Task<List<LabTestResponseDto>> GetPendingLabTestsAsync()
         .AsNoTracking()
         .Include(x => x.LabTestType)
         .Include(x => x.LabTestResult)
-        .Where(x => x.Status == "Pending")
+        .Where(x => (x.Status == "Pending" || x.Status == "InProgress")
+            && context.InvoiceDetails.Any(d => d.SourceType == "LabTest" && d.SourceId == x.Id
+                && d.Invoice != null && d.Invoice.InvoiceType == "Standard" && d.Invoice.Status == "Paid"))
         .OrderByDescending(x => x.CreatedAt)
         .ToListAsync();
 
@@ -328,7 +340,8 @@ public async Task<List<LabTestResponseDto>> GetPendingLabTestsAsync()
         if (tests.Count == 0) return [];
 
         var testIds = tests.Select(t => t.Id).ToList();
-        var patientIds = tests.Select(t => t.PatientId).Distinct().ToList();
+        var patientIds = tests.Where(t => !t.PatientProfileId.HasValue).Select(t => t.PatientId).Distinct().ToList();
+        var profileIds = tests.Where(t => t.PatientProfileId.HasValue).Select(t => t.PatientProfileId!.Value).Distinct().ToList();
         var doctorIds = tests.Select(t => t.DoctorId).Distinct().ToList();
 
         // Lấy trạng thái hóa đơn mới nhất của từng LabTest
@@ -353,7 +366,7 @@ public async Task<List<LabTestResponseDto>> GetPendingLabTestsAsync()
             .ToDictionaryAsync(u => u.UserId);
 
         var patients = await context.Patients.AsNoTracking()
-            .Where(p => (p.UserId.HasValue && patientIds.Contains(p.UserId.Value)) || patientIds.Contains(p.PatientId))
+            .Where(p => profileIds.Contains(p.PatientId) || (p.UserId.HasValue && patientIds.Contains(p.UserId.Value)))
             .ToListAsync();
 
         var appointments = await context.Appointments.AsNoTracking()
@@ -364,7 +377,9 @@ public async Task<List<LabTestResponseDto>> GetPendingLabTestsAsync()
 
         return tests.Select(t =>
         {
-            var patientProfile = patients.FirstOrDefault(p => p.UserId == t.PatientId || p.PatientId == t.PatientId);
+            var patientProfile = t.PatientProfileId.HasValue
+                ? patients.FirstOrDefault(p => p.PatientId == t.PatientProfileId)
+                : patients.FirstOrDefault(p => p.UserId == t.PatientId);
             users.TryGetValue(t.PatientId, out var patientUser);
             users.TryGetValue(t.DoctorId, out var doctorUser);
 
@@ -437,6 +452,9 @@ public async Task<List<LabTestResponseDto>> GetPendingLabTestsAsync()
 
         var authored = rights.Contains(PermissionCodes.LabsOrder);
         var owned = rights.Contains(PermissionCodes.LabsViewOwnResult);
-        return query.Where(x => (authored && x.DoctorId == userId) || (owned && x.PatientId == userId));
+        return query.Where(x => (authored && x.DoctorId == userId) || (owned &&
+            (x.PatientProfileId.HasValue
+                ? context.Patients.Any(p => p.PatientId == x.PatientProfileId && p.UserId == userId)
+                : x.PatientId == userId)));
     }
 }

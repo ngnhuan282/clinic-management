@@ -1,7 +1,8 @@
+using ClinicManagement.DTOs.Requests.Reception;
+using ClinicManagement.DTOs.Responses.Reception;
+using ClinicManagement.DTOs.Responses.Shared;
 using ClinicManagement.Commons;
 using ClinicManagement.Data.Entities;
-using ClinicManagement.DTOs.Requests;
-using ClinicManagement.DTOs.Responses;
 using ClinicManagement.Exceptions;
 
 namespace ClinicManagement.Services.Implementations;

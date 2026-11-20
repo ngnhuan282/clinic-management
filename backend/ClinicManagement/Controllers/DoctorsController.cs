@@ -1,6 +1,7 @@
+using ClinicManagement.DTOs.Requests.Doctors;
+using ClinicManagement.DTOs.Responses.Doctors;
+using ClinicManagement.DTOs.Responses.Shared;
 using ClinicManagement.Commons;
-using ClinicManagement.DTOs.Requests;
-using ClinicManagement.DTOs.Responses;
 using ClinicManagement.Services.Interfaces;
 using ClinicManagement.Data;
 using ClinicManagement.Data.Entities;
@@ -11,7 +12,6 @@ using Microsoft.Data.SqlClient;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
-using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ClinicManagement.Controllers;
@@ -160,9 +160,4 @@ public class DoctorsController : ControllerBase
         foreach (var userId in affectedIds) _connections.DisconnectUser(userId);
         return Ok(ApiResponse<object>.Success(new { doctor.DoctorId, doctor.UserId }));
     }
-}
-
-public class LinkDoctorAccountRequest
-{
-    [Required, Range(1, int.MaxValue)] public int? UserId { get; set; }
 }

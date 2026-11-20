@@ -2,9 +2,10 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using ClinicManagement.DTOs.Invoices;
+using ClinicManagement.DTOs.Requests.Billing;
 using ClinicManagement.Commons;
 using ClinicManagement.Services.Interfaces;
+using ClinicManagement.Exceptions;
 
 namespace ClinicManagement.Controllers
 {
@@ -36,6 +37,10 @@ namespace ClinicManagement.Controllers
         [Authorize(Policy = PermissionCodes.BillingCreate)]
         public async Task<IActionResult> CreateInvoice([FromBody] CreateInvoiceDto dto)
         {
+            if (dto.InitialPaymentAmount is null or > 0 &&
+                !(await HttpContext.RequestServices.GetRequiredService<IAuthorizationService>()
+                    .AuthorizeAsync(User, PermissionCodes.BillingRecordPayment)).Succeeded)
+                throw new AppException(ErrorCode.UNAUTHORIZED);
             var cashierId = _currentUser.GetRequiredUserId();
             var result = await _invoiceService.CreateInvoiceAsync(cashierId, dto);
             return Ok(result);
@@ -77,15 +82,14 @@ namespace ClinicManagement.Controllers
         public async Task<IActionResult> CreateAdjustmentInvoice([FromBody] CreateAdjustmentInvoiceDto dto)
         {
             var cashierId = _currentUser.GetRequiredUserId();
-            try
-            {
-                var result = await _invoiceService.CreateAdjustmentInvoiceAsync(cashierId, dto);
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
+            var result = await _invoiceService.CreateAdjustmentInvoiceAsync(cashierId, dto);
+            return Ok(result);
         }
+
+        [HttpPost("adjustment/preview")]
+        [Authorize(Policy = PermissionCodes.BillingCreate)]
+        [Authorize(Policy = PermissionCodes.BillingRecordPayment)]
+        public async Task<IActionResult> PreviewAdjustment([FromBody] CreateAdjustmentInvoiceDto dto)
+            => Ok(await _invoiceService.PreviewAdjustmentAsync(dto));
     }
 }

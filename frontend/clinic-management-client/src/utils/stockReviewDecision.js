@@ -6,6 +6,7 @@ export const STOCK_REVIEW_OUTCOMES = {
     AwaitingBilling: "Chờ đối soát hóa đơn",
     BillingReconciled: "Đã ghi chứng từ điều chỉnh",
     BillingVerified: "Đã xác nhận đối soát",
+    BillingPendingPayment: "Đã điều chỉnh, chờ thu đủ",
 };
 
 function normalizePrescription(prescription) {

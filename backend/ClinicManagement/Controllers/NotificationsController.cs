@@ -1,6 +1,7 @@
+using ClinicManagement.DTOs.Requests.Shared;
+using ClinicManagement.DTOs.Responses.Notifications;
+using ClinicManagement.DTOs.Responses.Shared;
 using ClinicManagement.Commons;
-using ClinicManagement.DTOs.Requests;
-using ClinicManagement.DTOs.Responses;
 using ClinicManagement.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

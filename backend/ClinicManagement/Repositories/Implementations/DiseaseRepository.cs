@@ -1,6 +1,6 @@
+using ClinicManagement.DTOs.Requests.Diseases;
 using ClinicManagement.Data;
 using ClinicManagement.Data.Entities;
-using ClinicManagement.DTOs.Requests;
 using ClinicManagement.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 

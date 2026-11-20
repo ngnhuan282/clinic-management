@@ -1,5 +1,5 @@
+using ClinicManagement.DTOs.Responses.Users;
 using ClinicManagement.Data.Entities;
-using ClinicManagement.DTOs.Responses;
 
 namespace ClinicManagement.Mappings;
 

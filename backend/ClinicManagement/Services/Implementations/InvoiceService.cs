@@ -1,8 +1,9 @@
 using System.Data;
+using ClinicManagement.DTOs.Requests.Billing;
+using ClinicManagement.DTOs.Responses.Billing;
 using ClinicManagement.Commons;
 using ClinicManagement.Data;
 using ClinicManagement.Data.Entities;
-using ClinicManagement.DTOs.Invoices;
 using ClinicManagement.Exceptions;
 using ClinicManagement.Services.Interfaces;
 using Microsoft.Data.SqlClient;
@@ -10,15 +11,15 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ClinicManagement.Services.Implementations;
 
-public class InvoiceService(
+public partial class InvoiceService(
     ApplicationDbContext context,
     INotificationService notifications) : IInvoiceService
 {
-    private const decimal DefaultExaminationFee = 150000m;
-    private const decimal DefaultBookFee = 20000m;
-
     public async Task<List<PendingAppointmentBillingDto>> GetPendingBillingsAsync(string stage)
     {
+        var settings = await ClinicSettingsService.ReadSnapshotSafeAsync(context);
+        var DefaultExaminationFee = settings.DefaultExaminationFee;
+        var DefaultBookFee = settings.PatientBookFee;
         var normalizedStage = string.IsNullOrWhiteSpace(stage) ? "Pending" : stage.Trim();
 
         // Lấy danh sách các khoản đã được lập hóa đơn (Standard)
@@ -59,16 +60,6 @@ public class InvoiceService(
         int ResolveCanonicalBillingPatientId(Appointment app) =>
             app.MedicalRecord?.PatientId ?? app.PatientId ?? app.PatientProfileId ?? 0;
 
-        List<int> GetEquivalentPatientIds(int rawId)
-        {
-            var ids = new HashSet<int> { rawId };
-            if (patientById.TryGetValue(rawId, out var p) && p.UserId.HasValue)
-                ids.Add(p.UserId.Value);
-            if (patientByUserId.TryGetValue(rawId, out var p2))
-                ids.Add(p2.PatientId);
-            return ids.ToList();
-        }
-
         var result = new List<PendingAppointmentBillingDto>();
 
         // =========================================================================
@@ -88,7 +79,8 @@ public class InvoiceService(
             {
                 var sourceType = req.BookInvoiceId.HasValue ? "Book" : "BookRequest";
                 var sourceId = req.BookInvoiceId ?? req.PatientBookRequestId;
-                if (IsBilled(sourceType, sourceId)) continue;
+                if (IsBilled("BookRequest", req.PatientBookRequestId)
+                    || (req.BookInvoiceId.HasValue && IsBilled("Book", req.BookInvoiceId.Value))) continue;
 
                 var amount = req.BookInvoice?.Amount ?? DefaultBookFee;
                 var reasonLabel = req.Reason switch
@@ -234,14 +226,7 @@ public class InvoiceService(
 
             foreach (var test in unbilledLabTests)
             {
-                var eqIds = GetEquivalentPatientIds(test.PatientId);
-                var matchedApp = appointments
-                    .Where(a =>
-                        (a.PatientId.HasValue && eqIds.Contains(a.PatientId.Value)) ||
-                        (a.PatientProfileId.HasValue && eqIds.Contains(a.PatientProfileId.Value)))
-                    .OrderBy(a => Math.Abs((a.AppointmentDate.Date - test.CreatedAt.Date).TotalDays))
-                    .ThenByDescending(a => a.AppointmentId)
-                    .FirstOrDefault();
+                var matchedApp = appointments.FirstOrDefault(a => a.AppointmentId == test.AppointmentId);
 
                 var appId = matchedApp?.AppointmentId ?? 0;
                 var billingPid = matchedApp != null ? ResolveCanonicalBillingPatientId(matchedApp) : test.PatientId;
@@ -332,7 +317,7 @@ public class InvoiceService(
                     UnitPrice = d.Medicine.UnitPrice,
                     Quantity = d.Quantity,
                     TotalPrice = d.Medicine.UnitPrice * d.Quantity
-                }).ToList();
+                }).Where(i => !IsBilled(i.SourceType, i.SourceId)).ToList();
 
                 // Thêm dòng đại diện PrescriptionId = 0đ hoặc dùng Prescription làm khóa đối soát nếu cần,
                 // ở đây dùng PrescriptionDetail khớp trực tiếp với FindInvoice của DispensingService!
@@ -366,7 +351,7 @@ public class InvoiceService(
                     .ThenInclude(mr => mr!.Prescription)
                         .ThenInclude(p => p!.Details)
                             .ThenInclude(d => d.Medicine)
-                .Where(a => a.Status != AppointmentStatusConstants.Cancelled)
+                .Where(a => a.Status == AppointmentStatusConstants.Completed)
                 .OrderByDescending(a => a.AppointmentDate)
                 .ToListAsync();
 
@@ -398,9 +383,8 @@ public class InvoiceService(
                 }
 
                 // 2) Xét nghiệm chưa thu trong ngày của bệnh nhân
-                var eqIds = GetEquivalentPatientIds(billingPid);
                 var appTests = unbilledTests
-                    .Where(t => eqIds.Contains(t.PatientId) && t.CreatedAt.Date == app.AppointmentDate.Date)
+                    .Where(t => t.AppointmentId == app.AppointmentId)
                     .ToList();
 
                 items.AddRange(appTests.Select(t => new PendingBillingItemDto
@@ -468,8 +452,38 @@ public class InvoiceService(
         ArgumentNullException.ThrowIfNull(dto);
         if (dto.Items is not { Count: > 0 })
             throw new AppException(ErrorCode.INVALID_REQUEST, "Hóa đơn phải có ít nhất một khoản mục.");
+        if (dto.PatientId <= 0 || dto.BillingStage is not ("Book" or "Pending" or "LabAndConsultation" or "Medicine" or "Final")
+            || dto.Items.Any(i => i.SourceId <= 0)
+            || dto.Items.Select(i => (i.SourceType, i.SourceId)).Distinct().Count() != dto.Items.Count)
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        if ((dto.BillingStage == "Book" && dto.Items.Count != 1)
+            || (dto.Items.Any(i => i.SourceType is "Appointment" or "PrescriptionDetail") && dto.AppointmentId is not > 0))
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        if (dto.Items.Any(i => dto.BillingStage switch
+            {
+                "Book" => i.SourceType is not ("Book" or "BookRequest"),
+                "Pending" => i.SourceType != "Appointment",
+                "LabAndConsultation" => i.SourceType is not ("Appointment" or "LabTest"),
+                "Medicine" => i.SourceType != "PrescriptionDetail",
+                "Final" => i.SourceType is not ("Appointment" or "LabTest" or "PrescriptionDetail"),
+                _ => true
+            })) throw new AppException(ErrorCode.INVALID_REQUEST);
+
+        var settings = await ClinicSettingsService.ReadSnapshotSafeAsync(context);
+        var DefaultExaminationFee = settings.DefaultExaminationFee;
+        var DefaultBookFee = settings.PatientBookFee;
 
         await using var transaction = await context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+
+        if (dto.BillingStage != "Book" && dto.AppointmentId is > 0)
+        {
+            var visit = await context.Appointments.Include(a => a.MedicalRecord)
+                .SingleOrDefaultAsync(a => a.AppointmentId == dto.AppointmentId)
+                ?? throw new AppException(ErrorCode.APPOINTMENT_NOT_FOUND);
+            var patientId = visit.MedicalRecord?.PatientId ?? visit.PatientId ?? visit.PatientProfileId;
+            if (patientId != dto.PatientId || visit.Status == AppointmentStatusConstants.Cancelled)
+                throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
 
         // VII.5: Kiểm tra trùng lặp và DỰNG LẠI ĐƠN GIÁ / SỐ LƯỢNG CHUẨN TỪ SERVER (không tin giá client gửi lên)
         var verifiedDetails = new List<InvoiceDetail>();
@@ -502,6 +516,8 @@ public class InvoiceService(
 
                     if (dto.AppointmentId is > 0 && dto.AppointmentId != app.AppointmentId)
                         throw new AppException(ErrorCode.INVALID_REQUEST, "Khoản phí khám không khớp lượt khám đang chọn.");
+                    if ((app.PatientId ?? app.PatientProfileId) != dto.PatientId || app.Status == AppointmentStatusConstants.Cancelled)
+                        throw new AppException(ErrorCode.INVALID_REQUEST);
 
                     verifiedDetails.Add(new InvoiceDetail
                     {
@@ -523,6 +539,10 @@ public class InvoiceService(
                         ?? throw new AppException(ErrorCode.INVALID_REQUEST, $"Không tìm thấy xét nghiệm #{rawItem.SourceId}.");
 
                     var price = test.LabTestType?.Price ?? 0m;
+                    if (test.Status == "Cancelled"
+                        || (test.AppointmentId.HasValue && test.AppointmentId != dto.AppointmentId)
+                        || (!test.AppointmentId.HasValue && test.PatientId != dto.PatientId))
+                        throw new AppException(ErrorCode.INVALID_REQUEST);
                     verifiedDetails.Add(new InvoiceDetail
                     {
                         SourceType = "LabTest",
@@ -549,6 +569,9 @@ public class InvoiceService(
 
                     if (dto.AppointmentId is > 0 && rxDetail.Prescription.MedicalRecord.AppointmentId != dto.AppointmentId)
                         throw new AppException(ErrorCode.INVALID_REQUEST, "Thuốc không thuộc lượt khám đang lập hóa đơn.");
+                    var rxVisit = await context.Appointments.SingleAsync(a => a.AppointmentId == rxDetail.Prescription.MedicalRecord.AppointmentId);
+                    if ((rxDetail.Prescription.MedicalRecord.PatientId ?? rxVisit.PatientId ?? rxVisit.PatientProfileId) != dto.PatientId)
+                        throw new AppException(ErrorCode.INVALID_REQUEST);
 
                     var unitPrice = rxDetail.Medicine.UnitPrice;
                     verifiedDetails.Add(new InvoiceDetail
@@ -574,6 +597,9 @@ public class InvoiceService(
                         throw new AppException(ErrorCode.BOOK_INVOICE_INVALID_STATUS);
 
                     var bookInv = req.BookInvoice;
+                    if (bookInv != null && (bookInv.Status != "Unpaid" || await context.InvoiceDetails.AnyAsync(d =>
+                        d.SourceType == "Book" && d.SourceId == bookInv.BookInvoiceId && d.Invoice!.InvoiceType == "Standard")))
+                        throw new AppException(ErrorCode.BOOK_INVOICE_INVALID_STATUS);
                     if (bookInv == null)
                     {
                         bookInv = new BookInvoice
@@ -607,6 +633,10 @@ public class InvoiceService(
                         ?? throw new AppException(ErrorCode.BOOK_INVOICE_NOT_FOUND);
 
                     if (bookInv.PatientId != dto.PatientId || bookInv.Status != "Unpaid")
+                        throw new AppException(ErrorCode.BOOK_INVOICE_INVALID_STATUS);
+                    if (await context.PatientBookRequests.AnyAsync(r => r.BookInvoiceId == bookInv.BookInvoiceId
+                        && context.InvoiceDetails.Any(d => d.SourceType == "BookRequest" && d.SourceId == r.PatientBookRequestId
+                            && d.Invoice!.InvoiceType == "Standard")))
                         throw new AppException(ErrorCode.BOOK_INVOICE_INVALID_STATUS);
 
                     verifiedDetails.Add(new InvoiceDetail
@@ -676,13 +706,16 @@ public class InvoiceService(
         await context.SaveChangesAsync();
 
         // Nếu là hóa đơn tiền sổ và đã thanh toán đủ -> đồng bộ BookInvoice = Paid
+        List<Notification> bookNotifications = [];
         if (invoice.BillingStage == "Book" && invoice.Status == "Paid")
         {
-            await SyncBookInvoicesPaidAsync(invoice, paidBookInvoicesToNotify);
+            bookNotifications = await SyncBookInvoicesPaidAsync(invoice, paidBookInvoicesToNotify);
+            await context.SaveChangesAsync();
         }
 
         await transaction.CommitAsync();
 
+        await notifications.PublishAsync(bookNotifications);
         foreach (var bi in paidBookInvoicesToNotify)
             await notifications.PublishBookInvoiceChangedAsync(bi);
 
@@ -692,8 +725,15 @@ public class InvoiceService(
     // VII.6: Ghi nhận thanh toán bổ sung / thanh toán từng phần cho hóa đơn đã lập
     public async Task<InvoiceResponseDto> RecordPaymentAsync(int invoiceId, int cashierId, RecordInvoicePaymentDto dto)
     {
+        try { return await RecordPaymentCoreAsync(invoiceId, cashierId, dto); }
+        catch (Exception error) when (IsPaymentConflict(error))
+        { throw new AppException(ErrorCode.DATA_CONCURRENCY_CONFLICT); }
+    }
+
+    private async Task<InvoiceResponseDto> RecordPaymentCoreAsync(int invoiceId, int cashierId, RecordInvoicePaymentDto dto)
+    {
         ArgumentNullException.ThrowIfNull(dto);
-        if (dto.Amount <= 0)
+        if (dto.Amount <= 0 || dto.Amount != decimal.Round(dto.Amount, 2))
             throw new AppException(ErrorCode.INVALID_REQUEST, "Số tiền thanh toán phải lớn hơn 0.");
 
         await using var transaction = await context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
@@ -707,7 +747,11 @@ public class InvoiceService(
         if (invoice.InvoiceType != "Standard")
             throw new AppException(ErrorCode.INVALID_REQUEST, "Không thể ghi nhận thanh toán vào chứng từ điều chỉnh.");
 
-        var remaining = invoice.PatientAmount - invoice.PaidAmount;
+        if (await HasUnpricedStockProposalAsync(invoice.Id))
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Hãy đối soát phương án đơn thuốc trước khi thu thêm.");
+
+        var balance = await ReadBalanceAsync(invoice);
+        var remaining = balance.Remaining;
         if (remaining <= 0 || invoice.Status == "Paid")
             throw new AppException(ErrorCode.INVALID_REQUEST, "Hóa đơn này đã được thanh toán đủ.");
 
@@ -730,17 +774,20 @@ public class InvoiceService(
         invoice.Payments.Add(payment);
         invoice.PaidAmount += dto.Amount;
         invoice.PaymentMethod = dto.PaymentMethod;
-        invoice.Status = ResolvePaymentStatus(invoice.PatientAmount, invoice.PaidAmount);
+        invoice.Status = ResolvePaymentStatus(balance.Patient, balance.NetPaid + dto.Amount);
+        var reviewNotifications = invoice.Status == "Paid" ? await VerifyPendingReviewAsync(invoice.Id, cashierId) : [];
 
         var paidBookInvoices = new List<BookInvoice>();
+        List<Notification> bookNotifications = [];
         if (invoice.BillingStage == "Book" && invoice.Status == "Paid")
         {
-            await SyncBookInvoicesPaidAsync(invoice, paidBookInvoices);
+            bookNotifications = await SyncBookInvoicesPaidAsync(invoice, paidBookInvoices);
         }
 
         await context.SaveChangesAsync();
         await transaction.CommitAsync();
 
+        await notifications.PublishAsync(reviewNotifications.Concat(bookNotifications));
         foreach (var bi in paidBookInvoices)
             await notifications.PublishBookInvoiceChangedAsync(bi);
 
@@ -757,13 +804,19 @@ public class InvoiceService(
 
         if (invoice == null) return null;
 
+        var visit = invoice.AppointmentId is > 0
+            ? await context.Appointments.AsNoTracking().SingleOrDefaultAsync(a => a.AppointmentId == invoice.AppointmentId)
+            : null;
+        var balance = await ReadBalanceAsync(invoice);
+        if (visit != null) return MapInvoice(invoice, visit.PatientName, visit.PatientPhone, balance);
+
         var patient = await context.Patients.AsNoTracking()
-            .FirstOrDefaultAsync(p => p.UserId == invoice.PatientId || p.PatientId == invoice.PatientId);
+            .FirstOrDefaultAsync(p => invoice.BillingStage == "Book" ? p.PatientId == invoice.PatientId : p.UserId == invoice.PatientId);
         var user = patient == null
             ? await context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.UserId == invoice.PatientId)
             : null;
 
-        return MapInvoice(invoice, patient?.FullName ?? user?.FullName, patient?.Phone ?? user?.Phone);
+        return MapInvoice(invoice, patient?.FullName ?? user?.FullName, patient?.Phone ?? user?.Phone, balance);
     }
 
     public async Task<IEnumerable<InvoiceResponseDto>> GetInvoiceHistoryAsync(string? searchKeyword)
@@ -796,152 +849,40 @@ public class InvoiceService(
         var patients = await context.Patients.AsNoTracking().ToListAsync();
         var users = await context.Users.AsNoTracking().ToListAsync();
 
+        var visitIds = invoices.Where(i => i.AppointmentId is > 0).Select(i => i.AppointmentId!.Value).Distinct().ToArray();
+        var visits = await context.Appointments.AsNoTracking().Where(a => visitIds.Contains(a.AppointmentId))
+            .ToDictionaryAsync(a => a.AppointmentId);
+        var adjustments = await ReadAdjustmentTotalsAsync(invoices.Select(i => i.Id).ToArray());
+        var pendingReviews = await context.PrescriptionStockReviews.AsNoTracking()
+            .Where(r => r.Status == "Pending" && r.InvoiceId.HasValue)
+            .Select(r => new
+            {
+                r.PrescriptionStockReviewId, InvoiceId = r.InvoiceId!.Value,
+                LatestOutcome = r.Decisions.OrderByDescending(d => d.PrescriptionStockReviewDecisionId).Select(d => d.Outcome).FirstOrDefault(),
+            }).Where(r => r.LatestOutcome == "AwaitingBilling").ToListAsync();
+        var reviewInvoiceIds = pendingReviews.Select(r => r.InvoiceId).Distinct().ToArray();
+        var reviewOrigins = await context.Invoices.AsNoTracking().Where(i => reviewInvoiceIds.Contains(i.Id))
+            .ToDictionaryAsync(i => i.Id, i => i.OriginalInvoiceId ?? i.Id);
+        var reviewByOriginal = pendingReviews.GroupBy(r => reviewOrigins.GetValueOrDefault(r.InvoiceId, r.InvoiceId))
+            .ToDictionary(g => g.Key, g => g.Max(r => r.PrescriptionStockReviewId));
+
         return invoices.Select(inv =>
         {
-            var p = patients.FirstOrDefault(x => x.UserId == inv.PatientId || x.PatientId == inv.PatientId);
+            var balance = GetBalance(inv, adjustments.GetValueOrDefault(inv.Id));
+            InvoiceResponseDto AddReview(InvoiceResponseDto response)
+            {
+                if (reviewByOriginal.TryGetValue(inv.Id, out var reviewId)) response.PendingStockReviewId = reviewId;
+                return response;
+            }
+            if (inv.AppointmentId.HasValue && visits.TryGetValue(inv.AppointmentId.Value, out var visit))
+                return AddReview(MapInvoice(inv, visit.PatientName, visit.PatientPhone, balance));
+            var p = patients.FirstOrDefault(x => inv.BillingStage == "Book" ? x.PatientId == inv.PatientId : x.UserId == inv.PatientId);
             var u = p == null ? users.FirstOrDefault(x => x.UserId == inv.PatientId) : null;
-            return MapInvoice(inv, p?.FullName ?? u?.FullName, p?.Phone ?? u?.Phone);
+            return AddReview(MapInvoice(inv, p?.FullName ?? u?.FullName, p?.Phone ?? u?.Phone, balance));
         }).ToList();
     }
 
-    // VII.8: Điều chỉnh / hoàn tiền và đối soát đơn thuốc AwaitingBilling
-    public async Task<InvoiceResponseDto> CreateAdjustmentInvoiceAsync(int cashierId, CreateAdjustmentInvoiceDto dto)
-    {
-        ArgumentNullException.ThrowIfNull(dto);
-        if (dto.OriginalInvoiceId <= 0)
-            throw new InvalidOperationException("Mã hóa đơn gốc không hợp lệ.");
-        if (string.IsNullOrWhiteSpace(dto.Reason))
-            throw new InvalidOperationException("Vui lòng nhập lý do điều chỉnh hóa đơn.");
-        if (dto.Items is not { Count: > 0 })
-            throw new InvalidOperationException("Hóa đơn điều chỉnh phải có ít nhất một khoản mục.");
-        if (dto.Items.Sum(item => item.UnitPrice * item.Quantity) != dto.AdjustmentTotalAmount)
-            throw new InvalidOperationException("Tổng tiền điều chỉnh không khớp tổng các khoản mục.");
-        if (dto.AdjustmentTotalAmount != dto.AdjustmentInsuranceAmount + dto.AdjustmentPatientAmount)
-            throw new InvalidOperationException("Tổng tiền điều chỉnh phải bằng tiền bảo hiểm cộng tiền điều chỉnh của bệnh nhân.");
-
-        await using var transaction = await context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
-
-        var original = await context.Invoices
-            .Include(i => i.InvoiceDetails)
-            .Include(i => i.Payments)
-            .FirstOrDefaultAsync(i => i.Id == dto.OriginalInvoiceId)
-            ?? throw new InvalidOperationException("Không tìm thấy hóa đơn gốc.");
-
-        if (original.InvoiceType == "Adjustment")
-            throw new InvalidOperationException("Không thể tạo chứng từ điều chỉnh từ một hóa đơn điều chỉnh.");
-
-        // Chặn hoàn tiền vượt quá số tiền bệnh nhân đã thực thanh toán trên hóa đơn gốc (cộng dồn các lần điều chỉnh trước)
-        if (dto.AdjustmentPatientAmount < 0)
-        {
-            var previousRefunds = await context.Invoices
-                .Where(i => i.OriginalInvoiceId == original.Id && i.InvoiceType == "Adjustment" && i.PatientAmount < 0)
-                .SumAsync(i => i.PatientAmount);
-
-            var maxRefundable = original.PaidAmount + previousRefunds; // previousRefunds <= 0
-            if (Math.Abs(dto.AdjustmentPatientAmount) > maxRefundable)
-                throw new InvalidOperationException($"Số tiền hoàn ({Math.Abs(dto.AdjustmentPatientAmount):N0}đ) vượt quá số tiền bệnh nhân đã thanh toán ({maxRefundable:N0}đ).");
-        }
-
-        var adjustment = new Invoice
-        {
-            AppointmentId = original.AppointmentId,
-            PatientId = original.PatientId,
-            CashierId = cashierId,
-            BillingStage = original.BillingStage,
-            InvoiceType = "Adjustment",
-            OriginalInvoiceId = original.Id,
-            PaymentMethod = dto.PaymentMethod,
-            Status = dto.AdjustmentPatientAmount < 0 ? "Refunded" : "Paid",
-            CreatedAt = DateTime.UtcNow,
-            TotalAmount = dto.AdjustmentTotalAmount,
-            InsuranceAmount = dto.AdjustmentInsuranceAmount,
-            PatientAmount = dto.AdjustmentPatientAmount,
-            PaidAmount = dto.AdjustmentPatientAmount
-        };
-
-        foreach (var item in dto.Items)
-        {
-            adjustment.InvoiceDetails.Add(new InvoiceDetail
-            {
-                SourceType = item.SourceType,
-                SourceId = item.SourceId,
-                ItemName = item.ItemName,
-                UnitPrice = item.UnitPrice,
-                Quantity = item.Quantity,
-                TotalPrice = item.UnitPrice * item.Quantity
-            });
-        }
-
-        adjustment.InvoiceDetails.Add(new InvoiceDetail
-        {
-            SourceType = "AdjustmentReason",
-            SourceId = original.Id,
-            ItemName = $"Lý do điều chỉnh: {dto.Reason.Trim()}",
-            UnitPrice = 0m,
-            Quantity = 1,
-            TotalPrice = 0m
-        });
-
-        // Tạo phiếu thu (thu thêm) hoặc phiếu chi hoàn tiền (hoàn lại) tương ứng
-        if (dto.AdjustmentPatientAmount != 0)
-        {
-            var isRefund = dto.AdjustmentPatientAmount < 0;
-            adjustment.Payments.Add(new InvoicePayment
-            {
-                ReceiptNumber = await GenerateReceiptNumberAsync(isRefund ? "PH" : "PT"),
-                PaymentType = isRefund ? "Refund" : "Payment",
-                Amount = Math.Abs(dto.AdjustmentPatientAmount),
-                PaymentMethod = dto.PaymentMethod,
-                ReferenceCode = string.IsNullOrWhiteSpace(dto.ReferenceCode) ? null : dto.ReferenceCode.Trim(),
-                Note = dto.Reason.Trim(),
-                CashierId = cashierId,
-                PaidAt = DateTime.UtcNow
-            });
-        }
-
-        // VII.8: Nối chứng từ điều chỉnh với quy trình đối soát đơn thuốc đang AwaitingBilling
-        PrescriptionStockReview? linkedReview = null;
-        if (dto.PrescriptionStockReviewId.HasValue)
-        {
-            linkedReview = await context.PrescriptionStockReviews
-                .Include(r => r.Decisions)
-                .FirstOrDefaultAsync(r => r.PrescriptionStockReviewId == dto.PrescriptionStockReviewId.Value);
-        }
-        else if (original.AppointmentId.HasValue)
-        {
-            linkedReview = await context.PrescriptionStockReviews
-                .Include(r => r.Decisions)
-                .Include(r => r.Prescription)
-                    .ThenInclude(p => p.MedicalRecord)
-                .FirstOrDefaultAsync(r =>
-                    r.Status == "Pending" &&
-                    (r.InvoiceId == original.Id || r.Prescription.MedicalRecord.AppointmentId == original.AppointmentId));
-        }
-
-        if (linkedReview is { Status: "Pending" })
-        {
-            linkedReview.PaymentStatus = dto.AdjustmentPatientAmount < 0 ? "Refunded" : "AdjustedPaid";
-            linkedReview.UpdatedAt = DateTime.UtcNow;
-            linkedReview.Decisions.Add(new PrescriptionStockReviewDecision
-            {
-                DoctorUserId = cashierId, // Actor thực hiện đối soát thu ngân
-                Action = "BillingAdjusted",
-                Outcome = "BillingReconciled",
-                Reason = $"Thu ngân lập chứng từ điều chỉnh: {dto.Reason.Trim()}",
-                BeforeJson = $"{{\"originalInvoiceId\":{original.Id},\"paidAmount\":{original.PaidAmount}}}",
-                AfterJson = $"{{\"adjustmentPatientAmount\":{dto.AdjustmentPatientAmount},\"paymentStatus\":\"{linkedReview.PaymentStatus}\"}}",
-                CreatedAt = DateTime.UtcNow
-            });
-        }
-
-        context.Invoices.Add(adjustment);
-        await context.SaveChangesAsync();
-        await transaction.CommitAsync();
-
-        return (await GetInvoiceByIdAsync(adjustment.Id))!;
-    }
-
-    private async Task SyncBookInvoicesPaidAsync(Invoice invoice, List<BookInvoice> paidBookInvoicesToNotify)
+    private async Task<List<Notification>> SyncBookInvoicesPaidAsync(Invoice invoice, List<BookInvoice> paidBookInvoicesToNotify)
     {
         var bookIds = invoice.InvoiceDetails
             .Where(d => d.SourceType == "Book")
@@ -963,7 +904,7 @@ public class InvoiceService(
         }
 
         var distinctBookIds = bookIds.Distinct().ToList();
-        if (distinctBookIds.Count == 0) return;
+        if (distinctBookIds.Count == 0) return [];
 
         var bookInvoices = await context.BookInvoices
             .Where(b => distinctBookIds.Contains(b.BookInvoiceId))
@@ -980,16 +921,13 @@ public class InvoiceService(
             }
         }
 
-        await context.SaveChangesAsync();
-
-        var notificationsToPublish = await notifications.StageAsync(
+        if (paidBookInvoicesToNotify.Count == 0) return [];
+        return await notifications.StageAsync(
             await notifications.ReceptionRecipientsAsync(),
             $"invoice:{invoice.Id}:book-paid",
             "Billing",
             "Tiền sổ đã thanh toán",
             $"Hóa đơn Book #{invoice.Id} đã thanh toán đủ. Lễ tân có thể xử lý cấp sổ.");
-        await context.SaveChangesAsync();
-        await notifications.PublishAsync(notificationsToPublish);
     }
 
     private async Task<string> GenerateReceiptNumberAsync(string prefix)
@@ -1014,7 +952,7 @@ public class InvoiceService(
         return false;
     }
 
-    private static InvoiceResponseDto MapInvoice(Invoice invoice, string? patientName, string? patientPhone) => new()
+    private static InvoiceResponseDto MapInvoice(Invoice invoice, string? patientName, string? patientPhone, InvoiceBalance balance) => new()
     {
         Id = invoice.Id,
         AppointmentId = invoice.AppointmentId,
@@ -1025,14 +963,13 @@ public class InvoiceService(
         BillingStage = invoice.BillingStage,
         InvoiceType = invoice.InvoiceType,
         OriginalInvoiceId = invoice.OriginalInvoiceId,
-        TotalAmount = invoice.TotalAmount,
+        TotalAmount = balance.Total,
         InsuranceDiscountPercent = invoice.InsuranceDiscountPercent,
-        InsuranceAmount = invoice.InsuranceAmount,
-        PatientAmount = invoice.PatientAmount,
-        PaidAmount = invoice.PaidAmount,
-        RemainingAmount = invoice.InvoiceType == "Standard"
-            ? Math.Max(0m, invoice.PatientAmount - invoice.PaidAmount)
-            : 0m,
+        InsuranceAmount = balance.Insurance,
+        PatientAmount = balance.Patient,
+        PaidAmount = balance.NetPaid,
+        RemainingAmount = invoice.InvoiceType == "Standard" ? balance.Remaining : 0m,
+        OriginalPatientAmount = invoice.PatientAmount,
         PaymentMethod = invoice.PaymentMethod,
         Status = invoice.Status,
         CreatedAt = invoice.CreatedAt,

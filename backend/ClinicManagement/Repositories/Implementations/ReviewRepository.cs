@@ -1,8 +1,8 @@
+using ClinicManagement.DTOs.Requests.Reviews;
+using ClinicManagement.DTOs.Responses.Reviews;
 using ClinicManagement.Data;
 using ClinicManagement.Data.Entities;
 using Microsoft.EntityFrameworkCore;
-using ClinicManagement.DTOs.Requests;
-using ClinicManagement.DTOs.Responses;
 
 namespace ClinicManagement.Repositories.Implementations;
 
