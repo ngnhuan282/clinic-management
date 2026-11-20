@@ -81,3 +81,21 @@ public class RoomRepository(ApplicationDbContext context) : IRoomRepository
     public Task AddAsync(Room entity) { context.Rooms.Add(entity); return Task.CompletedTask; }
     public Task SaveChangesAsync() => context.SaveChangesAsync();
 }
+
+public class JobPositionRepository(ApplicationDbContext context) : IJobPositionRepository
+{
+    public async Task<(IReadOnlyList<JobPosition> Items, int TotalItems)> GetPageAsync(CatalogQuery query)
+    {
+        var (page, size) = query.Normalize();
+        var items = context.JobPositions.AsNoTracking().AsQueryable();
+        if (!string.IsNullOrWhiteSpace(query.Search)) items = items.Where(x => x.Code.Contains(query.Search) || x.Name.Contains(query.Search));
+        if (query.IsActive.HasValue) items = items.Where(x => x.IsActive == query.IsActive);
+        var total = await items.CountAsync();
+        return (await items.OrderBy(x => x.Name).Skip((page - 1) * size).Take(size).ToListAsync(), total);
+    }
+    public Task<JobPosition?> GetByIdAsync(int id) => context.JobPositions.FirstOrDefaultAsync(x => x.JobPositionId == id);
+    public Task<bool> ExistsDuplicateAsync(string code, string name, int? excludingId = null) => context.JobPositions.AnyAsync(x => (excludingId == null || x.JobPositionId != excludingId) && (x.Code == code || x.Name == name));
+    public Task<bool> IsActiveAsync(int id) => context.JobPositions.AnyAsync(x => x.JobPositionId == id && x.IsActive);
+    public Task AddAsync(JobPosition entity) { context.JobPositions.Add(entity); return Task.CompletedTask; }
+    public Task SaveChangesAsync() => context.SaveChangesAsync();
+}

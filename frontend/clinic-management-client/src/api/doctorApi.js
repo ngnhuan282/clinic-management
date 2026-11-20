@@ -45,3 +45,23 @@ export async function updateMyDoctorProfile(payload) {
     const response = await axiosClient.put("/doctors/me", payload);
     return response.data.result;
 }
+
+export async function getAdminDoctors(params, signal) {
+    const response = await axiosClient.get("/doctors/admin", { params, signal });
+    return response.data.result;
+}
+
+export async function createDoctor(payload) {
+    const response = await axiosClient.post("/doctors/admin", payload);
+    return response.data.result;
+}
+
+export async function updateDoctor(doctorId, payload) {
+    const response = await axiosClient.put(`/doctors/admin/${doctorId}`, payload);
+    return response.data.result;
+}
+
+export async function updateDoctorStatus(doctorId, isActive) {
+    const response = await axiosClient.patch(`/doctors/admin/${doctorId}/status`, isActive);
+    return response.data.result;
+}

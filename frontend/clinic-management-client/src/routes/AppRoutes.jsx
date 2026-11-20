@@ -40,6 +40,8 @@ const MedicineCategoriesPage = lazy(() => import("../pages/internal/admin/Medici
 const MedicinesPage = lazy(() => import("../pages/internal/admin/MedicinesPage"));
 const SuppliersPage = lazy(() => import("../pages/internal/admin/SuppliersPage"));
 const UsersPage = lazy(() => import("../pages/internal/admin/UsersPage"));
+const DoctorsManagementPage = lazy(() => import("../pages/internal/admin/DoctorsManagementPage"));
+const StaffManagementPage = lazy(() => import("../pages/internal/admin/StaffManagementPage"));
 const RolesPermissionsPage = lazy(() => import("../pages/internal/admin/RolesPermissionsPage"));
 
 const CatalogManagementPage = lazy(() => import("../pages/internal/CatalogManagementPage"));
@@ -220,6 +222,28 @@ export default function AppRoutes() {
                             element={
                                 <ProtectedRoute
                                     allowedRoles={["Admin"]}
+                                    allowedPermissions={["staff.manage"]}
+                                />
+                            }
+                        >
+                            <Route path="doctors-management" element={<DoctorsManagementPage />} />
+                        </Route>
+
+                        <Route
+                            element={
+                                <ProtectedRoute
+                                    allowedRoles={["Admin"]}
+                                    allowedPermissions={["staff.manage"]}
+                                />
+                            }
+                        >
+                            <Route path="staff-management" element={<StaffManagementPage />} />
+                        </Route>
+
+                        <Route
+                            element={
+                                <ProtectedRoute
+                                    allowedRoles={["Admin"]}
                                     allowedPermissions={["accounts.manageRoles"]}
                                 />
                             }
@@ -253,6 +277,12 @@ export default function AppRoutes() {
                                 path="rooms"
                                 element={
                                     <CatalogManagementPage resource="rooms" />
+                                }
+                            />
+                            <Route
+                                path="job-positions"
+                                element={
+                                    <CatalogManagementPage resource="job-positions" />
                                 }
                             />
                         </Route>

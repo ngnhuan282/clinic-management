@@ -11,6 +11,14 @@ export async function findPatientMatches(search) {
     return result(await axiosClient.get("/patients/matches", { params: { search } }));
 }
 
+export async function getPatientProfile(patientId) {
+    return result(await axiosClient.get(`/patients/${patientId}`));
+}
+
+export async function updatePatientProfile(patientId, payload) {
+    return result(await axiosClient.put(`/patients/${patientId}`, payload));
+}
+
 export async function matchAppointmentPatient(appointmentId, patientProfileId) {
     return result(await axiosClient.patch(`/appointments/${appointmentId}/patient-profile`, { patientProfileId }));
 }

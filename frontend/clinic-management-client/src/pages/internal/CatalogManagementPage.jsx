@@ -33,6 +33,7 @@ import {
     MedicalInformationRounded,
     MedicalServicesRounded,
     MeetingRoomRounded,
+    WorkOutlineRounded,
 } from "@mui/icons-material";
 import { Link as RouterLink } from "react-router-dom";
 
@@ -108,12 +109,22 @@ const CONFIG = {
         },
         columns: ["roomSummary", "roomType", "departmentName", "location"],
     },
+    "job-positions": {
+        title: "Vị trí công việc",
+        singular: "vị trí công việc",
+        tab: "Vị trí công việc",
+        icon: WorkOutlineRounded,
+        fields: ["code", "name", "description"],
+        labels: { code: "Mã vị trí", name: "Tên vị trí", description: "Mô tả" },
+        columns: ["code", "name", "description"],
+    },
 };
 
 const TABS = [
     { resource: "departments", label: "Khoa phòng", icon: DomainRounded },
     { resource: "specializations", label: "Chuyên khoa", icon: MedicalInformationRounded },
     { resource: "rooms", label: "Buồng khám", icon: MeetingRoomRounded },
+    { resource: "job-positions", label: "Vị trí công việc", icon: WorkOutlineRounded },
 ];
 
 const empty = (resource) =>
@@ -128,7 +139,9 @@ const idField = (resource) =>
         ? "departmentId"
         : resource === "specializations"
           ? "specializationId"
-          : "roomId";
+          : resource === "job-positions"
+            ? "jobPositionId"
+            : "roomId";
 
 function escapeCsv(value) {
     const text = String(value ?? "");
@@ -141,7 +154,7 @@ function escapeCsv(value) {
 function CatalogManagementPage({ resource }) {
     const config = CONFIG[resource];
     const [data, setData] = useState({ items: [], totalItems: 0 });
-    const [counts, setCounts] = useState({ departments: 0, specializations: 0, rooms: 0 });
+    const [counts, setCounts] = useState({ departments: 0, specializations: 0, rooms: 0, "job-positions": 0 });
     const [departments, setDepartments] = useState([]);
     const [pageNumber, setPageNumber] = useState(1);
     const [pageSize, setPageSize] = useState(10);
@@ -211,7 +224,7 @@ function CatalogManagementPage({ resource }) {
 
     useEffect(() => {
         void loadSummary();
-        if (resource !== "departments") {
+        if (resource === "specializations" || resource === "rooms") {
             catalogApi
                 .list("departments", { pageNumber: 1, pageSize: 100, isActive: true })
                 .then((response) => setDepartments(response.data.result?.items || []))
@@ -232,7 +245,9 @@ function CatalogManagementPage({ resource }) {
                 ? ["Số phòng", "Tên phòng", "Loại phòng", "Khoa phụ trách", "Vị trí", "Trạng thái"]
                 : resource === "specializations"
                   ? ["Mã chuyên khoa", "Tên chuyên khoa", "Khoa phụ trách", "Mô tả", "Trạng thái"]
-                  : ["Mã khoa", "Tên khoa", "Mô tả", "Trạng thái"];
+                  : resource === "job-positions"
+                    ? ["Mã vị trí", "Tên vị trí", "Mô tả", "Trạng thái"]
+                    : ["Mã khoa", "Tên khoa", "Mô tả", "Trạng thái"];
 
         const rows = data.items.map((item) =>
             resource === "rooms"
@@ -535,8 +550,10 @@ function CatalogManagementPage({ resource }) {
         <Stack spacing={3} sx={{ pb: 4, minWidth: 0 }}>
             <ClinicPageHeader
                 eyebrow={`Danh mục y tế · ${config.tab}`}
-                title="Quản lý Khoa phòng, Chuyên khoa & Buồng khám"
-                description="Thiết lập cấu trúc chuyên môn, phân bổ chuyên khoa và buồng khám đồng bộ cho đặt lịch & tiếp đón."
+                title={resource === "job-positions" ? "Quản lý Vị trí công việc" : "Quản lý Khoa phòng, Chuyên khoa & Buồng khám"}
+                description={resource === "job-positions"
+                    ? "Thiết lập danh mục vị trí công việc để gán cho hồ sơ nhân viên lễ tân, thu ngân, dược sĩ và kỹ thuật viên xét nghiệm."
+                    : "Thiết lập cấu trúc chuyên môn, phân bổ chuyên khoa và buồng khám đồng bộ cho đặt lịch & tiếp đón."}
                 icon={config.icon}
                 actions={
                     <>

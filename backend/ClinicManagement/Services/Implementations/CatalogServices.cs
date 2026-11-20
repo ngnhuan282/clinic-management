@@ -163,3 +163,45 @@ public class RoomService(IRoomRepository repository) : IRoomService
         entity.IsActive = isActive; entity.UpdatedAt = DateTime.UtcNow; await repository.SaveChangesAsync();
     }
 }
+
+public class JobPositionService(IJobPositionRepository repository) : IJobPositionService
+{
+    public async Task<PagedResponse<JobPositionResponse>> GetAsync(CatalogQuery query)
+    {
+        var (page, size) = CatalogValidators.ValidateQuery(query);
+        var result = await repository.GetPageAsync(query);
+        return new PagedResponse<JobPositionResponse>(result.Items.Select(x => x.ToResponse()), page, size, result.TotalItems);
+    }
+
+    public async Task<JobPositionResponse> GetByIdAsync(int id) =>
+        (await repository.GetByIdAsync(id))?.ToResponse() ?? throw new AppException(ErrorCode.CATALOG_NOT_FOUND);
+
+    public async Task<JobPositionResponse> CreateAsync(CreateJobPositionRequest request)
+    {
+        var code = CatalogValidators.Required(request.Code, 20);
+        var name = CatalogValidators.Required(request.Name, 100);
+        var description = CatalogValidators.Optional(request.Description, 500);
+        if (await repository.ExistsDuplicateAsync(code, name)) throw new AppException(ErrorCode.CATALOG_DUPLICATE);
+        var now = DateTime.UtcNow;
+        var entity = new JobPosition { Code = code, Name = name, Description = description, CreatedAt = now, UpdatedAt = now };
+        await repository.AddAsync(entity); await repository.SaveChangesAsync();
+        return entity.ToResponse();
+    }
+
+    public async Task<JobPositionResponse> UpdateAsync(int id, UpdateJobPositionRequest request)
+    {
+        var entity = await repository.GetByIdAsync(id) ?? throw new AppException(ErrorCode.CATALOG_NOT_FOUND);
+        var code = CatalogValidators.Required(request.Code, 20);
+        var name = CatalogValidators.Required(request.Name, 100);
+        var description = CatalogValidators.Optional(request.Description, 500);
+        if (await repository.ExistsDuplicateAsync(code, name, id)) throw new AppException(ErrorCode.CATALOG_DUPLICATE);
+        entity.Code = code; entity.Name = name; entity.Description = description; entity.IsActive = request.IsActive; entity.UpdatedAt = DateTime.UtcNow;
+        await repository.SaveChangesAsync(); return entity.ToResponse();
+    }
+
+    public async Task UpdateStatusAsync(int id, bool isActive)
+    {
+        var entity = await repository.GetByIdAsync(id) ?? throw new AppException(ErrorCode.CATALOG_NOT_FOUND);
+        entity.IsActive = isActive; entity.UpdatedAt = DateTime.UtcNow; await repository.SaveChangesAsync();
+    }
+}

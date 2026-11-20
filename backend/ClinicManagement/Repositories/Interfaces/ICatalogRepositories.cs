@@ -34,3 +34,13 @@ public interface IRoomRepository
     Task AddAsync(Room entity);
     Task SaveChangesAsync();
 }
+
+public interface IJobPositionRepository
+{
+    Task<(IReadOnlyList<JobPosition> Items, int TotalItems)> GetPageAsync(CatalogQuery query);
+    Task<JobPosition?> GetByIdAsync(int id);
+    Task<bool> ExistsDuplicateAsync(string code, string name, int? excludingId = null);
+    Task<bool> IsActiveAsync(int id);
+    Task AddAsync(JobPosition entity);
+    Task SaveChangesAsync();
+}

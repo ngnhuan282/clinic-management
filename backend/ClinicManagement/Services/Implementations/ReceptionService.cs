@@ -282,6 +282,9 @@ public partial class ReceptionService : IReceptionService
         return MapAppointment(appointment);
     }
 
+    public async Task<PatientMatchResponse> GetPatientAsync(int patientId) =>
+        MapPatient(await RequirePatientAsync(patientId));
+
     public async Task<PatientMatchResponse> UpdatePatientAsync(int patientId, UpdatePatientProfileRequest request)
     {
         var patient = await RequirePatientAsync(patientId);
