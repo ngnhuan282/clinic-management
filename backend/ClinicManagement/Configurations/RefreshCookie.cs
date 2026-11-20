@@ -1,4 +1,4 @@
-using ClinicManagement.DTOs.Responses;
+using ClinicManagement.DTOs.Responses.Auth;
 using ClinicManagement.Exceptions;
 
 namespace ClinicManagement.Configurations;

@@ -1,5 +1,6 @@
-using ClinicManagement.DTOs.Requests;
 using System.Data;
+using ClinicManagement.DTOs.Requests.PatientBooks;
+using ClinicManagement.DTOs.Requests.Reception;
 using ClinicManagement.Commons;
 using ClinicManagement.Data;
 using ClinicManagement.Data.Entities;
@@ -11,6 +12,12 @@ namespace ClinicManagement.Repositories.Implementations;
 
 public class ReceptionRepository : IReceptionRepository
 {
+    public Task<bool> HasCashierBookInvoiceAsync(int invoiceId) =>
+        _context.InvoiceDetails.AnyAsync(d => d.Invoice!.InvoiceType == "Standard"
+            && d.Invoice.BillingStage == "Book" && (d.SourceType == "Book" && d.SourceId == invoiceId
+                || d.SourceType == "BookRequest" && _context.PatientBookRequests.Any(r =>
+                    r.PatientBookRequestId == d.SourceId && r.BookInvoiceId == invoiceId)));
+
     private readonly ApplicationDbContext _context;
 
     public ReceptionRepository(ApplicationDbContext context) => _context = context;

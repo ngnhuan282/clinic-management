@@ -1,9 +1,10 @@
 using System.Data;
+using ClinicManagement.DTOs.Requests.Dispensing;
+using ClinicManagement.DTOs.Requests.Reviews;
+using ClinicManagement.DTOs.Responses.StockReviews;
 using ClinicManagement.Commons;
 using ClinicManagement.Data;
 using ClinicManagement.Data.Entities;
-using ClinicManagement.DTOs.Requests;
-using ClinicManagement.DTOs.Responses;
 using ClinicManagement.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -128,7 +129,7 @@ public class DispensingRepository(ApplicationDbContext context) : IDispensingRep
                    && (original.Status == "Paid" || original.Status == "Unpaid" || original.Status == "PartiallyPaid")
                    && document.AppointmentId == original.AppointmentId && document.PatientId == original.PatientId
                    && document.BillingStage == original.BillingStage && document.InvoiceType == "Adjustment"
-                   && (document.Status == "Paid" || document.Status == "Refunded")
+                   && (document.Status == "Paid" || document.Status == "Refunded" || document.Status == "Adjusted" && original.Status == "Paid")
                    && !context.Invoices.Any(i => i.OriginalInvoiceId == original.Id && i.InvoiceType == "Adjustment" && i.Id > document.Id)
                select new ReconciledInvoice { PrescriptionId = review.PrescriptionId, Original = original };
     }

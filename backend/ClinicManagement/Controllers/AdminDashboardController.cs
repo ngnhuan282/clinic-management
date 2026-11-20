@@ -1,5 +1,6 @@
 using ClinicManagement.Commons;
 using ClinicManagement.Data;
+using ClinicManagement.Helpers;
 using ClinicManagement.Services.Implementations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -9,7 +10,7 @@ namespace ClinicManagement.Controllers;
 
 [ApiController]
 [Route("api/admin-dashboard")]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = RoleConstants.Admin)]
 public class AdminDashboardController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
@@ -23,7 +24,7 @@ public class AdminDashboardController : ControllerBase
     [HttpGet("summary")]
     public async Task<IActionResult> GetSummary()
     {
-        var now = DateTime.Now;
+        var now = DateTime.UtcNow.AddHours(7);
         var today = now.Date;
         var tomorrow = today.AddDays(1);
         var monthStart = new DateTime(now.Year, now.Month, 1);
@@ -44,17 +45,10 @@ public class AdminDashboardController : ControllerBase
         var completedThisMonth = await appointmentsThisMonth
             .CountAsync(a => a.Status == AppointmentStatusConstants.Completed);
 
-        var paidInvoicesThisMonth = _context.Invoices
-            .Where(i => i.Status == "Paid" && i.CreatedAt >= monthStart && i.CreatedAt < nextMonth);
-
-        var revenueThisMonth = await paidInvoicesThisMonth
-            .SumAsync(i => (decimal?)i.TotalAmount) ?? 0m;
-
-        var patientPaymentsThisMonth = await paidInvoicesThisMonth
-            .SumAsync(i => (decimal?)i.PatientAmount) ?? 0m;
-
-        var insurancePaymentsThisMonth = await paidInvoicesThisMonth
-            .SumAsync(i => (decimal?)i.InsuranceAmount) ?? 0m;
+        var monthlyRevenue = await ReadDailyRevenueAsync(monthStart, nextMonth);
+        var revenueThisMonth = monthlyRevenue.Sum(x => x.TotalRevenue);
+        var patientPaymentsThisMonth = monthlyRevenue.Sum(x => x.PatientPayments);
+        var insurancePaymentsThisMonth = monthlyRevenue.Sum(x => x.InsurancePayments);
 
         var inventoryBatches = _context.Inventory.AsNoTracking();
 
@@ -97,13 +91,13 @@ public class AdminDashboardController : ControllerBase
         [FromQuery] DateTime? from,
         [FromQuery] DateTime? to)
     {
-        var now = DateTime.Now;
+        var now = ClinicClock.Today.ToDateTime(TimeOnly.MinValue);
         var startDate = (from ?? new DateTime(now.Year, now.Month, 1)).Date;
         var endDate = (to ?? now.Date).Date;
 
-        if (endDate < startDate)
+        if (!IsValidPeriod(startDate, endDate))
         {
-            return BadRequest(new { message = "Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu." });
+            return BadRequest(new { message = "Chọn khoảng ngày hợp lệ, tối đa 366 ngày." });
         }
 
         var endExclusive = endDate.AddDays(1);
@@ -157,44 +151,16 @@ public class AdminDashboardController : ControllerBase
         [FromQuery] DateTime? from,
         [FromQuery] DateTime? to)
     {
-        var now = DateTime.Now;
+        var now = ClinicClock.Today.ToDateTime(TimeOnly.MinValue);
         var startDate = (from ?? new DateTime(now.Year, now.Month, 1)).Date;
         var endDate = (to ?? now.Date).Date;
 
-        if (endDate < startDate)
+        if (!IsValidPeriod(startDate, endDate))
         {
-            return BadRequest(new { message = "Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu." });
+            return BadRequest(new { message = "Chọn khoảng ngày hợp lệ, tối đa 366 ngày." });
         }
 
-        var endExclusive = endDate.AddDays(1);
-
-        var paidInvoices = _context.Invoices
-            .AsNoTracking()
-            .Where(i => i.Status == "Paid" && i.CreatedAt >= startDate && i.CreatedAt < endExclusive);
-
-        var totals = await paidInvoices
-            .GroupBy(i => 1)
-            .Select(g => new
-            {
-                InvoiceCount = g.Count(),
-                TotalRevenue = g.Sum(i => i.TotalAmount),
-                PatientPayments = g.Sum(i => i.PatientAmount),
-                InsurancePayments = g.Sum(i => i.InsuranceAmount)
-            })
-            .FirstOrDefaultAsync();
-
-        var dailyRevenue = await paidInvoices
-            .GroupBy(i => i.CreatedAt.Date)
-            .Select(g => new
-            {
-                date = g.Key,
-                invoiceCount = g.Count(),
-                totalRevenue = g.Sum(i => i.TotalAmount),
-                patientPayments = g.Sum(i => i.PatientAmount),
-                insurancePayments = g.Sum(i => i.InsuranceAmount)
-            })
-            .OrderBy(x => x.date)
-            .ToListAsync();
+        var dailyRevenue = await ReadDailyRevenueAsync(startDate, endDate.AddDays(1));
 
         return Ok(new
         {
@@ -202,13 +168,60 @@ public class AdminDashboardController : ControllerBase
             to = endDate,
             summary = new
             {
-                invoiceCount = totals?.InvoiceCount ?? 0,
-                totalRevenue = totals?.TotalRevenue ?? 0m,
-                patientPayments = totals?.PatientPayments ?? 0m,
-                insurancePayments = totals?.InsurancePayments ?? 0m
+                invoiceCount = dailyRevenue.Sum(x => x.InvoiceCount),
+                totalRevenue = dailyRevenue.Sum(x => x.TotalRevenue),
+                patientPayments = dailyRevenue.Sum(x => x.PatientPayments),
+                insurancePayments = dailyRevenue.Sum(x => x.InsurancePayments)
             },
             dailyRevenue
         });
+    }
+
+    private static bool IsValidPeriod(DateTime start, DateTime end) =>
+        start.Year >= 2 && end < DateTime.MaxValue.Date && end >= start && (end - start).Days < 366;
+
+    private sealed record DailyRevenue(DateTime Date, int InvoiceCount, decimal PatientPayments, decimal InsurancePayments)
+    {
+        public decimal TotalRevenue => PatientPayments + InsurancePayments;
+    }
+
+    private async Task<List<DailyRevenue>> ReadDailyRevenueAsync(DateTime start, DateTime endExclusive)
+    {
+        // Revenue dates follow the clinic calendar. Insurance is the amount recorded on accounting documents.
+        var utcStart = start.AddHours(-7);
+        var utcEnd = endExclusive.AddHours(-7);
+        var receipts = await _context.InvoicePayments.AsNoTracking().Where(p => p.PaidAt >= utcStart && p.PaidAt < utcEnd)
+            .GroupBy(p => p.PaidAt.AddHours(7).Date)
+            .Select(g => new { Date = g.Key, Amount = g.Sum(p => p.PaymentType == "Refund" ? -p.Amount : p.Amount) })
+            .ToListAsync();
+        var documents = await _context.Invoices.AsNoTracking().Where(i => i.CreatedAt >= utcStart && i.CreatedAt < utcEnd)
+            .GroupBy(i => i.CreatedAt.AddHours(7).Date)
+            .Select(g => new
+            {
+                Date = g.Key, Count = g.Count(), Insurance = g.Sum(i => i.InsuranceAmount)
+            }).ToListAsync();
+        // PaidAmount can also include legacy receipts imported without line-by-line history.
+        var legacy = await _context.Invoices.AsNoTracking().Where(i => i.CreatedAt >= utcStart && i.CreatedAt < utcEnd && i.PaidAmount != 0)
+            .Select(i => new
+            {
+                Date = i.CreatedAt.AddHours(7).Date,
+                Amount = i.PaidAmount - (i.Payments.Sum(p => (decimal?)(p.PaymentType == "Refund" ? -p.Amount : p.Amount)) ?? 0)
+            }).Where(r => r.Amount != 0).ToListAsync();
+        var legacyBooks = await _context.BookInvoices.AsNoTracking()
+            .Where(b => b.PaidAt >= utcStart && b.PaidAt < utcEnd && !_context.InvoiceDetails.Any(d =>
+                d.Invoice!.InvoiceType == "Standard" && d.Invoice.BillingStage == "Book"
+                && (d.SourceType == "Book" && d.SourceId == b.BookInvoiceId || d.SourceType == "BookRequest"
+                    && _context.PatientBookRequests.Any(r => r.PatientBookRequestId == d.SourceId && r.BookInvoiceId == b.BookInvoiceId))))
+            .GroupBy(b => b.PaidAt!.Value.AddHours(7).Date)
+            .Select(g => new { Date = g.Key, Amount = g.Sum(b => b.Amount), Count = g.Count() }).ToListAsync();
+
+        return documents.Select(d => new DailyRevenue(d.Date, d.Count, 0, d.Insurance))
+            .Concat(receipts.Select(p => new DailyRevenue(p.Date, 0, p.Amount, 0)))
+            .Concat(legacy.Select(p => new DailyRevenue(p.Date, 0, p.Amount, 0)))
+            .Concat(legacyBooks.Select(p => new DailyRevenue(p.Date, p.Count, p.Amount, 0)))
+            .GroupBy(r => r.Date).OrderBy(g => g.Key)
+            .Select(g => new DailyRevenue(g.Key, g.Sum(r => r.InvoiceCount), g.Sum(r => r.PatientPayments), g.Sum(r => r.InsurancePayments)))
+            .ToList();
     }
 
     // GET: /api/admin-dashboard/inventory

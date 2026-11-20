@@ -1,5 +1,5 @@
+using ClinicManagement.DTOs.Requests.Doctors;
 using ClinicManagement.Data.Entities;
-using ClinicManagement.DTOs.Requests;
 
 namespace ClinicManagement.Repositories.Interfaces;
 

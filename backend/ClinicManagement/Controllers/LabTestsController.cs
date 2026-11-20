@@ -1,6 +1,5 @@
+using ClinicManagement.DTOs.Requests.Laboratory;
 using ClinicManagement.Commons;
-using ClinicManagement.DTOs.LabTests;
-using ClinicManagement.DTOs.LabTestResults;
 using ClinicManagement.Exceptions;
 using ClinicManagement.Services;
 using ClinicManagement.Services.Interfaces;

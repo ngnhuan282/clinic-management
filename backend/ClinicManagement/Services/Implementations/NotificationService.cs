@@ -1,4 +1,5 @@
-using ClinicManagement.DTOs.Responses;
+using ClinicManagement.DTOs.Responses.Notifications;
+using ClinicManagement.DTOs.Responses.Shared;
 using ClinicManagement.Commons;
 using ClinicManagement.Data;
 using ClinicManagement.Data.Entities;
@@ -72,11 +73,12 @@ public class NotificationService(IHubContext<NotificationHub> hub, ApplicationDb
     private Task<List<int>> LabResultRecipientsAsync(LabTest test) => db.Users.AsNoTracking()
         .Where(user => user.Status
             && user.Role.RolePermissions.Any(p => p.PermissionCode == PermissionCodes.LabsViewOrders && p.Permission.IsImplemented)
-            // LabTest.DoctorId/PatientId currently store account IDs, not profile IDs.
             && (user.UserId == test.DoctorId
                 && (user.Role.RoleName == RoleConstants.Doctor || user.Role.RoleName == RoleConstants.DepartmentHead)
                 && user.Role.RolePermissions.Any(p => p.PermissionCode == PermissionCodes.LabsOrder && p.Permission.IsImplemented)
-                || user.UserId == test.PatientId && user.Role.RoleName == RoleConstants.Patient
+                || (test.PatientProfileId.HasValue
+                    ? db.Patients.Any(p => p.PatientId == test.PatientProfileId && p.UserId == user.UserId)
+                    : user.UserId == test.PatientId) && user.Role.RoleName == RoleConstants.Patient
                 && user.Role.RolePermissions.Any(p => p.PermissionCode == PermissionCodes.LabsViewOwnResult && p.Permission.IsImplemented)))
         .Select(user => user.UserId).ToListAsync();
 

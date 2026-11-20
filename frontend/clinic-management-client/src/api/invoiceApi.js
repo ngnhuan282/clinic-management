@@ -1,6 +1,9 @@
 import axiosClient from './axiosClient';
 
 const invoiceApi = {
+  getPatientInvoices: (pageNumber, signal) =>
+    axiosClient.get('/patients/me/invoices', { params: { pageNumber }, signal }),
+  previewAdjustment: (dto) => axiosClient.post('/Invoices/adjustment/preview', dto),
   getPendingBillings: (stage, config) => {
     return axiosClient.get('/Invoices/pending', { ...config, params: { stage } });
   },

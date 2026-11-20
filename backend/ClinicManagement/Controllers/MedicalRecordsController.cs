@@ -1,6 +1,9 @@
+using ClinicManagement.DTOs.Requests.Examinations;
+using ClinicManagement.DTOs.Requests.MedicalHistory;
+using ClinicManagement.DTOs.Responses.Examinations;
+using ClinicManagement.DTOs.Responses.MedicalHistory;
+using ClinicManagement.DTOs.Responses.Shared;
 using ClinicManagement.Commons;
-using ClinicManagement.DTOs.Requests;
-using ClinicManagement.DTOs.Responses;
 using ClinicManagement.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

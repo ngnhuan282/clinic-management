@@ -1,3 +1,4 @@
+using ClinicManagement.DTOs.Responses.ClinicSettings;
 using ClinicManagement.Commons;
 using ClinicManagement.Data;
 using ClinicManagement.Services.Implementations;
@@ -26,5 +27,3 @@ public class PublicClinicController(ApplicationDbContext db, ClinicSettingsServi
     public async Task<IActionResult> GetClinicSettings(CancellationToken cancellationToken) =>
         Ok(ApiResponse<PublicClinicSettingsResponse>.Success(await clinicSettings.GetPublicAsync(cancellationToken)));
 }
-
-public record PublicServiceResponse(int Id, string Name, string? Description, decimal Price);

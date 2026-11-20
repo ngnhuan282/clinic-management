@@ -1,7 +1,9 @@
+using ClinicManagement.DTOs.Requests.PatientBooks;
+using ClinicManagement.DTOs.Responses.PatientBooks;
+using ClinicManagement.DTOs.Responses.Reception;
+using ClinicManagement.DTOs.Responses.Shared;
 using ClinicManagement.Commons;
 using ClinicManagement.Data.Entities;
-using ClinicManagement.DTOs.Requests;
-using ClinicManagement.DTOs.Responses;
 using ClinicManagement.Exceptions;
 using ClinicManagement.Repositories.Interfaces;
 using ClinicManagement.Services.Interfaces;

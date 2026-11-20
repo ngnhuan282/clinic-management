@@ -87,8 +87,13 @@ internal static class ClinicJourneyChecks
         var today = ClinicClock.Today;
         var now = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTime.UtcNow, "Asia/Ho_Chi_Minh");
         var firstSlot = TimeSpan.FromMinutes((Math.Floor(now.TimeOfDay.TotalMinutes / 30) + 1) * 30);
+        var bookingDay = today;
         if (firstSlot + TimeSpan.FromHours(1) >= TimeSpan.FromDays(1))
-            throw new InvalidOperationException("D9 needs two future slots today; rerun before 23:00 clinic time.");
+        {
+            bookingDay = today.AddDays(1);
+            firstSlot = TimeSpan.FromHours(8);
+            Console.WriteLine("D9 fixture uses tomorrow's available slots and advances the visits to arrival before check-in.");
+        }
 
         var gaps = new List<Gap>();
         void Block(string id, string owner, string observed, string required)
@@ -117,7 +122,7 @@ internal static class ClinicJourneyChecks
         var pharmacist = await Staff("d9pharmacist", RoleConstants.Pharmacist);
 
         // Seed only prerequisites. Appointments, books, records, invoices and handovers use HTTP.
-        var schedule = new DoctorSchedule { DoctorId = 1, RoomId = 1, WorkDate = today,
+        var schedule = new DoctorSchedule { DoctorId = 1, RoomId = 1, WorkDate = bookingDay,
             StartTime = firstSlot, EndTime = firstSlot + TimeSpan.FromHours(1), MaxPatients = 2, Status = "Approved" };
         for (var i = 0; i < 2; i++)
             schedule.TimeSlots.Add(new TimeSlot { StartTime = firstSlot + TimeSpan.FromMinutes(30 * i),
@@ -192,11 +197,14 @@ internal static class ClinicJourneyChecks
             await Login(web ? "d9patient" : "testreceptionist");
             var appointment = await Send(HttpMethod.Post, web ? "api/appointments" : "api/appointments/direct", new
             {
-                doctorId = 1, appointmentDate = today.ToString("yyyy-MM-dd"),
+                doctorId = 1, appointmentDate = bookingDay.ToString("yyyy-MM-dd"),
                 startTime = (firstSlot + TimeSpan.FromMinutes(web ? 0 : 30)).ToString("c"),
                 patientName = name, patientPhone = phone, reason = "D9 " + branch + " journey"
             });
             var appointmentId = appointment["appointmentId"]!.GetValue<int>();
+            if (bookingDay != today)
+                await db.Appointments.Where(a => a.AppointmentId == appointmentId)
+                    .ExecuteUpdateAsync(s => s.SetProperty(a => a.AppointmentDate, today.ToDateTime(TimeOnly.MinValue)));
             check(appointment["status"]!.GetValue<string>() == (web ? "Pending" : "Confirmed")
                 && appointment["checkedInAt"] == null, $"D9 {branch} enters reception without seeded check-in");
 
@@ -259,7 +267,8 @@ internal static class ClinicJourneyChecks
             {
                 var lab = await Send(HttpMethod.Post, "api/LabTests", new
                 {
-                    patientId = patientUserId, labTestTypeId = labType.Id, clinicalDiagnosis = "D9 web clinical indication"
+                    appointmentId, medicalRecordId = recordId, patientId = patientUserId,
+                    labTestTypeId = labType.Id, clinicalDiagnosis = "D9 web clinical indication"
                 });
                 labId = lab["id"]!.GetValue<int>();
                 await Login("testlab");
@@ -280,20 +289,24 @@ internal static class ClinicJourneyChecks
                 check(lab["status"]!.GetValue<string>() == "Completed"
                     && lab["result"]!["resultSummary"]!.GetValue<string>() == "D9 verified lab result",
                     "D9 ordering doctor reads the technician result before finalizing the prescription");
-                Block("LAB_VISIT_BINDING", "Lab/Billing", "LabTest uses a patient UserId; the current API carries no appointment/record binding.",
-                    "Bind indication, result and invoice sources to the same visit before full multi-visit acceptance.");
+                check(lab["appointmentId"]!.GetValue<int>() == appointmentId && lab["medicalRecordId"]!.GetValue<int>() == recordId,
+                    "D9 lab indication and result remain bound to the examined visit and record");
             }
             else
             {
                 var labCount = await db.LabTests.CountAsync();
                 var probe = await Request(HttpMethod.Post, "api/LabTests", new
                 {
-                    patientId = profileId, labTestTypeId = labType.Id, clinicalDiagnosis = "D9 walk-in compatibility probe"
+                    appointmentId, medicalRecordId = recordId, patientProfileId = profileId,
+                    labTestTypeId = labType.Id, clinicalDiagnosis = "D9 walk-in compatibility probe"
                 });
-                Block("WALKIN_LAB_IDENTITY", "Lab", $"Walk-in profile without an account: lab order returned HTTP {probe.Status}.",
-                    "Support canonical walk-in PatientProfileId without creating a patient login or attaching another user's lab.");
-                check(probe.Status == 404 && labCount == await db.LabTests.CountAsync(),
-                    "D9 current walk-in lab rejection leaves no incorrectly linked lab row (dependency, not a completed lab journey)");
+                check(probe.Status == 200 && labCount + 1 == await db.LabTests.CountAsync(),
+                    "D9 walk-in lab API accepts a visit-bound patient profile without a login account");
+                var probeId = probe.Body!["id"]!.GetValue<int>();
+                check(await db.LabTests.AnyAsync(t => t.Id == probeId && t.AppointmentId == appointmentId
+                    && t.MedicalRecordId == recordId && t.PatientProfileId == profileId), "D9 walk-in lab persists canonical profile and visit IDs");
+                // The main walk-in journey below exercises Final without lab work. Retire this separate identity probe.
+                await db.LabTests.Where(t => t.Id == probeId).ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, "Cancelled"));
             }
 
             await Login("testdoctor");

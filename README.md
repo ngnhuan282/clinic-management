@@ -77,8 +77,11 @@ clinic-management/
 │   ├── Controllers/
 │   ├── Services/
 │   ├── Repositories/
-│   ├── Data/                 # DbContext, Entities, Migrations
+│   ├── Data/                 # DbContext, Entities, cấu hình và seed
+│   ├── Migrations/           # EF Core migrations
 │   ├── DTOs/
+│   │   ├── Requests/<Module>/
+│   │   └── Responses/<Module>/
 │   ├── Validators/
 │   ├── Exceptions/
 │   ├── Hubs/                 # SignalR
@@ -86,7 +89,7 @@ clinic-management/
 └── clinic-management-client/ # Frontend (React)
     ├── src/
     │   ├── api/
-    │   ├── layouts/          # PatientLayout, AdminLayout
+    │   ├── layouts/          # PatientLayout, InternalLayout
     │   ├── pages/            # patient/, internal/
     │   ├── routes/
     │   └── App.jsx

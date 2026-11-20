@@ -1,5 +1,5 @@
+using ClinicManagement.DTOs.Requests.Inventory;
 using ClinicManagement.Data.Entities;
-using ClinicManagement.DTOs.Requests;
 
 namespace ClinicManagement.Repositories.Interfaces;
 

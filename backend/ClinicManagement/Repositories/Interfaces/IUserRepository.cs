@@ -5,10 +5,10 @@ namespace ClinicManagement.Repositories.Interfaces;
 public interface IUserRepository
 {
     Task<User?> GetByIdAsync(int userId);
-    Task<(List<User> Items, int Total)> GetPageAsync(ClinicManagement.DTOs.Requests.UserQuery query);
-    Task<List<ClinicManagement.DTOs.Responses.UserRoleCountResponse>> GetRoleCountsAsync(ClinicManagement.DTOs.Requests.UserQuery query);
-    Task<List<ClinicManagement.DTOs.Responses.AccountDoctorResponse>> GetAccountDoctorsAsync(IEnumerable<int> userIds);
-    Task<(List<ClinicManagement.DTOs.Responses.AccountDoctorResponse> Items, int Total)> GetAvailableDoctorsAsync(ClinicManagement.DTOs.Requests.AvailableDoctorQuery query);
+    Task<(List<User> Items, int Total)> GetPageAsync(ClinicManagement.DTOs.Requests.Users.UserQuery query);
+    Task<List<ClinicManagement.DTOs.Responses.Users.UserRoleCountResponse>> GetRoleCountsAsync(ClinicManagement.DTOs.Requests.Users.UserQuery query);
+    Task<List<ClinicManagement.DTOs.Responses.Users.AccountDoctorResponse>> GetAccountDoctorsAsync(IEnumerable<int> userIds);
+    Task<(List<ClinicManagement.DTOs.Responses.Users.AccountDoctorResponse> Items, int Total)> GetAvailableDoctorsAsync(ClinicManagement.DTOs.Requests.Users.AvailableDoctorQuery query);
     Task<Doctor?> GetDoctorForLinkAsync(int doctorId);
     Task<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction> BeginAccessUpdateAsync();
     Task<int> CountActiveAdminsAsync();

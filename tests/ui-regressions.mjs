@@ -30,13 +30,15 @@ let profile = null, createCalls = 0, failProfileCreate = true, failLab = true, b
 const output = ".tmp/ui-regressions";
 await mkdir(output, { recursive: true });
 
-async function contextFor(patient = false) {
+async function contextFor(patient = false, role = "Patient") {
+    const sessionUser = role === "Patient" ? user : { ...user, role, fullName: "Quản trị kiểm thử",
+        permissions: ["billing.view", "billing.create", "billing.recordPayment"] };
     const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
     if (patient) await context.addInitScript(({ user, site }) => {
         if (location.origin !== site) return;
         sessionStorage.setItem("accessToken", "ui-regression-token");
         sessionStorage.setItem("user", JSON.stringify(user));
-    }, { user, site });
+    }, { user: sessionUser, site });
     await context.route("**/*", async route => {
         const request = route.request();
         const url = new URL(request.url());
@@ -49,9 +51,38 @@ async function contextFor(patient = false) {
         const specializations = [
             { specializationId: 1, code: "NỘI-TQ", name: "Nội tổng quát chuyên sâu", description: "Khám và theo dõi bệnh lý nội khoa.", departmentId: 1, departmentName: doctor.departmentName },
         ];
-        if (path === "/api/auth/me") return json(user);
-        if (path === "/api/auth/refresh") return json({ ...user, accessToken: "ui-regression-token" });
+        if (path === "/api/auth/me") return json(sessionUser);
+        if (path === "/api/auth/refresh") return json({ ...sessionUser, accessToken: "ui-regression-token" });
         if (path === "/api/notifications") return json({ ...paginate([]), unreadCount: 0 });
+        const receipt = { receiptNumber: "PT-KIEM-THU", type: "Payment", method: "Cash", amount: 25000, paidAt: "2026-11-20T08:30:00Z" };
+        const invoice = { source: "Invoice", id: 19, billingStage: "Medicine", status: "PartiallyPaid", patientId: 123,
+            patientName: user.fullName, appointmentId: 3, createdAt: "2026-11-20T08:00:00Z", totalAmount: 100000,
+            insuranceAmount: 0, patientAmount: 100000, paidAmount: 25000, remainingAmount: 75000,
+            details: [{ name: "Thuốc kiểm thử", quantity: 2, unitPrice: 50000, total: 100000 }], payments: [receipt] };
+        if (path === "/api/patients/me/invoices") return json(paginate([invoice]));
+        if (path === "/api/admin-dashboard/summary") return json({ appointments: {}, inventory: {}, revenue: {} }, 200, true);
+        if (path === "/api/admin-dashboard/appointments") {
+            const included = url.searchParams.get("from") === "2026-10-01" && url.searchParams.get("to") === "2026-10-15";
+            const summary = { totalAppointments: included ? 4 : 0, completedCount: included ? 3 : 0, inProgressCount: 0, cancelledCount: 0 };
+            return json({ summary, dailyAppointments: included ? [{ date: "2026-10-11", ...summary }] : [] }, 200, true);
+        }
+        if (path === "/api/admin-dashboard/revenue") {
+            const included = url.searchParams.get("from") === "2026-10-01" && url.searchParams.get("to") === "2026-10-15";
+            const summary = { totalRevenue: included ? 150000 : 0, patientPayments: included ? 150000 : 0, insurancePayments: 0 };
+            return json({ summary, dailyRevenue: included ? [{ date: "2026-10-11", ...summary }] : [] }, 200, true);
+        }
+        if (path === "/api/invoices/pending") return json([], 200, true);
+        if (path === "/api/invoices/history") return json([{ ...invoice, invoiceType: "Standard", pendingStockReviewId: 29 }], 200, true);
+        if (path === "/api/invoices/adjustment/preview") {
+            assert.equal(request.postDataJSON().prescriptionStockReviewId, 29);
+            return json({ totalChange: -80000, insuranceChange: 0, patientChange: -80000, patientAmount: 20000,
+                netPaid: 25000, refundAmount: 5000, remainingAmount: 0 }, 200, true);
+        }
+        if (path === "/api/invoices/adjustment") {
+            assert.equal(request.postDataJSON().expectedRefundAmount, 5000);
+            assert.equal(request.postDataJSON().adjustmentPatientAmount, -80000);
+            return json({ id: 20 }, 200, true);
+        }
         if (path === "/api/appointments/departments") return json([{ departmentId: 1, code: "NOI", name: doctor.departmentName, description: "Thông tin chuyên khoa Nội tổng quát.", specializations }]);
         if (path === "/api/specializations/public") return json(specializations);
         if (path === "/api/public/clinic-settings") return json({
@@ -179,9 +210,39 @@ try {
     await patient.goto(`${site}/booking?departmentId=1&doctorId=1&date=${today}`, { waitUntil: "networkidle" });
     await patient.getByRole("button", { name: /08:00/ }).waitFor();
     console.log("PASS Member booking restores doctor and date from the profile link");
+    await patient.getByRole("button", { name: /mở menu tài khoản/i }).click();
+    await patient.getByRole("menuitem", { name: "Hóa đơn của tôi" }).click();
+    await patient.getByRole("heading", { name: "Hóa đơn của tôi" }).waitFor();
+    await patient.getByRole("button", { name: /Thuốc · #19/ }).click();
+    await patient.getByText(/PT-KIEM-THU/).waitFor();
+    await patient.getByText("Còn phải thanh toán", { exact: true }).waitFor();
+    console.log("PASS Patient account menu opens invoice balances and recorded receipts");
+
+    const staff = await contextFor(true, "Admin");
+    const admin = await staff.newPage();
+    await open(admin, "/internal/dashboard");
+    await admin.getByText("Không có lượt khám hoặc chứng từ trong kỳ này.").waitFor();
+    await admin.getByLabel(/Từ ngày/).fill("2026-10-01");
+    await admin.getByLabel(/Đến ngày/).fill("2026-10-15");
+    await admin.getByRole("button", { name: "Xem báo cáo" }).click();
+    await admin.getByRole("table", { name: "Doanh thu và lượt khám theo ngày" }).getByRole("rowheader", { name: "11/10/26" }).waitFor();
+    await admin.getByLabel(/Đến ngày/).fill("2026-09-01");
+    assert(await admin.getByRole("button", { name: "Xem báo cáo" }).isDisabled());
+    console.log("PASS Admin can query an inclusive reporting period and invalid periods are blocked");
+
+    await admin.goto(site + "/internal/cashier/billing", { waitUntil: "networkidle" });
+    await admin.getByRole("tab", { name: /Tra Cứu Hóa Đơn/ }).click();
+    await admin.getByRole("button", { name: "Đối soát đơn thuốc" }).click();
+    await admin.getByLabel("Lý do điều chỉnh / hoàn tiền").fill("Hoàn phần chênh lệch");
+    await admin.getByRole("button", { name: "Xem số dư mới" }).click();
+    await admin.getByText("Cần hoàn tại quầy", { exact: true }).waitFor();
+    await admin.getByRole("button", { name: "Xác nhận đã hoàn tiền" }).click();
+    await admin.getByText("Đã lưu chứng từ điều chỉnh.", { exact: true }).waitFor();
+    console.log("PASS Cashier previews the exact prescription refund and confirms it separately");
+
     for (const width of [1440, 1360, 1359, 1280, 1200, 390, 320]) {
         await patient.setViewportSize({ width, height: 900 });
-        for (const path of ["/profile", "/my-appointments", "/lab-results", "/my-reviews"]) {
+        for (const path of ["/profile", "/my-appointments", "/lab-results", "/my-reviews", "/invoices"]) {
             await open(patient, path);
             await bounds(patient, `Patient ${width}px ${path}`);
         }

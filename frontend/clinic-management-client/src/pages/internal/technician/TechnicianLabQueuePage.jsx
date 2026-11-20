@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Box, Button, Card, CardContent, Container, Grid, Paper, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, TextField, Typography, Alert, Snackbar, Divider,
@@ -25,16 +25,13 @@ export default function TechnicianLabQueuePage() {
 
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
 
-  const fetchPending = async () => {
+  const fetchPending = useCallback(async () => {
     setLoading(true);
     try {
       const res = await labTestApi.getPendingList();
       const items = res.data || [];
       setPendingList(items);
-      if (selectedTest) {
-        const updatedSelected = items.find((i) => i.id === selectedTest.id);
-        setSelectedTest(updatedSelected || null);
-      }
+      setSelectedTest(current => current ? items.find(i => i.id === current.id) || null : null);
     } catch (err) {
       setToast({
         open: true,
@@ -44,12 +41,12 @@ export default function TechnicianLabQueuePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => { void fetchPending(); }, 0);
     return () => clearTimeout(timer);
-  }, []);
+  }, [fetchPending]);
 
   const handleSelectTest = (item) => {
     setSelectedTest(item);

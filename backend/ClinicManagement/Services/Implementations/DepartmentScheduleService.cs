@@ -1,6 +1,6 @@
+using ClinicManagement.DTOs.Requests.Schedules;
+using ClinicManagement.DTOs.Responses.Schedules;
 using ClinicManagement.Commons;
-using ClinicManagement.DTOs.Requests;
-using ClinicManagement.DTOs.Responses;
 using ClinicManagement.Exceptions;
 using ClinicManagement.Repositories.Interfaces;
 using ClinicManagement.Services.Interfaces;

@@ -1,6 +1,6 @@
+using ClinicManagement.DTOs.Requests.Patients;
+using ClinicManagement.DTOs.Responses.Patients;
 using ClinicManagement.Data.Entities;
-using ClinicManagement.DTOs.Requests;
-using ClinicManagement.DTOs.Responses;
 using ClinicManagement.Exceptions;
 using ClinicManagement.Helpers;
 using ClinicManagement.Repositories.Interfaces;

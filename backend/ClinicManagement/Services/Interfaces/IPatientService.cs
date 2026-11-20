@@ -1,5 +1,6 @@
-using ClinicManagement.DTOs.Requests;
-using ClinicManagement.DTOs.Responses;
+using ClinicManagement.DTOs.Requests.Patients;
+using ClinicManagement.DTOs.Responses.Patients;
+
 
 namespace ClinicManagement.Services.Interfaces;
 

@@ -1,4 +1,4 @@
-using ClinicManagement.DTOs.LabTestTypes;
+using ClinicManagement.DTOs.Requests.Laboratory;
 using ClinicManagement.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;

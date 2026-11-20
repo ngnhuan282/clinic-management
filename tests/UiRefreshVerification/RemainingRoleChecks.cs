@@ -91,8 +91,13 @@ internal static class RemainingRoleChecks
         var doctorId = await db.Users.Where(x => x.Username == "uidoctor").Select(x => x.UserId).SingleAsync();
         var headId = await db.Users.Where(x => x.Username == "uihead").Select(x => x.UserId).SingleAsync();
         var labTypeId = await db.LabTestTypes.Where(x => x.IsActive).Select(x => x.Id).FirstAsync();
-        async Task<int> Order(string access, int owner) => (await Api(HttpMethod.Post, "LabTests",
-            new { patientId = owner, labTestTypeId = labTypeId, clinicalDiagnosis = "Theo dõi kết quả kiểm thử" }, access))!["id"]!.GetValue<int>();
+        async Task<int> Order(string access, int owner)
+        {
+            var id = (await Api(HttpMethod.Post, "LabTests",
+                new { patientId = owner, labTestTypeId = labTypeId, clinicalDiagnosis = "Theo dõi kết quả kiểm thử" }, access))!["id"]!.GetValue<int>();
+            await PaidLabFixture.AddAsync(db, id);
+            return id;
+        }
         object Result(int id, string text = "Kết quả kiểm thử vai trò") => new { labTestId = id, resultSummary = text, note = "Đã đối chiếu" };
         await using var doctorLive = await SignalRProbe.ConnectAsync(http.BaseAddress!, doctor);
         await using var headLive = await SignalRProbe.ConnectAsync(http.BaseAddress!, head);

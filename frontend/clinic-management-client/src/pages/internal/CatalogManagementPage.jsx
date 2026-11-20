@@ -151,7 +151,11 @@ function escapeCsv(value) {
     return text;
 }
 
-function CatalogManagementPage({ resource }) {
+export default function CatalogManagementPage({ resource }) {
+    return <CatalogResourcePage key={resource} resource={resource} />;
+}
+
+function CatalogResourcePage({ resource }) {
     const config = CONFIG[resource];
     const [data, setData] = useState({ items: [], totalItems: 0 });
     const [counts, setCounts] = useState({ departments: 0, specializations: 0, rooms: 0, "job-positions": 0 });
@@ -212,24 +216,19 @@ function CatalogManagementPage({ resource }) {
     }, [resource, pageNumber, pageSize, search, active]);
 
     useEffect(() => {
-        setPageNumber(1);
-        setSelectedItem(null);
-        setDrawerOpen(false);
-        setDetailOpen(false);
-    }, [resource]);
-
-    useEffect(() => {
-        void load();
+        const timer = setTimeout(() => { void load(); }, 0);
+        return () => clearTimeout(timer);
     }, [load]);
 
     useEffect(() => {
-        void loadSummary();
+        const timer = setTimeout(() => { void loadSummary(); }, 0);
         if (resource === "specializations" || resource === "rooms") {
             catalogApi
                 .list("departments", { pageNumber: 1, pageSize: 100, isActive: true })
                 .then((response) => setDepartments(response.data.result?.items || []))
                 .catch(() => setDepartments([]));
         }
+        return () => clearTimeout(timer);
     }, [resource, loadSummary]);
 
     const resetFilters = () => {
@@ -1061,5 +1060,3 @@ function CatalogManagementPage({ resource }) {
         </Stack>
     );
 }
-
-export default CatalogManagementPage;

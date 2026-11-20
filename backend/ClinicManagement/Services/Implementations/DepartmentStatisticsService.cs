@@ -1,5 +1,5 @@
-using ClinicManagement.DTOs.Requests;
-using ClinicManagement.DTOs.Responses;
+using ClinicManagement.DTOs.Requests.Reports;
+using ClinicManagement.DTOs.Responses.Reports;
 using ClinicManagement.Repositories.Interfaces;
 using ClinicManagement.Services.Interfaces;
 using ClinicManagement.Validators;

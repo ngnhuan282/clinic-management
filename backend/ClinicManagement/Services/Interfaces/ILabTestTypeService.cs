@@ -1,4 +1,6 @@
-using ClinicManagement.DTOs.LabTestTypes;
+using ClinicManagement.DTOs.Requests.Laboratory;
+using ClinicManagement.DTOs.Responses.Laboratory;
+
 
 namespace ClinicManagement.Services.Interfaces
 {

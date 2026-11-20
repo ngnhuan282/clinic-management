@@ -1,7 +1,10 @@
+using ClinicManagement.DTOs.Requests.Appointments;
+using ClinicManagement.DTOs.Responses.Appointments;
+using ClinicManagement.DTOs.Responses.Catalog;
+using ClinicManagement.DTOs.Responses.Doctors;
+using ClinicManagement.DTOs.Responses.Shared;
 using ClinicManagement.Commons;
 using ClinicManagement.Data.Entities;
-using ClinicManagement.DTOs.Requests;
-using ClinicManagement.DTOs.Responses;
 using ClinicManagement.Exceptions;
 using ClinicManagement.Repositories.Interfaces;
 using ClinicManagement.Services.Interfaces;

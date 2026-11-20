@@ -1,5 +1,7 @@
-using ClinicManagement.DTOs.Requests;
-using ClinicManagement.DTOs.Responses;
+using ClinicManagement.DTOs.Requests.Diseases;
+using ClinicManagement.DTOs.Responses.Diseases;
+using ClinicManagement.DTOs.Responses.Shared;
+
 
 namespace ClinicManagement.Services.Interfaces;
 

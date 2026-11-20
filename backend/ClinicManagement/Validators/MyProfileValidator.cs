@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using ClinicManagement.DTOs.Requests;
+using ClinicManagement.DTOs.Requests.Users;
 using ClinicManagement.Exceptions;
 
 namespace ClinicManagement.Validators;

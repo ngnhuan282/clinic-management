@@ -1,5 +1,5 @@
+using ClinicManagement.DTOs.Requests.Reports;
 using System.Globalization;
-using ClinicManagement.DTOs.Requests;
 using FluentValidation;
 
 namespace ClinicManagement.Validators;

@@ -1,5 +1,6 @@
+using ClinicManagement.DTOs.Responses.Billing;
+using ClinicManagement.DTOs.Responses.MedicalHistory;
 using ClinicManagement.Data.Entities;
-using ClinicManagement.DTOs.Responses;
 
 namespace ClinicManagement.Mappings;
 

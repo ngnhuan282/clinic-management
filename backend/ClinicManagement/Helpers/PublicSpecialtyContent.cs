@@ -1,5 +1,5 @@
+using ClinicManagement.DTOs.Responses.Catalog;
 using System.Text.Json;
-using ClinicManagement.DTOs.Responses;
 
 namespace ClinicManagement.Helpers;
 

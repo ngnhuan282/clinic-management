@@ -1,6 +1,6 @@
+using ClinicManagement.DTOs.Requests.Prescriptions;
+using ClinicManagement.DTOs.Responses.Prescriptions;
 using ClinicManagement.Commons;
-using ClinicManagement.DTOs.Requests;
-using ClinicManagement.DTOs.Responses;
 using ClinicManagement.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

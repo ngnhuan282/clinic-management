@@ -1,5 +1,5 @@
+using ClinicManagement.DTOs.Responses.Schedules;
 using ClinicManagement.Data;
-using ClinicManagement.DTOs.Responses;
 using ClinicManagement.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 

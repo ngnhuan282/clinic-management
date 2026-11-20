@@ -1,7 +1,7 @@
 using System.Data;
+using ClinicManagement.DTOs.Requests.Dispensing;
+using ClinicManagement.DTOs.Responses.StockReviews;
 using ClinicManagement.Data.Entities;
-using ClinicManagement.DTOs.Requests;
-using ClinicManagement.DTOs.Responses;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace ClinicManagement.Repositories.Interfaces;

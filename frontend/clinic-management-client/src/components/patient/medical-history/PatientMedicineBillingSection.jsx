@@ -21,6 +21,7 @@ import {
 import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import CloseOutlinedIcon from "@mui/icons-material/CloseOutlined";
+import { Link } from "react-router-dom";
 import formatCurrency from "../../../utils/formatCurrency";
 import formatDate from "../../../utils/formatDate";
 
@@ -249,6 +250,7 @@ function PatientMedicineBillingSection({ billing, prescriptionCode }) {
                 )}
             </Stack>
 
+            <Button component={Link} to="/invoices" size="small" sx={{ mx: 2, mt: 1 }}>Xem hóa đơn và số dư hiện tại</Button>
             {!hasBillingData ? (
                 <Typography variant="body2" color="text.secondary" sx={{ p: 2.5 }}>
                     Chưa tải được dữ liệu chi phí thuốc.

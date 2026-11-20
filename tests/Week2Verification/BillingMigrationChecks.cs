@@ -31,6 +31,10 @@ AND InsuranceDiscountPercent = 80.25 AND InsuranceAmount = 100312.50 AND Patient
 
             await db.Database.MigrateAsync();
             await VerifyMoneyAsync();
+            check(await db.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM Invoices WHERE Status = 'Paid' AND PaidAmount = PatientAmount").SingleAsync() == 1,
+                "Payment repair preserves the already settled balance of legacy paid invoices");
+            check(await db.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.InvoicePayments') AND name IN (N'CashierId', N'PaidAt')").SingleAsync() == 2,
+                "Payment repair supplies cashier and paid-time columns missing from merged migrations");
             check(await db.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM Invoices WHERE InvoiceType = 'Standard' AND OriginalInvoiceId IS NULL").SingleAsync() == 1,
                 "Invoice migration backfills Standard type for existing invoices");
             check(await db.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Invoices') AND name = N'InsuranceDiscountPercent' AND precision = 5 AND scale = 2").SingleAsync() == 1,

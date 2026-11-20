@@ -1,5 +1,5 @@
+using ClinicManagement.DTOs.Requests.Schedules;
 using ClinicManagement.Commons;
-using ClinicManagement.DTOs.Requests;
 using ClinicManagement.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

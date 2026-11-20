@@ -89,11 +89,11 @@ ClinicManagement/
 │   └── Implementations/
 ├── Data/
 │   ├── Entities/
-│   ├── Configurations/
-│   └── Migrations/
+│   └── Configurations/
+├── Migrations/
 ├── DTOs/
-│   ├── Requests/
-│   └── Responses/
+│   ├── Requests/<Module>/
+│   └── Responses/<Module>/
 ├── Validators/
 ├── Exceptions/
 ├── Helpers/
@@ -119,7 +119,6 @@ src/
 │       ├── admin/
 │       ├── doctor/
 │       └── receptionist/
-├── features/
 ├── hooks/
 ├── routes/
 ├── validators/
@@ -614,33 +613,36 @@ Luôn dùng DTO.
 
 ```text
 DTOs/
-└── Requests/
+└── Requests/<Module>/
 ```
 
 Ví dụ:
 
 ```text
-CreateAppointmentRequest.cs
-UpdateAppointmentRequest.cs
-LoginRequest.cs
-CreatePrescriptionRequest.cs
+Appointments/CreateAppointmentRequest.cs
+Appointments/RescheduleAppointmentRequest.cs
+Auth/LoginRequest.cs
+Prescriptions/CreatePrescriptionRequest.cs
 ```
 
 ## Response DTO
 
 ```text
 DTOs/
-└── Responses/
+└── Responses/<Module>/
 ```
 
 Ví dụ:
 
 ```text
-AppointmentResponse.cs
-DoctorResponse.cs
-PatientResponse.cs
-InvoiceResponse.cs
+Appointments/AppointmentResponse.cs
+Doctors/DoctorResponse.cs
+Patients/PatientProfileResponse.cs
+Billing/InvoiceResponseDto.cs
 ```
+
+Đặt namespace theo đường dẫn, ví dụ `ClinicManagement.DTOs.Requests.Appointments`.
+`Shared` dành cho DTO dùng chung giữa các module, như `PaginationRequest` và `PagedResponse<T>`.
 
 Nếu response khác nhau theo use case thì tạo DTO riêng.
 
@@ -1513,7 +1515,7 @@ Nếu secret đã từng được commit lên Git, chỉ thêm vào `.gitignore`
 Migrations phải được commit vào Git:
 
 ```text
-Data/Migrations/
+backend/ClinicManagement/Migrations/
 ```
 
 Không xóa migration cũ chỉ vì code đã thay đổi.

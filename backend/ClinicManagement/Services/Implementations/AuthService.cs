@@ -1,7 +1,7 @@
+using ClinicManagement.DTOs.Requests.Auth;
+using ClinicManagement.DTOs.Responses.Auth;
 using ClinicManagement.Commons;
 using ClinicManagement.Data.Entities;
-using ClinicManagement.DTOs.Requests;
-using ClinicManagement.DTOs.Responses;
 using ClinicManagement.Exceptions;
 using ClinicManagement.Repositories.Interfaces;
 using ClinicManagement.Services.Interfaces;

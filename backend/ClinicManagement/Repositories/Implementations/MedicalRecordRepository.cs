@@ -1,7 +1,7 @@
+using ClinicManagement.DTOs.Requests.Examinations;
 using ClinicManagement.Commons;
 using ClinicManagement.Data;
 using ClinicManagement.Data.Entities;
-using ClinicManagement.DTOs.Requests;
 using ClinicManagement.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 

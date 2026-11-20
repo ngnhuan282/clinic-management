@@ -1,6 +1,6 @@
+using ClinicManagement.DTOs.Requests.Inventory;
 using ClinicManagement.Data;
 using ClinicManagement.Data.Entities;
-using ClinicManagement.DTOs.Requests;
 using ClinicManagement.Mappings;
 using ClinicManagement.Repositories.Interfaces;
 using ClinicManagement.Services.Implementations;

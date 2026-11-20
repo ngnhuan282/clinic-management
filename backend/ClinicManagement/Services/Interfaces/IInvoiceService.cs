@@ -1,4 +1,8 @@
-using ClinicManagement.DTOs.Invoices;
+using ClinicManagement.DTOs.Requests.Billing;
+using ClinicManagement.DTOs.Requests.Shared;
+using ClinicManagement.DTOs.Responses.Billing;
+using ClinicManagement.DTOs.Responses.Shared;
+
 
 namespace ClinicManagement.Services.Interfaces;
 
@@ -10,4 +14,6 @@ public interface IInvoiceService
     Task<InvoiceResponseDto?> GetInvoiceByIdAsync(int id);
     Task<IEnumerable<InvoiceResponseDto>> GetInvoiceHistoryAsync(string? searchKeyword);
     Task<InvoiceResponseDto> CreateAdjustmentInvoiceAsync(int cashierId, CreateAdjustmentInvoiceDto dto);
+    Task<InvoiceAdjustmentPreview> PreviewAdjustmentAsync(CreateAdjustmentInvoiceDto dto);
+    Task<PagedResponse<PatientInvoiceResponse>> GetPatientInvoicesAsync(int userId, PaginationRequest query);
 }

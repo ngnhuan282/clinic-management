@@ -1,28 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, FormLabel, MenuItem, Radio, RadioGroup, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, FormLabel, MenuItem, Radio, RadioGroup, Stack, TextField, Typography } from "@mui/material";
 import { checkInAppointment, createBookRequest, findPatientMatches, getBookInvoices, getPatientBookRequests, getPatientBooks, getPatientProfile, issueBook, matchAppointmentPatient, registerExistingBook, updatePatientProfile } from "../../api/receptionApi";
-import { CloseRounded, EditRounded, PersonOutlineRounded, SaveRounded } from "@mui/icons-material";
+import { CloseRounded, EditRounded, FactCheckOutlined, PersonOutlineRounded, SaveRounded } from "@mui/icons-material";
 import { useClinicInfo } from "../../api/publicApi";
-import { clinicColors } from "../common/clinicUi";
 import { getApiErrorMessage } from "../../utils/errorHandler";
 import { toPatientProfileForm, toPatientProfilePayload, validatePatientProfileForm } from "../../utils/patientProfileForm";
 import useNotifications from "../../hooks/useNotifications";
 import {
-    clinicButtonSx,
     clinicColors,
-    clinicDialogActionsSx,
     clinicDialogPaperSx,
-    clinicFieldSx,
-    clinicPrimaryButtonSx,
-    clinicSecondaryButtonSx,
 } from "../common/clinicUi";
-
-const SITUATION_OPTIONS = [
-    ["present", "Có sổ mang theo"],
-    ["none", "Chưa có sổ"],
-    ["lost", "Mất sổ"],
-    ["forgot", "Quên sổ"],
-];
 
 function formatTime(value) {
     return String(value || "").slice(0, 5);
@@ -179,13 +166,6 @@ export default function ReceptionCheckInDialog({ appointment, onClose, onChecked
     const hasValidPaidBook = Boolean(recordsLoaded && bookSituation === "present" && bookPaid);
     const canCheckIn = appointmentValidToday && Boolean(patientId) && hasValidPaidBook && presented;
 
-    const checklistItems = [
-        ["Lịch hẹn Đã xác nhận & đúng ngày hôm nay", appointmentValidToday],
-        ["Đã đối chiếu & gắn hồ sơ bệnh nhân", Boolean(patientId)],
-        ["Đã chọn sổ khám còn hiệu lực (Paid nếu cấp mới)", hasValidPaidBook],
-        ["Đã tích xác nhận kiểm tra sổ thực tế mang theo", Boolean(bookSituation === "present" && presented)],
-    ];
-
     return (
         <Dialog
             open={Boolean(appointment)}
@@ -236,6 +216,38 @@ export default function ReceptionCheckInDialog({ appointment, onClose, onChecked
                                 )}
                             </Stack>
                         </Box>
+                    </Stack>
+                </Stack>
+            </DialogTitle>
+        <DialogContent>
+            <Stack spacing={2} sx={{ pt: 2 }}>
+                {appointment.checkedInAt && <Alert severity="success">Lịch hẹn này đã được check-in.</Alert>}
+                {appointment.status !== "Confirmed" && <Alert severity="warning">Trạng thái lịch hẹn hiện tại không cho phép check-in.</Alert>}
+                <Alert severity="info">Đặt lịch trên web chưa cần sổ khám. Khi đến quầy, đối chiếu hồ sơ và kiểm tra sổ trước khi check-in.</Alert>
+                {error && <Alert severity="error" action={patientId && <Button disabled={busy} onClick={() => run(refreshBooks)}>Tải lại</Button>}>{error}</Alert>}
+                {!patientId ? <>
+                    <Typography variant="body2">Đối chiếu hồ sơ bệnh nhân theo tên và số điện thoại trước khi check-in.</Typography>
+                    <Button disabled={busy} variant="outlined" onClick={() => run(async () => {
+                        setMatches(await findPatientMatches(appointment.patientPhone));
+                        setMatchesSearched(true);
+                    })}>{busy ? "Đang tìm..." : "Tìm hồ sơ cũ"}</Button>
+                    {matchesSearched && !matches.length && <Typography variant="body2" color="text.secondary">Không tìm thấy hồ sơ theo số điện thoại này.</Typography>}
+                    {matches.length > 0 && <TextField select label="Hồ sơ trùng khớp" value={selectedPatientId}
+                        onChange={event => setSelectedPatientId(event.target.value)}>
+                        <MenuItem value="">Chọn hồ sơ</MenuItem>
+                        {matches.map(patient => <MenuItem key={patient.patientId} value={patient.patientId}>
+                            #{patient.patientId} · {patient.fullName} · {patient.phone}
+                        </MenuItem>)}
+                    </TextField>}
+                    <Stack direction="row" spacing={1}>
+                        <Button disabled={busy || !selectedPatientId} variant="contained" onClick={() => run(async () => {
+                            const updated = await matchAppointmentPatient(appointment.appointmentId, Number(selectedPatientId));
+                            setPatientId(updated.patientProfileId);
+                        })}>Liên kết hồ sơ cũ</Button>
+                        <Button disabled={busy} variant="outlined" onClick={() => run(async () => {
+                            const updated = await matchAppointmentPatient(appointment.appointmentId, null);
+                            setPatientId(updated.patientProfileId);
+                        })}>Tạo hồ sơ mới</Button>
                     </Stack>
                 </> : <>
                     <Box sx={{ border: "1px solid #D8E4F0", borderRadius: "12px", bgcolor: "#F8FBFF", p: 2 }}>
@@ -389,5 +401,6 @@ export default function ReceptionCheckInDialog({ appointment, onClose, onChecked
                     onCheckedIn();
                 })}>Check-in</Button>
         </DialogActions>
-    </Dialog>;
+    </Dialog>
+    );
 }
