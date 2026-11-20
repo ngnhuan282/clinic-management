@@ -81,26 +81,56 @@ public class DispensingRepository(ApplicationDbContext context) : IDispensingRep
     }
 
     public async Task<IReadOnlyList<Invoice>> GetPaidMedicineInvoicesAsync(
-        IReadOnlyCollection<int> appointmentIds, bool onlyPaid = true)
+        IReadOnlyCollection<int> appointmentIds)
     {
         if (appointmentIds.Count == 0) return [];
         return await context.Invoices.AsNoTracking().Include(x => x.InvoiceDetails)
             .Where(x => x.AppointmentId.HasValue && appointmentIds.Contains(x.AppointmentId.Value)
                 && x.InvoiceType == "Standard" && x.OriginalInvoiceId == null
-                && (x.Status == "Paid" || !onlyPaid && (x.Status == "Unpaid" || x.Status == "PartiallyPaid"))
+                && (x.Status == "Paid" || x.Status == "Unpaid" || x.Status == "PartiallyPaid")
                 && (x.BillingStage == "Medicine" || x.BillingStage == "Final"))
             .OrderByDescending(x => x.Status == "Paid").ThenByDescending(x => x.CreatedAt)
             .ThenByDescending(x => x.Id).ToListAsync();
     }
 
-    public async Task<Invoice?> GetPaidMedicineInvoiceAsync(int appointmentId, int prescriptionId,
-        IReadOnlyCollection<int> prescriptionDetailIds, int patientId, bool onlyPaid = true)
+    public async Task<IReadOnlyDictionary<int, Invoice>> GetReconciledMedicineInvoicesAsync(IReadOnlyCollection<int> prescriptionIds)
     {
-        var candidates = await GetPaidMedicineInvoicesAsync([appointmentId], onlyPaid);
-        return candidates.FirstOrDefault(x => x.PatientId == patientId && (x.InvoiceDetails.Any(d =>
-                d.SourceType == "Prescription" && d.SourceId == prescriptionId)
-            || prescriptionDetailIds.Count > 0 && prescriptionDetailIds.All(id =>
-                x.InvoiceDetails.Any(d => d.SourceType == "PrescriptionDetail" && d.SourceId == id))));
+        if (prescriptionIds.Count == 0) return new Dictionary<int, Invoice>();
+        return await ReconciledMedicineInvoices()
+            .Where(x => prescriptionIds.Contains(x.PrescriptionId))
+            .ToDictionaryAsync(x => x.PrescriptionId, x => x.Original);
+    }
+
+    private IQueryable<PrescriptionStockReview> AppliedBillingReviews() =>
+        context.PrescriptionStockReviews.AsNoTracking().Where(r =>
+            r.Decisions.Any(d => d.Action == StockReviewBillingConfirmation.ApplyAction));
+
+    private sealed class ReconciledInvoice
+    {
+        public int PrescriptionId { get; init; }
+        public required Invoice Original { get; init; }
+    }
+
+    private IQueryable<ReconciledInvoice> ReconciledMedicineInvoices()
+    {
+        var applied = AppliedBillingReviews();
+        return from review in applied
+               join document in context.Invoices.AsNoTracking() on review.InvoiceId equals (int?)document.Id
+               join original in context.Invoices.AsNoTracking() on document.OriginalInvoiceId equals (int?)original.Id
+               let record = review.Prescription.MedicalRecord
+               where review.PaymentStatus == StockReviewBillingConfirmation.SettledPaymentStatus
+                   && !applied.Any(r => r.PrescriptionId == review.PrescriptionId
+                       && r.PrescriptionStockReviewId > review.PrescriptionStockReviewId)
+                   && original.AppointmentId == record.AppointmentId
+                   && original.PatientId == (record.PatientId ?? record.Appointment.PatientId ?? record.Appointment.PatientProfileId ?? 0)
+                   && original.InvoiceType == "Standard" && original.OriginalInvoiceId == null
+                   && (original.BillingStage == "Medicine" || original.BillingStage == "Final")
+                   && (original.Status == "Paid" || original.Status == "Unpaid" || original.Status == "PartiallyPaid")
+                   && document.AppointmentId == original.AppointmentId && document.PatientId == original.PatientId
+                   && document.BillingStage == original.BillingStage && document.InvoiceType == "Adjustment"
+                   && (document.Status == "Paid" || document.Status == "Refunded")
+                   && !context.Invoices.Any(i => i.OriginalInvoiceId == original.Id && i.InvoiceType == "Adjustment" && i.Id > document.Id)
+               select new ReconciledInvoice { PrescriptionId = review.PrescriptionId, Original = original };
     }
 
     public async Task<IReadOnlyList<StockReviewRecipientResponse>> GetReviewRecipientsAsync(int doctorId, int? cashierId)
@@ -132,14 +162,24 @@ public class DispensingRepository(ApplicationDbContext context) : IDispensingRep
     private IQueryable<Prescription> ActiveQuery() => context.Prescriptions.AsNoTracking()
         .Where(x => x.Status == PrescriptionStatusConstants.Issued || x.Status == PrescriptionStatusConstants.Dispensed);
 
-    private IQueryable<Prescription> ReviewQuery(IQueryable<Prescription> query, DateOnly today) =>
-        query.Where(x => x.Status == PrescriptionStatusConstants.Issued
-            && (x.StockReviews.Any(r => r.Status == "Pending") || x.Details.Any(d =>
+    private IQueryable<Prescription> ReviewQuery(IQueryable<Prescription> query, DateOnly today)
+    {
+        var adjustedIds = AppliedBillingReviews().Select(r => r.PrescriptionId);
+        return query.Where(x => x.Status == PrescriptionStatusConstants.Issued
+            && (x.StockReviews.Any(r => r.Status == "Pending")
+                || adjustedIds.Contains(x.PrescriptionId) && (x.MedicalRecord.PaperBookUpdatedAt == null
+                    || x.MedicalRecord.Appointment.Status != AppointmentStatusConstants.Completed)
+                || x.Details.Any(d =>
                 d.Quantity > (d.Medicine.Inventories.Where(i => i.QuantityInStock > 0 && i.ExpiryDate >= today)
                     .Sum(i => (int?)i.QuantityInStock) ?? 0))));
+    }
 
-    private IQueryable<Prescription> PaidQuery(IQueryable<Prescription> query) => query.Where(x =>
-        context.Invoices.Any(invoice => invoice.AppointmentId == x.MedicalRecord.AppointmentId
+    private IQueryable<Prescription> PaidQuery(IQueryable<Prescription> query)
+    {
+        var reconciledIds = ReconciledMedicineInvoices().Select(r => r.PrescriptionId);
+        var adjustedIds = AppliedBillingReviews().Select(r => r.PrescriptionId);
+        return query.Where(x => reconciledIds.Contains(x.PrescriptionId)
+            || !adjustedIds.Contains(x.PrescriptionId) && context.Invoices.Any(invoice => invoice.AppointmentId == x.MedicalRecord.AppointmentId
             && invoice.PatientId == (x.MedicalRecord.PatientId ?? x.MedicalRecord.Appointment.PatientId
                 ?? x.MedicalRecord.Appointment.PatientProfileId ?? 0)
             && invoice.InvoiceType == "Standard" && invoice.OriginalInvoiceId == null
@@ -147,6 +187,7 @@ public class DispensingRepository(ApplicationDbContext context) : IDispensingRep
             && (invoice.InvoiceDetails.Any(line => line.SourceType == "Prescription" && line.SourceId == x.PrescriptionId)
                 || x.Details.Any() && x.Details.All(detail => invoice.InvoiceDetails.Any(line =>
                     line.SourceType == "PrescriptionDetail" && line.SourceId == detail.PrescriptionDetailId)))));
+    }
 
     private IQueryable<Prescription> WorkflowQuery(IQueryable<Prescription> query, string? status, DateOnly today)
     {
@@ -164,5 +205,5 @@ public class DispensingRepository(ApplicationDbContext context) : IDispensingRep
         .Include(x => x.MedicalRecord).ThenInclude(x => x.Appointment)
         .Include(x => x.MedicalRecord).ThenInclude(x => x.Doctor)
         .Include(x => x.Details).ThenInclude(x => x.Medicine).ThenInclude(x => x.Inventories)
-        .Include(x => x.StockReviews);
+        .Include(x => x.StockReviews).ThenInclude(x => x.Decisions);
 }

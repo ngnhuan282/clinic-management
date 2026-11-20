@@ -14,3 +14,7 @@ export async function getDoctorStockReview(reviewId) {
 export async function respondToStockReview(reviewId, payload) {
     return (await axiosClient.post(`/stock-reviews/${reviewId}/responses`, payload)).data.result;
 }
+
+export async function applyStockReviewProposal(reviewId, payload) {
+    return (await axiosClient.post(`/stock-reviews/${reviewId}/apply-proposal`, payload)).data.result;
+}

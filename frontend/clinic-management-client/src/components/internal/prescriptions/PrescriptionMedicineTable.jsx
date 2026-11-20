@@ -39,8 +39,8 @@ function QuantityStepper({ value, onChange, disabled }) {
     return (
         <Stack
             direction="row"
-            alignItems="center"
             sx={{
+                alignItems: "center",
                 width: 112,
                 border: "1px solid #D1D5DB",
                 borderRadius: 1,

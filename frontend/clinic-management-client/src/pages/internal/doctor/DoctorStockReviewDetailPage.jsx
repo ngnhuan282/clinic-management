@@ -4,8 +4,10 @@ import ArrowBackOutlinedIcon from "@mui/icons-material/ArrowBackOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
 import LocalPharmacyOutlinedIcon from "@mui/icons-material/LocalPharmacyOutlined";
 import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
+import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
 import { Link, useLocation, useParams } from "react-router-dom";
 import ErrorState from "../../../components/common/ErrorState";
+import ConfirmDialog from "../../../components/common/ConfirmDialog";
 import Loading from "../../../components/common/Loading";
 import StockReviewHistory from "../../../components/internal/pharmacy/StockReviewHistory";
 import StockReviewResponseForm from "../../../components/internal/prescriptions/StockReviewResponseForm";
@@ -27,16 +29,25 @@ export default function DoctorStockReviewDetailPage() {
     const id = Number.isSafeInteger(Number(reviewId)) && Number(reviewId) > 0 ? Number(reviewId) : null;
     const { userId } = useAuth();
     const location = useLocation();
-    const { detail, options, loading, error, busy, reload, respond } = useDoctorStockReview(id, userId);
+    const { detail, options, loading, error, busy, reload, respond, applyProposal } = useDoctorStockReview(id, userId);
     const noticeKey = `${userId}-${id}`;
     const [notice, setNotice] = useState(null);
-    const message = notice?.key === noticeKey ? notice.message : "";
+    const [applyDialogKey, setApplyDialogKey] = useState(null);
+    const currentNotice = notice?.key === noticeKey ? notice : null;
     const reviewStatus = detail && getStockReviewStatusConfig(detail.review);
     async function submit(payload) {
         const result = await respond(payload);
         if (!result) return;
         setNotice({ key: noticeKey, message: result.review.decisions[0].outcome === "AwaitingBilling" ? "Đã lưu phương án chờ đối soát hóa đơn." : "Đã lưu phản hồi và gửi đến các bộ phận liên quan." });
         return result;
+    }
+    async function confirmApply() {
+        try {
+            const result = await applyProposal();
+            if (result) setNotice({ key: noticeKey, message: "Đã áp dụng phương án. Cần cập nhật và xác nhận lại sổ khám giấy." });
+        } catch (failure) {
+            setNotice({ key: noticeKey, message: failure.message, severity: "error" });
+        } finally { setApplyDialogKey(null); }
     }
     return <Stack spacing={3} sx={{ minWidth: 0, maxWidth: 1280, width: "100%", mx: "auto", "& *": { letterSpacing: 0 },
         "& .MuiTypography-body2": { fontSize: 16, lineHeight: 1.5 }, "& .MuiTypography-caption": { fontSize: 14, lineHeight: 1.45 },
@@ -103,8 +114,15 @@ export default function DoctorStockReviewDetailPage() {
                 </Stack>
             </Box>
             <StockReviewHistory reviews={[detail.review]} showEmptyResponse={!detail.canRespond} />
-            {message && <Alert severity="success" role="status" onClose={() => setNotice(null)} sx={{ overflowWrap: "anywhere" }}>{message}</Alert>}
-            {detail.canRespond ? <StockReviewResponseForm key={`${userId}-${id}-${detail.review.updatedAt}`} detail={detail} options={options} busy={busy} onSubmit={submit} /> : <Alert severity="info">{getStockReviewLockedMessage(detail.review)}</Alert>}
+            {currentNotice && <Alert severity={currentNotice.severity || "success"} role="status" onClose={() => setNotice(null)} sx={{ overflowWrap: "anywhere" }}>{currentNotice.message}</Alert>}
+            {detail.canRespond ? <StockReviewResponseForm key={`${userId}-${id}-${detail.review.updatedAt}`} detail={detail} options={options} busy={busy} onSubmit={submit} />
+                : detail.canApplyProposal ? <Alert severity="info" action={<Button startIcon={<FactCheckOutlinedIcon />} disabled={busy} onClick={() => setApplyDialogKey(noticeKey)}>Áp dụng phương án</Button>}>
+                    Đã xác nhận đối soát cho phương án này.
+                </Alert> : <Alert severity="info">{getStockReviewLockedMessage(detail.review)}</Alert>}
+            <ConfirmDialog open={detail.canApplyProposal && applyDialogKey === noticeKey} title="Áp dụng phương án điều chỉnh"
+                message="Đơn thuốc sẽ được cập nhật theo phương án đã đối soát. Cần xác nhận lại sổ khám giấy trước khi giao thuốc."
+                confirmText="Áp dụng phương án" confirmColor="primary" loading={busy}
+                onConfirm={confirmApply} onCancel={() => setApplyDialogKey(null)} />
         </>}
     </Stack>;
 }

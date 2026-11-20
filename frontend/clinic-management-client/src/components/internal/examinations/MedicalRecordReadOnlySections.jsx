@@ -17,8 +17,7 @@ function SectionHeader({ icon, title }) {
         <Stack
             direction="row"
             spacing={1.25}
-            alignItems="center"
-            sx={{ mb: 2 }}
+            sx={{ alignItems: "center", mb: 2 }}
         >
             <Box
                 sx={{
@@ -134,12 +133,12 @@ function MedicalRecordReadOnlySections({ record }) {
                                 <Stack
                                     direction={{ xs: "column", sm: "row" }}
                                     spacing={1}
-                                    alignItems={{
-                                        xs: "flex-start",
-                                        sm: "center",
+                                    sx={{
+                                        alignItems: { xs: "flex-start", sm: "center" },
+                                        justifyContent: "space-between",
+                                        minWidth: 0,
+                                        flexWrap: "wrap",
                                     }}
-                                    justifyContent="space-between"
-                                    sx={{ minWidth: 0, flexWrap: "wrap" }}
                                 >
                                     <Typography
                                         variant="body2"

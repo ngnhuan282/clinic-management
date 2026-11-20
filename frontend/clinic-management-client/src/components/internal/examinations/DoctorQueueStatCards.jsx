@@ -88,10 +88,7 @@ function DoctorQueueStatCards({ stats }) {
                     >
                         <Stack
                             direction="row"
-                            alignItems="flex-start"
-                            justifyContent="space-between"
-                            gap={2}
-                            sx={{ width: "100%" }}
+                            sx={{ alignItems: "flex-start", justifyContent: "space-between", gap: 2, width: "100%" }}
                         >
                             <Box sx={{ minWidth: 0 }}>
                                 <Typography

@@ -333,6 +333,9 @@ public sealed class ErrorCode
     public static readonly ErrorCode SUPPLIER_HAS_PURCHASE_ORDERS =
         new(6021, "Supplier already has purchase orders", HttpStatusCode.Conflict);
 
+    public static readonly ErrorCode PURCHASE_ORDER_CONFLICT =
+        new(6022, "Purchase order changed concurrently. Reload and try again", HttpStatusCode.Conflict);
+
     // =========================
     // Examination / Medical Record
     // =========================

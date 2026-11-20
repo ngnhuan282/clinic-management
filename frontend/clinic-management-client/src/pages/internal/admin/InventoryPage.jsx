@@ -47,20 +47,17 @@ function InventoryPage() {
                 >
                     <Stack
                         direction={{ xs: "column", md: "row" }}
-                        alignItems={{
-                            xs: "flex-start",
-                            md: "center",
+                        sx={{
+                            alignItems: { xs: "flex-start", md: "center" },
+                            justifyContent: "space-between",
+                            gap: 2,
+                            width: "100%",
                         }}
-                        justifyContent="space-between"
-                        gap={2}
-                        sx={{ width: "100%" }}
                     >
                         <Box sx={{ minWidth: 0, flex: 1 }}>
-                            <Stack
+                            <Stack sx={{ alignItems: "center", flexWrap: "wrap" }}
                                 direction="row"
                                 spacing={1}
-                                alignItems="center"
-                                flexWrap="wrap"
                                 useFlexGap
                             >
                                 <Typography

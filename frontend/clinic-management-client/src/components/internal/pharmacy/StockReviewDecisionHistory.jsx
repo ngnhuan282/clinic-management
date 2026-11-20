@@ -24,15 +24,18 @@ export default function StockReviewDecisionHistory({ decisions = [] }) {
     const visibleDecisions = decisions.slice(visiblePage * rowsPerPage, (visiblePage + 1) * rowsPerPage);
     return <Stack sx={{ minWidth: 0 }}>
         {visibleDecisions.map(decision => {
-            const medicines = new Map([...decision.before.details, ...decision.after.details].map(item => [item.medicineId, item]));
-            return <Box component="article" aria-label={`Phản hồi của ${decision.doctorName}`} key={decision.decisionId}
+            const isBilling = decision.action === "BillingAdjusted";
+            const beforeDetails = decision.before?.details ?? [];
+            const afterDetails = decision.after?.details ?? [];
+            const medicines = new Map([...beforeDetails, ...afterDetails].map(item => [item.medicineId, item]));
+            return <Box component="article" aria-label={`${isBilling ? "Chứng từ của" : "Phản hồi của"} ${decision.doctorName}`} key={decision.decisionId}
                 sx={{ minWidth: 0, "& + &": { mt: 2, pt: 2, borderTop: "1px solid #D6DAE2" } }}>
                 <Box component="dl" sx={{ m: 0, display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(3, minmax(0, 1fr))" },
                     gap: 2, pb: 2, "& > *": { minWidth: 0 } }}>
                     {[
-                        { label: "Bác sĩ phản hồi", value: decision.doctorName },
-                        { label: "Thời gian phản hồi", value: formatTime(decision.createdAt) },
-                        { label: "Quyết định", value: <Chip size="small" label={STOCK_REVIEW_OUTCOMES[decision.outcome] || decision.outcome}
+                        { label: isBilling ? "Thu ngân" : "Bác sĩ phản hồi", value: decision.doctorName },
+                        { label: isBilling ? "Thời gian lập chứng từ" : "Thời gian phản hồi", value: formatTime(decision.createdAt) },
+                        { label: isBilling ? "Ghi nhận" : "Quyết định", value: <Chip size="small" label={STOCK_REVIEW_OUTCOMES[decision.outcome] || decision.outcome}
                             sx={{ bgcolor: decision.outcome === "AwaitingBilling" ? "#FFFBEB" : "#EFF6FF", color: decision.outcome === "AwaitingBilling" ? "#B45309" : "#005DAC", fontWeight: 700, maxWidth: "100%" }} /> },
                     ].map((field) => <Box key={field.label}>
                         <Typography component="dt" variant="caption" sx={{ color: "#6B7280", fontWeight: 500 }}>{field.label}</Typography>
@@ -46,7 +49,7 @@ export default function StockReviewDecisionHistory({ decisions = [] }) {
                     </Box>
                     <Typography component="dd" variant="body2" sx={{ m: 0, mt: 1, pl: 3.5, color: "#374151", lineHeight: 1.6, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{decision.reason}</Typography>
                 </Box>
-                {decision.action === "AdjustPrescription" && <Accordion disableGutters elevation={0} sx={{ borderTop: "1px solid #E5E9F0", borderRadius: "0 !important", "&:before": { display: "none" } }}>
+                {decision.action === "AdjustPrescription" && decision.before && decision.after && <Accordion disableGutters elevation={0} sx={{ borderTop: "1px solid #E5E9F0", borderRadius: "0 !important", "&:before": { display: "none" } }}>
                     <AccordionSummary expandIcon={<ExpandMoreOutlinedIcon />} sx={{ px: 0 }}>
                         <Stack direction="row" spacing={1} sx={{ alignItems: "center", minWidth: 0 }}>
                             <CompareArrowsOutlinedIcon color="primary" fontSize="small" sx={{ flexShrink: 0 }} />
@@ -59,8 +62,8 @@ export default function StockReviewDecisionHistory({ decisions = [] }) {
                             <TableHead><TableRow sx={{ bgcolor: "#F8FAFC" }}><TableCell>Thuốc</TableCell><TableCell>Trước xử lý</TableCell><TableCell>{decision.outcome === "AwaitingBilling" ? "Đề xuất (chưa áp dụng)" : "Sau xử lý"}</TableCell></TableRow></TableHead>
                             <TableBody>{[...medicines.values()].map(item => <TableRow key={item.medicineId}>
                                 <TableCell sx={{ fontWeight: 700 }}>{item.medicineName}</TableCell>
-                                <TableCell><ItemValue item={decision.before.details.find(x => x.medicineId === item.medicineId)} /></TableCell>
-                                <TableCell><ItemValue item={decision.after.details.find(x => x.medicineId === item.medicineId)} /></TableCell>
+                                <TableCell><ItemValue item={beforeDetails.find(x => x.medicineId === item.medicineId)} /></TableCell>
+                                <TableCell><ItemValue item={afterDetails.find(x => x.medicineId === item.medicineId)} /></TableCell>
                             </TableRow>)}</TableBody>
                         </Table></TableContainer>
                         <Box component="section" aria-label="So sánh lời dặn bác sĩ" sx={{ mt: 2, borderTop: "1px solid #E5E9F0" }}>

@@ -698,7 +698,9 @@ internal static class MedicalHistoryChecks
             ]
         };
         var paid = Bill();
-        db.Invoices.AddRange(paid, Bill(ownerId: patientId + 999999), Bill(appointmentId: record.AppointmentId + 999999),
+        var adjustment = Bill();
+        adjustment.InvoiceType = "Adjustment";
+        db.Invoices.AddRange(paid, adjustment, Bill(ownerId: patientId + 999999), Bill(appointmentId: record.AppointmentId + 999999),
             Bill(sourceId: medicine.PrescriptionDetailId + 999999), Bill(status: "Cancelled"));
         await db.SaveChangesAsync();
         var originalPrice = medicine.Medicine.UnitPrice;
@@ -723,6 +725,18 @@ internal static class MedicalHistoryChecks
             check(savedItem["unitPrice"]!.GetValue<decimal>() == 10000m
                 && savedItem["totalPrice"]!.GetValue<decimal>() == 50000m,
                 "D6 changing current medicine price never changes the historical invoice");
+
+            paid.Status = "PartiallyPaid";
+            paid.PaidAmount = 45000m;
+            await db.SaveChangesAsync();
+            billing = (await readDetail())!["medicineBilling"]!;
+            invoice = billing["invoices"]!.AsArray().Single()!;
+            check(invoice["invoiceId"]!.GetValue<int>() == paid.Id
+                && invoice["status"]!.GetValue<string>() == "PartiallyPaid"
+                && invoice["paidAmount"]!.GetValue<decimal>() == 45000m
+                && invoice["remainingAmount"]!.GetValue<decimal>() == 75000m
+                && billing["totalMedicineAmount"]!.GetValue<decimal>() == 50000m,
+                "D6 partially paid invoices stay visible with whole-invoice amounts and no adjustment double counting");
 
             paid.Status = "Cancelled";
             var legacy = Bill(status: "Unpaid", sourceType: "Prescription", sourceId: prescription.PrescriptionId);

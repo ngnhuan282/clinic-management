@@ -1,3 +1,4 @@
+using ClinicManagement.Commons;
 using ClinicManagement.Data;
 using ClinicManagement.Data.Entities;
 using ClinicManagement.DTOs.Requests;
@@ -74,15 +75,18 @@ public class PrescriptionRepository : IPrescriptionRepository
         await _context.SaveChangesAsync();
     }
 
-    public Task<bool> HasMedicineInvoiceAsync(Prescription prescription)
+    public async Task<bool> HasMedicineInvoiceAsync(Prescription prescription)
     {
         var detailIds = prescription.Details.Select(x => x.PrescriptionDetailId).ToArray();
-        return _context.Invoices.AnyAsync(x => x.AppointmentId == prescription.MedicalRecord.AppointmentId
+        return await _context.Invoices.AnyAsync(x => x.AppointmentId == prescription.MedicalRecord.AppointmentId
             && (x.BillingStage == "Medicine" || x.BillingStage == "Final")
             && (x.Status == "Paid" || x.Status == "PartiallyPaid" || x.Status == "Unpaid")
             && x.InvoiceDetails.Any(line =>
                 (line.SourceType == "Prescription" && line.SourceId == prescription.PrescriptionId)
-                || (line.SourceType == "PrescriptionDetail" && detailIds.Contains(line.SourceId))));
+                || (line.SourceType == "PrescriptionDetail" && detailIds.Contains(line.SourceId))))
+            || await _context.PrescriptionStockReviewDecisions.AnyAsync(x =>
+                x.Review.PrescriptionId == prescription.PrescriptionId
+                && x.Action == StockReviewBillingConfirmation.ApplyAction);
     }
 
     public Task<bool> HasPendingReviewAsync(int prescriptionId) =>

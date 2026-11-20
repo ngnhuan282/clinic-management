@@ -112,6 +112,7 @@ public class DispensingResponse
     public bool HasSufficientStock { get; set; }
 
     public bool CanDispense { get; set; }
+    public bool RequiresPaperBookConfirmation { get; set; }
 
     public int? DispensedByUserId { get; set; }
 

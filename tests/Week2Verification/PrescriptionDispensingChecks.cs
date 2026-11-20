@@ -26,7 +26,7 @@ internal static class PrescriptionDispensingChecks
             db.Roles.Add(cashierRole);
             await db.SaveChangesAsync();
         }
-        foreach (var permission in new[] { PermissionCodes.BillingCreate, PermissionCodes.BillingRecordPayment })
+        foreach (var permission in new[] { PermissionCodes.BillingView, PermissionCodes.BillingCreate, PermissionCodes.BillingRecordPayment })
             if (!await db.RolePermissions.AnyAsync(x => x.RoleId == cashierRole.RoleId && x.PermissionCode == permission))
                 db.RolePermissions.Add(new RolePermission { RoleId = cashierRole.RoleId, PermissionCode = permission });
         var pharmacist = new User { Username = "d8pharmacist", FullName = "D8 Pharmacist", RoleId = pharmacyRole, PasswordHash = hash };
@@ -126,20 +126,40 @@ internal static class PrescriptionDispensingChecks
             await db.SaveChangesAsync();
             return invoice;
         }
-        object InvoiceRequest(Prescription rx, string stage = "Medicine") => new
-        {
-            appointmentId = rx.MedicalRecord.AppointmentId, patientId = PatientId(rx), billingStage = stage,
-            paymentMethod = "Cash", items = rx.Details.Select(x => new { sourceType = "PrescriptionDetail",
-                sourceId = x.PrescriptionDetailId, itemName = x.Medicine.MedicineName, unitPrice = 1000m, quantity = x.Quantity }).ToArray()
-        };
         async Task<Invoice> Pay(Prescription rx, string stage = "Medicine")
         {
             await Login(cashier.Username);
             var stock = await Stock();
-            var invoice = await Send(HttpMethod.Post, "api/Invoices", InvoiceRequest(rx, stage));
+            var pending = await Send(HttpMethod.Get, $"api/Invoices/pending?stage={stage}");
+            var bill = pending.AsArray().SingleOrDefault(x =>
+                x!["appointmentId"]!.GetValue<int>() == rx.MedicalRecord.AppointmentId);
+            check(bill != null && bill["patientId"]!.GetValue<int>() == PatientId(rx),
+                $"D8 cashier {stage} queue finds the correct visit and patient");
+
+            var invoice = await Send(HttpMethod.Post, "api/Invoices", new
+            {
+                appointmentId = rx.MedicalRecord.AppointmentId, patientId = PatientId(rx),
+                billingStage = stage, paymentMethod = "Cash", initialPaymentAmount = 100m,
+                items = bill!["items"]!.DeepClone()
+            });
+            var id = invoice["id"]!.GetValue<int>();
+            check(invoice["status"]!.GetValue<string>() == "PartiallyPaid" && stock == await Stock(),
+                $"D8 {stage} partial payment leaves inventory intact");
+
+            await Login(pharmacist.Username);
+            var partial = await Detail(rx);
+            check(partial["invoiceId"]!.GetValue<int>() == id && partial["paymentStatus"]!.GetValue<string>() == "PartiallyPaid"
+                && !partial["canDispense"]!.GetValue<bool>(), "D8 pharmacy sees the real partial invoice and keeps handover locked");
+            await Send(HttpMethod.Post, $"api/dispensing/{rx.PrescriptionId}/confirm", status: 409, code: 7404);
+
+            await Login(cashier.Username);
+            invoice = await Send(HttpMethod.Post, $"api/Invoices/{id}/payments", new
+            {
+                amount = invoice["remainingAmount"]!.GetValue<decimal>(), paymentMethod = "Cash"
+            });
             check(invoice["status"]!.GetValue<string>() == "Paid" && stock == await Stock(),
-                "D8 actual cashier API records payment without handing over or deducting stock");
-            return await db.Invoices.AsNoTracking().SingleAsync(x => x.Id == invoice["id"]!.GetValue<int>());
+                $"D8 collecting the remaining {stage} amount marks the invoice Paid without deducting stock");
+            return await db.Invoices.AsNoTracking().SingleAsync(x => x.Id == id);
         }
         async Task<JsonNode> Detail(Prescription rx) => await Send(HttpMethod.Get, $"api/dispensing/{rx.PrescriptionId}");
         async Task DeniedInvoice(Prescription rx, Invoice invoice, string description)
@@ -316,6 +336,117 @@ internal static class PrescriptionDispensingChecks
         var beforeExpiry = await Stock();
         await Send(HttpMethod.Post, $"api/dispensing/{expiredOrder.PrescriptionId}/confirm", status: 409, code: 7405);
         check(beforeExpiry == await Stock(), "D8 confirmation re-reads expiry instead of trusting a stale FEFO preview");
+
+        var proposedOrder = await Order("Reconciled replacement", false, (shortage, 12));
+        var original = await Pay(proposedOrder);
+        var rxPath = $"api/dispensing/{proposedOrder.PrescriptionId}";
+        var recordPath = $"api/medical-records/{proposedOrder.MedicalRecordId}";
+        async Task CloseExam()
+        {
+            var record = await Send(HttpMethod.Get, recordPath);
+            await Send(HttpMethod.Put, recordPath, new
+            {
+                expectedUpdatedAt = record["updatedAt"]!.GetValue<string>(), symptoms = "D8 symptoms", conclusion = "D8 conclusion",
+                paperBookConfirmed = true, markCompleted = true, diagnoses = new[] { new { diseaseId, isPrimary = true } }
+            });
+        }
+        await Login("testdoctor");
+        await CloseExam();
+        await Login(pharmacist.Username);
+        var shortageDetail = await Detail(proposedOrder);
+        var opened = await Send(HttpMethod.Post, rxPath + "/stock-reviews", new
+        {
+            note = "D8 needs an approved replacement", expectedUpdatedAt = shortageDetail["updatedAt"]!.GetValue<string>()
+        });
+        var proposalReviewId = opened["reviews"]![0]!["reviewId"]!.GetValue<int>();
+        var reviewPath = $"api/stock-reviews/{proposalReviewId}";
+        await Login("testdoctor");
+        var doctorReview = await Send(HttpMethod.Get, reviewPath);
+        doctorReview = await Send(HttpMethod.Post, reviewPath + "/responses", new
+        {
+            action = "AdjustPrescription", reason = "D8 use an available replacement", notes = "D8 reconciled",
+            expectedReviewUpdatedAt = doctorReview["review"]!["updatedAt"]!.GetValue<string>(),
+            expectedPrescriptionUpdatedAt = doctorReview["prescriptionUpdatedAt"]!.GetValue<string>(),
+            details = new[] { new { medicineId = second.MedicineId, quantity = 3, dosage = "One daily", instructions = "After meals" } }
+        });
+        object ApplyRequest(JsonNode value) => new
+        {
+            expectedReviewUpdatedAt = value["review"]!["updatedAt"]!.GetValue<string>(),
+            expectedPrescriptionUpdatedAt = value["prescriptionUpdatedAt"]!.GetValue<string>()
+        };
+        var proposalId = doctorReview["review"]!["decisions"]![0]!["decisionId"]!.GetValue<int>();
+        var beforeApply = await Stock();
+        await Send(HttpMethod.Post, reviewPath + "/apply-proposal", ApplyRequest(doctorReview), 409, 7411);
+        var refund = new Invoice
+        {
+            AppointmentId = original.AppointmentId, PatientId = original.PatientId, CashierId = cashier.UserId,
+            OriginalInvoiceId = original.Id, InvoiceType = "Adjustment", BillingStage = original.BillingStage,
+            TotalAmount = -9000m, PatientAmount = -9000m, PaidAmount = -9000m, Status = "Refunded"
+        };
+        db.Invoices.Add(refund);
+        await db.SaveChangesAsync();
+        async Task RecordBillingEvidence(string outcome, int forProposal, int documentId)
+        {
+            db.PrescriptionStockReviewDecisions.Add(new PrescriptionStockReviewDecision
+            {
+                PrescriptionStockReviewId = proposalReviewId, DoctorUserId = cashier.UserId,
+                Action = StockReviewBillingConfirmation.BillingAction, Outcome = outcome,
+                Reason = "D8 fixture for the Billing confirmation", BeforeJson = "{}",
+                AfterJson = JsonSerializer.Serialize(new StockReviewBillingConfirmation(forProposal, original.Id, documentId)),
+                CreatedAt = DateTime.UtcNow
+            });
+            await db.SaveChangesAsync();
+        }
+        await RecordBillingEvidence("BillingReconciled", proposalId, refund.Id);
+        await RecordBillingEvidence(StockReviewBillingConfirmation.VerifiedOutcome, proposalId + 999, refund.Id);
+        doctorReview = await Send(HttpMethod.Get, reviewPath);
+        check(!doctorReview["canApplyProposal"]!.GetValue<bool>(),
+            "D8 a legacy stamp or confirmation for another proposal never enables application");
+        await Send(HttpMethod.Post, reviewPath + "/apply-proposal", ApplyRequest(doctorReview), 409, 7411);
+        await RecordBillingEvidence(StockReviewBillingConfirmation.VerifiedOutcome, proposalId, refund.Id);
+        doctorReview = await Send(HttpMethod.Get, reviewPath);
+        check(doctorReview["canApplyProposal"]!.GetValue<bool>(), "D8 exact Billing confirmation enables application for the prescribing doctor");
+        var applyRequest = ApplyRequest(doctorReview);
+        await Login(pharmacist.Username);
+        await Send(HttpMethod.Post, reviewPath + "/apply-proposal", applyRequest, 403);
+        await Login("testdoctor");
+        doctorReview = await Send(HttpMethod.Post, reviewPath + "/apply-proposal", applyRequest);
+        check(!doctorReview["canApplyProposal"]!.GetValue<bool>()
+            && doctorReview["review"]!["workflowStatus"]!.GetValue<string>() == "WaitingPharmacyRecheck"
+            && doctorReview["prescription"]!["details"]![0]!["medicineId"]!.GetValue<int>() == second.MedicineId
+            && beforeApply == await Stock(), "D8 confirmed proposal replaces the medicine, preserves stock and opens recheck");
+        await Send(HttpMethod.Post, reviewPath + "/apply-proposal", applyRequest, 409);
+        var reopenedRecord = await Send(HttpMethod.Get, recordPath);
+        check(reopenedRecord["paperBookUpdatedAt"] == null && reopenedRecord["status"]!.GetValue<string>() == "InProgress",
+            "D8 applied replacement requires a new paper-book confirmation");
+        await Login(pharmacist.Username);
+        var changed = await Detail(proposedOrder);
+        changed = await Send(HttpMethod.Post, rxPath + "/stock-reviews/recheck", new
+        {
+            expectedReviewId = proposalReviewId,
+            expectedReviewUpdatedAt = changed["reviews"]![0]!["updatedAt"]!.GetValue<string>(),
+            expectedPrescriptionUpdatedAt = changed["updatedAt"]!.GetValue<string>()
+        });
+        check(changed["reviews"]![0]!["status"]!.GetValue<string>() == "Resolved"
+            && changed["paymentStatus"]!.GetValue<string>() == "Paid"
+            && changed["requiresPaperBookConfirmation"]!.GetValue<bool>() && !changed["canDispense"]!.GetValue<bool>(),
+            "D8 certified payment covers the replacement, but an unconfirmed paper book still blocks handover");
+        await Send(HttpMethod.Post, rxPath + "/confirm", status: 400, code: 7105);
+        await Login("testdoctor");
+        await CloseExam();
+        await Login(pharmacist.Username);
+        changed = await Detail(proposedOrder);
+        var replacementQueue = await Send(HttpMethod.Get, $"api/dispensing?workflowStatus=Ready&search=RX-{proposedOrder.PrescriptionId:D5}");
+        check(changed["canDispense"]!.GetValue<bool>() && replacementQueue["totalItems"]!.GetValue<int>() == 1,
+            "D8 pharmacy detail and Ready queue agree on the reconciled replacement after paper-book confirmation");
+        var handover = await Send(HttpMethod.Post, rxPath + "/confirm");
+        var handedOver = await db.DispenseDetails.AsNoTracking().Include(x => x.Inventory)
+            .Where(x => x.PrescriptionDetail.PrescriptionId == proposedOrder.PrescriptionId).ToListAsync();
+        var afterReplacement = await Stock();
+        await Send(HttpMethod.Post, rxPath + "/confirm", status: 400, code: 7403);
+        check(handover["prescriptionStatus"]!.GetValue<string>() == "Dispensed"
+            && handedOver.Sum(x => x.QuantityDispensed) == 3 && handedOver.All(x => x.Inventory.MedicineId == second.MedicineId)
+            && afterReplacement == await Stock(), "D8 handover deducts exactly the replacement once");
 
         var uiMedicine = await Medicine("UI integration", ("UI-EARLY", 4, 10), ("UI-LATER", 8, 20));
         var uiOrder = await Order("UI patient", false, (uiMedicine, 6));

@@ -46,11 +46,13 @@ public class DispensingService : IDispensingService
             .Distinct()
             .ToArray();
         var invoices = await _dispensingRepository
-            .GetPaidMedicineInvoicesAsync(appointmentIds, onlyPaid: false);
+            .GetPaidMedicineInvoicesAsync(appointmentIds);
+        var adjustedIds = prescriptions.Where(x => x.HasAppliedBillingProposal()).Select(x => x.PrescriptionId).ToArray();
+        var reconciled = await _dispensingRepository.GetReconciledMedicineInvoicesAsync(adjustedIds);
 
         var responses = prescriptions.Select(x =>
         {
-            var invoice = FindInvoice(x, invoices);
+            var invoice = x.HasAppliedBillingProposal() ? reconciled.GetValueOrDefault(x.PrescriptionId) : FindInvoice(x, invoices);
             return x.ToDispensingListItem(invoice, DateOnly.FromDateTime(ClinicNow));
         });
 
@@ -91,14 +93,7 @@ public class DispensingService : IDispensingService
             throw new AppException(ErrorCode.PRESCRIPTION_NOT_FOUND);
         }
 
-        var invoice = await _dispensingRepository
-            .GetPaidMedicineInvoiceAsync(
-                prescription.MedicalRecord.AppointmentId,
-                prescription.PrescriptionId,
-                prescription.Details
-                    .Select(x => x.PrescriptionDetailId)
-                    .ToArray(), GetBillingPatientId(prescription), onlyPaid: false
-            );
+        var invoice = await GetInvoiceAsync(prescription);
 
         var response = prescription.ToDispensingResponse(
             invoice,
@@ -139,16 +134,11 @@ public class DispensingService : IDispensingService
             if (prescription.StockReviews.Any(x => x.Status == "Pending"))
                 throw new AppException(ErrorCode.STOCK_REVIEW_PENDING);
 
-            var invoice = await _dispensingRepository
-                .GetPaidMedicineInvoiceAsync(
-                    prescription.MedicalRecord.AppointmentId,
-                    prescription.PrescriptionId,
-                    prescription.Details
-                        .Select(x => x.PrescriptionDetailId)
-                        .ToArray(), GetBillingPatientId(prescription)
-                );
+            if (prescription.RequiresPaperBookConfirmationAfterReconciliation())
+                throw new AppException(ErrorCode.PAPER_BOOK_CONFIRMATION_REQUIRED);
+            var invoice = await GetInvoiceAsync(prescription);
 
-            if (invoice == null)
+            if (!prescription.HasSettledDispensingInvoice(invoice))
             {
                 throw new AppException(
                     ErrorCode.PRESCRIPTION_PAYMENT_REQUIRED
@@ -229,9 +219,7 @@ public class DispensingService : IDispensingService
             if (prescription.Status != PrescriptionStatusConstants.Issued)
                 throw new AppException(ErrorCode.PRESCRIPTION_INVALID_STATUS);
             var pending = prescription.StockReviews.SingleOrDefault(x => x.Status == "Pending");
-            var invoice = await _dispensingRepository.GetPaidMedicineInvoiceAsync(
-                prescription.MedicalRecord.AppointmentId, prescriptionId,
-                prescription.Details.Select(x => x.PrescriptionDetailId).ToArray(), GetBillingPatientId(prescription), onlyPaid: false);
+            var invoice = await GetInvoiceAsync(prescription);
             var response = prescription.ToDispensingResponse(invoice, DateOnly.FromDateTime(ClinicNow));
             List<Notification> notifications;
             if (request != null)
@@ -257,14 +245,14 @@ public class DispensingService : IDispensingService
                     PrescriptionId = prescriptionId, Note = note,
                     ShortagesJson = JsonSerializer.Serialize(shortages),
                     RecipientsJson = JsonSerializer.Serialize(recipients),
-                    InvoiceId = invoice?.Id, PaymentStatus = invoice?.Status ?? "Unpaid",
+                    InvoiceId = invoice?.Id, PaymentStatus = response.PaymentStatus,
                     CreatedByUserId = _currentUser.GetRequiredUserId(), CreatedAt = DateTime.UtcNow
                 };
                 await _dispensingRepository.AddStockReviewAsync(review);
                 await _dispensingRepository.SaveChangesAsync();
                 var summary = string.Join("; ", shortages.Select(x => $"{x.MedicineName}: thiếu {x.QuantityShort} {x.Unit}"));
                 var message = $"{response.PatientName} · HS-{prescription.MedicalRecordId:D5} · {response.PrescriptionCode}. {summary}. "
-                    + (invoice?.Status == "Paid" ? "Đã thanh toán; cần phối hợp thu phí nếu điều chỉnh đơn. " : "Chưa thanh toán. ")
+                    + (response.PaymentStatus == "Paid" ? "Đã thanh toán; cần phối hợp thu phí nếu điều chỉnh đơn. " : "Chưa thanh toán. ")
                     + note;
                 notifications = await _notifications.StageAsync(recipients.Select(x => x.UserId),
                     $"stock-review:{review.PrescriptionStockReviewId}:created", "Pharmacy",
@@ -370,6 +358,16 @@ public class DispensingService : IDispensingService
         }
 
         return allocations;
+    }
+
+    private async Task<Invoice?> GetInvoiceAsync(Prescription prescription)
+    {
+        if (prescription.HasAppliedBillingProposal())
+        {
+            var reconciled = await _dispensingRepository.GetReconciledMedicineInvoicesAsync([prescription.PrescriptionId]);
+            return reconciled.GetValueOrDefault(prescription.PrescriptionId);
+        }
+        return FindInvoice(prescription, await _dispensingRepository.GetPaidMedicineInvoicesAsync([prescription.MedicalRecord.AppointmentId]));
     }
 
     private static Invoice? FindInvoice(

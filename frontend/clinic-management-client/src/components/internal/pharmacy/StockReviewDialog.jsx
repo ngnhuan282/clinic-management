@@ -11,7 +11,7 @@ import MedicationOutlinedIcon from "@mui/icons-material/MedicationOutlined";
 import StockShortageTable from "./StockShortageTable";
 import { getDispensingPaymentLabel } from "./dispensingStatus";
 
-function StockReviewDialog({ open, detail, loading, error, onClose, onSubmit }) {
+function StockReviewDialog({ open, detail, loading, blocked, error, onClose, onSubmit }) {
     const [note, setNote] = useState("");
     const recipients = detail?.reviewRecipients || [];
     const doctors = recipients.filter((x) => x.department === "Doctor");
@@ -63,7 +63,7 @@ function StockReviewDialog({ open, detail, loading, error, onClose, onSubmit }) 
             <DialogActions sx={{ px: 2.5, py: 2, borderTop: "1px solid #E5E9F0", flexWrap: "wrap", gap: 1 }}>
                 <Button onClick={onClose} disabled={loading} variant="outlined">Hủy bỏ</Button>
                 <Button startIcon={<SendOutlinedIcon />} variant="contained"
-                    disabled={loading || note.trim().length < 3 || missingRecipient || !detail?.canRequestReview}
+                    disabled={loading || blocked || note.trim().length < 3 || missingRecipient || !detail?.canRequestReview}
                     onClick={() => onSubmit({ note: note.trim(), expectedUpdatedAt: detail.updatedAt })}>
                     {loading ? "Đang gửi..." : "Gửi yêu cầu rà soát"}
                 </Button>

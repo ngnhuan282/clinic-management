@@ -18,7 +18,7 @@ import {
     getExaminationQueue,
     startExamination,
 } from "../../../api/examinationApi";
-import { normalizeExaminationStatus } from "../../../components/internal/examinations/examinationStatus";
+import { getExaminationQueueStatus, normalizeExaminationStatus } from "../../../components/internal/examinations/examinationStatus";
 import getApiErrorMessage from "../../../utils/errorHandler";
 
 const DEFAULT_FILTERS = {
@@ -118,7 +118,7 @@ function mapQueueAppointment(item) {
         canStartExamination: isToday(item.appointmentDate),
         time: formatTime(item.startTime),
         shift: getShiftFromTime(item.startTime),
-        status: normalizeExaminationStatus(item.status),
+        status: getExaminationQueueStatus(item),
         patientName: item.patientName,
         initials: getInitials(item.patientName),
         avatarColor: "#005DAC",
@@ -297,6 +297,11 @@ function DoctorAppointmentsPage() {
             appointment.status
         );
 
+        if (normalizedStatus === "pendingConfirmation" || normalizedStatus === "awaitingReception") {
+            setQueueError("Lượt khám chưa được lễ tân xác nhận và đối chiếu sổ để tiếp nhận.");
+            return;
+        }
+
         if (normalizedStatus === "completed") {
             navigate(
                 `/internal/examinations/${appointment.appointmentId}/record`,
@@ -372,11 +377,9 @@ function DoctorAppointmentsPage() {
                 }}
             >
                 <Box sx={{ minWidth: 0 }}>
-                    <Stack
+                    <Stack sx={{ alignItems: "center", flexWrap: "wrap" }}
                         direction="row"
                         spacing={1}
-                        alignItems="center"
-                        flexWrap="wrap"
                         useFlexGap
                     >
                         <Typography
