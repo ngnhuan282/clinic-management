@@ -21,3 +21,11 @@ public class RespondStockReviewRequest : UpdatePrescriptionRequest
     [Required]
     public DateTime? ExpectedPrescriptionUpdatedAt { get; set; }
 }
+
+public class ApplyStockReviewProposalRequest
+{
+    [Required]
+    public DateTime? ExpectedReviewUpdatedAt { get; set; }
+    [Required]
+    public DateTime? ExpectedPrescriptionUpdatedAt { get; set; }
+}

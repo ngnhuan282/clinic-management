@@ -18,9 +18,8 @@ function SummaryRow({ label, value, color = "#1F2937" }) {
     return (
         <Stack
             direction="row"
-            justifyContent="space-between"
             spacing={2}
-            sx={{ minWidth: 0 }}
+            sx={{ justifyContent: "space-between", minWidth: 0 }}
         >
             <Typography
                 variant="body2"
@@ -65,8 +64,7 @@ function PrescriptionSummaryPanel({
                 <Stack
                     direction="row"
                     spacing={1.25}
-                    alignItems="center"
-                    sx={{ mb: 2 }}
+                    sx={{ alignItems: "center", mb: 2 }}
                 >
                     <Box
                         sx={{

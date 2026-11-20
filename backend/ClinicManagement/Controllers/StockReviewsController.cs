@@ -25,4 +25,8 @@ public class StockReviewsController(IPrescriptionService prescriptions) : Contro
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Respond(int reviewId, RespondStockReviewRequest request) =>
         Ok(ApiResponse<DoctorStockReviewResponse>.Success(await prescriptions.RespondToStockReviewAsync(reviewId, request)));
+
+    [HttpPost("{reviewId:int}/apply-proposal")]
+    public async Task<IActionResult> ApplyProposal(int reviewId, ApplyStockReviewProposalRequest request) =>
+        Ok(ApiResponse<DoctorStockReviewResponse>.Success(await prescriptions.ApplyStockReviewProposalAsync(reviewId, request)));
 }

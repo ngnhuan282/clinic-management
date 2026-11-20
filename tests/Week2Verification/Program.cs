@@ -187,6 +187,12 @@ try
         }
         return;
     }
+    if (args.Contains("--purchase-order-transactions"))
+    {
+        await StockTransactionChecks.RunAsync(client, db, password, Check);
+        Console.WriteLine($"SUCCESS: {checks} purchase order transaction checks passed.");
+        return;
+    }
     if (args.Contains("--medical-record-vitals"))
     {
         await MedicalRecordVitalSignsChecks.RunAsync(client, db, password, Check);

@@ -17,6 +17,14 @@ const FILTER_OPTIONS = [
         label: "Tất cả trạng thái",
     },
     {
+        value: "pendingConfirmation",
+        label: "Chờ xác nhận",
+    },
+    {
+        value: "awaitingReception",
+        label: "Chờ tiếp nhận",
+    },
+    {
         value: "waiting",
         label: "Đang chờ khám",
     },
@@ -114,15 +122,14 @@ function DoctorQueueFilters({
             }}
         >
             <Stack spacing={2}>
-                <Stack
+                <Stack sx={{ alignItems: { xs: "stretch", lg: "center" } }}
                     direction={{ xs: "column", lg: "row" }}
                     spacing={1.5}
-                    alignItems={{ xs: "stretch", lg: "center" }}
                 >
                     <Stack
                         direction="row"
-                        alignItems="center"
                         sx={{
+                            alignItems: "center",
                             minHeight: 44,
                             px: 0.75,
                             borderRadius: 1.5,
@@ -225,7 +232,7 @@ function DoctorQueueFilters({
                         placeholder="Tìm theo tên bệnh nhân, SĐT, mã BN hoặc STT"
                         size="small"
                         sx={{ flex: 1 }}
-                        InputProps={{
+                        slotProps={{ input: {
                             startAdornment: (
                                 <SearchOutlinedIcon
                                     fontSize="small"
@@ -235,7 +242,7 @@ function DoctorQueueFilters({
                                     }}
                                 />
                             ),
-                        }}
+                        } }}
                     />
 
                     <TextField

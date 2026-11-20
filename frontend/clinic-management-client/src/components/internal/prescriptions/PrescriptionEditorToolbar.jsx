@@ -78,18 +78,18 @@ function PrescriptionEditorToolbar({
                     }
                     onChange={(_, value) => setSelectedMedicine(value)}
                     renderOption={(props, option) => {
+                        const { key, ...optionProps } = props;
                         const status =
                             getPrescriptionStockStatusConfig(
                                 option.stockStatus
                             );
 
                         return (
-                            <Box component="li" {...props}>
+                            <Box component="li" key={key} {...optionProps}>
                                 <Stack
                                     direction="row"
                                     spacing={1.25}
-                                    alignItems="center"
-                                    sx={{ width: "100%" }}
+                                    sx={{ alignItems: "center", width: "100%" }}
                                 >
                                     <LocalPharmacyOutlinedIcon
                                         fontSize="small"

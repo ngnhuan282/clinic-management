@@ -38,11 +38,122 @@ public partial class PrescriptionService
             Review = review.ToStockReviewResponse(), Prescription = review.Prescription.ToResponse(GetClinicToday()),
             PrescriptionUpdatedAt = DateTime.SpecifyKind(review.Prescription.UpdatedAt, DateTimeKind.Utc),
             HasMedicineInvoice = await _prescriptionRepository.HasMedicineInvoiceAsync(review.Prescription),
+            CanApplyProposal = await FindVerifiedProposalAsync(review) != null,
             CanRespond = review.Status == "Pending" && !review.Decisions.Any()
                 && review.Prescription.Status == PrescriptionStatusConstants.Issued
                 && review.Prescription.MedicalRecord.Appointment.Status is AppointmentStatusConstants.InProgress or AppointmentStatusConstants.Completed
         };
     }
+
+    public async Task<DoctorStockReviewResponse> ApplyStockReviewProposalAsync(int reviewId, ApplyStockReviewProposalRequest request)
+    {
+        var doctorId = await RequiredReviewDoctorIdAsync();
+        try
+        {
+            await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            var review = await _prescriptionRepository.GetStockReviewAsync(reviewId, tracking: true)
+                ?? throw new AppException(ErrorCode.STOCK_REVIEW_NOT_FOUND);
+            var rx = review.Prescription;
+            if (rx.MedicalRecord.DoctorId != doctorId) throw new AppException(ErrorCode.UNAUTHORIZED);
+            if (!VersionMatches(request.ExpectedReviewUpdatedAt, review.UpdatedAt)
+                || !VersionMatches(request.ExpectedPrescriptionUpdatedAt, rx.UpdatedAt))
+                throw new AppException(ErrorCode.STOCK_REVIEW_CONFLICT);
+            var verified = await FindVerifiedProposalAsync(review)
+                ?? throw new AppException(ErrorCode.STOCK_REVIEW_BILLING_REQUIRED);
+
+            var before = JsonSerializer.Deserialize<StockReviewPrescriptionSnapshot>(verified.Proposal.BeforeJson)!;
+            var after = JsonSerializer.Deserialize<StockReviewPrescriptionSnapshot>(verified.Proposal.AfterJson)!;
+            if (!SameClinicalSnapshot(before, Snapshot(rx.Notes, rx.Details)))
+                throw new AppException(ErrorCode.STOCK_REVIEW_CONFLICT);
+            var requested = after.Details.Select(x => new SavePrescriptionDetailRequest
+            {
+                MedicineId = x.MedicineId, Quantity = x.Quantity, Dosage = x.Dosage, Instructions = x.Instructions
+            }).ToArray();
+            ValidatePrescription(rx.PrescriptionId, requested);
+            var details = await BuildDetailsAsync(requested);
+            if (!await _medicalRecordRepository.TryAdvanceVersionAsync(rx.MedicalRecord, rx.MedicalRecord.UpdatedAt))
+                throw new AppException(ErrorCode.MEDICAL_RECORD_CONFLICT);
+
+            var now = DateTime.UtcNow;
+            var reopened = InvalidatePaperBookConfirmation(rx.MedicalRecord);
+            rx.Notes = after.Notes;
+            rx.UpdatedAt = now;
+            UpdateDetails(rx, details);
+            review.UpdatedAt = now;
+            review.InvoiceId = verified.Confirmation.AdjustmentInvoiceId;
+            review.PaymentStatus = StockReviewBillingConfirmation.SettledPaymentStatus;
+            _db.PrescriptionStockReviewDecisions.Add(new PrescriptionStockReviewDecision
+            {
+                Review = review, DoctorUserId = _currentUser.GetRequiredUserId(),
+                Action = StockReviewBillingConfirmation.ApplyAction, Outcome = "Applied",
+                Reason = verified.Proposal.Reason, CreatedAt = now,
+                BeforeJson = verified.Proposal.BeforeJson, AfterJson = verified.Proposal.AfterJson
+            });
+            var recipients = JsonSerializer.Deserialize<List<StockReviewRecipientResponse>>(review.RecipientsJson) ?? [];
+            var notifications = await _notifications.StageAsync(
+                recipients.Where(x => x.Department == "Pharmacy").Select(x => x.UserId).Append(review.CreatedByUserId),
+                $"stock-review:{reviewId}:proposal-applied", "Pharmacy", $"Đã cập nhật RX-{rx.PrescriptionId:D5}",
+                "Đã áp dụng phương án sau đối soát. Cần kiểm tra lại tồn và xác nhận sổ khám giấy trước khi giao thuốc.");
+            await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
+            await _notifications.PublishAsync(notifications);
+            if (reopened)
+                await _notifications.PublishAppointmentChangedAsync(rx.MedicalRecord.Appointment, rx.MedicalRecord.Appointment.Status);
+            return await GetStockReviewAsync(reviewId);
+        }
+        catch (DbUpdateConcurrencyException) { throw new AppException(ErrorCode.STOCK_REVIEW_CONFLICT); }
+        catch (Exception ex) when (HasSqlConflict(ex)) { throw new AppException(ErrorCode.STOCK_REVIEW_CONFLICT); }
+    }
+
+    private async Task<(PrescriptionStockReviewDecision Proposal, StockReviewBillingConfirmation Confirmation)?>
+        FindVerifiedProposalAsync(PrescriptionStockReview review)
+    {
+        var rx = review.Prescription;
+        if (review.Status != "Pending" || rx.Status != PrescriptionStatusConstants.Issued
+            || rx.MedicalRecord.Appointment.Status is not (AppointmentStatusConstants.InProgress or AppointmentStatusConstants.Completed)
+            || review.Decisions.Any(x => x.Action == StockReviewBillingConfirmation.ApplyAction)
+            || review.Decisions.MaxBy(x => x.PrescriptionStockReviewDecisionId) is not
+                { Action: StockReviewBillingConfirmation.BillingAction, Outcome: StockReviewBillingConfirmation.VerifiedOutcome } latest)
+            return null;
+
+        StockReviewBillingConfirmation? confirmation;
+        try { confirmation = JsonSerializer.Deserialize<StockReviewBillingConfirmation>(latest.AfterJson, WebJson); }
+        catch (JsonException) { return null; }
+        if (confirmation == null || confirmation.OriginalInvoiceId <= 0 || confirmation.AdjustmentInvoiceId <= 0)
+            return null;
+        var proposal = review.Decisions.SingleOrDefault(x => x.PrescriptionStockReviewDecisionId == confirmation.ProposalDecisionId
+            && x.Action == "AdjustPrescription" && x.Outcome == "AwaitingBilling");
+        if (proposal == null) return null;
+
+        var appointment = rx.MedicalRecord.Appointment;
+        var patientId = rx.MedicalRecord.PatientId ?? appointment.PatientId ?? appointment.PatientProfileId ?? 0;
+        var detailIds = rx.Details.Select(x => x.PrescriptionDetailId).ToArray();
+        var original = await _db.Invoices.AsNoTracking().SingleOrDefaultAsync(x => x.Id == confirmation.OriginalInvoiceId
+            && x.AppointmentId == appointment.AppointmentId && x.PatientId == patientId
+            && x.InvoiceType == "Standard" && x.OriginalInvoiceId == null
+            && (x.BillingStage == "Medicine" || x.BillingStage == "Final")
+            && (x.Status == "Unpaid" || x.Status == "PartiallyPaid" || x.Status == "Paid"));
+        if (original == null) return null;
+        if (review.InvoiceId.HasValue && review.InvoiceId != original.Id
+            && !await _db.Invoices.AnyAsync(x => x.Id == review.InvoiceId && x.OriginalInvoiceId == original.Id))
+            return null;
+
+        var coversOrder = await _db.InvoiceDetails.AnyAsync(x => x.InvoiceId == original.Id
+            && (x.SourceType == "Prescription" && x.SourceId == rx.PrescriptionId
+                || x.SourceType == "PrescriptionDetail" && detailIds.Contains(x.SourceId)));
+        if (!coversOrder && !await _db.PrescriptionStockReviews.AnyAsync(x => x.PrescriptionId == rx.PrescriptionId
+            && x.PaymentStatus == StockReviewBillingConfirmation.SettledPaymentStatus && x.InvoiceId != null
+            && _db.Invoices.Any(i => i.Id == x.InvoiceId && i.OriginalInvoiceId == original.Id))) return null;
+
+        var latestAdjustment = await _db.Invoices.AsNoTracking().Where(x => x.OriginalInvoiceId == original.Id
+                && x.InvoiceType == "Adjustment").OrderByDescending(x => x.Id).FirstOrDefaultAsync();
+        return latestAdjustment != null && latestAdjustment.Id == confirmation.AdjustmentInvoiceId
+            && latestAdjustment.PatientId == patientId && latestAdjustment.AppointmentId == appointment.AppointmentId
+            && latestAdjustment.BillingStage == original.BillingStage && latestAdjustment.Status is "Paid" or "Refunded"
+            ? (proposal, confirmation) : null;
+    }
+
+    private static readonly JsonSerializerOptions WebJson = new(JsonSerializerDefaults.Web);
 
     public async Task<DoctorStockReviewResponse> RespondToStockReviewAsync(int reviewId, RespondStockReviewRequest request)
     {

@@ -33,7 +33,7 @@ function PaymentStatus({ status }) {
         <Chip
             size="small"
             variant="outlined"
-            label={isPaid ? "Đã thanh toán" : "Chưa thanh toán"}
+            label={isPaid ? "Đã thanh toán" : status === "PartiallyPaid" ? "Đã thanh toán một phần" : "Chưa thanh toán"}
             sx={{
                 borderRadius: "8px",
                 fontWeight: 700,
@@ -52,6 +52,8 @@ function MedicineInvoiceDialog({ invoice, prescriptionCode, onClose }) {
         ["Tổng tiền hóa đơn", invoice.totalAmount],
         ["BHYT chi trả", invoice.insuranceAmount],
         ["Bệnh nhân phải trả", invoice.patientAmount],
+        ["Đã thanh toán trên hóa đơn", invoice.paidAmount],
+        ["Còn phải trả trên hóa đơn", invoice.remainingAmount],
     ];
     return (
         <Dialog

@@ -180,6 +180,13 @@ function useMedicalRecordForm({
         [form.diagnoses]
     );
 
+    const hasUnsavedChanges = !loading && (
+        Boolean(getVitalSignsError(form))
+        || getMedicalRecordContentKey(form) !== getMedicalRecordContentKey(medicalRecord || {})
+        || form.paperBookConfirmed !== Boolean(medicalRecord?.paperBookUpdatedAt)
+        || form.paperBookConfirmationPending
+    );
+
     const completionReady = Boolean(
         !recordConflict && !loading &&
         !getVitalSignsError(form) &&
@@ -459,6 +466,7 @@ function useMedicalRecordForm({
         successMessage,
         selectedDiagnoses,
         completionReady,
+        hasUnsavedChanges,
         createDraft: () => ({
             form,
             updatedAt: medicalRecord?.updatedAt,

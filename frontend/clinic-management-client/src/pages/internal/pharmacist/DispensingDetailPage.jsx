@@ -18,32 +18,33 @@ function DispensingDetailPage() {
     const { prescriptionId } = useParams();
     const parsedId = Number(prescriptionId);
     const recordId = Number.isSafeInteger(parsedId) && parsedId > 0 ? parsedId : null;
-    const { userId } = useAuth();
+    const { userId, sessionRevision } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [reviewOpen, setReviewOpen] = useState(false);
     const [recheckOpen, setRecheckOpen] = useState(false);
-    const { detail, loading, error, confirming, reviewing, reload, dispense, processReview } =
-        useDispensingDetail(recordId, userId, !confirmOpen && !reviewOpen && !recheckOpen);
+    const { detail, loading, error, refreshWarning, confirming, reviewing, reload, dispense, processReview } =
+        useDispensingDetail(recordId, userId, sessionRevision, !confirmOpen && !reviewOpen && !recheckOpen);
     const [actionError, setActionError] = useState("");
     const [reviewError, setReviewError] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
-    const busy = confirming || reviewing;
+    const mutating = confirming || reviewing;
+    const busy = mutating || loading || Boolean(refreshWarning);
     const status = detail && getDispensingStatusConfig(detail.workflowStatus);
 
     useEffect(() => { window.scrollTo({ top: 0, behavior: "instant" }); }, [prescriptionId]);
 
     const returnToQueue = () => {
-        if (busy) return;
+        if (mutating) return;
         if (location.state?.dispensingReturn?.userId === userId) navigate(-1);
         else navigate(`/internal/pharmacy/dispensing${location.search}`, { replace: true });
     };
 
     const refresh = async () => {
-        if (busy) return;
+        if (mutating || loading) return;
         setActionError("");
-        try { await reload(); } catch (err) { setActionError(err.message); }
+        await reload().catch(() => {});
     };
 
     const handleConfirm = async () => {
@@ -96,22 +97,26 @@ function DispensingDetailPage() {
                         </Stack>
                     </Box>
                     <Stack direction="row" spacing={1} sx={{ alignSelf: { xs: "flex-start", md: "center" }, flexShrink: 0 }}>
-                        <Tooltip title="Tải lại chi tiết"><span><IconButton aria-label="Tải lại chi tiết" onClick={refresh} disabled={busy || loading || !recordId}
+                        <Tooltip title="Tải lại chi tiết"><span><IconButton aria-label="Tải lại chi tiết" onClick={refresh} disabled={mutating || loading || !recordId}
                             sx={{ width: 42, height: 42, border: "1px solid #E5E9F0", borderRadius: 1, color: "primary.main" }}><RefreshOutlinedIcon /></IconButton></span></Tooltip>
-                        <Button variant="outlined" startIcon={<ArrowBackOutlinedIcon />} onClick={returnToQueue} disabled={busy}>Quay lại quầy thuốc</Button>
+                        <Button variant="outlined" startIcon={<ArrowBackOutlinedIcon />} onClick={returnToQueue} disabled={mutating}>Quay lại quầy thuốc</Button>
                     </Stack>
                 </Stack>
             </Box>
             {actionError && <Alert severity="error" onClose={() => setActionError("")}>{actionError}</Alert>}
+            {refreshWarning && <Alert severity="warning" action={<Button color="inherit" onClick={refresh} disabled={mutating || loading}>Thử lại</Button>}>
+                Chưa cập nhật được đơn thuốc. Các thao tác xử lý tạm khóa. {refreshWarning}
+            </Alert>}
             {!recordId ? <ErrorState message="Mã đơn thuốc không hợp lệ." /> : loading ? <Loading /> : error ?
                 <ErrorState message={error} onRetry={refresh} /> : detail &&
                 <DispensingDetailContent detail={detail} busy={busy} onConfirm={() => setConfirmOpen(true)}
                     onRequestReview={() => { setReviewError(""); setReviewOpen(true); }} onRecheck={() => setRecheckOpen(true)} />}
-            <DispensingConfirmDialog key={`dispense-${prescriptionId}-${confirmOpen}`} open={confirmOpen} detail={detail} loading={confirming}
+            <DispensingConfirmDialog key={`dispense-${prescriptionId}-${confirmOpen}`} open={confirmOpen && Boolean(detail) && !refreshWarning} detail={detail} loading={confirming}
                 onCancel={() => setConfirmOpen(false)} onConfirm={handleConfirm} />
-            <StockReviewDialog key={`review-${prescriptionId}-${reviewOpen}`} open={reviewOpen} detail={detail} loading={busy || loading} error={reviewError}
+            <StockReviewDialog key={`review-${prescriptionId}-${reviewOpen}`} open={reviewOpen && Boolean(detail)} detail={detail} loading={mutating || loading}
+                blocked={Boolean(refreshWarning)} error={reviewError || (refreshWarning && "Cần tải lại đơn thuốc trước khi gửi yêu cầu.")}
                 onClose={() => setReviewOpen(false)} onSubmit={handleReview} />
-            <ConfirmDialog open={recheckOpen} title="Kiểm tra lại và kết thúc vòng rà soát?"
+            <ConfirmDialog open={recheckOpen && Boolean(detail) && !refreshWarning} title="Kiểm tra lại và kết thúc vòng rà soát?"
                 message="Tồn còn hạn sẽ được kiểm tra lại theo đơn hiện tại. Vòng rà soát kết thúc với kết quả đủ tồn hoặc vẫn thiếu; thao tác này không giao thuốc hay thay đổi thanh toán."
                 confirmText="Kiểm tra lại tồn" cancelText="Quay lại" loading={reviewing}
                 onCancel={() => setRecheckOpen(false)} onConfirm={() => handleReview()} />

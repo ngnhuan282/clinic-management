@@ -21,6 +21,7 @@ import PrescriptionEditorToolbar from "../../../components/internal/prescription
 import PrescriptionMedicineTable from "../../../components/internal/prescriptions/PrescriptionMedicineTable";
 import PrescriptionSummaryPanel from "../../../components/internal/prescriptions/PrescriptionSummaryPanel";
 import usePrescriptionForm from "../../../hooks/usePrescriptionForm";
+import useClinicalLeaveGuard from "../../../hooks/useClinicalLeaveGuard";
 
 function formatTime(value) {
     if (!value) {
@@ -95,6 +96,7 @@ function PrescriptionPage() {
         error,
         actionError,
         successMessage,
+        hasUnsavedChanges,
         loadData,
         updateNotes,
         addMedicine,
@@ -105,6 +107,7 @@ function PrescriptionPage() {
         clearActionError,
         clearSuccessMessage,
     } = usePrescriptionForm({ appointmentId });
+    const confirmLeave = useClinicalLeaveGuard(hasUnsavedChanges);
 
     const appointment = mapRecordToAppointment(
         medicalRecord,
@@ -221,7 +224,7 @@ function PrescriptionPage() {
                                 variant="outlined"
                                 startIcon={<ArrowBackRoundedIcon />}
                                 disabled={saving || loading}
-                                onClick={handleBackToRecord}
+                                onClick={() => confirmLeave(handleBackToRecord)}
                                 sx={{ minHeight: 42 }}
                             >
                                 Quay lại hồ sơ

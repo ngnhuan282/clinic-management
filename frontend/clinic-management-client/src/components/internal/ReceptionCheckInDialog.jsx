@@ -7,6 +7,26 @@ import { clinicColors } from "../common/clinicUi";
 import { getApiErrorMessage } from "../../utils/errorHandler";
 import { toPatientProfileForm, toPatientProfilePayload, validatePatientProfileForm } from "../../utils/patientProfileForm";
 import useNotifications from "../../hooks/useNotifications";
+import {
+    clinicButtonSx,
+    clinicColors,
+    clinicDialogActionsSx,
+    clinicDialogPaperSx,
+    clinicFieldSx,
+    clinicPrimaryButtonSx,
+    clinicSecondaryButtonSx,
+} from "../common/clinicUi";
+
+const SITUATION_OPTIONS = [
+    ["present", "Có sổ mang theo"],
+    ["none", "Chưa có sổ"],
+    ["lost", "Mất sổ"],
+    ["forgot", "Quên sổ"],
+];
+
+function formatTime(value) {
+    return String(value || "").slice(0, 5);
+}
 
 export default function ReceptionCheckInDialog({ appointment, onClose, onCheckedIn }) {
     const { revision } = useNotifications();
@@ -42,7 +62,9 @@ export default function ReceptionCheckInDialog({ appointment, onClose, onChecked
         setRecordsLoading(true);
         try {
             const [bookList, invoiceList, requestList] = await Promise.all([
-                getPatientBooks(patientId), getBookInvoices(patientId), getPatientBookRequests(patientId),
+                getPatientBooks(patientId),
+                getBookInvoices(patientId),
+                getPatientBookRequests(patientId),
             ]);
             if (requestId !== recordRequest.current) return;
             setBooks(bookList);
@@ -50,28 +72,43 @@ export default function ReceptionCheckInDialog({ appointment, onClose, onChecked
             setBookRequests(requestList.items);
             setLoadedPatientId(patientId);
             setError("");
-            setBookId(current => current && !bookList.some(book => book.patientBookId === Number(current) && book.status === "Issued") ? "" : current);
+            setBookId(current =>
+                current && !bookList.some(book => book.patientBookId === Number(current) && book.status === "Issued")
+                    ? ""
+                    : current
+            );
         } catch (err) {
             if (requestId === recordRequest.current) {
                 setLoadedPatientId(null);
                 setError(getApiErrorMessage(err));
             }
             throw err;
-        } finally { if (requestId === recordRequest.current) setRecordsLoading(false); }
+        } finally {
+            if (requestId === recordRequest.current) setRecordsLoading(false);
+        }
     }, [patientId]);
 
     useEffect(() => {
         if (!patientId) return;
-        const timer = setTimeout(() => { void refreshBooks().catch(() => {}); }, 0);
-        return () => { clearTimeout(timer); recordRequest.current += 1; };
+        const timer = setTimeout(() => {
+            void refreshBooks().catch(() => {});
+        }, 0);
+        return () => {
+            clearTimeout(timer);
+            recordRequest.current += 1;
+        };
     }, [patientId, revision, refreshBooks]);
 
     async function run(action) {
         setBusy(true);
         setError("");
-        try { await action(); }
-        catch (err) { setError(getApiErrorMessage(err)); }
-        finally { setBusy(false); }
+        try {
+            await action();
+        } catch (err) {
+            setError(getApiErrorMessage(err));
+        } finally {
+            setBusy(false);
+        }
     }
 
     async function openProfileEdit() {
@@ -111,52 +148,94 @@ export default function ReceptionCheckInDialog({ appointment, onClose, onChecked
     const books = loadedPatientId === patientId ? bookRecords : [];
     const invoices = loadedPatientId === patientId ? invoiceRecords : [];
     const hasOpenBookRequest = bookRequests.some(request => request.status !== "Issued");
-    const selectedBook = recordsLoaded ? books.find(book => book.patientBookId === Number(bookId) && book.status === "Issued" && book.patientId === patientId) : null;
-    const selectedInvoice = selectedBook?.bookInvoiceId ? invoices.find(invoice => invoice.bookInvoiceId === selectedBook.bookInvoiceId) : null;
+    const selectedBook = recordsLoaded
+        ? books.find(book => book.patientBookId === Number(bookId) && book.status === "Issued" && book.patientId === patientId)
+        : null;
+    const selectedInvoice = selectedBook?.bookInvoiceId
+        ? invoices.find(invoice => invoice.bookInvoiceId === selectedBook.bookInvoiceId)
+        : null;
     const bookPaid = Boolean(selectedBook && (!selectedBook.bookInvoiceId || selectedInvoice?.status === "Paid"));
-    const bookSituation = situation?.patientId === patientId ? situation.value : (books.some(book => book.patientId === patientId && book.status === "Issued") ? "present" : "none");
-    const currentBookKey = selectedBook ? `${patientId}:${selectedBook.patientBookId}:${selectedBook.bookNumber}` : `external:${patientId}:${existingBookNumber.trim()}`;
+    const bookSituation =
+        situation?.patientId === patientId
+            ? situation.value
+            : books.some(book => book.patientId === patientId && book.status === "Issued")
+            ? "present"
+            : "none";
+    const currentBookKey = selectedBook
+        ? `${patientId}:${selectedBook.patientBookId}:${selectedBook.bookNumber}`
+        : `external:${patientId}:${existingBookNumber.trim()}`;
     const presented = checkedBookKey === currentBookKey && Boolean(selectedBook || existingBookNumber.trim());
-    const readyInvoices = invoices.filter(invoice => invoice.status === "Paid"
-        && (!books.some(book => book.bookInvoiceId === invoice.bookInvoiceId)
-            || books.some(book => book.bookInvoiceId === invoice.bookInvoiceId && book.status === "Pending")));
+    const readyInvoices = invoices.filter(
+        invoice =>
+            invoice.status === "Paid" &&
+            (!books.some(book => book.bookInvoiceId === invoice.bookInvoiceId) ||
+                books.some(book => book.bookInvoiceId === invoice.bookInvoiceId && book.status === "Pending"))
+    );
     const today = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Ho_Chi_Minh" }).format(new Date());
-    const canCheckIn = appointment.status === "Confirmed" && !appointment.checkedInAt
-        && appointment.appointmentDate.slice(0, 10) === today
-        && recordsLoaded && bookSituation === "present" && bookPaid && presented;
+    const appointmentValidToday =
+        appointment.status === "Confirmed" &&
+        !appointment.checkedInAt &&
+        appointment.appointmentDate.slice(0, 10) === today;
+    const hasValidPaidBook = Boolean(recordsLoaded && bookSituation === "present" && bookPaid);
+    const canCheckIn = appointmentValidToday && Boolean(patientId) && hasValidPaidBook && presented;
 
-    return <Dialog open={Boolean(appointment)} onClose={busy ? undefined : onClose} fullWidth maxWidth="sm">
-        <DialogTitle>Tiếp nhận và kiểm tra sổ khám</DialogTitle>
-        <DialogContent>
-            <Stack spacing={2} sx={{ pt: 1 }}>
-                <Typography variant="body2">{appointment.patientName} · {appointment.patientPhone}</Typography>
-                {appointment.checkedInAt && <Alert severity="success">Lịch hẹn này đã được check-in.</Alert>}
-                {appointment.status !== "Confirmed" && <Alert severity="warning">Trạng thái lịch hẹn hiện tại không cho phép check-in.</Alert>}
-                <Alert severity="info">Đặt lịch trên web chưa cần sổ khám. Khi đến quầy, đối chiếu hồ sơ và kiểm tra sổ trước khi check-in.</Alert>
-                {error && <Alert severity="error" action={patientId && <Button disabled={busy} onClick={() => run(refreshBooks)}>Tải lại</Button>}>{error}</Alert>}
-                {!patientId ? <>
-                    <Typography variant="body2">Đối chiếu hồ sơ bệnh nhân theo tên và số điện thoại trước khi check-in.</Typography>
-                    <Button disabled={busy} variant="outlined" onClick={() => run(async () => {
-                        setMatches(await findPatientMatches(appointment.patientPhone));
-                        setMatchesSearched(true);
-                    })}>{busy ? "Đang tìm..." : "Tìm hồ sơ cũ"}</Button>
-                    {matchesSearched && !matches.length && <Typography variant="body2" color="text.secondary">Không tìm thấy hồ sơ theo số điện thoại này.</Typography>}
-                    {matches.length > 0 && <TextField select label="Hồ sơ trùng khớp" value={selectedPatientId}
-                        onChange={event => setSelectedPatientId(event.target.value)}>
-                        <MenuItem value="">Chọn hồ sơ</MenuItem>
-                        {matches.map(patient => <MenuItem key={patient.patientId} value={patient.patientId}>
-                            #{patient.patientId} · {patient.fullName} · {patient.phone}
-                        </MenuItem>)}
-                    </TextField>}
-                    <Stack direction="row" spacing={1}>
-                        <Button disabled={busy || !selectedPatientId} variant="contained" onClick={() => run(async () => {
-                            const updated = await matchAppointmentPatient(appointment.appointmentId, Number(selectedPatientId));
-                            setPatientId(updated.patientProfileId);
-                        })}>Liên kết hồ sơ cũ</Button>
-                        <Button disabled={busy} variant="outlined" onClick={() => run(async () => {
-                            const updated = await matchAppointmentPatient(appointment.appointmentId, null);
-                            setPatientId(updated.patientProfileId);
-                        })}>Tạo hồ sơ mới</Button>
+    const checklistItems = [
+        ["Lịch hẹn Đã xác nhận & đúng ngày hôm nay", appointmentValidToday],
+        ["Đã đối chiếu & gắn hồ sơ bệnh nhân", Boolean(patientId)],
+        ["Đã chọn sổ khám còn hiệu lực (Paid nếu cấp mới)", hasValidPaidBook],
+        ["Đã tích xác nhận kiểm tra sổ thực tế mang theo", Boolean(bookSituation === "present" && presented)],
+    ];
+
+    return (
+        <Dialog
+            open={Boolean(appointment)}
+            onClose={busy ? undefined : onClose}
+            fullWidth
+            maxWidth="sm"
+            slotProps={{
+                paper: {
+                    sx: {
+                        ...clinicDialogPaperSx,
+                        m: { xs: 1.25, sm: 2 },
+                        width: { xs: "calc(100% - 20px)", sm: "100%" },
+                    },
+                },
+            }}
+        >
+            <DialogTitle sx={{ p: { xs: 2, sm: 2.5 }, pb: 1.75, borderBottom: `1px solid ${clinicColors.border}`, bgcolor: "#F8FBFF" }}>
+                <Stack direction="row" spacing={1.5} sx={{ alignItems: "flex-start", justifyContent: "space-between" }}>
+                    <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", minWidth: 0 }}>
+                        <Box
+                            sx={{
+                                width: 42,
+                                height: 42,
+                                borderRadius: "11px",
+                                bgcolor: "#0B4F8A",
+                                color: "#FFFFFF",
+                                display: "grid",
+                                placeItems: "center",
+                                flexShrink: 0,
+                            }}
+                        >
+                            <FactCheckOutlined sx={{ fontSize: 22 }} />
+                        </Box>
+                        <Box sx={{ minWidth: 0 }}>
+                            <Typography sx={{ fontSize: { xs: 17.5, sm: 19 }, fontWeight: 800, color: clinicColors.heading, lineHeight: 1.25 }}>
+                                Tiếp nhận và kiểm tra sổ khám
+                            </Typography>
+                            <Stack direction="row" spacing={0.75} useFlexGap sx={{ alignItems: "center", flexWrap: "wrap", mt: 0.4 }}>
+                                <Typography sx={{ fontSize: 13.5, fontWeight: 700, color: "#0B4F8A", overflowWrap: "anywhere" }}>
+                                    {appointment.patientName} · {appointment.patientPhone}
+                                </Typography>
+                                {appointment.startTime && (
+                                    <Chip
+                                        size="small"
+                                        label={`${formatTime(appointment.startTime)} · ${appointment.doctorName || "Bác sĩ"}`}
+                                        sx={{ height: 22, fontSize: 11.5, fontWeight: 700, bgcolor: "#E6F0FA", color: "#0A2540" }}
+                                    />
+                                )}
+                            </Stack>
+                        </Box>
                     </Stack>
                 </> : <>
                     <Box sx={{ border: "1px solid #D8E4F0", borderRadius: "12px", bgcolor: "#F8FBFF", p: 2 }}>

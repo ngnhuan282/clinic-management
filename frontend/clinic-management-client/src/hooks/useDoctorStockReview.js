@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getDoctorStockReview, respondToStockReview } from "../api/stockReviewApi";
+import { applyStockReviewProposal, getDoctorStockReview, respondToStockReview } from "../api/stockReviewApi";
 import { getPrescriptionMedicineOptions } from "../api/prescriptionApi";
 import getApiErrorMessage from "../utils/errorHandler";
 
@@ -30,18 +30,23 @@ export default function useDoctorStockReview(reviewId, userId) {
         void reload();
         return () => { seq.current++; };
     }, [reload]);
-    async function respond(payload) {
+    async function submit(action, payload) {
         if (mutation.current || !current?.detail) return null;
         mutation.current = true;
         setBusyKey(key);
         const request = ++sequence.current;
         try {
-            const detail = await respondToStockReview(reviewId, payload);
+            const detail = await action(reviewId, payload);
             if (sequence.current === request && activeKey.current === key) setResult({ key, detail, options: current.options });
             return sequence.current === request && activeKey.current === key ? detail : null;
         } catch (error) { throw new Error(getApiErrorMessage(error), { cause: error }); }
         finally { mutation.current = false; setBusyKey(null); }
     }
     return { detail: current?.detail, options: current?.options || [], error: current?.error,
-        loading: Boolean(reviewId && userId && (!current || current.loading)), busy: Boolean(busyKey), reload, respond };
+        loading: Boolean(reviewId && userId && (!current || current.loading)), busy: Boolean(busyKey), reload,
+        respond: payload => submit(respondToStockReview, payload),
+        applyProposal: () => submit(applyStockReviewProposal, {
+            expectedReviewUpdatedAt: current?.detail?.review.updatedAt,
+            expectedPrescriptionUpdatedAt: current?.detail?.prescriptionUpdatedAt,
+        }) };
 }

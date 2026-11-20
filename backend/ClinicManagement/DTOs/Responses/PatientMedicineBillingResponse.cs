@@ -17,6 +17,8 @@ public class PatientMedicineInvoiceResponse
     public decimal TotalAmount { get; set; }
     public decimal? InsuranceAmount { get; set; }
     public decimal? PatientAmount { get; set; }
+    public decimal? PaidAmount { get; set; }
+    public decimal? RemainingAmount { get; set; }
     public IReadOnlyList<PatientMedicineInvoiceItemResponse> Details { get; set; } = [];
 }
 

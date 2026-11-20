@@ -35,6 +35,11 @@ function toPayloadDetails(details) {
     }));
 }
 
+function getPrescriptionContentKey({ notes, details = [] }) {
+    const lines = toPayloadDetails(details).sort((a, b) => a.medicineId - b.medicineId);
+    return JSON.stringify([notes?.trim() || "", lines]);
+}
+
 function buildStockStatus(medicine, quantity) {
     const availableQuantity = Number(medicine?.availableQuantity || 0);
     const requestedQuantity = Number(quantity || 0);
@@ -63,6 +68,8 @@ function usePrescriptionForm({ appointmentId }) {
     const [error, setError] = useState("");
     const [actionError, setActionError] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
+    const hasUnsavedChanges = !loading
+        && getPrescriptionContentKey(form) !== getPrescriptionContentKey(prescription || {});
 
     const medicineById = useMemo(() => {
         return new Map(
@@ -376,6 +383,7 @@ function usePrescriptionForm({ appointmentId }) {
         prescription,
         medicineOptions,
         form,
+        hasUnsavedChanges,
         detailSummaries,
         totals,
         loading,

@@ -4,6 +4,8 @@ export const STOCK_REVIEW_OUTCOMES = {
     Kept: "Giữ nguyên đơn",
     Applied: "Đã điều chỉnh đơn",
     AwaitingBilling: "Chờ đối soát hóa đơn",
+    BillingReconciled: "Đã ghi chứng từ điều chỉnh",
+    BillingVerified: "Đã xác nhận đối soát",
 };
 
 function normalizePrescription(prescription) {

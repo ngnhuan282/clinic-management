@@ -53,3 +53,16 @@ test("recheck cannot be prepared before doctor response, during billing, or afte
         assert.equal(buildStockReviewRecheckRequest({ reviews: [review] }), null);
     assert.equal(buildStockReviewRecheckRequest({}), null);
 });
+
+test("a billing adjustment entry keeps the prescription locked for reconciliation", () => {
+    const review = { status: "Pending", decisions: [
+        { action: "BillingAdjusted", outcome: "BillingReconciled", before: null, after: null },
+        { action: "AdjustPrescription", outcome: "AwaitingBilling" },
+    ] };
+    assert.equal(getStockReviewWorkflowStatus(review), "WaitingBilling");
+    assert.equal(buildStockReviewRecheckRequest({ reviews: [review] }), null);
+    review.decisions.unshift({ action: "BillingAdjusted", outcome: "BillingVerified" });
+    assert.equal(getStockReviewWorkflowStatus(review), "WaitingBilling");
+    review.decisions.unshift({ action: "ApplyBillingProposal", outcome: "Applied" });
+    assert.equal(getStockReviewWorkflowStatus(review), "WaitingPharmacyRecheck");
+});

@@ -9,8 +9,10 @@ const statuses = {
 export function getStockReviewWorkflowStatus(review) {
     if (review.status === "Resolved") return "Completed";
     if (review.status === "StillShortage") return "StillShortage";
+    if (review.workflowStatus && statuses[review.workflowStatus]) return review.workflowStatus;
     const outcome = review.decisions?.[0]?.outcome || review.lastOutcome;
-    if (outcome === "AwaitingBilling") return "WaitingBilling";
+    if (["AwaitingBilling", "BillingReconciled", "BillingVerified"].includes(outcome)
+        || review.decisions?.[0]?.action === "BillingAdjusted") return "WaitingBilling";
     if (["Kept", "Applied"].includes(outcome)) return "WaitingPharmacyRecheck";
     return "PendingDoctor";
 }
@@ -27,7 +29,7 @@ export function getStockReviewRecheckResultConfig(review) {
 
 export function getStockReviewLockedMessage(review) {
     switch (getStockReviewWorkflowStatus(review)) {
-        case "WaitingBilling": return "Đã gửi phương án điều chỉnh. Chưa áp dụng vào đơn thuốc; đang chờ bộ phận thu phí đối soát.";
+        case "WaitingBilling": return "Đơn thuốc đang chờ xác nhận đối soát và chưa thể chuyển sang bước kiểm tra lại tồn.";
         case "WaitingPharmacyRecheck": return "Đã gửi phản hồi chính thức. Đang chờ dược sĩ kiểm tra lại tồn.";
         case "StillShortage": return "Vòng rà soát đã kết thúc do vẫn thiếu thuốc. Phản hồi của bác sĩ được giữ nguyên trong nhật ký.";
         case "Completed": return "Vòng rà soát đã kết thúc sau khi đối chiếu đủ tồn.";

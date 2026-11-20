@@ -22,7 +22,10 @@ import {
     AccessTimeOutlined,
     CalendarMonthOutlined,
     CancelOutlined,
+    CheckCircleOutlined,
     FilterAltOutlined,
+    InfoOutlined,
+    LockClockOutlined,
     RefreshOutlined,
     RestartAltOutlined,
 } from "@mui/icons-material";
@@ -31,10 +34,10 @@ import useMyAppointments from "../../hooks/useMyAppointments";
 import ClinicPageHeader from "../../components/common/ClinicPageHeader";
 import EmptyState from "../../components/common/EmptyState";
 import StatusBadge from "../../components/common/StatusBadge";
-import AppointmentArrivalGuide from "../../components/patient/AppointmentArrivalGuide";
 import { cancelMyAppointment } from "../../api/patientAppointmentApi";
 import useAuth from "../../hooks/useAuth";
 import getApiErrorMessage from "../../utils/errorHandler";
+import { clinicToday } from "../../utils/publicBooking";
 import {
     clinicButtonSx,
     clinicColors,
@@ -61,6 +64,28 @@ const STATUS_BAR_COLOR = {
     Cancelled: "#DC2626",
 };
 
+const JOURNEY_STEPS = [
+    "1. Gửi đăng ký",
+    "2. Xác nhận lịch",
+    "3. Tiếp nhận & khám",
+    "4. Kết thúc khám",
+];
+
+function getJourneyProgress(status, checkedInAt) {
+    if (status === "Cancelled") return { activeIndex: -1, cancelled: true };
+    if (status === "Completed") return { activeIndex: 4, cancelled: false };
+    if (status === "InProgress" || checkedInAt) return { activeIndex: 2, cancelled: false };
+    if (status === "Confirmed") return { activeIndex: 1, cancelled: false };
+    return { activeIndex: 0, cancelled: false };
+}
+
+function addDaysIso(isoDate, days) {
+    const [year, month, day] = isoDate.split("-").map(Number);
+    const d = new Date(year, month - 1, day);
+    d.setDate(d.getDate() + days);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 const dateText = value => {
     const [year, month, day] = String(value || "").slice(0, 10).split("-");
     return day ? `${day}/${month}/${year}` : "Chưa có ngày khám";
@@ -71,11 +96,106 @@ const dateParts = value => {
 };
 const timeText = value => String(value || "").slice(0, 5);
 
+function AppointmentJourneyTrack({ status, checkedInAt }) {
+    const { activeIndex, cancelled } = getJourneyProgress(status, checkedInAt);
+
+    if (cancelled) {
+        return (
+            <Box
+                sx={{
+                    px: 1.75,
+                    py: 1.1,
+                    borderRadius: "10px",
+                    bgcolor: "#FEF2F2",
+                    border: "1px solid #FECACA",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                }}
+            >
+                <CancelOutlined sx={{ fontSize: 18, color: "#DC2626", flexShrink: 0 }} />
+                <Typography sx={{ fontSize: 13, fontWeight: 650, color: "#991B1B" }}>
+                    Lịch hẹn này đã dừng tiếp nhận và khung giờ khám đã được giải phóng.
+                </Typography>
+            </Box>
+        );
+    }
+
+    return (
+        <Box
+            sx={{
+                display: "grid",
+                gridTemplateColumns: { xs: "1fr 1fr", sm: "repeat(4, 1fr)" },
+                gap: 1,
+            }}
+        >
+            {JOURNEY_STEPS.map((label, idx) => {
+                const completed = idx < activeIndex || activeIndex === 4;
+                const current = idx === activeIndex && activeIndex < 4;
+                return (
+                    <Box
+                        key={label}
+                        sx={{
+                            px: 1.25,
+                            py: 0.85,
+                            borderRadius: "9px",
+                            bgcolor: completed ? "#ECFDF5" : current ? "#E6F0FA" : "#F8FAFC",
+                            border: "1px solid",
+                            borderColor: completed ? "#6EE7B7" : current ? "#0B4F8A" : "#E2E8F0",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 0.75,
+                            minWidth: 0,
+                        }}
+                    >
+                        {completed ? (
+                            <CheckCircleOutlined sx={{ fontSize: 15, color: "#059669", flexShrink: 0 }} />
+                        ) : (
+                            <Box
+                                sx={{
+                                    width: 10,
+                                    height: 10,
+                                    borderRadius: "50%",
+                                    bgcolor: current ? "#0B4F8A" : "#CBD5E1",
+                                    flexShrink: 0,
+                                }}
+                            />
+                        )}
+                        <Typography
+                            sx={{
+                                fontSize: 12,
+                                fontWeight: completed || current ? 800 : 600,
+                                color: completed ? "#065F46" : current ? "#0B4F8A" : "#64748B",
+                                lineHeight: 1.25,
+                                overflowWrap: "anywhere",
+                            }}
+                        >
+                            {label}
+                        </Typography>
+                    </Box>
+                );
+            })}
+        </Box>
+    );
+}
+
 function AppointmentCard({ appointment, onCancel, canCancel }) {
     const { appointmentId, status, checkedInAt, bookVerifiedAt } = appointment;
     const awaitingArrival = !checkedInAt && !["Cancelled", "Completed", "InProgress"].includes(status);
     const parts = dateParts(appointment.appointmentDate);
     const barColor = STATUS_BAR_COLOR[status] || "#64748B";
+
+    const nowVnIso = new Intl.DateTimeFormat("sv-SE", {
+        timeZone: "Asia/Ho_Chi_Minh",
+        dateStyle: "short",
+        timeStyle: "medium",
+    })
+        .format(new Date())
+        .replace(" ", "T");
+
+    const isFutureSlot = `${appointment.appointmentDate.slice(0, 10)}T${appointment.startTime}` > nowVnIso;
+    const isCancelEligibleStatus = ["Pending", "Confirmed"].includes(status);
+    const showCancelButton = canCancel && !checkedInAt && isCancelEligibleStatus && isFutureSlot;
 
     return (
         <Paper
@@ -84,7 +204,7 @@ function AppointmentCard({ appointment, onCancel, canCancel }) {
             variant="outlined"
             sx={{
                 ...clinicSurfaceSx,
-                p: { xs: 2.5, sm: 3 },
+                p: { xs: 2.25, sm: 3 },
                 borderRadius: "14px",
                 borderLeft: `5px solid ${barColor}`,
                 transition: "border-color 0.15s ease, box-shadow 0.15s ease",
@@ -95,10 +215,10 @@ function AppointmentCard({ appointment, onCancel, canCancel }) {
                 },
             }}
         >
-            <Stack spacing={2.25}>
+            <Stack spacing={2}>
                 <Stack
                     direction={{ xs: "column", sm: "row" }}
-                    spacing={2}
+                    spacing={1.5}
                     sx={{ justifyContent: "space-between", alignItems: { sm: "center" } }}
                 >
                     <Stack direction="row" spacing={1.75} sx={{ alignItems: "center", minWidth: 0 }}>
@@ -133,7 +253,7 @@ function AppointmentCard({ appointment, onCancel, canCancel }) {
                             >
                                 Lịch hẹn #{appointmentId}
                             </Typography>
-                            <Stack direction="row" spacing={0.75} sx={{ alignItems: "center", mt: 0.4, color: "#0B4F8A" }}>
+                            <Stack direction="row" spacing={0.75} sx={{ alignItems: "center", mt: 0.4, color: "#0B4F8A", flexWrap: "wrap" }}>
                                 <AccessTimeOutlined sx={{ fontSize: 16 }} />
                                 <Typography sx={{ fontSize: 14, fontWeight: 750, fontVariantNumeric: "tabular-nums" }}>
                                     {dateText(appointment.appointmentDate)} · {timeText(appointment.startTime)} – {timeText(appointment.endTime)}
@@ -145,6 +265,9 @@ function AppointmentCard({ appointment, onCancel, canCancel }) {
                         <StatusBadge status={status} />
                     </Box>
                 </Stack>
+
+                {/* 4-Step Visual Progress Tracker */}
+                <AppointmentJourneyTrack status={status} checkedInAt={checkedInAt} />
 
                 <Box
                     component="dl"
@@ -223,67 +346,77 @@ function AppointmentCard({ appointment, onCancel, canCancel }) {
                         )}
                     </Stack>
 
-                    {canCancel &&
-                        !checkedInAt &&
-                        ["Pending", "Confirmed"].includes(status) &&
-                        `${appointment.appointmentDate.slice(0, 10)}T${appointment.startTime}` >
-                        new Intl.DateTimeFormat("sv-SE", {
-                            timeZone: "Asia/Ho_Chi_Minh",
-                            dateStyle: "short",
-                            timeStyle: "medium",
-                        })
-                            .format(new Date())
-                            .replace(" ", "T") && (
-                            <Button
-                                color="error"
-                                variant="outlined"
-                                size="small"
-                                startIcon={<CancelOutlined sx={{ fontSize: 16 }} />}
-                                onClick={() => onCancel(appointment)}
-                                sx={{
-                                    textTransform: "none",
-                                    fontWeight: 700,
-                                    borderRadius: "8px",
-                                    borderColor: "#FCA5A5",
-                                    bgcolor: "#FEF2F2",
-                                    color: "#991B1B",
-                                    "&:hover": { bgcolor: "#FEE2E2", borderColor: "#EF4444" },
-                                }}
-                            >
-                                Hủy lịch hẹn
-                            </Button>
-                        )}
+                    {showCancelButton ? (
+                        <Button
+                            color="error"
+                            variant="outlined"
+                            size="small"
+                            startIcon={<CancelOutlined sx={{ fontSize: 16 }} />}
+                            onClick={() => onCancel(appointment)}
+                            sx={{
+                                textTransform: "none",
+                                fontWeight: 700,
+                                borderRadius: "8px",
+                                borderColor: "#FCA5A5",
+                                bgcolor: "#FEF2F2",
+                                color: "#991B1B",
+                                "&:hover": { bgcolor: "#FEE2E2", borderColor: "#EF4444" },
+                            }}
+                        >
+                            Hủy lịch hẹn
+                        </Button>
+                    ) : isCancelEligibleStatus && checkedInAt ? (
+                        <Stack direction="row" spacing={0.6} sx={{ alignItems: "center", color: "#475569" }}>
+                            <LockClockOutlined sx={{ fontSize: 16 }} />
+                            <Typography sx={{ fontSize: 12.5, fontWeight: 650 }}>
+                                Đã tiếp nhận tại quầy — liên hệ lễ tân nếu cần hỗ trợ
+                            </Typography>
+                        </Stack>
+                    ) : isCancelEligibleStatus && !isFutureSlot ? (
+                        <Stack direction="row" spacing={0.6} sx={{ alignItems: "center", color: "#64748B" }}>
+                            <LockClockOutlined sx={{ fontSize: 16 }} />
+                            <Typography sx={{ fontSize: 12.5, fontWeight: 650 }}>
+                                Đã đến/qua giờ hẹn — không thể hủy trực tuyến
+                            </Typography>
+                        </Stack>
+                    ) : null}
                 </Stack>
 
                 {status === "Pending" && (
-                    <Typography
+                    <Box
                         sx={{
-                            fontSize: 13.5,
-                            lineHeight: 1.65,
-                            color: "#92400E",
                             bgcolor: "#FFFBEB",
                             border: "1px solid #FCD34D",
                             p: 1.5,
                             borderRadius: "10px",
+                            display: "flex",
+                            gap: 1,
+                            alignItems: "flex-start",
                         }}
                     >
-                        Lịch hẹn đang chờ lễ tân xác nhận. Bạn chưa hoàn tất thủ tục check-in tại quầy.
-                    </Typography>
+                        <InfoOutlined sx={{ fontSize: 18, color: "#B45309", mt: 0.2, flexShrink: 0 }} />
+                        <Typography sx={{ fontSize: 13.5, lineHeight: 1.6, color: "#92400E" }}>
+                            <strong>Bước tiếp theo:</strong> Lịch hẹn đang chờ lễ tân kiểm tra và xác nhận. Bạn vẫn có thể chủ động hủy lịch trước giờ hẹn nếu thay đổi kế hoạch.
+                        </Typography>
+                    </Box>
                 )}
                 {status === "Confirmed" && !checkedInAt && (
-                    <Typography
+                    <Box
                         sx={{
-                            fontSize: 13.5,
-                            lineHeight: 1.65,
-                            color: "#0A2540",
                             bgcolor: "#EAF2FA",
                             border: "1px solid #90BCE6",
                             p: 1.5,
                             borderRadius: "10px",
+                            display: "flex",
+                            gap: 1,
+                            alignItems: "flex-start",
                         }}
                     >
-                        Lịch đã được xác nhận. Khi đến khám, vui lòng ghé quầy lễ tân trước 10–15 phút để xác minh sổ khám và check-in.
-                    </Typography>
+                        <InfoOutlined sx={{ fontSize: 18, color: "#0B4F8A", mt: 0.2, flexShrink: 0 }} />
+                        <Typography sx={{ fontSize: 13.5, lineHeight: 1.6, color: "#0A2540" }}>
+                            <strong>Bước tiếp theo:</strong> Lịch đã được xác nhận! Đúng ngày hẹn, vui lòng ghé <strong>Quầy lễ tân trước 10–15 phút</strong> kèm sổ khám giấy để xác minh sổ và làm thủ tục check-in.
+                        </Typography>
+                    </Box>
                 )}
             </Stack>
         </Paper>
@@ -298,6 +431,7 @@ export default function MyAppointmentsPage() {
     const [cancelTarget, setCancelTarget] = useState(null);
     const [cancelling, setCancelling] = useState(false);
     const [cancelError, setCancelError] = useState("");
+    const todayIso = clinicToday();
 
     async function confirmCancellation() {
         setCancelling(true);
@@ -314,15 +448,23 @@ export default function MyAppointmentsPage() {
         }
     }
 
+    function applyQuickRange(fromValue, toValue) {
+        setFilter("dateFrom", fromValue);
+        setFilter("dateTo", toValue);
+    }
+
+    const isTodayRange = filters.dateFrom === todayIso && filters.dateTo === todayIso;
+    const isNext7Days = filters.dateFrom === todayIso && filters.dateTo === addDaysIso(todayIso, 7);
+
     return (
         <Box sx={clinicPageCanvasSx}>
             <Container maxWidth="lg">
                 <Stack spacing={3}>
                     <ClinicPageHeader
-                        eyebrow="Theo dõi lịch khám"
+                        eyebrow="Theo dõi lịch khám & trạng thái tiếp nhận"
                         title="Lịch hẹn của tôi"
                         icon={CalendarMonthOutlined}
-                        description="Quản lý các lịch hẹn đã đặt, kiểm tra trạng thái tiếp nhận và hướng dẫn chuẩn bị trước khi đến quầy."
+                        description="Xem chi tiết tiến trình từng buổi hẹn, kiểm tra trạng thái xác nhận/check-in thời gian thực và chủ động hủy lịch khi chưa tiếp nhận tại quầy."
                         actions={
                             <Button
                                 component={Link}
@@ -336,16 +478,49 @@ export default function MyAppointmentsPage() {
                         }
                     />
 
-                    <AppointmentArrivalGuide />
-
                     {/* Filter Card */}
-                    <Paper variant="outlined" sx={{ ...clinicSurfaceSx, p: { xs: 2.5, sm: 3 }, borderRadius: "14px" }}>
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2, color: "primary.main" }}>
-                            <FilterAltOutlined fontSize="small" />
-                            <Typography sx={{ fontSize: 15, fontWeight: 750, color: "#0A2540" }}>
-                                Tìm kiếm & lọc lịch hẹn
-                            </Typography>
-                        </Box>
+                    <Paper variant="outlined" sx={{ ...clinicSurfaceSx, p: { xs: 2.25, sm: 3 }, borderRadius: "14px" }}>
+                        <Stack
+                            direction={{ xs: "column", sm: "row" }}
+                            spacing={1.25}
+                            sx={{ alignItems: { sm: "center" }, justifyContent: "space-between", mb: 2 }}
+                        >
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1, color: "primary.main" }}>
+                                <FilterAltOutlined fontSize="small" />
+                                <Typography sx={{ fontSize: 15, fontWeight: 750, color: "#0A2540" }}>
+                                    Tìm kiếm & lọc lịch hẹn
+                                </Typography>
+                            </Box>
+                            <Stack direction="row" spacing={0.75} useFlexGap sx={{ flexWrap: "wrap" }}>
+                                <Chip
+                                    size="small"
+                                    clickable
+                                    label="Lịch hôm nay"
+                                    onClick={() => applyQuickRange(todayIso, todayIso)}
+                                    sx={{
+                                        fontWeight: 700,
+                                        bgcolor: isTodayRange ? "#0B4F8A" : "#F1F6FB",
+                                        color: isTodayRange ? "#FFFFFF" : "#0B4F8A",
+                                        border: "1px solid #90BCE6",
+                                        "&:hover": { bgcolor: isTodayRange ? "#083A66" : "#E6F0FA" },
+                                    }}
+                                />
+                                <Chip
+                                    size="small"
+                                    clickable
+                                    label="7 ngày tới"
+                                    onClick={() => applyQuickRange(todayIso, addDaysIso(todayIso, 7))}
+                                    sx={{
+                                        fontWeight: 700,
+                                        bgcolor: isNext7Days ? "#0B4F8A" : "#F1F6FB",
+                                        color: isNext7Days ? "#FFFFFF" : "#0B4F8A",
+                                        border: "1px solid #90BCE6",
+                                        "&:hover": { bgcolor: isNext7Days ? "#083A66" : "#E6F0FA" },
+                                    }}
+                                />
+                            </Stack>
+                        </Stack>
+
                         <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
                             <TextField
                                 fullWidth
@@ -510,18 +685,23 @@ export default function MyAppointmentsPage() {
                         Hủy lịch hẹn #{cancelTarget?.appointmentId}
                     </DialogTitle>
                     <DialogContent>
-                        <Typography sx={{ fontSize: 15, color: "#1E293B", lineHeight: 1.65 }}>
-                            Bạn có chắc chắn muốn hủy lịch khám ngày{" "}
-                            <strong>{dateText(cancelTarget?.appointmentDate)}</strong> lúc{" "}
-                            <strong>{timeText(cancelTarget?.startTime)}</strong> không?
-                        </Typography>
-                        {cancelError && (
-                            <Alert severity="error" sx={{ mt: 2, borderRadius: "10px" }}>
-                                {cancelError}
+                        <Stack spacing={1.5}>
+                            <Typography sx={{ fontSize: 15, color: "#1E293B", lineHeight: 1.65 }}>
+                                Bạn có chắc chắn muốn hủy lịch khám ngày{" "}
+                                <strong>{dateText(cancelTarget?.appointmentDate)}</strong> lúc{" "}
+                                <strong>{timeText(cancelTarget?.startTime)}</strong> không?
+                            </Typography>
+                            <Alert severity="info" sx={{ borderRadius: "10px", fontSize: 13, bgcolor: "#F8FAFC" }}>
+                                Sau khi xác nhận hủy, khung giờ khám sẽ được giải phóng cho người bệnh khác và lịch hẹn vẫn được lưu trong lịch sử.
                             </Alert>
-                        )}
+                            {cancelError && (
+                                <Alert severity="error" sx={{ borderRadius: "10px" }}>
+                                    {cancelError}
+                                </Alert>
+                            )}
+                        </Stack>
                     </DialogContent>
-                    <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+                    <DialogActions sx={{ px: 3, pb: 2.5, gap: 1, flexWrap: "wrap" }}>
                         <Button
                             disabled={cancelling}
                             onClick={() => setCancelTarget(null)}

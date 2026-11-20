@@ -31,7 +31,10 @@ import {
     LocationOnOutlined,
     PersonOutlineOutlined,
     PhoneInTalkOutlined,
+    RadioButtonUncheckedOutlined,
+    RefreshOutlined,
     RestartAltOutlined,
+    SensorsOutlined,
     WarningAmberRounded,
 } from "@mui/icons-material";
 import { Link } from "react-router-dom";
@@ -40,16 +43,15 @@ import useAuth from "../../hooks/useAuth";
 import useBooking from "../../hooks/useBooking";
 import { useClinicInfo } from "../../api/publicApi";
 import ClinicPageHeader from "../../components/common/ClinicPageHeader";
-import AppointmentArrivalGuide from "../../components/patient/AppointmentArrivalGuide";
 import StatusBadge from "../../components/common/StatusBadge";
 import { clinicPageCanvasSx, clinicSurfaceSx } from "../../components/common/clinicUi";
 import { clinicToday } from "../../utils/publicBooking";
 
 const STEPS = [
-    ["Bước 1", "Chuyên khoa & bác sĩ"],
-    ["Bước 2", "Ngày & giờ khám"],
-    ["Bước 3", "Thông tin người khám"],
-    ["Bước 4", "Xác nhận đặt hẹn"],
+    ["Bước 1", "Chuyên khoa & bác sĩ", "Chọn nơi khám"],
+    ["Bước 2", "Ngày & giờ khám", "Khung 30 phút"],
+    ["Bước 3", "Thông tin người khám", "Liên hệ & triệu chứng"],
+    ["Bước 4", "Xác nhận đặt hẹn", "Kiểm tra & gửi"],
 ];
 
 function formatTime(value) {
@@ -90,6 +92,23 @@ function getDateCards(selectedDate, slots) {
     });
 }
 
+function stepCardBorderSx(active, done) {
+    if (active) {
+        return {
+            borderColor: "#0B4F8A",
+            borderLeft: "4px solid #0B4F8A",
+            boxShadow: "0 6px 20px rgba(11, 79, 138, 0.10)",
+        };
+    }
+    if (done) {
+        return {
+            borderColor: "#A7F3D0",
+            borderLeft: "4px solid #059669",
+        };
+    }
+    return {};
+}
+
 function BookingPage() {
     const { isAuthenticated, user } = useAuth();
     const clinic = useClinicInfo();
@@ -103,6 +122,7 @@ function BookingPage() {
 
     const morningSlots = booking.slots.filter(slot => formatTime(slot.startTime) < "12:00");
     const afternoonSlots = booking.slots.filter(slot => formatTime(slot.startTime) >= "12:00");
+    const availableCount = booking.slots.filter(slot => slot.isAvailable).length;
 
     const step1Done = Boolean(booking.selectedDepartmentId && booking.selectedDoctorId);
     const step2Done = Boolean(booking.selectedDate && booking.selectedSlot);
@@ -136,10 +156,10 @@ function BookingPage() {
             <Container maxWidth="lg">
                 <Stack spacing={3}>
                     <ClinicPageHeader
-                        eyebrow="Đặt lịch khám bệnh nhân"
+                        eyebrow="Đặt lịch khám trực tuyến · Không bắt buộc có sổ khám giấy"
                         title="Đặt lịch khám trực tuyến"
                         icon={CalendarMonthOutlined}
-                        description="Chủ động lựa chọn chuyên khoa, bác sĩ và khung giờ trống theo lịch làm việc thực tế tại phòng khám."
+                        description="Hoàn tất lần lượt 4 bước bên dưới để đặt khung giờ khám 30 phút. Hệ thống tự động kiểm tra ca bác sĩ đã duyệt và cập nhật chỗ trống theo thời gian thực."
                         actions={
                             <Button
                                 component={Link}
@@ -160,22 +180,24 @@ function BookingPage() {
                         }
                     />
 
-                    {/* Clean Solid 4-Step Progress Bar */}
+                    {/* Highlighted 4-Step Guided Stepper */}
                     <Grid container spacing={1.5}>
-                        {STEPS.map(([stepLabel, title], idx) => {
+                        {STEPS.map(([stepLabel, title, hint], idx) => {
                             const num = idx + 1;
                             const done = doneSteps.has(num);
                             const active = currentStep === num;
                             return (
-                                <Grid key={stepLabel} size={{ xs: 6, md: 3 }}>
+                                <Grid key={stepLabel} size={{ xs: 12, sm: 6, md: 3 }} sx={{ minWidth: 0 }}>
                                     <Paper
                                         variant="outlined"
                                         sx={{
                                             p: 1.75,
                                             height: "100%",
                                             borderRadius: "12px",
-                                            borderColor: done || active ? "#0B4F8A" : "#CEDCEB",
-                                            bgcolor: done ? "#E6F0FA" : active ? "#FFFFFF" : "#F8FAFC",
+                                            borderColor: done ? "#6EE7B7" : active ? "#0B4F8A" : "#CEDCEB",
+                                            borderWidth: active ? 2 : 1,
+                                            bgcolor: done ? "#ECFDF5" : active ? "#FFFFFF" : "#F8FAFC",
+                                            boxShadow: active ? "0 0 0 3px rgba(11, 79, 138, 0.14)" : "none",
                                             display: "flex",
                                             alignItems: "center",
                                             gap: 1.25,
@@ -183,33 +205,52 @@ function BookingPage() {
                                     >
                                         <Box
                                             sx={{
-                                                width: 30,
-                                                height: 30,
+                                                width: 32,
+                                                height: 32,
                                                 borderRadius: "50%",
-                                                bgcolor: done || active ? "#0B4F8A" : "#94A3B8",
+                                                bgcolor: done ? "#059669" : active ? "#0B4F8A" : "#94A3B8",
                                                 color: "#FFFFFF",
                                                 display: "grid",
                                                 placeItems: "center",
                                                 fontWeight: 800,
-                                                fontSize: 13,
+                                                fontSize: 13.5,
                                                 flexShrink: 0,
                                             }}
                                         >
                                             {done ? "✓" : num}
                                         </Box>
-                                        <Box sx={{ minWidth: 0 }}>
-                                            <Typography
-                                                sx={{
-                                                    fontSize: 11.5,
-                                                    fontWeight: 750,
-                                                    color: done || active ? "#0B4F8A" : "#475569",
-                                                    textTransform: "uppercase",
-                                                }}
-                                            >
-                                                {stepLabel}
-                                            </Typography>
-                                            <Typography sx={{ fontSize: 13.5, fontWeight: 750, color: "#0A2540", lineHeight: 1.3 }}>
+                                        <Box sx={{ minWidth: 0, flex: 1 }}>
+                                            <Stack direction="row" spacing={0.75} sx={{ alignItems: "center", flexWrap: "wrap" }}>
+                                                <Typography
+                                                    sx={{
+                                                        fontSize: 11,
+                                                        fontWeight: 800,
+                                                        color: done ? "#065F46" : active ? "#0B4F8A" : "#475569",
+                                                        textTransform: "uppercase",
+                                                        letterSpacing: "0.03em",
+                                                    }}
+                                                >
+                                                    {stepLabel}
+                                                </Typography>
+                                                {active && (
+                                                    <Chip
+                                                        size="small"
+                                                        label="Đang làm"
+                                                        sx={{
+                                                            height: 18,
+                                                            fontSize: 10.5,
+                                                            fontWeight: 800,
+                                                            bgcolor: "#0B4F8A",
+                                                            color: "#FFFFFF",
+                                                        }}
+                                                    />
+                                                )}
+                                            </Stack>
+                                            <Typography sx={{ fontSize: 13.5, fontWeight: 800, color: "#0A2540", lineHeight: 1.3, mt: 0.2 }}>
                                                 {title}
+                                            </Typography>
+                                            <Typography sx={{ fontSize: 12, color: done ? "#047857" : "#64748B", mt: 0.1 }}>
+                                                {done ? "Đã hoàn tất" : hint}
                                             </Typography>
                                         </Box>
                                     </Paper>
@@ -217,8 +258,6 @@ function BookingPage() {
                             );
                         })}
                     </Grid>
-
-                    <AppointmentArrivalGuide />
 
                     {booking.error && (
                         <Alert severity="error" sx={{ borderRadius: "12px" }}>
@@ -230,30 +269,46 @@ function BookingPage() {
                         <Alert severity="success" icon={<CheckCircleOutlined />} sx={{ borderRadius: "12px" }}>
                             Đã ghi nhận lịch khám mã <strong>#{booking.successAppointment.appointmentId}</strong> lúc{" "}
                             <strong>{formatTime(booking.successAppointment.startTime)}</strong> ngày{" "}
-                            <strong>{formatDateLabel(booking.successAppointment.appointmentDate)}</strong>.
+                            <strong>{formatDateLabel(booking.successAppointment.appointmentDate)}</strong>. Lịch đang ở trạng thái{" "}
+                            <strong>Chờ xác nhận</strong> — bạn có thể theo dõi tại mục{" "}
+                            <Link to="/my-appointments" style={{ fontWeight: 700, color: "inherit" }}>
+                                Lịch hẹn của tôi
+                            </Link>
+                            .
                         </Alert>
                     )}
 
                     <Grid container spacing={3} sx={{ alignItems: "flex-start" }}>
                         {/* Left Column: Booking Steps */}
-                        <Grid size={{ xs: 12, lg: 8 }}>
+                        <Grid size={{ xs: 12, lg: 8 }} sx={{ minWidth: 0 }}>
                             <Stack spacing={3}>
                                 {/* Card 1: Specialty & Doctor */}
-                                <Paper variant="outlined" sx={{ ...clinicSurfaceSx, p: { xs: 2.5, sm: 3.25 }, borderRadius: "16px" }}>
-                                    <Stack spacing={2.75}>
+                                <Paper
+                                    variant="outlined"
+                                    sx={{
+                                        ...clinicSurfaceSx,
+                                        p: { xs: 2.25, sm: 3.25 },
+                                        borderRadius: "16px",
+                                        ...stepCardBorderSx(currentStep === 1, step1Done),
+                                    }}
+                                >
+                                    <Stack spacing={2.5}>
                                         <SectionHeading
                                             icon={<LocalHospitalOutlined sx={{ fontSize: 22 }} />}
                                             title="1. Chọn chuyên khoa & bác sĩ"
-                                            subtitle="Chọn khoa điều trị để hiển thị danh sách bác sĩ đang phụ trách"
+                                            subtitle="Bước đầu tiên: chọn khoa khám, sau đó bấm chọn một thẻ bác sĩ bên dưới"
+                                            active={currentStep === 1}
+                                            done={step1Done}
                                         />
 
                                         <TextField
                                             select
                                             fullWidth
-                                            label="Chuyên khoa khám"
+                                            label="Chuyên khoa"
                                             value={booking.selectedDepartmentId}
                                             onChange={event => booking.setSelectedDepartmentId(event.target.value)}
                                             disabled={booking.loading.departments}
+                                            helperText="Chỉ hiển thị các chuyên khoa đang mở đặt lịch trực tuyến"
                                         >
                                             <MenuItem value="">-- Chọn chuyên khoa --</MenuItem>
                                             {booking.departments.map(department => (
@@ -263,11 +318,24 @@ function BookingPage() {
                                             ))}
                                         </TextField>
 
-                                        {booking.selectedDepartmentId && (
+                                        {booking.selectedDepartmentId ? (
                                             <Box>
-                                                <Typography sx={{ fontSize: 14, fontWeight: 750, color: "#0A2540", mb: 1.25 }}>
-                                                    Bác sĩ tiếp nhận trong chuyên khoa:
-                                                </Typography>
+                                                <Stack
+                                                    direction="row"
+                                                    spacing={1}
+                                                    sx={{ alignItems: "center", justifyContent: "space-between", mb: 1.25, flexWrap: "wrap" }}
+                                                >
+                                                    <Typography sx={{ fontSize: 14, fontWeight: 750, color: "#0A2540" }}>
+                                                        Bấm chọn bác sĩ tiếp nhận trong chuyên khoa:
+                                                    </Typography>
+                                                    {!booking.selectedDoctorId && !booking.loading.doctors && booking.doctors.length > 0 && (
+                                                        <Chip
+                                                            size="small"
+                                                            label="Cần chọn 1 bác sĩ"
+                                                            sx={{ bgcolor: "#FFFBEB", color: "#92400E", border: "1px solid #FCD34D", fontWeight: 700 }}
+                                                        />
+                                                    )}
+                                                </Stack>
                                                 {booking.loading.doctors ? (
                                                     <InlineLoading text="Đang tải danh sách bác sĩ..." />
                                                 ) : booking.doctors.length === 0 ? (
@@ -280,7 +348,7 @@ function BookingPage() {
                                                             const selected =
                                                                 booking.selectedDoctorId === String(doctor.doctorId);
                                                             return (
-                                                                <Grid size={{ xs: 12, sm: 6 }} key={doctor.doctorId}>
+                                                                <Grid size={{ xs: 12, sm: 6 }} key={doctor.doctorId} sx={{ minWidth: 0 }}>
                                                                     <DoctorSelectCard
                                                                         doctor={doctor}
                                                                         selected={selected}
@@ -296,112 +364,136 @@ function BookingPage() {
                                                     </Grid>
                                                 )}
                                             </Box>
+                                        ) : (
+                                            <Alert severity="info" sx={{ borderRadius: "10px", bgcolor: "#F0F7FF", color: "#0A2540" }}>
+                                                Hãy chọn <strong>Chuyên khoa</strong> ở ô trên để hiển thị danh sách bác sĩ phụ trách.
+                                            </Alert>
                                         )}
                                     </Stack>
                                 </Paper>
 
                                 {/* Card 2: Date & Time Slot */}
-                                <Paper variant="outlined" sx={{ ...clinicSurfaceSx, p: { xs: 2.5, sm: 3.25 }, borderRadius: "16px" }}>
-                                    <Stack spacing={2.75}>
+                                <Paper
+                                    variant="outlined"
+                                    sx={{
+                                        ...clinicSurfaceSx,
+                                        p: { xs: 2.25, sm: 3.25 },
+                                        borderRadius: "16px",
+                                        ...stepCardBorderSx(currentStep === 2, step2Done),
+                                    }}
+                                >
+                                    <Stack spacing={2.5}>
                                         <SectionHeading
                                             icon={<CalendarMonthOutlined sx={{ fontSize: 22 }} />}
                                             title="2. Chọn ngày & khung giờ khám"
-                                            subtitle={`Thời lượng mỗi khung giờ khoảng ${clinic.defaultSlotDurationMinutes} phút (Múi giờ Việt Nam UTC+7)`}
+                                            subtitle={`Mỗi khung giờ ${clinic.defaultSlotDurationMinutes} phút (UTC+7) · Chỉ mở các ca trực đã được phê duyệt`}
+                                            active={currentStep === 2}
+                                            done={step2Done}
                                         />
 
                                         {/* Quick 6-day selector */}
-                                        <Grid container spacing={1.25}>
-                                            {dateCards.map(card => {
-                                                const selected = booking.selectedDate === card.value;
-                                                return (
-                                                    <Grid size={{ xs: 4, sm: 4, md: 2 }} key={card.value}>
-                                                        <Button
-                                                            fullWidth
-                                                            onClick={() => booking.setSelectedDate(card.value)}
-                                                            sx={{
-                                                                height: 80,
-                                                                p: 1,
-                                                                borderRadius: "10px",
-                                                                border: selected
-                                                                    ? "2px solid #0B4F8A"
-                                                                    : "1px solid #B8CCE0",
-                                                                bgcolor: selected ? "#0B4F8A" : "#FFFFFF",
-                                                                color: selected ? "#FFFFFF" : "#0A2540",
-                                                                position: "relative",
-                                                                "&:hover": {
-                                                                    borderColor: "#0B4F8A",
-                                                                    bgcolor: selected ? "#083A66" : "#E6F0FA",
-                                                                },
-                                                            }}
-                                                        >
-                                                            {card.label && (
-                                                                <Chip
-                                                                    label={card.label}
-                                                                    size="small"
-                                                                    sx={{
-                                                                        position: "absolute",
-                                                                        top: -10,
-                                                                        height: 20,
-                                                                        bgcolor: selected ? "#FFFFFF" : "#0B4F8A",
-                                                                        color: selected ? "#0A2540" : "#FFFFFF",
-                                                                        fontSize: 10.5,
-                                                                        fontWeight: 800,
-                                                                    }}
-                                                                />
-                                                            )}
-                                                            <Stack spacing={0.25} sx={{ alignItems: "center" }}>
-                                                                <Typography
-                                                                    sx={{
-                                                                        color: selected ? "#E6F0FA" : "#475569",
-                                                                        fontSize: 12,
-                                                                        fontWeight: 650,
-                                                                    }}
-                                                                >
-                                                                    {card.dayName}
-                                                                </Typography>
-                                                                <Typography
-                                                                    sx={{
-                                                                        fontWeight: 800,
-                                                                        fontSize: 17,
-                                                                        fontVariantNumeric: "tabular-nums",
-                                                                        color: selected ? "#FFFFFF" : "#0A2540",
-                                                                    }}
-                                                                >
-                                                                    {card.day}/{card.month}
-                                                                </Typography>
-                                                                <Typography
-                                                                    sx={{
-                                                                        fontSize: 11.5,
-                                                                        fontWeight: 700,
-                                                                        color: selected
-                                                                            ? "#BAE6FD"
-                                                                            : card.availableCount === null
-                                                                            ? "#0B4F8A"
-                                                                            : card.availableCount > 0
-                                                                            ? "#065F46"
-                                                                            : "#92400E",
-                                                                    }}
-                                                                >
-                                                                    {card.availableCount === null
-                                                                        ? "Xem lịch"
-                                                                        : `${card.availableCount} chỗ`}
-                                                                </Typography>
-                                                            </Stack>
-                                                        </Button>
-                                                    </Grid>
-                                                );
-                                            })}
-                                        </Grid>
+                                        <Box>
+                                            <Typography sx={{ fontSize: 13, fontWeight: 700, color: "#334155", mb: 1.25 }}>
+                                                Chọn nhanh ngày khám trong 6 ngày tới:
+                                            </Typography>
+                                            <Grid container spacing={1.25}>
+                                                {dateCards.map(card => {
+                                                    const selected = booking.selectedDate === card.value;
+                                                    return (
+                                                        <Grid size={{ xs: 4, sm: 4, md: 2 }} key={card.value} sx={{ minWidth: 0 }}>
+                                                            <Button
+                                                                fullWidth
+                                                                onClick={() => booking.setSelectedDate(card.value)}
+                                                                sx={{
+                                                                    height: 82,
+                                                                    p: 0.75,
+                                                                    minWidth: 0,
+                                                                    borderRadius: "10px",
+                                                                    border: selected
+                                                                        ? "2px solid #0B4F8A"
+                                                                        : "1px solid #B8CCE0",
+                                                                    bgcolor: selected ? "#0B4F8A" : "#FFFFFF",
+                                                                    color: selected ? "#FFFFFF" : "#0A2540",
+                                                                    position: "relative",
+                                                                    "&:hover": {
+                                                                        borderColor: "#0B4F8A",
+                                                                        bgcolor: selected ? "#083A66" : "#E6F0FA",
+                                                                    },
+                                                                }}
+                                                            >
+                                                                {card.label && (
+                                                                    <Chip
+                                                                        label={card.label}
+                                                                        size="small"
+                                                                        sx={{
+                                                                            position: "absolute",
+                                                                            top: -10,
+                                                                            height: 20,
+                                                                            bgcolor: selected ? "#FFFFFF" : "#0B4F8A",
+                                                                            color: selected ? "#0A2540" : "#FFFFFF",
+                                                                            fontSize: 10,
+                                                                            fontWeight: 800,
+                                                                        }}
+                                                                    />
+                                                                )}
+                                                                <Stack spacing={0.2} sx={{ alignItems: "center" }}>
+                                                                    <Typography
+                                                                        sx={{
+                                                                            color: selected ? "#E6F0FA" : "#475569",
+                                                                            fontSize: 11.5,
+                                                                            fontWeight: 650,
+                                                                        }}
+                                                                    >
+                                                                        {card.dayName}
+                                                                    </Typography>
+                                                                    <Typography
+                                                                        sx={{
+                                                                            fontWeight: 800,
+                                                                            fontSize: { xs: 15, sm: 17 },
+                                                                            fontVariantNumeric: "tabular-nums",
+                                                                            color: selected ? "#FFFFFF" : "#0A2540",
+                                                                        }}
+                                                                    >
+                                                                        {card.day}/{card.month}
+                                                                    </Typography>
+                                                                    <Typography
+                                                                        sx={{
+                                                                            fontSize: 11,
+                                                                            fontWeight: 700,
+                                                                            color: selected
+                                                                                ? "#BAE6FD"
+                                                                                : card.availableCount === null
+                                                                                ? "#0B4F8A"
+                                                                                : card.availableCount > 0
+                                                                                ? "#065F46"
+                                                                                : "#92400E",
+                                                                        }}
+                                                                    >
+                                                                        {card.availableCount === null
+                                                                            ? "Xem lịch"
+                                                                            : `${card.availableCount} chỗ`}
+                                                                    </Typography>
+                                                                </Stack>
+                                                            </Button>
+                                                        </Grid>
+                                                    );
+                                                })}
+                                            </Grid>
+                                        </Box>
 
-                                        {/* Full calendar date picker */}
-                                        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ alignItems: { sm: "center" } }}>
+                                        {/* Full calendar date picker + Legend + Refresh */}
+                                        <Stack
+                                            direction={{ xs: "column", sm: "row" }}
+                                            spacing={1.5}
+                                            sx={{ alignItems: { sm: "center" }, justifyContent: "space-between", flexWrap: "wrap" }}
+                                        >
                                             <TextField
                                                 type="date"
                                                 label="Hoặc chọn ngày khám khác trên lịch"
                                                 value={booking.selectedDate}
                                                 onChange={e => booking.setSelectedDate(e.target.value)}
                                                 size="small"
-                                                sx={{ maxWidth: { sm: 290 }, width: "100%" }}
+                                                sx={{ maxWidth: { sm: 280 }, width: "100%" }}
                                                 slotProps={{
                                                     inputLabel: { shrink: true },
                                                     htmlInput: { min: clinicToday() },
@@ -415,17 +507,52 @@ function BookingPage() {
                                         {/* Time Slots */}
                                         {!booking.selectedDoctorId || !booking.selectedDate ? (
                                             <Alert severity="info" sx={{ borderRadius: "10px", bgcolor: "#EAF2FA", color: "#0A2540" }}>
-                                                Vui lòng chọn <strong>Bác sĩ</strong> và <strong>Ngày khám</strong> để xem các khung giờ còn trống.
+                                                Vui lòng hoàn tất chọn <strong>Bác sĩ</strong> (Bước 1) và <strong>Ngày khám</strong> để hiển thị bảng giờ trống.
                                             </Alert>
                                         ) : booking.loading.slots ? (
                                             <InlineLoading text="Đang kiểm tra khung giờ trống..." />
                                         ) : booking.slots.length === 0 ? (
                                             <Alert severity="info" sx={{ borderRadius: "10px" }}>
-                                                Bác sĩ chưa có lịch trực hoặc không còn khung giờ trống trong ngày{" "}
+                                                Bác sĩ chưa có ca trực được duyệt hoặc không còn khung giờ trống trong ngày{" "}
                                                 <strong>{formatDateLabel(booking.selectedDate)}</strong>. Vui lòng chọn ngày khác.
                                             </Alert>
                                         ) : (
-                                            <Stack spacing={2.5}>
+                                            <Stack spacing={2.25}>
+                                                <Stack
+                                                    direction={{ xs: "column", sm: "row" }}
+                                                    spacing={1}
+                                                    sx={{
+                                                        p: 1.5,
+                                                        borderRadius: "10px",
+                                                        bgcolor: "#F8FAFC",
+                                                        border: "1px solid #DCE7F2",
+                                                        alignItems: { sm: "center" },
+                                                        justifyContent: "space-between",
+                                                    }}
+                                                >
+                                                    <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap" }}>
+                                                        <SensorsOutlined sx={{ fontSize: 18, color: "#059669" }} />
+                                                        <Typography sx={{ fontSize: 13, color: "#334155", fontWeight: 650 }}>
+                                                            Còn <strong>{availableCount}</strong>/{booking.slots.length} khung giờ trống · Tự động khóa nếu vừa có người đặt trùng
+                                                        </Typography>
+                                                    </Stack>
+                                                    <Button
+                                                        type="button"
+                                                        size="small"
+                                                        startIcon={<RefreshOutlined sx={{ fontSize: 16 }} />}
+                                                        disabled={booking.loading.slots || booking.loading.submitting}
+                                                        onClick={() => booking.refreshSlots(true)}
+                                                        sx={{
+                                                            alignSelf: { xs: "flex-start", sm: "center" },
+                                                            textTransform: "none",
+                                                            fontWeight: 700,
+                                                            color: "#0B4F8A",
+                                                        }}
+                                                    >
+                                                        Làm mới giờ trống
+                                                    </Button>
+                                                </Stack>
+
                                                 {morningSlots.length > 0 && (
                                                     <SlotGroup
                                                         title="Ca sáng (Trước 12:00)"
@@ -446,7 +573,15 @@ function BookingPage() {
                                 </Paper>
 
                                 {/* Card 3: Patient Info & Reason */}
-                                <Paper variant="outlined" sx={{ ...clinicSurfaceSx, p: { xs: 2.5, sm: 3.25 }, borderRadius: "16px" }}>
+                                <Paper
+                                    variant="outlined"
+                                    sx={{
+                                        ...clinicSurfaceSx,
+                                        p: { xs: 2.25, sm: 3.25 },
+                                        borderRadius: "16px",
+                                        ...stepCardBorderSx(currentStep === 3, step3Done),
+                                    }}
+                                >
                                     <Stack spacing={2.5}>
                                         <Stack
                                             direction={{ xs: "column", sm: "row" }}
@@ -456,7 +591,9 @@ function BookingPage() {
                                             <SectionHeading
                                                 icon={<PersonOutlineOutlined sx={{ fontSize: 22 }} />}
                                                 title="3. Thông tin người khám & triệu chứng"
-                                                subtitle="Nhập thông tin liên hệ và lý do khám để bác sĩ nắm trước tình trạng"
+                                                subtitle="Điền đủ 3 trường bắt buộc (*) để lễ tân xác nhận và bác sĩ chuẩn bị trước"
+                                                active={currentStep === 3}
+                                                done={step3Done}
                                             />
                                             {(user?.fullName || user?.phone) && (
                                                 <Button
@@ -515,6 +652,7 @@ function BookingPage() {
                                                     fullWidth
                                                     multiline
                                                     minRows={3}
+                                                    helperText={`${booking.reason.length}/500 ký tự · Mô tả rõ triệu chứng giúp bác sĩ nắm bắt tình trạng nhanh hơn`}
                                                     slotProps={{ htmlInput: { maxLength: 500 } }}
                                                 />
                                             </Grid>
@@ -530,7 +668,7 @@ function BookingPage() {
                                             }}
                                         >
                                             <Stack direction="row" spacing={1.25} sx={{ alignItems: "flex-start" }}>
-                                                <WarningAmberRounded sx={{ color: "#B45309", mt: 0.15 }} />
+                                                <WarningAmberRounded sx={{ color: "#B45309", mt: 0.15, flexShrink: 0 }} />
                                                 <Typography sx={{ color: "#78350F", fontSize: 13.5, lineHeight: 1.6 }}>
                                                     <strong>Lưu ý cấp cứu:</strong> Nếu có triệu chứng khẩn cấp như đau tức ngực dữ dội, khó thở cấp tính hoặc sốt cao co giật, vui lòng gọi ngay{" "}
                                                     <strong>{clinic.phone}</strong> hoặc đến cơ sở cấp cứu gần nhất thay vì chờ lịch hẹn trực tuyến.
@@ -543,13 +681,16 @@ function BookingPage() {
                         </Grid>
 
                         {/* Right Column: Sticky Summary Panel */}
-                        <Grid size={{ xs: 12, lg: 4 }}>
+                        <Grid size={{ xs: 12, lg: 4 }} sx={{ minWidth: 0 }}>
                             <Stack spacing={2.5} sx={{ position: { lg: "sticky" }, top: 108 }}>
                                 <SummaryPanel
                                     booking={booking}
                                     clinic={clinic}
                                     primaryLocation={primaryLocation}
                                     currentStep={currentStep}
+                                    step1Done={step1Done}
+                                    step2Done={step2Done}
+                                    step3Done={step3Done}
                                     onSubmit={booking.submitBooking}
                                     onReset={booking.resetForm}
                                     isAuthenticated={isAuthenticated}
@@ -599,33 +740,52 @@ function BookingPage() {
     );
 }
 
-function SectionHeading({ icon, title, subtitle }) {
+function SectionHeading({ icon, title, subtitle, active, done }) {
     return (
-        <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
-            <Box
-                sx={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: "10px",
-                    bgcolor: "#0B4F8A",
-                    color: "#FFFFFF",
-                    display: "grid",
-                    placeItems: "center",
-                    flexShrink: 0,
-                }}
-            >
-                {icon}
-            </Box>
-            <Box sx={{ minWidth: 0 }}>
-                <Typography component="h2" sx={{ color: "#0A2540", fontSize: 18, fontWeight: 800, lineHeight: 1.3 }}>
-                    {title}
-                </Typography>
-                {subtitle && (
-                    <Typography sx={{ color: "#475569", fontSize: 13.5, mt: 0.25 }}>
-                        {subtitle}
+        <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1.25}
+            sx={{ justifyContent: "space-between", alignItems: { sm: "flex-start" } }}
+        >
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", minWidth: 0 }}>
+                <Box
+                    sx={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: "10px",
+                        bgcolor: done ? "#059669" : "#0B4F8A",
+                        color: "#FFFFFF",
+                        display: "grid",
+                        placeItems: "center",
+                        flexShrink: 0,
+                    }}
+                >
+                    {icon}
+                </Box>
+                <Box sx={{ minWidth: 0 }}>
+                    <Typography component="h2" sx={{ color: "#0A2540", fontSize: { xs: 16.5, sm: 18 }, fontWeight: 800, lineHeight: 1.3 }}>
+                        {title}
                     </Typography>
-                )}
-            </Box>
+                    {subtitle && (
+                        <Typography sx={{ color: "#475569", fontSize: 13.5, mt: 0.25 }}>
+                            {subtitle}
+                        </Typography>
+                    )}
+                </Box>
+            </Stack>
+            {done ? (
+                <Chip
+                    size="small"
+                    label="✓ Đã chọn"
+                    sx={{ alignSelf: "flex-start", bgcolor: "#ECFDF5", color: "#065F46", border: "1px solid #6EE7B7", fontWeight: 750 }}
+                />
+            ) : active ? (
+                <Chip
+                    size="small"
+                    label="Bước cần làm"
+                    sx={{ alignSelf: "flex-start", bgcolor: "#E6F0FA", color: "#0B4F8A", border: "1px solid #90BCE6", fontWeight: 750 }}
+                />
+            ) : null}
         </Stack>
     );
 }
@@ -653,6 +813,7 @@ function DoctorSelectCard({ doctor, selected, onClick }) {
                 borderRadius: "12px",
                 border: selected ? "2px solid #0B4F8A" : "1px solid #C5D8EC",
                 bgcolor: selected ? "#E6F0FA" : "#FFFFFF",
+                boxShadow: selected ? "0 4px 12px rgba(11, 79, 138, 0.12)" : "none",
                 color: "#1E293B",
                 "&:hover": {
                     borderColor: "#0B4F8A",
@@ -660,7 +821,7 @@ function DoctorSelectCard({ doctor, selected, onClick }) {
                 },
             }}
         >
-            <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", minWidth: 0 }}>
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", minWidth: 0, width: "100%" }}>
                 <Avatar
                     sx={{
                         width: 48,
@@ -674,7 +835,7 @@ function DoctorSelectCard({ doctor, selected, onClick }) {
                 >
                     {initials}
                 </Avatar>
-                <Box sx={{ minWidth: 0 }}>
+                <Box sx={{ minWidth: 0, flex: 1 }}>
                     <Stack direction="row" spacing={0.75} sx={{ alignItems: "center", flexWrap: "wrap" }}>
                         <Chip
                             label={doctor.title || "BS"}
@@ -691,6 +852,13 @@ function DoctorSelectCard({ doctor, selected, onClick }) {
                             <Typography sx={{ color: "#475569", fontSize: 12.5, fontWeight: 600 }}>
                                 {doctor.experienceYears} năm KN
                             </Typography>
+                        )}
+                        {selected && (
+                            <Chip
+                                label="Đang chọn"
+                                size="small"
+                                sx={{ height: 20, fontSize: 11, fontWeight: 800, bgcolor: "#059669", color: "#FFFFFF" }}
+                            />
                         )}
                     </Stack>
                     <Typography sx={{ color: "#0A2540", fontWeight: 800, fontSize: 15.5, mt: 0.35, overflowWrap: "anywhere" }}>
@@ -710,8 +878,8 @@ function SlotLegend() {
         <Stack direction="row" spacing={2} sx={{ alignItems: "center", flexWrap: "wrap", rowGap: 0.75 }}>
             {[
                 ["#0B4F8A", "Đang chọn"],
-                ["#E6F0FA", "Còn trống", "#0B4F8A"],
-                ["#E2E8F0", "Đã kín"],
+                ["#ECFDF5", "Còn chỗ", "#059669"],
+                ["#E2E8F0", "Đã kín chỗ"],
             ].map(([color, label, border]) => (
                 <Stack key={label} direction="row" spacing={0.65} sx={{ alignItems: "center" }}>
                     <Box
@@ -751,12 +919,12 @@ function SlotGroup({ title, slots, booking }) {
                                     border: selected
                                         ? "2px solid #0B4F8A"
                                         : slot.isAvailable
-                                        ? "1.5px solid #0B4F8A"
+                                        ? "1.5px solid #059669"
                                         : "1px solid #CBD5E1",
-                                    color: selected ? "#FFFFFF" : slot.isAvailable ? "#0A2540" : "#64748B",
-                                    bgcolor: selected ? "#0B4F8A" : slot.isAvailable ? "#E6F0FA" : "#F1F5F9",
+                                    color: selected ? "#FFFFFF" : slot.isAvailable ? "#065F46" : "#64748B",
+                                    bgcolor: selected ? "#0B4F8A" : slot.isAvailable ? "#ECFDF5" : "#F1F5F9",
                                     "&:hover": {
-                                        bgcolor: selected ? "#083A66" : "#D2E5F8",
+                                        bgcolor: selected ? "#083A66" : "#D1FAE5",
                                     },
                                 }}
                             >
@@ -764,8 +932,8 @@ function SlotGroup({ title, slots, booking }) {
                                     <Typography sx={{ fontWeight: 800, fontSize: 15, color: "inherit" }}>
                                         {formatTime(slot.startTime)}
                                     </Typography>
-                                    <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: selected ? "#E6F0FA" : slot.isAvailable ? "#0B4F8A" : "#64748B" }}>
-                                        {selected ? "Đang chọn" : slot.isAvailable ? "Còn chỗ" : "Đã kín"}
+                                    <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: selected ? "#E6F0FA" : slot.isAvailable ? "#047857" : "#64748B" }}>
+                                        {selected ? "Đang chọn" : slot.isAvailable ? "Còn chỗ" : "Đã kín chỗ"}
                                     </Typography>
                                 </Stack>
                             </Button>
@@ -782,40 +950,48 @@ function SummaryPanel({
     clinic,
     primaryLocation,
     currentStep,
+    step1Done,
+    step2Done,
+    step3Done,
     onSubmit,
     onReset,
     isAuthenticated,
 }) {
     const doctor = booking.selectedDoctor;
-    const canSubmit =
-        booking.selectedSlot &&
-        booking.patientName.trim() &&
-        booking.patientPhone.trim() &&
-        booking.reason.trim();
+    const canSubmit = Boolean(step1Done && step2Done && step3Done);
+    const checklist = [
+        ["Chọn chuyên khoa & bác sĩ", step1Done],
+        ["Chọn ngày & khung giờ còn chỗ", step2Done],
+        ["Nhập họ tên, SĐT & lý do khám", step3Done],
+    ];
 
     return (
         <Paper
             variant="outlined"
             sx={{
                 ...clinicSurfaceSx,
-                p: { xs: 2.5, sm: 3 },
+                p: { xs: 2.25, sm: 3 },
                 borderRadius: "16px",
                 borderColor: "#90BCE6",
                 borderTop: "4px solid #0B4F8A",
             }}
         >
             <Stack spacing={2.25}>
-                <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", gap: 1 }}>
+                <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
                     <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
                         <AssignmentTurnedInOutlined sx={{ color: "#0B4F8A" }} />
                         <Typography sx={{ color: "#0A2540", fontWeight: 800, fontSize: 18 }}>
-                            Phiếu tóm tắt đặt khám
+                            4. Phiếu tóm tắt đặt khám
                         </Typography>
                     </Stack>
                     <Chip
-                        label={`Bước ${currentStep}/4`}
+                        label={canSubmit ? "Sẵn sàng gửi" : `Bước ${currentStep}/4`}
                         size="small"
-                        sx={{ bgcolor: "#E6F0FA", color: "#0B4F8A", fontWeight: 750 }}
+                        sx={{
+                            bgcolor: canSubmit ? "#ECFDF5" : "#E6F0FA",
+                            color: canSubmit ? "#065F46" : "#0B4F8A",
+                            fontWeight: 750,
+                        }}
                     />
                 </Stack>
 
@@ -829,6 +1005,7 @@ function SummaryPanel({
                             bgcolor: "#E6F0FA",
                             color: "#0B4F8A",
                             fontWeight: 800,
+                            flexShrink: 0,
                         }}
                     >
                         {doctor?.fullName?.slice(0, 1) || "BS"}
@@ -853,7 +1030,11 @@ function SummaryPanel({
                         <SummaryRow
                             icon={<AccessTimeOutlined sx={{ fontSize: 18 }} />}
                             label="Giờ hẹn:"
-                            value={booking.selectedSlot ? formatTime(booking.selectedSlot.startTime) : "Chưa chọn"}
+                            value={
+                                booking.selectedSlot
+                                    ? `${formatTime(booking.selectedSlot.startTime)}${booking.selectedSlot.endTime ? ` – ${formatTime(booking.selectedSlot.endTime)}` : ""}`
+                                    : "Chưa chọn"
+                            }
                             highlight={Boolean(booking.selectedSlot)}
                         />
                         {primaryLocation && (
@@ -863,6 +1044,34 @@ function SummaryPanel({
                                 value={primaryLocation.name}
                             />
                         )}
+                    </Stack>
+                </Box>
+
+                {/* Live Completion Checklist */}
+                <Box
+                    sx={{
+                        p: 1.75,
+                        borderRadius: "12px",
+                        bgcolor: canSubmit ? "#ECFDF5" : "#F8FAFC",
+                        border: `1px solid ${canSubmit ? "#6EE7B7" : "#DCE7F2"}`,
+                    }}
+                >
+                    <Typography sx={{ fontSize: 12.5, fontWeight: 800, color: canSubmit ? "#065F46" : "#334155", mb: 1, textTransform: "uppercase", letterSpacing: "0.02em" }}>
+                        {canSubmit ? "Đã đủ thông tin xác nhận" : "Điều kiện để gửi lịch hẹn"}
+                    </Typography>
+                    <Stack spacing={0.75}>
+                        {checklist.map(([label, done]) => (
+                            <Stack key={label} direction="row" spacing={1} sx={{ alignItems: "center" }}>
+                                {done ? (
+                                    <CheckCircleOutlined sx={{ fontSize: 17, color: "#059669", flexShrink: 0 }} />
+                                ) : (
+                                    <RadioButtonUncheckedOutlined sx={{ fontSize: 17, color: "#94A3B8", flexShrink: 0 }} />
+                                )}
+                                <Typography sx={{ fontSize: 13, fontWeight: done ? 700 : 500, color: done ? "#065F46" : "#475569" }}>
+                                    {label}
+                                </Typography>
+                            </Stack>
+                        ))}
                     </Stack>
                 </Box>
 
@@ -881,7 +1090,7 @@ function SummaryPanel({
 
                 <Divider sx={{ borderColor: "#E2ECF5" }} />
 
-                <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "baseline" }}>
+                <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 1 }}>
                     <Typography sx={{ color: "#0A2540", fontWeight: 800, fontSize: 16 }}>
                         Tạm tính phí khám:
                     </Typography>
@@ -965,6 +1174,7 @@ function SummaryRow({ icon, label, value, highlight = false }) {
                     fontSize: 14,
                     fontWeight: 800,
                     textAlign: "right",
+                    fontVariantNumeric: "tabular-nums",
                 }}
             >
                 {value}
@@ -992,33 +1202,39 @@ function BookingSuccessDialog({ open, appointment, onClose }) {
                 </Stack>
             </DialogTitle>
             <DialogContent>
-                <Box
-                    sx={{
-                        mt: 1,
-                        p: 2.5,
-                        borderRadius: "12px",
-                        bgcolor: "#F4F7FA",
-                        border: "1px solid #C5D8EC",
-                    }}
-                >
-                    <Stack spacing={1.35}>
-                        <PopupRow
-                            label="Mã lịch hẹn"
-                            value={appointment?.appointmentId ? `#${appointment.appointmentId}` : "Đang cập nhật"}
-                        />
-                        <PopupRow label="Bác sĩ" value={appointment?.doctorName || "Đang cập nhật"} />
-                        <PopupRow label="Chuyên khoa" value={appointment?.departmentName || "Đang cập nhật"} />
-                        <PopupRow label="Ngày khám" value={formatDateLabel(appointment?.appointmentDate)} />
-                        <PopupRow
-                            label="Giờ khám"
-                            value={appointment?.startTime ? formatTime(appointment.startTime) : "Đang cập nhật"}
-                        />
-                        <PopupRow
-                            label="Trạng thái"
-                            value={<StatusBadge status={appointment?.status || "Pending"} />}
-                        />
-                    </Stack>
-                </Box>
+                <Stack spacing={2} sx={{ mt: 1 }}>
+                    <Box
+                        sx={{
+                            p: 2.5,
+                            borderRadius: "12px",
+                            bgcolor: "#F4F7FA",
+                            border: "1px solid #C5D8EC",
+                        }}
+                    >
+                        <Stack spacing={1.35}>
+                            <PopupRow
+                                label="Mã lịch hẹn"
+                                value={appointment?.appointmentId ? `#${appointment.appointmentId}` : "Đang cập nhật"}
+                            />
+                            <PopupRow label="Bác sĩ" value={appointment?.doctorName || "Đang cập nhật"} />
+                            <PopupRow label="Chuyên khoa" value={appointment?.departmentName || "Đang cập nhật"} />
+                            <PopupRow label="Ngày khám" value={formatDateLabel(appointment?.appointmentDate)} />
+                            <PopupRow
+                                label="Giờ khám"
+                                value={appointment?.startTime ? formatTime(appointment.startTime) : "Đang cập nhật"}
+                            />
+                            <PopupRow
+                                label="Trạng thái"
+                                value={<StatusBadge status={appointment?.status || "Pending"} />}
+                            />
+                        </Stack>
+                    </Box>
+
+                    <Alert severity="info" sx={{ borderRadius: "10px", bgcolor: "#EAF2FA", color: "#0A2540" }}>
+                        <strong>Bước tiếp theo:</strong> Chờ lễ tân xác nhận lịch. Khi đến khám, vui lòng có mặt trước{" "}
+                        <strong>10–15 phút</strong> tại quầy lễ tân kèm sổ khám giấy (hoặc làm thủ tục mua/cấp lại sổ tại quầy).
+                    </Alert>
+                </Stack>
             </DialogContent>
             <DialogActions sx={{ px: 3, pb: 3, flexWrap: "wrap", gap: 1 }}>
                 <Button

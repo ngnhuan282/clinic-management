@@ -117,19 +117,20 @@ function DispensingDetailContent({ detail, busy, onConfirm, onRequestReview, onR
             "& .MuiAlert-outlined.MuiAlert-colorInfo": { bgcolor: "#F3F8FF", borderColor: "#BFDBFE", color: "#1D4ED8" },
             "& .MuiAlert-outlined.MuiAlert-colorWarning": { bgcolor: "#FFFBEB", borderColor: "#FDE68A", color: "#92400E" },
             "& .MuiAlert-outlined.MuiAlert-colorSuccess": { bgcolor: "#ECFDF5", borderColor: "#A7F3D0", color: "#047857" } }}>
-        {detail.workflowStatus === "NeedsReview" && <Alert variant="outlined" severity={detail.paymentStatus === "Paid" ? "warning" : "info"}>
+        {detail.workflowStatus === "NeedsReview" && (activeReview || !detail.requiresPaperBookConfirmation) && <Alert variant="outlined" severity={detail.paymentStatus === "Paid" ? "warning" : "info"}>
             {reviewPhase === "PendingDoctor" ? "Đã gửi yêu cầu rà soát. Đang chờ bác sĩ phản hồi."
                 : reviewPhase === "WaitingPharmacyRecheck" ? "Bác sĩ đã phản hồi. Đang chờ kiểm tra lại tồn theo đơn hiện tại."
-                : awaitingBilling ? "Đang chờ bộ phận thu phí đối soát phương án điều chỉnh."
+                : awaitingBilling ? "Đang chờ xác nhận đối soát phương án điều chỉnh."
                 : latestReviewPhase === "StillShortage" ? "Vòng rà soát đã kết thúc, đơn vẫn thiếu tồn còn hạn. Đang chờ bổ sung kho."
                 : detail.paymentStatus === "Paid" ? "Tạm dừng cấp thuốc. Đơn đã thanh toán, cần phối hợp bác sĩ và bộ phận thu phí nếu điều chỉnh đơn."
                 : "Tạm dừng cấp thuốc; cần đối chiếu lại đơn và tồn còn hạn trước khi giao."}
         </Alert>}
-        {!dispensed && !activeReview && detail.hasSufficientStock && <Alert variant="outlined" severity="success">
+        {!dispensed && !activeReview && detail.hasSufficientStock && !detail.requiresPaperBookConfirmation && <Alert variant="outlined" severity="success">
             {latestReviewPhase === "Completed" ? `Rà soát RS-${String(latestReview.reviewId).padStart(5, "0")} đã đối chiếu đủ tồn.` : "Đơn hiện tại đủ tồn còn hạn."}
         </Alert>}
         {!dispensed && detail.paymentStatus !== "Paid" && <Alert variant="outlined" severity="warning">Chỉ được giao thuốc sau khi hóa đơn thuốc hoặc hóa đơn cuối đã thanh toán.</Alert>}
-        {awaitingBilling && <Alert variant="outlined" severity="warning">Phương án của bác sĩ đang chờ đối soát hóa đơn hoặc hoàn tiền. Đơn hiện tại chưa thay đổi; tiếp tục tạm dừng cấp thuốc.</Alert>}
+        {awaitingBilling && <Alert variant="outlined" severity="warning">Tạm dừng cấp thuốc cho đến khi đối soát hóa đơn và cập nhật đơn thuốc hoàn tất.</Alert>}
+        {detail.requiresPaperBookConfirmation && <Alert variant="outlined" severity="warning">Cần cập nhật, xác nhận lại sổ khám giấy và hoàn tất khám trước khi giao thuốc.</Alert>}
         {dispensed && <Alert variant="outlined" severity="success" icon={<CheckCircleOutlineOutlinedIcon />}>
             Đơn thuốc đã được giao và trừ kho.{detail.dispensedByName && ` Dược sĩ: ${detail.dispensedByName}.`}{dispensedTime && ` Thời gian: ${dispensedTime}.`}
         </Alert>}

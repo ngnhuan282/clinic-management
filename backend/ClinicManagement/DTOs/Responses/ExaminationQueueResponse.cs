@@ -17,6 +17,7 @@ public class ExaminationQueueResponse
     public string? PatientBookNumber { get; set; }
 
     public DateTime? BookVerifiedAt { get; set; }
+    public DateTime? CheckedInAt { get; set; }
 
     public string PatientName { get; set; } = string.Empty;
 
