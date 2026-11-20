@@ -1,5 +1,4 @@
 import {
-    Box,
     Chip,
     Paper,
     Stack,
@@ -8,12 +7,12 @@ import {
     TableCell,
     TableContainer,
     TableHead,
-    TablePagination,
     TableRow,
     TableSortLabel,
     Typography,
 } from "@mui/material";
 
+import { ClinicPagination } from "../../common/ClinicPageHeader";
 import EmptyState from "../../common/EmptyState";
 import formatCurrency from "../../../utils/formatCurrency";
 import formatDate from "../../../utils/formatDate";
@@ -287,33 +286,15 @@ function InventoryTable({
                 </Table>
             </TableContainer>
 
-            <Box
-                sx={{
-                    borderTop: "1px solid #E5E9F0",
-                    backgroundColor: "#FFFFFF",
-                }}
-            >
-                <TablePagination
-                    component="div"
-                    count={totalItems}
-                    page={Math.max(filters.pageNumber - 1, 0)}
-                    rowsPerPage={filters.pageSize}
-                    onPageChange={(_, page) =>
-                        onPageChange(page + 1)
-                    }
-                    onRowsPerPageChange={(event) =>
-                        onPageSizeChange(
-                            Number(event.target.value)
-                        )
-                    }
-                    rowsPerPageOptions={[5, 10, 20, 50]}
-                    labelRowsPerPage="Số dòng:"
-                    labelDisplayedRows={({ from, to, count }) =>
-                        `${from}-${to} trong ${count}`
-                    }
-                    sx={{ "& .MuiTablePagination-toolbar": { flexWrap: "wrap", justifyContent: "flex-end", pl: 1 } }}
-                />
-            </Box>
+            <ClinicPagination
+                page={filters.pageNumber}
+                pageSize={filters.pageSize}
+                totalItems={totalItems}
+                label="lô thuốc"
+                navLabel="Phân trang tồn kho thuốc"
+                onPageChange={onPageChange}
+                onPageSizeChange={onPageSizeChange}
+            />
         </Paper>
     );
 }

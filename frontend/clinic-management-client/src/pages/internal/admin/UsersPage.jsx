@@ -10,11 +10,11 @@ import {
     Skeleton,
     Stack,
     TextField,
+    Tooltip,
     Typography,
 } from "@mui/material";
 import {
     CheckCircleRounded,
-    DownloadRounded,
     LockOutlined,
     ManageAccountsRounded,
 } from "@mui/icons-material";
@@ -24,6 +24,7 @@ import ClinicPageHeader, {
 } from "../../../components/common/ClinicPageHeader";
 import {
     AdminAddIcon,
+    AdminExportIcon,
     AdminFilterIcon,
     AdminRefreshIcon,
     AdminResetIcon,
@@ -269,16 +270,20 @@ export default function UsersPage() {
                         <Typography sx={{ fontSize: 15, fontWeight: 750, color: clinicColors.heading }}>
                             Danh sách tài khoản ({users.totalItems} tài khoản phù hợp)
                         </Typography>
-                        <Button
-                            variant="outlined"
-                            size="small"
-                            startIcon={<DownloadRounded />}
-                            onClick={exportPage}
-                            disabled={!users.items.length}
-                            sx={clinicSecondaryButtonSx}
-                        >
-                            Xuất trang CSV
-                        </Button>
+                        <Tooltip title="Xuất danh sách tài khoản trên trang hiện tại ra CSV">
+                            <span>
+                                <Button
+                                    variant="outlined"
+                                    size="small"
+                                    startIcon={<AdminExportIcon />}
+                                    onClick={exportPage}
+                                    disabled={!users.items.length}
+                                    sx={clinicSecondaryButtonSx}
+                                >
+                                    Xuất trang CSV
+                                </Button>
+                            </span>
+                        </Tooltip>
                     </Stack>
 
                     {!users.items.length ? (

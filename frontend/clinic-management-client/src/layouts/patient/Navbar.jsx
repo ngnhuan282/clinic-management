@@ -175,18 +175,18 @@ export default function Navbar() {
                             onClick={close}
                             sx={{
                                 display: "flex",
-                                gap: 1.35,
+                                gap: { xs: 1, sm: 1.35 },
                                 alignItems: "center",
                                 textDecoration: "none",
                                 color: "primary.main",
                                 minWidth: 0,
-                                maxWidth: { xs: 205, sm: 255 },
+                                maxWidth: { xs: "calc(100% - 108px)", sm: 310, [DESKTOP_NAV_QUERY]: 265 },
                             }}
                         >
                             <Box
                                 sx={{
-                                    width: { xs: 40, sm: 44 },
-                                    height: { xs: 40, sm: 44 },
+                                    width: { xs: 38, sm: 44 },
+                                    height: { xs: 38, sm: 44 },
                                     display: "grid",
                                     placeItems: "center",
                                     bgcolor: "#0B4F8A",
@@ -195,23 +195,28 @@ export default function Navbar() {
                                     flexShrink: 0,
                                 }}
                             >
-                                <LocalHospital sx={{ fontSize: { xs: 22, sm: 25 } }} />
+                                <LocalHospital sx={{ fontSize: { xs: 21, sm: 25 } }} />
                             </Box>
                             <Box sx={{ minWidth: 0 }}>
                                 <Typography
-                                    noWrap
                                     sx={{
                                         fontWeight: 800,
-                                        fontSize: { xs: 15, sm: 16.5 },
-                                        lineHeight: 1.25,
+                                        fontSize: { xs: 14.5, sm: 16.5 },
+                                        lineHeight: 1.22,
                                         color: "#0A2540",
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                        whiteSpace: "nowrap",
                                     }}
+                                    title={clinic.name}
                                 >
                                     {clinic.name}
                                 </Typography>
                                 <Typography
                                     noWrap
+                                    title={clinic.tagline}
                                     sx={{
+                                        display: { xs: "none", sm: "block" },
                                         fontWeight: 650,
                                         fontSize: 12,
                                         lineHeight: 1.25,

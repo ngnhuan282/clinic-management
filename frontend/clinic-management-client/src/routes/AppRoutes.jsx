@@ -80,23 +80,22 @@ function UnauthorizedPage() {
     const rolesPage = state?.deniedPath === "/internal/roles-permissions";
 
     return (
-        <Box sx={{ py: { xs: 6, md: 10 }, px: 2, bgcolor: "#F4F8FB", minHeight: "70vh" }} role="alert">
+        <Box sx={{ py: { xs: 6, md: 10 }, px: 2, bgcolor: "#F4F7FA", minHeight: "70vh" }} role="alert">
             <Container maxWidth="sm">
                 <Paper
                     variant="outlined"
                     sx={{
                         p: { xs: 3.5, sm: 5 },
-                        borderRadius: "20px",
-                        borderColor: "#DCE7F2",
+                        borderRadius: "16px",
+                        borderColor: "#C5D8EC",
                         bgcolor: "#FFFFFF",
                         textAlign: "center",
-                        boxShadow: "0 8px 28px rgba(11, 37, 69, 0.05)",
                     }}
                 >
                     <Typography
                         variant="h4"
                         component="h1"
-                        sx={{ fontWeight: 800, color: "#0B2545", fontSize: { xs: 24, sm: 28 } }}
+                        sx={{ fontWeight: 800, color: "#0A2540", fontSize: { xs: 24, sm: 28 } }}
                     >
                         Không có quyền truy cập
                     </Typography>
@@ -107,7 +106,7 @@ function UnauthorizedPage() {
                             : "Tài khoản của bạn chưa được cấp quyền sử dụng chức năng này."}
                     </Typography>
 
-                    <Button component={Link} to="/" variant="contained" size="large" sx={{ borderRadius: "10px", px: 3 }}>
+                    <Button component={Link} to="/" variant="contained" size="large" sx={{ borderRadius: "10px", px: 3, boxShadow: "none" }}>
                         Về trang chủ
                     </Button>
                 </Paper>

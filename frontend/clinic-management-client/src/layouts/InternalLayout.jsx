@@ -51,6 +51,7 @@ import {
 import NotificationBell from "../components/common/NotificationBell";
 import RouteContent from "../components/common/RouteContent";
 import { AdminAddIcon, clinicColors } from "../components/common/clinicUi";
+import { useClinicInfo } from "../api/publicApi";
 import useAuth from "../hooks/useAuth";
 import {
     INTERNAL_PAGES,
@@ -96,31 +97,24 @@ const MENU_ICONS = {
 
 const ROLE_BRANDS = {
     Admin: {
-        title: "MediFlow Admin",
         subtitle: "Hệ thống Quản trị Y tế",
     },
     Cashier: {
-        title: "MediFlow Cashier",
         subtitle: "Nghiệp vụ Thu ngân",
     },
     Doctor: {
-        title: "MediFlow Doctor",
         subtitle: "Nghiệp vụ Lâm sàng",
     },
     DepartmentHead: {
-        title: "MediFlow Clinic",
         subtitle: "Điều hành Khoa phòng",
     },
     Receptionist: {
-        title: "MediFlow Desk",
         subtitle: "Tiếp đón & Điều phối",
     },
     LabTechnician: {
-        title: "MediFlow Lab",
         subtitle: "Xét nghiệm Cận lâm sàng",
     },
     Pharmacist: {
-        title: "MediFlow Pharmacy",
         subtitle: "Dược & Cấp phát thuốc",
     },
 };
@@ -152,9 +146,13 @@ function InternalLayout() {
         return groups;
     }, [pages]);
 
-    const brand = ROLE_BRANDS[role] || {
-        title: `MediFlow ${role || "Portal"}`,
+    const clinic = useClinicInfo();
+    const roleBrand = ROLE_BRANDS[role] || {
         subtitle: "Không gian nội bộ",
+    };
+    const brand = {
+        title: clinic.name,
+        subtitle: roleBrand.subtitle,
     };
     const roleLabel = ROLE_LABELS[role] || role || "Nội bộ";
     const initial =

@@ -50,6 +50,14 @@ function useMedicineCategories() {
                     getMedicineCategorySummary(),
                 ]);
 
+            if (categoryResult?.items?.length === 0 && filters.pageNumber > 1) {
+                const fallbackPage = Math.max(1, categoryResult.totalPages || filters.pageNumber - 1);
+                if (fallbackPage !== filters.pageNumber) {
+                    setFilters((current) => ({ ...current, pageNumber: fallbackPage }));
+                    return;
+                }
+            }
+
             setPagedData(categoryResult);
             setSummary(summaryResult);
         } catch (err) {
@@ -62,7 +70,7 @@ function useMedicineCategories() {
         } finally {
             setLoading(false);
         }
-    }, [requestParams]);
+    }, [requestParams, filters.pageNumber]);
 
     useEffect(() => {
         // Fetch remote data when query inputs change.

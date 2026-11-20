@@ -1,17 +1,16 @@
 import { useState } from "react";
 import {
     Alert,
-    Box,
     Button,
     Chip,
-    Paper,
     Snackbar,
     Stack,
-    Typography,
 } from "@mui/material";
-import AddCircleOutlineOutlinedIcon from "@mui/icons-material/AddCircleOutlineOutlined";
+import StorefrontRoundedIcon from "@mui/icons-material/StorefrontRounded";
 import VerifiedOutlinedIcon from "@mui/icons-material/VerifiedOutlined";
 
+import ClinicPageHeader from "../../../components/common/ClinicPageHeader";
+import { AdminAddIcon, clinicPrimaryButtonSx } from "../../../components/common/clinicUi";
 import ConfirmDialog from "../../../components/common/ConfirmDialog";
 import ErrorState from "../../../components/common/ErrorState";
 import Loading from "../../../components/common/Loading";
@@ -93,113 +92,36 @@ function SuppliersPage() {
     return (
         <>
             <Stack spacing={3}>
-                <Paper
-                    elevation={0}
-                    sx={{
-                        p: { xs: 2.5, md: 3.5 },
-                        borderRadius: 2,
-                        border: "1px solid #E5E9F0",
-                        backgroundColor: "#FFFFFF",
-                    }}
-                >
-                    <Stack
-                        direction={{ xs: "column", md: "row" }}
-                        alignItems={{
-                            xs: "flex-start",
-                            md: "center",
-                        }}
-                        justifyContent="space-between"
-                        gap={2}
-                        sx={{ width: "100%" }}
-                    >
-                        <Box sx={{ minWidth: 0, flex: 1 }}>
-                            <Stack
-                                direction="row"
-                                spacing={1}
-                                alignItems="center"
-                                flexWrap="wrap"
-                                useFlexGap
-                            >
-                                <Typography
-                                    variant="caption"
-                                    sx={{
-                                        color: "#6B7280",
-                                        fontWeight: 700,
-                                    }}
-                                >
-                                    Quản trị / Kho dược & Vật tư
-                                </Typography>
-
-                                <Chip
-                                    icon={
-                                        <VerifiedOutlinedIcon fontSize="small" />
-                                    }
-                                    label="Chuẩn GDP/GSP"
-                                    size="small"
-                                    sx={{
-                                        height: 24,
-                                        color: "#047857",
-                                        backgroundColor: "#ECFDF5",
-                                        border:
-                                            "1px solid #A7F3D0",
-                                        fontWeight: 700,
-                                    }}
-                                />
-                            </Stack>
-
-                            <Typography
-                                variant="h4"
-                                sx={{
-                                    mt: 1.5,
-                                    color: "#111827",
-                                    fontWeight: 800,
-                                    lineHeight: 1.25,
-                                }}
-                            >
-                                Danh sách nhà cung cấp
-                            </Typography>
-
-                            <Typography
-                                variant="body2"
-                                sx={{
-                                    mt: 1,
-                                    maxWidth: 820,
-                                    color: "#6B7280",
-                                    lineHeight: 1.7,
-                                }}
-                            >
-                                Quản lý đối tác cung ứng thuốc, thông
-                                tin liên hệ và dữ liệu liên kết với
-                                danh mục thuốc.
-                            </Typography>
-                        </Box>
-
+                <ClinicPageHeader
+                    icon={StorefrontRoundedIcon}
+                    eyebrow="Quản trị / Kho dược & Vật tư"
+                    title="Danh sách nhà cung cấp"
+                    description="Quản lý đối tác cung ứng thuốc, thông tin liên hệ và dữ liệu liên kết với danh mục thuốc."
+                    badge={
+                        <Chip
+                            icon={<VerifiedOutlinedIcon fontSize="small" />}
+                            label="Chuẩn GDP/GSP"
+                            size="small"
+                            sx={{
+                                height: 24,
+                                color: "#047857",
+                                backgroundColor: "#ECFDF5",
+                                border: "1px solid #A7F3D0",
+                                fontWeight: 700,
+                            }}
+                        />
+                    }
+                    actions={
                         <Button
                             variant="contained"
-                            startIcon={
-                                <AddCircleOutlineOutlinedIcon />
-                            }
+                            startIcon={<AdminAddIcon />}
                             onClick={handleCreate}
-                            sx={{
-                                minWidth: "auto",
-                                height: 42,
-                                px: 2.25,
-                                flexShrink: 0,
-                                alignSelf: {
-                                    xs: "flex-start",
-                                    md: "center",
-                                },
-                                ml: { md: "auto" },
-                                whiteSpace: "nowrap",
-                                fontWeight: 800,
-                                boxShadow:
-                                    "0 8px 18px rgba(25, 118, 210, 0.18)",
-                            }}
+                            sx={{ ...clinicPrimaryButtonSx, whiteSpace: "nowrap" }}
                         >
                             Thêm nhà cung cấp
                         </Button>
-                    </Stack>
-                </Paper>
+                    }
+                />
 
                 <PharmacyModuleTabs active="suppliers" />
 

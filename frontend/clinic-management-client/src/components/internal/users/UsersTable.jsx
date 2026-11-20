@@ -11,8 +11,8 @@ import {
     TableRow,
     Typography,
 } from "@mui/material";
-import { LockOpenRounded, LockOutlined, ManageAccountsRounded } from "@mui/icons-material";
-import { AdminEditIcon, clinicColors, clinicTableSx } from "../../common/clinicUi";
+import { ManageAccountsRounded } from "@mui/icons-material";
+import { AdminEditIcon, AdminLockIcon, AdminUnlockIcon, clinicColors, clinicTableSx } from "../../common/clinicUi";
 import { ROLE_LABELS } from "../../../routes/roleAccess";
 
 const date = (value) =>
@@ -161,9 +161,9 @@ export default function UsersTable({ items, userId, canEdit, canAssignRole, onAc
                                         color={user.status ? "warning" : "success"}
                                         startIcon={
                                             user.status ? (
-                                                <LockOutlined sx={{ fontSize: 16 }} />
+                                                <AdminLockIcon sx={{ fontSize: 16 }} />
                                             ) : (
-                                                <LockOpenRounded sx={{ fontSize: 16 }} />
+                                                <AdminUnlockIcon sx={{ fontSize: 16 }} />
                                             )
                                         }
                                         disabled={!canEdit || user.userId === userId}

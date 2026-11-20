@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Accordion, AccordionDetails, AccordionSummary, Box, Chip, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, Typography } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Box, Chip, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from "@mui/material";
 import ExpandMoreOutlinedIcon from "@mui/icons-material/ExpandMoreOutlined";
 import NotesOutlinedIcon from "@mui/icons-material/NotesOutlined";
 import EditNoteOutlinedIcon from "@mui/icons-material/EditNoteOutlined";
 import CompareArrowsOutlinedIcon from "@mui/icons-material/CompareArrowsOutlined";
+import { ClinicPagination } from "../../common/ClinicPageHeader";
 import { STOCK_REVIEW_OUTCOMES } from "../../../utils/stockReviewDecision";
 
 const formatTime = value => new Intl.DateTimeFormat("vi-VN", {
@@ -86,13 +87,22 @@ export default function StockReviewDecisionHistory({ decisions = [] }) {
                 </Accordion>}
             </Box>;
         })}
-        {decisions.length > 3 && <TablePagination component="div" count={decisions.length} page={visiblePage}
-            rowsPerPage={rowsPerPage} rowsPerPageOptions={[3, 5, 10]} labelRowsPerPage="Phản hồi/trang"
-            labelDisplayedRows={({ from, to, count }) => `${from}-${to} trong ${count}`}
-            onPageChange={(_, value) => setPage(value)}
-            onRowsPerPageChange={event => { setRowsPerPage(Number(event.target.value)); setPage(0); }}
-            getItemAriaLabel={type => type === "next" ? "Phản hồi cũ hơn" : "Phản hồi mới hơn"}
-            sx={{ mt: 2, borderTop: "1px solid #E5E9F0", "& .MuiTablePagination-toolbar": { px: 0, flexWrap: "wrap", justifyContent: "flex-end", rowGap: 1 },
-                "& .MuiTablePagination-spacer": { display: "none" }, "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows": { my: 1 } }} />}
+        {decisions.length > 3 && (
+            <Box sx={{ mt: 2 }}>
+                <ClinicPagination
+                    page={visiblePage + 1}
+                    pageSize={rowsPerPage}
+                    totalItems={decisions.length}
+                    pageSizeOptions={[3, 5, 10]}
+                    label="phản hồi"
+                    navLabel="Phân trang lịch sử phản hồi"
+                    onPageChange={nextPage => setPage(nextPage - 1)}
+                    onPageSizeChange={size => {
+                        setRowsPerPage(size);
+                        setPage(0);
+                    }}
+                />
+            </Box>
+        )}
     </Stack>;
 }

@@ -10,8 +10,8 @@ import {
     TableRow,
     Typography,
 } from "@mui/material";
-import { LinkRounded, LockOpenRounded, LockOutlined } from "@mui/icons-material";
-import { AdminEditIcon, clinicColors, clinicTableSx } from "../../common/clinicUi";
+import { LinkRounded } from "@mui/icons-material";
+import { AdminEditIcon, AdminLockIcon, AdminUnlockIcon, clinicColors, clinicTableSx } from "../../common/clinicUi";
 
 export default function StaffTable({ items, canManage, canLink, onAction }) {
     return (
@@ -85,7 +85,7 @@ export default function StaffTable({ items, canManage, canLink, onAction }) {
                                         size="small"
                                         variant="outlined"
                                         color={staff.isActive ? "warning" : "success"}
-                                        startIcon={staff.isActive ? <LockOutlined sx={{ fontSize: 16 }} /> : <LockOpenRounded sx={{ fontSize: 16 }} />}
+                                        startIcon={staff.isActive ? <AdminLockIcon sx={{ fontSize: 16 }} /> : <AdminUnlockIcon sx={{ fontSize: 16 }} />}
                                         disabled={!canManage}
                                         aria-label={`${staff.isActive ? "Khóa" : "Mở khóa"} ${staff.fullName}`}
                                         onClick={() => onAction("status", staff)}

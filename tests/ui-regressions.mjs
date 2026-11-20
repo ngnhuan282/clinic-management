@@ -30,15 +30,33 @@ let profile = null, createCalls = 0, failProfileCreate = true, failLab = true, b
 const output = ".tmp/ui-regressions";
 await mkdir(output, { recursive: true });
 
-async function contextFor(patient = false, role = "Patient") {
+async function contextFor(patient = false, role = "Patient", options = {}) {
     const sessionUser = role === "Patient" ? user : { ...user, role, fullName: "Quản trị kiểm thử",
-        permissions: ["billing.view", "billing.create", "billing.recordPayment"] };
+        permissions: [
+            "billing.view", "billing.create", "billing.recordPayment",
+            "pharmacy.manageCatalog", "pharmacy.viewInventory",
+            "appointments.view", "reviews.manage",
+        ] };
     const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
     if (patient) await context.addInitScript(({ user, site }) => {
         if (location.origin !== site) return;
         sessionStorage.setItem("accessToken", "ui-regression-token");
         sessionStorage.setItem("user", JSON.stringify(user));
     }, { user: sessionUser, site });
+    let medicines = Array.from({ length: 11 }, (_, i) => ({
+        medicineId: i + 1,
+        medicineCode: `MED-${String(i + 1).padStart(3, "0")}`,
+        medicineName: `Thuốc kiểm thử ${i + 1}`,
+        categoryId: 1,
+        categoryName: "Giảm đau",
+        supplierId: 1,
+        supplierName: "NCC Mẫu",
+        unit: "Viên",
+        unitPrice: 15000,
+        totalStockQuantity: 50,
+        stockStatus: "InStock",
+        isActive: true,
+    }));
     await context.route("**/*", async route => {
         const request = route.request();
         const url = new URL(request.url());
@@ -58,7 +76,7 @@ async function contextFor(patient = false, role = "Patient") {
         const invoice = { source: "Invoice", id: 19, billingStage: "Medicine", status: "PartiallyPaid", patientId: 123,
             patientName: user.fullName, appointmentId: 3, createdAt: "2026-11-20T08:00:00Z", totalAmount: 100000,
             insuranceAmount: 0, patientAmount: 100000, paidAmount: 25000, remainingAmount: 75000,
-            details: [{ name: "Thuốc kiểm thử", quantity: 2, unitPrice: 50000, total: 100000 }], payments: [receipt] };
+            details: [{ name: "Thuốc kiểm thử", itemName: "Thuốc kiểm thử", quantity: 2, unitPrice: 50000, total: 100000, totalPrice: 100000 }], payments: [receipt] };
         if (path === "/api/patients/me/invoices") return json(paginate([invoice]));
         if (path === "/api/admin-dashboard/summary") return json({ appointments: {}, inventory: {}, revenue: {} }, 200, true);
         if (path === "/api/admin-dashboard/appointments") {
@@ -71,7 +89,15 @@ async function contextFor(patient = false, role = "Patient") {
             const summary = { totalRevenue: included ? 150000 : 0, patientPayments: included ? 150000 : 0, insurancePayments: 0 };
             return json({ summary, dailyRevenue: included ? [{ date: "2026-10-11", ...summary }] : [] }, 200, true);
         }
-        if (path === "/api/invoices/pending") return json([], 200, true);
+        if (path === "/api/invoices/pending") {
+            const count = options.pendingCount || 0;
+            const rows = Array.from({ length: count }, (_, i) => ({
+                appointmentId: 700 + i + 1, patientId: 123, patientName: `BN Chờ Thu ${i + 1}`,
+                billingStage: "Book", totalAmount: 10000,
+                items: [{ sourceType: "Book", sourceId: i + 1, itemName: "Sổ khám", unitPrice: 10000, quantity: 1, totalPrice: 10000 }],
+            }));
+            return json(rows, 200, true);
+        }
         if (path === "/api/invoices/history") return json([{ ...invoice, invoiceType: "Standard", pendingStockReviewId: 29 }], 200, true);
         if (path === "/api/invoices/adjustment/preview") {
             assert.equal(request.postDataJSON().prescriptionStockReviewId, 29);
@@ -83,20 +109,39 @@ async function contextFor(patient = false, role = "Patient") {
             assert.equal(request.postDataJSON().adjustmentPatientAmount, -80000);
             return json({ id: 20 }, 200, true);
         }
+        if (path === "/api/medicines/summary") return json({ totalMedicines: medicines.length, lowStockMedicines: 0, outOfStockMedicines: 0, expiringSoonMedicines: 0 });
+        if (path === "/api/medicine-categories/options") return json([{ categoryId: 1, categoryName: "Giảm đau" }]);
+        if (path === "/api/suppliers/options") return json([{ supplierId: 1, supplierName: "NCC Mẫu" }]);
+        if (path === "/api/medicines") {
+            const q = (url.searchParams.get("search") || "").trim().toLowerCase();
+            const filtered = q ? medicines.filter(m => m.medicineName.toLowerCase().includes(q) || m.medicineCode.toLowerCase().includes(q)) : medicines;
+            const pageNumber = Math.max(1, Number(url.searchParams.get("pageNumber") || 1));
+            const pageSize = Math.max(1, Number(url.searchParams.get("pageSize") || 10));
+            const start = (pageNumber - 1) * pageSize;
+            return json({ items: filtered.slice(start, start + pageSize), pageNumber, pageSize, totalItems: filtered.length, totalPages: Math.max(1, Math.ceil(filtered.length / pageSize)) });
+        }
+        if (path.startsWith("/api/medicines/") && request.method() === "DELETE") {
+            const id = Number(path.split("/").pop());
+            medicines = medicines.filter(m => m.medicineId !== id);
+            return json({ deleted: true });
+        }
         if (path === "/api/appointments/departments") return json([{ departmentId: 1, code: "NOI", name: doctor.departmentName, description: "Thông tin chuyên khoa Nội tổng quát.", specializations }]);
         if (path === "/api/specializations/public") return json(specializations);
-        if (path === "/api/public/clinic-settings") return json({
-            clinicName: "Clinic Management System",
-            tagline: "Hệ thống quản lý phòng khám đa khoa",
-            description: "Kết nối người bệnh với các chuyên khoa và bác sĩ uy tín.",
-            phone: "1900 6868",
-            email: "contact@medclinic-system.vn",
-            workingHours: "07:30 – 20:00, Thứ Hai – Chủ Nhật",
-            locations: [{ name: "Cơ sở TP. Hồ Chí Minh", address: "128 Nguyễn Trãi, Quận 1, TP. Hồ Chí Minh" }],
-            defaultExaminationFee: 150000,
-            patientBookFee: 10000,
-            defaultSlotDurationMinutes: 30,
-        });
+        if (path === "/api/public/clinic-settings") {
+            if (options.failSettings) return json({ message: "Unavailable" }, 500, true);
+            return json({
+                clinicName: options.clinicName ?? "Clinic Management System",
+                tagline: "Hệ thống quản lý phòng khám đa khoa",
+                description: "Kết nối người bệnh với các chuyên khoa và bác sĩ uy tín.",
+                phone: "1900 6868",
+                email: "contact@medclinic-system.vn",
+                workingHours: "07:30 – 20:00, Thứ Hai – Chủ Nhật",
+                locations: [{ name: "Cơ sở TP. Hồ Chí Minh", address: "128 Nguyễn Trãi, Quận 1, TP. Hồ Chí Minh" }],
+                defaultExaminationFee: 150000,
+                patientBookFee: 10000,
+                defaultSlotDurationMinutes: 30,
+            });
+        }
         if (path === "/api/rooms/public") return json(doctor.rooms);
         if (path === "/api/doctors/public/1") return json(doctor);
         if (path === "/api/doctors/public") return json(paginate(url.searchParams.get("fullName") === "absent" ? [] : [doctor]));
@@ -149,7 +194,25 @@ try {
     for (const path of ["/", "/about", "/specialties", "/specialties/1", "/services", "/pricing", "/health-guide", "/health-guide/dat-lich-kham", "/contact", "/privacy", "/reviews", "/login", "/register", "/doctors/1"]) {
         await open(page, path);
         await bounds(page, "Desktop " + path);
+        const visualAudit = await page.evaluate(() => {
+            const text = document.body.innerText;
+            const hasGradient = [...document.querySelectorAll("*")].some(el => {
+                const bg = getComputedStyle(el).backgroundImage;
+                const beforeBg = getComputedStyle(el, "::before").backgroundImage;
+                const afterBg = getComputedStyle(el, "::after").backgroundImage;
+                return [bg, beforeBg, afterBg].some(val => /gradient\(/i.test(val || ""));
+            });
+            return {
+                title: document.title,
+                hasLegacyBrand: /MedClinic|MediFlow|Clinic Management System|ClinicManagementSystem/i.test(text + " " + document.title),
+                hasGradient,
+            };
+        });
+        assert.equal(visualAudit.hasLegacyBrand, false, "No legacy brand strings on " + path + " (title=" + visualAudit.title + ")");
+        assert.equal(visualAudit.hasGradient, false, "Zero gradients rendered on guest route " + path);
     }
+    await page.getByText("Phòng khám Đa khoa", { exact: false }).first().waitFor();
+    console.log("PASS Fallback branding 'Phòng khám Đa khoa' & zero CSS gradients verified across guest routes");
     await open(page, "/specialties");
     await page.getByText("Nội tổng quát chuyên sâu", { exact: false }).first().waitFor();
     await page.getByText("Khoa: Nội tổng quát", { exact: true }).waitFor();
@@ -213,10 +276,11 @@ try {
     await patient.getByRole("button", { name: /mở menu tài khoản/i }).click();
     await patient.getByRole("menuitem", { name: "Hóa đơn của tôi" }).click();
     await patient.getByRole("heading", { name: "Hóa đơn của tôi" }).waitFor();
+    await patient.getByRole("navigation", { name: "Tiện ích cổng bệnh nhân" }).getByRole("link", { name: "Hóa đơn của tôi" }).waitFor();
     await patient.getByRole("button", { name: /Thuốc · #19/ }).click();
     await patient.getByText(/PT-KIEM-THU/).waitFor();
     await patient.getByText("Còn phải thanh toán", { exact: true }).waitFor();
-    console.log("PASS Patient account menu opens invoice balances and recorded receipts");
+    console.log("PASS Patient account menu and portal nav open invoice balances and recorded receipts");
 
     const staff = await contextFor(true, "Admin");
     const admin = await staff.newPage();
@@ -248,6 +312,58 @@ try {
         }
     }
     await patient.screenshot({ path: output + "/patient-mobile.png", fullPage: true });
+
+    // Verify configured branding ("Phòng khám Đa khoa ABC") & unified Admin ClinicPagination + last-item delete clamp
+    const customCtx = await contextFor(true, "Admin", { clinicName: "Phòng khám Đa khoa ABC", pendingCount: 9 });
+    const customPage = await customCtx.newPage();
+    await open(customPage, "/");
+    await customPage.getByText("Phòng khám Đa khoa ABC", { exact: false }).first().waitFor();
+    const docTitle = await customPage.title();
+    assert(docTitle.includes("Phòng khám Đa khoa ABC"), "Document title reflects configured clinic name: " + docTitle);
+    await open(customPage, "/internal/dashboard");
+    await customPage.getByText("Phòng khám Đa khoa ABC", { exact: true }).first().waitFor();
+    assert.equal(await customPage.getByText(/MediFlow/).count(), 0, "Internal sidebar must not render MediFlow");
+
+    // Verify Cashier ClinicPagination & dynamic clinic name in print receipt HTML
+    await customPage.goto(site + "/internal/cashier/billing", { waitUntil: "networkidle" });
+    await customPage.getByRole("navigation", { name: "Phân trang hàng chờ thu ngân" }).getByText(/1–6 \/ 9/).waitFor();
+    await customPage.getByRole("navigation", { name: "Phân trang hàng chờ thu ngân" }).getByLabel("Go to page 2").click();
+    await customPage.getByRole("navigation", { name: "Phân trang hàng chờ thu ngân" }).getByText(/7–9 \/ 9/).waitFor();
+    await customPage.evaluate(() => {
+        window.__printedHtml = "";
+        window.open = () => ({
+            document: {
+                open() {},
+                write(str) { window.__printedHtml += str; },
+                close() {},
+            },
+        });
+    });
+    await customPage.getByRole("tab", { name: /Tra Cứu Hóa Đơn/ }).click();
+    await customPage.getByRole("button", { name: /Chi tiết & Phiếu thu/ }).first().click();
+    await customPage.getByRole("button", { name: /In Toàn Bộ Biên Lai/ }).click();
+    const printedHtml = await customPage.evaluate(() => window.__printedHtml);
+    assert(printedHtml.includes("PHÒNG KHÁM ĐA KHOA ABC"), "Print receipt uses configured clinic name");
+    assert(!printedHtml.includes("CLINIC MANAGEMENT"), "Print receipt excludes legacy hardcoded brand");
+
+    // Verify Medicines ClinicPagination, filter reset to page 1, and last-item delete fallback to previous page
+    await open(customPage, "/internal/medicines");
+    const medNav = customPage.getByRole("navigation", { name: "Phân trang danh mục thuốc" });
+    await medNav.getByText(/1–10 \/ 11/).waitFor();
+    await medNav.getByLabel("Go to page 2").click();
+    await medNav.getByText(/11–11 \/ 11/).waitFor();
+    await customPage.getByRole("button", { name: "Xóa Thuốc kiểm thử 11", exact: true }).click();
+    await customPage.getByRole("dialog").getByRole("button", { name: "Xóa thuốc", exact: true }).click();
+    await medNav.getByText(/1–10 \/ 10/).waitFor();
+    console.log("PASS Custom clinic branding ('Phòng khám Đa khoa ABC'), print header & unified ClinicPagination verified");
+
+    // Verify failed /api/public/clinic-settings falls back cleanly to "Phòng khám Đa khoa"
+    const fallbackCtx = await contextFor(false, "Patient", { failSettings: true });
+    const fallbackPage = await fallbackCtx.newPage();
+    await open(fallbackPage, "/");
+    await fallbackPage.getByText("Phòng khám Đa khoa", { exact: false }).first().waitFor();
+    console.log("PASS Failed clinic-settings endpoint falls back cleanly to 'Phòng khám Đa khoa'");
+
     assert.deepEqual(errors, [], "No browser runtime errors");
     assert.deepEqual(unexpected, [], "Every API request is an isolated known fixture");
     console.log("UI_REGRESSIONS_SUCCESS production rendering, interactions, responsive bounds; API responses mocked");

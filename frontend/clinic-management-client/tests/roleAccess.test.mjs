@@ -307,3 +307,12 @@ test("clinic settings normalization and validation enforce valid fees, slot dura
         ].sort()
     );
 });
+
+test("clinic settings fallback uses 'Phòng khám Đa khoa' when unconfigured or legacy placeholder and keeps configured names", () => {
+    for (const raw of [null, undefined, {}, { clinicName: "" }, { clinicName: "   " }, { clinicName: "Clinic Management System" }, { clinicName: "MedClinic" }, { clinicName: "MediFlow" }]) {
+        assert.equal(normalizeClinicInfo(raw).name, "Phòng khám Đa khoa");
+    }
+    assert.equal(normalizeClinicInfo({ clinicName: "Phòng khám Đa khoa ABC" }).name, "Phòng khám Đa khoa ABC");
+    assert.equal(normalizeClinicInfo({ email: "contact@medclinic-system.vn" }).email, CLINIC.email);
+    assert.equal(normalizeClinicInfo({ email: "cskh@phongkhamabc.vn" }).email, "cskh@phongkhamabc.vn");
+});

@@ -28,7 +28,6 @@ import {
     CheckCircleRounded,
     CloseRounded,
     DomainRounded,
-    DownloadRounded,
     LocationOnRounded,
     MedicalInformationRounded,
     MedicalServicesRounded,
@@ -48,6 +47,7 @@ import Loading from "../../components/common/Loading";
 import {
     AdminAddIcon,
     AdminEditIcon,
+    AdminExportIcon,
     AdminFilterIcon,
     AdminRefreshIcon,
     AdminResetIcon,
@@ -556,15 +556,19 @@ function CatalogResourcePage({ resource }) {
                 icon={config.icon}
                 actions={
                     <>
-                        <Button
-                            variant="outlined"
-                            startIcon={<DownloadRounded />}
-                            onClick={exportCsv}
-                            disabled={!data.items?.length}
-                            sx={clinicSecondaryButtonSx}
-                        >
-                            Xuất danh mục
-                        </Button>
+                        <Tooltip title="Xuất danh sách trang hiện tại ra tệp CSV">
+                            <span>
+                                <Button
+                                    variant="outlined"
+                                    startIcon={<AdminExportIcon />}
+                                    onClick={exportCsv}
+                                    disabled={!data.items?.length}
+                                    sx={clinicSecondaryButtonSx}
+                                >
+                                    Xuất trang CSV
+                                </Button>
+                            </span>
+                        </Tooltip>
                         <Button
                             variant="contained"
                             startIcon={<AdminAddIcon />}

@@ -5,6 +5,7 @@ import {
     HistoryOutlined,
     PersonOutlineOutlined,
     RateReviewOutlined,
+    ReceiptLongOutlined,
     ScienceOutlined,
     VerifiedUserOutlined,
 } from "@mui/icons-material";
@@ -18,6 +19,7 @@ const PATIENT_PORTAL_LINKS = [
     { label: "Lịch hẹn của tôi", path: "/my-appointments", icon: CalendarMonthOutlined },
     { label: "Lịch sử khám", path: "/medical-records", icon: HistoryOutlined },
     { label: "Kết quả xét nghiệm", path: "/lab-results", icon: ScienceOutlined },
+    { label: "Hóa đơn của tôi", path: "/invoices", icon: ReceiptLongOutlined },
     { label: "Đánh giá sau khám", path: "/my-reviews", icon: RateReviewOutlined },
     { label: "Hồ sơ cá nhân", path: "/profile", icon: PersonOutlineOutlined },
 ];
@@ -26,6 +28,7 @@ const PORTAL_PREFIXES = [
     "/my-appointments",
     "/medical-records",
     "/lab-results",
+    "/invoices",
     "/my-reviews",
     "/profile",
 ];

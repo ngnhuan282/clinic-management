@@ -1,12 +1,11 @@
 import {
-    Box,
     Chip,
-    Paper,
     Stack,
-    Typography,
 } from "@mui/material";
+import Inventory2RoundedIcon from "@mui/icons-material/Inventory2Rounded";
 import VerifiedOutlinedIcon from "@mui/icons-material/VerifiedOutlined";
 
+import ClinicPageHeader from "../../../components/common/ClinicPageHeader";
 import ErrorState from "../../../components/common/ErrorState";
 import Loading from "../../../components/common/Loading";
 import InventoryFilters from "../../../components/internal/medicines/InventoryFilters";
@@ -36,86 +35,26 @@ function InventoryPage() {
     return (
         <>
             <Stack spacing={3}>
-                <Paper
-                    elevation={0}
-                    sx={{
-                        p: { xs: 2.5, md: 3.5 },
-                        borderRadius: 2,
-                        border: "1px solid #E5E9F0",
-                        backgroundColor: "#FFFFFF",
-                    }}
-                >
-                    <Stack
-                        direction={{ xs: "column", md: "row" }}
-                        sx={{
-                            alignItems: { xs: "flex-start", md: "center" },
-                            justifyContent: "space-between",
-                            gap: 2,
-                            width: "100%",
-                        }}
-                    >
-                        <Box sx={{ minWidth: 0, flex: 1 }}>
-                            <Stack sx={{ alignItems: "center", flexWrap: "wrap" }}
-                                direction="row"
-                                spacing={1}
-                                useFlexGap
-                            >
-                                <Typography
-                                    variant="caption"
-                                    sx={{
-                                        color: "#6B7280",
-                                        fontWeight: 700,
-                                    }}
-                                >
-                                    {role === "Pharmacist" ? "Dược sĩ / Kho thuốc" : "Quản trị / Kho dược & Vật tư"}
-                                </Typography>
-
-                                <Chip
-                                    icon={
-                                        <VerifiedOutlinedIcon fontSize="small" />
-                                    }
-                                    label="Chuẩn GSP - FEFO"
-                                    size="small"
-                                    sx={{
-                                        height: 24,
-                                        color: "#047857",
-                                        backgroundColor: "#ECFDF5",
-                                        border:
-                                            "1px solid #A7F3D0",
-                                        fontWeight: 700,
-                                    }}
-                                />
-                            </Stack>
-
-                            <Typography
-                                variant="h4"
-                                sx={{
-                                    mt: 1.5,
-                                    color: "#111827",
-                                    fontWeight: 800,
-                                    lineHeight: 1.25,
-                                }}
-                            >
-                                Quản lý tồn kho theo lô thuốc
-                            </Typography>
-
-                            <Typography
-                                variant="body2"
-                                sx={{
-                                    mt: 1,
-                                    maxWidth: 820,
-                                    color: "#6B7280",
-                                    lineHeight: 1.7,
-                                }}
-                            >
-                                Theo dõi số lô, số lượng tồn và hạn dùng
-                                để cảnh báo tồn thấp, hết hạn và chuẩn bị
-                                kiểm tra tồn khi bác sĩ kê đơn.
-                            </Typography>
-                        </Box>
-
-                    </Stack>
-                </Paper>
+                <ClinicPageHeader
+                    icon={Inventory2RoundedIcon}
+                    eyebrow={role === "Pharmacist" ? "Dược sĩ / Kho thuốc" : "Quản trị / Kho dược & Vật tư"}
+                    title="Quản lý tồn kho theo lô thuốc"
+                    description="Theo dõi số lô, số lượng tồn và hạn dùng để cảnh báo tồn thấp, hết hạn và chuẩn bị kiểm tra tồn khi bác sĩ kê đơn."
+                    badge={
+                        <Chip
+                            icon={<VerifiedOutlinedIcon fontSize="small" />}
+                            label="Chuẩn GSP - FEFO"
+                            size="small"
+                            sx={{
+                                height: 24,
+                                color: "#047857",
+                                backgroundColor: "#ECFDF5",
+                                border: "1px solid #A7F3D0",
+                                fontWeight: 700,
+                            }}
+                        />
+                    }
+                />
 
                 <PharmacyModuleTabs active="inventory" />
 

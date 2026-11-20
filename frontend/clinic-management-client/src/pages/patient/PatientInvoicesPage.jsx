@@ -26,18 +26,41 @@ function InvoiceCard({ invoice }) {
         : [["Tổng chi phí", invoice.totalAmount], ["Phần BHYT", invoice.insuranceAmount], ["Bệnh nhân phải trả", invoice.patientAmount],
             ["Đã thanh toán sau hoàn tiền", invoice.paidAmount], ["Còn phải thanh toán", invoice.remainingAmount]];
     return (
-        <Accordion disableGutters>
-            <AccordionSummary expandIcon={<ExpandMoreRounded />}>
-                <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "center" }} sx={{ width: "100%", pr: 1 }}>
-                    <Box sx={{ flex: 1 }}>
-                        <Typography fontWeight={700}>{title} · #{invoice.id}</Typography>
-                        <Typography variant="body2" color="text.secondary">
+        <Accordion
+            disableGutters
+            elevation={0}
+            sx={{
+                border: "1px solid #CEDCEB",
+                borderRadius: "14px !important",
+                bgcolor: "#FFFFFF",
+                overflow: "hidden",
+                "&:before": { display: "none" },
+            }}
+        >
+            <AccordionSummary expandIcon={<ExpandMoreRounded />} sx={{ px: { xs: 2, sm: 2.5 }, py: 0.75 }}>
+                <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    spacing={1.25}
+                    sx={{ width: "100%", pr: 1, alignItems: { xs: "flex-start", sm: "center" }, justifyContent: "space-between" }}
+                >
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography fontWeight={750} sx={{ color: "#0A2540" }}>{title} · #{invoice.id}</Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ fontVariantNumeric: "tabular-nums" }}>
                             {dateTime.format(new Date(invoice.createdAt))}
                             {invoice.appointmentId ? ` · Lượt khám #${invoice.appointmentId}` : ""}
                         </Typography>
                     </Box>
-                    <Chip size="small" label={statuses[invoice.status] ?? invoice.status} color={invoice.status === "Paid" ? "success" : "default"} />
-                    <Typography fontWeight={700}>{currency.format(invoice.patientAmount)}</Typography>
+                    <Stack direction="row" spacing={1.25} sx={{ alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
+                        <Chip
+                            size="small"
+                            label={statuses[invoice.status] ?? invoice.status}
+                            color={invoice.status === "Paid" ? "success" : "default"}
+                            sx={{ fontWeight: 650 }}
+                        />
+                        <Typography fontWeight={800} sx={{ color: "#0B4F8A", fontVariantNumeric: "tabular-nums" }}>
+                            {currency.format(invoice.patientAmount)}
+                        </Typography>
+                    </Stack>
                 </Stack>
             </AccordionSummary>
             <AccordionDetails>
@@ -111,8 +134,12 @@ export default function PatientInvoicesPage() {
                             {current.page.items.length ? current.page.items.map(invoice => (
                                 <InvoiceCard key={`${invoice.source}-${invoice.id}`} invoice={invoice} />
                             )) : <EmptyState title="Chưa có hóa đơn" />}
-                            {current.page.totalPages > 1 && <Pagination aria-label="Trang hóa đơn" count={current.page.totalPages}
-                                page={pageNumber} onChange={(_, page) => setPage(page)} color="primary" />}
+                            {current.page.totalPages > 1 && (
+                                <Stack sx={{ alignItems: "center", pt: 1 }}>
+                                    <Pagination aria-label="Trang hóa đơn" count={current.page.totalPages}
+                                        page={pageNumber} onChange={(_, page) => setPage(page)} color="primary" />
+                                </Stack>
+                            )}
                         </>
                     )}
                 </Stack>

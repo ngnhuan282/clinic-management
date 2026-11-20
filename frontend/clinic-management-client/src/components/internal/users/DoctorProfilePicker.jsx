@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Alert, Box, Button, CircularProgress, MenuItem, Pagination, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, CircularProgress, MenuItem, Paper, Stack, TextField, Typography } from "@mui/material";
 import { getAvailableDoctorProfiles } from "../../../api/userApi";
+import { ClinicPagination } from "../../common/ClinicPageHeader";
 import { getApiErrorMessage } from "../../../utils/errorHandler";
 
 export default function DoctorProfilePicker({ value, onChange, disabled, error }) {
@@ -30,6 +31,18 @@ export default function DoctorProfilePicker({ value, onChange, disabled, error }
                 setSelected(doctor); onChange(event.target.value);
             }}><MenuItem value="">Chọn hồ sơ chưa liên kết</MenuItem>{displayed.map(item => <MenuItem key={item.doctorId} value={String(item.doctorId)}>{item.fullName} · {item.departmentName}</MenuItem>)}</TextField>
                 {!options.length && <Alert severity="info">Không có hồ sơ phù hợp chưa liên kết. Bạn có thể đổi từ khóa tìm kiếm.</Alert>}
-                {current.data.totalPages > 1 && <Pagination size="small" page={page} count={current.data.totalPages} onChange={(_, number) => setPage(number)} />}</>}
+                {current.data.totalPages > 1 && (
+                    <Paper variant="outlined" sx={{ borderRadius: 2, overflow: "hidden" }}>
+                        <ClinicPagination
+                            page={page}
+                            pageSize={10}
+                            totalItems={current.data.totalItems ?? options.length}
+                            label="hồ sơ"
+                            navLabel="Phân trang hồ sơ bác sĩ"
+                            borderTop={false}
+                            onPageChange={setPage}
+                        />
+                    </Paper>
+                )}</>}
     </Stack>;
 }

@@ -10,8 +10,7 @@ import {
     TableRow,
     Typography,
 } from "@mui/material";
-import { LockOpenRounded, LockOutlined } from "@mui/icons-material";
-import { AdminEditIcon, clinicColors, clinicTableSx } from "../../common/clinicUi";
+import { AdminEditIcon, AdminLockIcon, AdminUnlockIcon, clinicColors, clinicTableSx } from "../../common/clinicUi";
 
 export default function DoctorsTable({ items, canManage, onAction }) {
     return (
@@ -86,7 +85,7 @@ export default function DoctorsTable({ items, canManage, onAction }) {
                                         size="small"
                                         variant="outlined"
                                         color={doctor.isActive ? "warning" : "success"}
-                                        startIcon={doctor.isActive ? <LockOutlined sx={{ fontSize: 16 }} /> : <LockOpenRounded sx={{ fontSize: 16 }} />}
+                                        startIcon={doctor.isActive ? <AdminLockIcon sx={{ fontSize: 16 }} /> : <AdminUnlockIcon sx={{ fontSize: 16 }} />}
                                         disabled={!canManage}
                                         aria-label={`${doctor.isActive ? "Khóa" : "Mở khóa"} ${doctor.fullName}`}
                                         onClick={() => onAction("status", doctor)}

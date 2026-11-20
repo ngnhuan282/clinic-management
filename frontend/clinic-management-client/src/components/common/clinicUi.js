@@ -1,18 +1,25 @@
 import {
     AddRounded,
+    CancelOutlined,
+    CheckCircleOutlineRounded,
     DeleteOutlineRounded,
+    DownloadRounded,
     EditRounded,
+    LockOpenRounded,
+    LockOutlined,
     RefreshRounded,
     RestartAltRounded,
     SearchRounded,
     TuneRounded,
+    UploadFileRounded,
     VisibilityOffRounded,
     VisibilityRounded,
 } from "@mui/icons-material";
 
 // Unified single icon set across all internal admin & staff modules:
 // - CRUD: Xem / Thêm / Sửa / Xóa
-// - Filter: Tìm kiếm / Làm mới / Đặt lại
+// - Filter & Transfer: Tìm kiếm / Làm mới / Đặt lại / Xuất / Nhập
+// - State: Xác nhận / Hủy / Khóa / Mở khóa
 export {
     VisibilityRounded as AdminViewIcon,
     VisibilityOffRounded as AdminHideIcon,
@@ -23,6 +30,12 @@ export {
     RefreshRounded as AdminRefreshIcon,
     RestartAltRounded as AdminResetIcon,
     TuneRounded as AdminFilterIcon,
+    DownloadRounded as AdminExportIcon,
+    UploadFileRounded as AdminImportIcon,
+    LockOutlined as AdminLockIcon,
+    LockOpenRounded as AdminUnlockIcon,
+    CancelOutlined as AdminCancelIcon,
+    CheckCircleOutlineRounded as AdminConfirmIcon,
 };
 
 export const ADMIN_PAGE_SIZE_OPTIONS = [5, 10, 20];
@@ -198,6 +211,47 @@ export const adminDeleteIconButtonSx = {
         bgcolor: "#F8FAFC",
         borderColor: "#E2E8F0",
     },
+};
+
+export const adminLockIconButtonSx = {
+    width: 34,
+    height: 34,
+    borderRadius: "9px",
+    color: "#B45309",
+    bgcolor: "#FFFBEB",
+    border: "1px solid #FDE68A",
+    "&:hover": {
+        bgcolor: "#FEF3C7",
+        borderColor: "#D97706",
+    },
+    "&.Mui-disabled": {
+        color: "#CBD5E1",
+        bgcolor: "#F8FAFC",
+        borderColor: "#E2E8F0",
+    },
+};
+
+export const adminSuccessIconButtonSx = {
+    width: 34,
+    height: 34,
+    borderRadius: "9px",
+    color: "#059669",
+    bgcolor: "#ECFDF5",
+    border: "1px solid #A7F3D0",
+    "&:hover": {
+        bgcolor: "#D1FAE5",
+        borderColor: "#059669",
+    },
+    "&.Mui-disabled": {
+        color: "#CBD5E1",
+        bgcolor: "#F8FAFC",
+        borderColor: "#E2E8F0",
+    },
+};
+
+export const clinicNumericCellSx = {
+    fontVariantNumeric: "tabular-nums",
+    whiteSpace: "nowrap",
 };
 
 export const clinicTableSx = {

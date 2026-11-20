@@ -9,12 +9,12 @@ import {
     TableCell,
     TableContainer,
     TableHead,
-    TablePagination,
     TableRow,
     Typography,
 } from "@mui/material";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
-import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import { AdminViewIcon } from "../../common/clinicUi";
+import { ClinicPagination } from "../../common/ClinicPageHeader";
 
 import {
     getExaminationStatus,
@@ -54,7 +54,7 @@ function getActionConfig(status) {
             label: "Hồ sơ",
             color: "primary",
             variant: "outlined",
-            icon: <VisibilityOutlinedIcon />,
+            icon: <AdminViewIcon />,
         };
     }
 
@@ -339,20 +339,15 @@ function DoctorQueueTable({
                 </Table>
             </TableContainer>
 
-            <TablePagination
-                component="div"
-                count={pagination.totalItems}
-                page={pagination.pageNumber - 1}
-                rowsPerPage={pagination.pageSize}
-                rowsPerPageOptions={[7, 10, 20]}
-                labelRowsPerPage="Số ca/trang"
-                labelDisplayedRows={({ from, to, count }) =>
-                    `Hiển thị ${from}-${to} trong tổng số ${count} lượt khám`
-                }
-                onPageChange={(_, page) => onPageChange(page + 1)}
-                onRowsPerPageChange={(event) =>
-                    onPageSizeChange(Number(event.target.value))
-                }
+            <ClinicPagination
+                page={pagination.pageNumber}
+                pageSize={pagination.pageSize}
+                totalItems={pagination.totalItems}
+                pageSizeOptions={[7, 10, 20]}
+                label="lượt khám"
+                navLabel="Phân trang danh sách lịch khám"
+                onPageChange={onPageChange}
+                onPageSizeChange={onPageSizeChange}
             />
         </Paper>
     );

@@ -9,13 +9,13 @@ import {
     TableCell,
     TableContainer,
     TableHead,
-    TablePagination,
     TableRow,
     Typography,
 } from "@mui/material";
 import MedicationOutlinedIcon from "@mui/icons-material/MedicationOutlined";
-import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 
+import { ClinicPagination } from "../../common/ClinicPageHeader";
+import { AdminViewIcon, clinicSecondaryButtonSx } from "../../common/clinicUi";
 import EmptyState from "../../common/EmptyState";
 import formatCurrency from "../../../utils/formatCurrency";
 import formatDate from "../../../utils/formatDate";
@@ -183,12 +183,12 @@ function DispensingTable({
                                     <Button
                                         size="small"
                                         variant="outlined"
-                                        startIcon={<VisibilityOutlinedIcon />}
+                                        startIcon={<AdminViewIcon />}
                                         onClick={(event) => {
                                             event.stopPropagation();
                                             onSelect(item);
                                         }}
-                                        sx={{ whiteSpace: "nowrap", fontWeight: 800 }}
+                                        sx={{ ...clinicSecondaryButtonSx, minHeight: 34, whiteSpace: "nowrap" }}
                                     >
                                         Xem chi tiết
                                     </Button>
@@ -199,19 +199,15 @@ function DispensingTable({
                 </Table>
             </TableContainer>
 
-            <Box sx={{ borderTop: "1px solid #E5E9F0" }}>
-                <TablePagination
-                    component="div"
-                    count={pagination?.totalItems || 0}
-                    page={Math.max((filters.pageNumber || 1) - 1, 0)}
-                    onPageChange={(_, page) => onPageChange(page + 1)}
-                    rowsPerPage={filters.pageSize}
-                    onRowsPerPageChange={(event) => onPageSizeChange(Number(event.target.value))}
-                    rowsPerPageOptions={[5, 10, 20]}
-                    labelRowsPerPage="Số dòng/trang"
-                    labelDisplayedRows={({ from, to, count }) => `${from}-${to} trong ${count}`}
-                />
-            </Box>
+            <ClinicPagination
+                page={filters.pageNumber || 1}
+                pageSize={filters.pageSize}
+                totalItems={pagination?.totalItems || 0}
+                label="đơn thuốc"
+                navLabel="Phân trang danh sách cấp thuốc"
+                onPageChange={onPageChange}
+                onPageSizeChange={onPageSizeChange}
+            />
         </Paper>
     );
 }

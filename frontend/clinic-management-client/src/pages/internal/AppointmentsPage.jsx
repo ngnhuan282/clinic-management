@@ -17,7 +17,6 @@ import {
     TableCell,
     TableContainer,
     TableHead,
-    TablePagination,
     TableRow,
     TextField,
     Typography,
@@ -51,7 +50,7 @@ import { findPatientMatches } from "../../api/receptionApi";
 import ReceptionCheckInDialog from "../../components/internal/ReceptionCheckInDialog";
 import AppointmentDialogs from "../../components/internal/appointments/AppointmentDialogs";
 import { getAvailableSlots, getDepartments, getDoctorsByDepartment } from "../../api/bookingApi";
-import ClinicPageHeader from "../../components/common/ClinicPageHeader";
+import ClinicPageHeader, { ClinicPagination } from "../../components/common/ClinicPageHeader";
 import StatusBadge from "../../components/common/StatusBadge";
 import { getApiErrorMessage } from "../../utils/errorHandler";
 import { formatDate } from "../../utils/formatDate";
@@ -224,6 +223,16 @@ export default function AppointmentsPage() {
         }, 0);
         return () => clearTimeout(timer);
     }, [revision, appointmentEvent, bookInvoiceEvent, patientBookEvent]);
+
+    useEffect(() => {
+        if (loading || error || items.length > 0 || query.pageNumber <= 1) return undefined;
+        const totalPages = Math.max(1, Math.ceil(totalItems / query.pageSize));
+        if (query.pageNumber <= totalPages) return undefined;
+        const timer = setTimeout(() => {
+            setQuery(current => ({ ...current, pageNumber: totalPages }));
+        }, 0);
+        return () => clearTimeout(timer);
+    }, [error, items.length, loading, query.pageNumber, query.pageSize, totalItems]);
 
     function changeFilter(key, value) {
         setQuery(current => ({ ...current, [key]: value, pageNumber: 1 }));
@@ -1182,20 +1191,20 @@ export default function AppointmentsPage() {
                     </Table>
                 </TableContainer>
 
-                <TablePagination
-                    component="div"
-                    count={totalItems}
-                    page={query.pageNumber - 1}
-                    rowsPerPage={query.pageSize}
-                    rowsPerPageOptions={[10, 20, 50]}
-                    labelRowsPerPage="Số dòng"
-                    labelDisplayedRows={({ from, to, count }) => `${from}-${to} / ${count}`}
-                    onPageChange={(_, page) => setQuery(current => ({ ...current, pageNumber: page + 1 }))}
-                    onRowsPerPageChange={event =>
+                <ClinicPagination
+                    page={query.pageNumber}
+                    pageSize={query.pageSize}
+                    totalItems={totalItems}
+                    pageSizeOptions={[10, 20, 50]}
+                    label="lịch hẹn"
+                    navLabel="Phân trang danh sách lịch hẹn"
+                    disabled={loading}
+                    onPageChange={pageNumber => setQuery(current => ({ ...current, pageNumber }))}
+                    onPageSizeChange={pageSize =>
                         setQuery(current => ({
                             ...current,
                             pageNumber: 1,
-                            pageSize: Number(event.target.value),
+                            pageSize,
                         }))
                     }
                 />

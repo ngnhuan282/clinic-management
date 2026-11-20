@@ -1,13 +1,32 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Avatar, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, InputAdornment, LinearProgress, MenuItem, Pagination, Paper, Skeleton, Stack, Tab, Tabs, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Tooltip, Typography } from "@mui/material";
-import { CheckCircleOutlineOutlined, CancelOutlined, FactCheckOutlined, FilterListOutlined, RefreshOutlined, RestartAltOutlined, SearchOutlined, VisibilityOutlined, WarningAmberOutlined } from "@mui/icons-material";
+import { Alert, Avatar, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, InputAdornment, LinearProgress, MenuItem, Paper, Skeleton, Stack, Tab, Tabs, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Tooltip, Typography } from "@mui/material";
+import { FactCheckOutlined, WarningAmberOutlined } from "@mui/icons-material";
 import scheduleRequestApi from "../../api/scheduleRequestApi";
 import { getApiErrorMessage } from "../../utils/errorHandler";
 import useAuth from "../../hooks/useAuth";
 import useNotifications from "../../hooks/useNotifications";
-import ClinicPageHeader from "../../components/common/ClinicPageHeader";
+import ClinicPageHeader, { ClinicPagination } from "../../components/common/ClinicPageHeader";
 import EmptyState from "../../components/common/EmptyState";
-import { clinicButtonSx, clinicColors, clinicDialogActionsSx, clinicDialogPaperSx, clinicDialogTitleSx, clinicFieldSx, clinicPrimaryButtonSx, clinicSecondaryButtonSx, clinicSurfaceSx, clinicTableSx } from "../../components/common/clinicUi";
+import {
+    AdminCancelIcon,
+    AdminConfirmIcon,
+    AdminFilterIcon,
+    AdminRefreshIcon,
+    AdminResetIcon,
+    AdminSearchIcon,
+    AdminViewIcon,
+    adminViewIconButtonSx,
+    clinicButtonSx,
+    clinicColors,
+    clinicDialogActionsSx,
+    clinicDialogPaperSx,
+    clinicDialogTitleSx,
+    clinicFieldSx,
+    clinicPrimaryButtonSx,
+    clinicSecondaryButtonSx,
+    clinicSurfaceSx,
+    clinicTableSx,
+} from "../../components/common/clinicUi";
 
 const statusConfig = {
     Pending: { label: "Chờ duyệt", bg: "#FFFBEB", color: "#92400E" },
@@ -17,7 +36,6 @@ const statusConfig = {
 };
 const timeText = value => typeof value === "string" ? value.slice(0, 5) : "–";
 const dateText = value => value ? new Date(`${value}T00:00:00`).toLocaleDateString("vi-VN") : "–";
-const pageSize = 10;
 
 function StatusBadge({ status }) {
     const config = statusConfig[status] || { label: status, bg: "#F1F5F9", color: "#64748B" };
@@ -40,7 +58,7 @@ function ActionDialog({ target, working, error, onClose, onConfirm }) {
             <Paper variant="outlined" sx={{ ...clinicSurfaceSx, p: 2, bgcolor: "#F8FAFC" }}><RequestSummary item={target.item} /></Paper>
             {isReject ? <TextField multiline minRows={3} fullWidth label="Lý do từ chối" value={reason} onChange={event => setReason(event.target.value)} helperText={`${reason.length}/200 ký tự`} disabled={working} slotProps={{ htmlInput: { maxLength: 200 } }} sx={clinicFieldSx} /> : <Typography sx={{ fontSize: 14, color: clinicColors.muted, lineHeight: 1.7 }}>Sau khi duyệt, hệ thống tạo lịch làm việc và các khung giờ đặt khám cho ca này.</Typography>}
         </Stack></DialogContent>
-        <DialogActions sx={clinicDialogActionsSx}><Button disabled={working} onClick={onClose} sx={clinicSecondaryButtonSx}>Hủy</Button><Button disabled={working || (isReject && !reason.trim())} variant="contained" color={isReject ? "error" : "primary"} onClick={() => onConfirm(reason.trim())} startIcon={isReject ? <CancelOutlined /> : <CheckCircleOutlineOutlined />} sx={isReject ? clinicButtonSx : clinicPrimaryButtonSx}>{working ? "Đang xử lý..." : isReject ? "Xác nhận từ chối" : "Xác nhận phê duyệt"}</Button></DialogActions>
+        <DialogActions sx={clinicDialogActionsSx}><Button disabled={working} onClick={onClose} sx={clinicSecondaryButtonSx}>Hủy</Button><Button disabled={working || (isReject && !reason.trim())} variant="contained" color={isReject ? "error" : "primary"} onClick={() => onConfirm(reason.trim())} startIcon={isReject ? <AdminCancelIcon /> : <AdminConfirmIcon />} sx={isReject ? clinicButtonSx : clinicPrimaryButtonSx}>{working ? "Đang xử lý..." : isReject ? "Xác nhận từ chối" : "Xác nhận phê duyệt"}</Button></DialogActions>
     </Dialog>;
 }
 
@@ -60,6 +78,7 @@ function ScheduleReviewContent() {
     const [workDate, setWorkDate] = useState("");
     const [roomFilter, setRoomFilter] = useState("");
     const [pageNumber, setPageNumber] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
     const [listResult, setListResult] = useState(null);
     const [refreshing, setRefreshing] = useState(false);
     const [manualRevision, setManualRevision] = useState(0);
@@ -71,7 +90,7 @@ function ScheduleReviewContent() {
     const [actionError, setActionError] = useState("");
     const listRequest = useRef(0);
     const apiStatus = activeTab === "All" ? undefined : activeTab;
-    const queryKey = JSON.stringify([userId, sessionRevision, apiStatus, pageNumber]);
+    const queryKey = JSON.stringify([userId, sessionRevision, apiStatus, pageNumber, pageSize]);
     const currentResult = listResult?.key === queryKey ? listResult : null;
     const loading = refreshing || !currentResult;
     const list = currentResult?.data || { items: [], totalItems: 0, totalPages: 0 };
@@ -92,7 +111,7 @@ function ScheduleReviewContent() {
                 setError(getApiErrorMessage(requestError));
             }
         }).finally(() => { if (isCurrent()) setRefreshing(false); });
-    }, [apiStatus, pageNumber, queryKey]);
+    }, [apiStatus, pageNumber, pageSize, queryKey]);
 
     useEffect(() => {
         let active = true;
@@ -140,16 +159,16 @@ function ScheduleReviewContent() {
         {success && <Alert severity="success" onClose={() => setSuccess("")}>{success}</Alert>}
         {error && <Alert severity="error" action={<Button color="inherit" onClick={refresh}>Thử lại</Button>}>{error}</Alert>}
         <Paper variant="outlined" sx={{ ...clinicSurfaceSx, p: 2.5 }}>
-            <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 1 }}><FilterListOutlined sx={{ fontSize: 18, color: clinicColors.muted }} /><Typography sx={{ fontSize: 14, fontWeight: 600 }}>Bộ lọc yêu cầu</Typography></Stack>
+            <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 1 }}><AdminFilterIcon sx={{ fontSize: 18, color: clinicColors.muted }} /><Typography sx={{ fontSize: 14, fontWeight: 600 }}>Bộ lọc yêu cầu</Typography></Stack>
             <Typography sx={{ mb: 2, fontSize: 13, color: clinicColors.muted }}>Trạng thái và phân trang áp dụng cho toàn bộ danh sách. Các bộ lọc bên dưới áp dụng trên trang đang xem.</Typography>
             <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1.5fr 1fr 1fr" }, gap: 1.5 }}>
-                <TextField fullWidth size="small" label="Tìm trong trang hiện tại" placeholder="Tên bác sĩ, mã yêu cầu hoặc phòng" value={search} onChange={event => setSearch(event.target.value)} sx={clinicFieldSx} slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchOutlined sx={{ color: "#94A3B8", fontSize: 20 }} /></InputAdornment> } }} />
+                <TextField fullWidth size="small" label="Tìm trong trang hiện tại" placeholder="Tên bác sĩ, mã yêu cầu hoặc phòng" value={search} onChange={event => setSearch(event.target.value)} sx={clinicFieldSx} slotProps={{ input: { startAdornment: <InputAdornment position="start"><AdminSearchIcon sx={{ color: "#94A3B8", fontSize: 20 }} /></InputAdornment> } }} />
                 <TextField fullWidth size="small" type="date" label="Ngày làm việc" value={workDate} onChange={event => setWorkDate(event.target.value)} sx={clinicFieldSx} slotProps={{ inputLabel: { shrink: true } }} />
                 <TextField fullWidth size="small" select label="Phòng khám trong trang" value={roomFilter} onChange={event => setRoomFilter(event.target.value)} sx={clinicFieldSx}><MenuItem value="">Tất cả phòng khám</MenuItem>{rooms.map(room => <MenuItem key={room} value={room}>{room}</MenuItem>)}</TextField>
             </Box>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ justifyContent: "flex-end", mt: 2 }}>
-                <Button onClick={reset} startIcon={<RestartAltOutlined />} sx={clinicButtonSx}>Đặt lại bộ lọc</Button>
-                <Button variant="outlined" disabled={loading} onClick={refresh} startIcon={<RefreshOutlined />} sx={clinicSecondaryButtonSx}>Làm mới dữ liệu</Button>
+                <Button onClick={reset} startIcon={<AdminResetIcon />} sx={clinicButtonSx}>Đặt lại bộ lọc</Button>
+                <Button variant="outlined" disabled={loading} onClick={refresh} startIcon={<AdminRefreshIcon />} sx={clinicSecondaryButtonSx}>Làm mới dữ liệu</Button>
             </Stack>
         </Paper>
         <Paper variant="outlined" sx={{ ...clinicSurfaceSx, overflow: "hidden" }} aria-busy={loading}>
@@ -166,16 +185,28 @@ function ScheduleReviewContent() {
                     <TableCell><Typography sx={{ fontSize: 14 }}>{item.roomName || "–"}</Typography>{item.isConflict && <Tooltip title={item.conflictDetails || "Có xung đột lịch"}><Chip icon={<WarningAmberOutlined />} size="small" label="Trùng lịch" sx={{ mt: 0.75, bgcolor: "#FFFBEB", color: "#92400E" }} /></Tooltip>}</TableCell>
                     <TableCell><StatusBadge status={item.status} /></TableCell>
                     <TableCell align="right"><Stack direction="row" spacing={0.75} sx={{ justifyContent: "flex-end", alignItems: "center" }}>
-                        {item.canReview && <><Button size="small" variant="contained" onClick={() => openAction(item, "approve")} startIcon={<CheckCircleOutlineOutlined />} sx={{ ...clinicPrimaryButtonSx, minHeight: 34, whiteSpace: "nowrap" }}>Duyệt</Button><Button size="small" variant="outlined" color="error" onClick={() => openAction(item, "reject")} startIcon={<CancelOutlined />} sx={{ ...clinicButtonSx, minHeight: 34, whiteSpace: "nowrap" }}>Từ chối</Button></>}
+                        {item.canReview && <><Button size="small" variant="contained" onClick={() => openAction(item, "approve")} startIcon={<AdminConfirmIcon />} sx={{ ...clinicPrimaryButtonSx, minHeight: 34, whiteSpace: "nowrap" }}>Duyệt</Button><Button size="small" variant="outlined" color="error" onClick={() => openAction(item, "reject")} startIcon={<AdminCancelIcon />} sx={{ ...clinicButtonSx, minHeight: 34, whiteSpace: "nowrap" }}>Từ chối</Button></>}
                         {!item.canReview && item.status === "Pending" && <Typography sx={{ fontSize: 12, color: clinicColors.muted }}>Không có quyền duyệt</Typography>}
-                        <Tooltip title="Xem chi tiết"><IconButton size="small" aria-label={`Xem chi tiết yêu cầu #${item.requestId}`} onClick={() => setDetail(item)} sx={{ color: "#64748B" }}><VisibilityOutlined fontSize="small" /></IconButton></Tooltip>
+                        <Tooltip title="Xem chi tiết"><IconButton size="small" aria-label={`Xem chi tiết yêu cầu #${item.requestId}`} onClick={() => setDetail(item)} sx={adminViewIconButtonSx}><AdminViewIcon fontSize="small" /></IconButton></Tooltip>
                     </Stack></TableCell>
                 </TableRow>) : <TableRow><TableCell colSpan={6}><EmptyState message="Không có yêu cầu phù hợp trên trang này." /></TableCell></TableRow>}
             </TableBody></Table></TableContainer>
-            <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} sx={{ p: 2.5, justifyContent: "space-between", alignItems: { md: "center" }, borderTop: "1px solid #E2E8F0" }}>
-                <Typography sx={{ fontSize: 13, color: clinicColors.muted }}>{filtered.length}/{list.items.length} yêu cầu trên trang · {list.totalItems} yêu cầu theo trạng thái</Typography>
-                <Pagination count={Math.max(1, list.totalPages)} page={pageNumber} disabled={loading} onChange={(_, value) => setPageNumber(value)} shape="rounded" color="primary" size="small" getItemAriaLabel={(type, value) => type === "next" ? "Trang tiếp" : type === "previous" ? "Trang trước" : `Trang ${value}`} />
-            </Stack>
+            <Box sx={{ px: 2.5, py: 1, bgcolor: "#F8FAFC", borderTop: "1px solid #E4ECF5" }}>
+                <Typography sx={{ fontSize: 12.5, color: clinicColors.muted, fontVariantNumeric: "tabular-nums" }}>Hiển thị sau lọc trên trang: {filtered.length}/{list.items.length} yêu cầu</Typography>
+            </Box>
+            <ClinicPagination
+                page={pageNumber}
+                pageSize={pageSize}
+                totalItems={list.totalItems}
+                label="yêu cầu"
+                navLabel="Phân trang yêu cầu ca"
+                disabled={loading}
+                onPageChange={setPageNumber}
+                onPageSizeChange={(size) => {
+                    setPageSize(size);
+                    setPageNumber(1);
+                }}
+            />
         </Paper>
         {target && <ActionDialog key={`${target.action}-${target.item.requestId}`} target={target} working={working} error={actionError} onClose={() => setTarget(null)} onConfirm={confirm} />}
         <Dialog open={Boolean(detail)} onClose={() => setDetail(null)} fullWidth maxWidth="sm" aria-labelledby="request-detail-title" slotProps={{ paper: { sx: clinicDialogPaperSx } }}>

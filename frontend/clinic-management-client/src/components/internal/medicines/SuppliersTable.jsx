@@ -1,5 +1,4 @@
 import {
-    Box,
     Chip,
     IconButton,
     Paper,
@@ -9,14 +8,13 @@ import {
     TableCell,
     TableContainer,
     TableHead,
-    TablePagination,
     TableRow,
     Tooltip,
     Typography,
 } from "@mui/material";
-import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
-import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 
+import { ClinicPagination } from "../../common/ClinicPageHeader";
+import { AdminDeleteIcon, AdminEditIcon, adminDeleteIconButtonSx, adminEditIconButtonSx } from "../../common/clinicUi";
 import EmptyState from "../../common/EmptyState";
 
 const STATUS_CONFIG = {
@@ -197,24 +195,20 @@ function SuppliersTable({
                                         <TableCell>
                                             <Stack
                                                 direction="row"
-                                                spacing={0.5}
+                                                spacing={0.75}
                                             >
                                                 <Tooltip title="Sửa nhà cung cấp">
                                                     <IconButton
                                                         size="small"
+                                                        aria-label={`Sửa ${supplier.supplierName}`}
                                                         onClick={() =>
                                                             onEdit(
                                                                 supplier
                                                             )
                                                         }
-                                                        sx={{
-                                                            color:
-                                                                "#2563EB",
-                                                            backgroundColor:
-                                                                "#EFF6FF",
-                                                        }}
+                                                        sx={adminEditIconButtonSx}
                                                     >
-                                                        <EditOutlinedIcon fontSize="small" />
+                                                        <AdminEditIcon fontSize="small" />
                                                     </IconButton>
                                                 </Tooltip>
 
@@ -222,6 +216,7 @@ function SuppliersTable({
                                                     <span>
                                                         <IconButton
                                                             size="small"
+                                                            aria-label={`Xóa ${supplier.supplierName}`}
                                                             onClick={() =>
                                                                 onDelete(
                                                                     supplier
@@ -231,21 +226,9 @@ function SuppliersTable({
                                                                 supplier.medicineCount >
                                                                 0
                                                             }
-                                                            sx={{
-                                                                color:
-                                                                    "#E11D48",
-                                                                backgroundColor:
-                                                                    "#FEF2F2",
-                                                                "&.Mui-disabled":
-                                                                    {
-                                                                        color:
-                                                                            "#CBD5E1",
-                                                                        backgroundColor:
-                                                                            "#F8FAFC",
-                                                                    },
-                                                            }}
+                                                            sx={adminDeleteIconButtonSx}
                                                         >
-                                                            <DeleteOutlineOutlinedIcon fontSize="small" />
+                                                            <AdminDeleteIcon fontSize="small" />
                                                         </IconButton>
                                                     </span>
                                                 </Tooltip>
@@ -259,30 +242,15 @@ function SuppliersTable({
                 </Table>
             </TableContainer>
 
-            <Box
-                sx={{
-                    borderTop: "1px solid #E5E9F0",
-                    backgroundColor: "#FFFFFF",
-                }}
-            >
-                <TablePagination
-                    component="div"
-                    count={totalItems}
-                    page={Math.max(filters.pageNumber - 1, 0)}
-                    rowsPerPage={filters.pageSize}
-                    onPageChange={(_, page) =>
-                        onPageChange(page + 1)
-                    }
-                    onRowsPerPageChange={(event) =>
-                        onPageSizeChange(Number(event.target.value))
-                    }
-                    rowsPerPageOptions={[5, 10, 20, 50]}
-                    labelRowsPerPage="Số dòng:"
-                    labelDisplayedRows={({ from, to, count }) =>
-                        `${from}-${to} trong ${count}`
-                    }
-                />
-            </Box>
+            <ClinicPagination
+                page={filters.pageNumber}
+                pageSize={filters.pageSize}
+                totalItems={totalItems}
+                label="nhà cung cấp"
+                navLabel="Phân trang nhà cung cấp"
+                onPageChange={onPageChange}
+                onPageSizeChange={onPageSizeChange}
+            />
         </Paper>
     );
 }

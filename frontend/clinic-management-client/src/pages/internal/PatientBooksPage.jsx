@@ -1,9 +1,12 @@
 import { useState } from "react";
-import { Alert, Box, Button, MenuItem, Pagination, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, InputAdornment, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from "@mui/material";
+import { MenuBookRounded } from "@mui/icons-material";
 
 import BookHistoryDialog from "../../components/internal/patientBooks/BookHistoryDialog";
 import BookNumberDialog from "../../components/internal/patientBooks/BookNumberDialog";
 import PatientBookStatusChip from "../../components/internal/patientBooks/PatientBookStatusChip";
+import ClinicPageHeader, { ClinicPagination } from "../../components/common/ClinicPageHeader";
+import { AdminSearchIcon, adminFilterCardSx, clinicFieldSx, clinicPrimaryButtonSx, clinicSurfaceSx, clinicTableSx } from "../../components/common/clinicUi";
 import { PATIENT_BOOK_PAGE_SIZE, usePatientBooks } from "../../hooks/usePatientBooks";
 
 const STATUS_OPTIONS = [
@@ -18,7 +21,7 @@ const EMPTY_FILTERS = { search: "", status: "Issued" };
 
 export default function PatientBooksPage() {
     const [draft, setDraft] = useState(EMPTY_FILTERS);
-    const [filters, setFilters] = useState({ ...EMPTY_FILTERS, pageNumber: 1 });
+    const [filters, setFilters] = useState({ ...EMPTY_FILTERS, pageNumber: 1, pageSize: PATIENT_BOOK_PAGE_SIZE });
     const [action, setAction] = useState(null); // { mode, book }
     const [historyBook, setHistoryBook] = useState(null);
     const [notice, setNotice] = useState("");
@@ -26,7 +29,7 @@ export default function PatientBooksPage() {
 
     const applyFilters = event => {
         event.preventDefault();
-        setFilters({ ...draft, pageNumber: 1 });
+        setFilters(current => ({ ...current, ...draft, pageNumber: 1 }));
     };
 
     const finishAction = () => {
@@ -36,45 +39,50 @@ export default function PatientBooksPage() {
     };
 
     const items = data?.items ?? [];
-    const totalPages = data?.totalPages ?? 0;
 
     return (
-        <Box sx={{ p: { xs: 2, md: 4 }, backgroundColor: "#F6FAFE", minHeight: "100%" }}>
-            <Typography variant="h5" fontWeight={700} sx={{ mb: 0.5 }}>Sổ khám bệnh</Typography>
-            <Typography color="text.secondary" sx={{ mb: 3 }}>
-                Tra cứu sổ đang sử dụng, cấp sổ cho hồ sơ đã thanh toán và cấp lại khi sổ bị mất hoặc hư.
-            </Typography>
+        <Box sx={{ p: { xs: 2, md: 4 }, backgroundColor: "#F3F7FB", minHeight: "100%" }}>
+            <ClinicPageHeader
+                icon={MenuBookRounded}
+                eyebrow="Tiếp đón & Thu ngân"
+                title="Sổ khám bệnh"
+                description="Tra cứu sổ đang sử dụng, cấp sổ cho hồ sơ đã thanh toán và cấp lại khi sổ bị mất hoặc hư."
+            />
 
-            {notice && <Alert severity="success" onClose={() => setNotice("")} sx={{ mb: 2 }}>{notice}</Alert>}
+            {notice && <Alert severity="success" onClose={() => setNotice("")} sx={{ my: 2 }}>{notice}</Alert>}
 
-            <Paper component="form" onSubmit={applyFilters} variant="outlined" sx={{ p: 2, mb: 3, borderRadius: 3 }}>
+            <Paper component="form" onSubmit={applyFilters} variant="outlined" sx={{ ...adminFilterCardSx, mt: 3, mb: 3 }}>
                 <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ alignItems: { md: "center" } }}>
                     <TextField
                         label="Tìm theo số sổ, tên hoặc SĐT"
                         value={draft.search}
                         onChange={event => setDraft({ ...draft, search: event.target.value })}
-                        slotProps={{ htmlInput: { maxLength: 100 } }}
+                        slotProps={{
+                            htmlInput: { maxLength: 100 },
+                            input: { startAdornment: <InputAdornment position="start"><AdminSearchIcon sx={{ color: "#94A3B8", fontSize: 20 }} /></InputAdornment> },
+                        }}
+                        sx={clinicFieldSx}
                         fullWidth
                     />
                     <TextField select label="Trạng thái" value={draft.status}
-                        onChange={event => setDraft({ ...draft, status: event.target.value })} sx={{ minWidth: 200 }}>
+                        onChange={event => setDraft({ ...draft, status: event.target.value })} sx={{ ...clinicFieldSx, minWidth: 200 }}>
                         {STATUS_OPTIONS.map(option => <MenuItem key={option.label} value={option.value}>{option.label}</MenuItem>)}
                     </TextField>
-                    <Button type="submit" variant="contained">Tìm kiếm</Button>
+                    <Button type="submit" variant="contained" startIcon={<AdminSearchIcon />} sx={{ ...clinicPrimaryButtonSx, whiteSpace: "nowrap" }}>Tìm kiếm</Button>
                 </Stack>
             </Paper>
 
             {status === "loading" && <Typography color="text.secondary">Đang tải danh sách sổ...</Typography>}
-            {status === "error" && <Alert severity="error">{error}</Alert>}
+            {status === "error" && <Alert severity="error" action={<Button color="inherit" onClick={reload}>Thử lại</Button>}>{error}</Alert>}
 
             {status === "ready" && items.length === 0 && (
                 <Alert severity="info">Không có sổ nào phù hợp với bộ lọc.</Alert>
             )}
 
             {status === "ready" && items.length > 0 && (
-                <>
-                    <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 3 }}>
-                        <Table size="small">
+                <Paper variant="outlined" sx={{ ...clinicSurfaceSx, overflow: "hidden" }}>
+                    <TableContainer sx={{ overflowX: "auto" }}>
+                        <Table size="small" sx={{ ...clinicTableSx, minWidth: 760 }}>
                             <TableHead>
                                 <TableRow>
                                     <TableCell>Số sổ</TableCell>
@@ -114,16 +122,17 @@ export default function PatientBooksPage() {
                             </TableBody>
                         </Table>
                     </TableContainer>
-                    {totalPages > 1 && (
-                        <Stack sx={{ mt: 2, alignItems: "center" }}>
-                            <Pagination page={filters.pageNumber} count={totalPages} color="primary"
-                                onChange={(_, pageNumber) => setFilters({ ...filters, pageNumber })} />
-                        </Stack>
-                    )}
-                    <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
-                        Mỗi trang {PATIENT_BOOK_PAGE_SIZE} sổ · Tổng {data.totalItems} sổ
-                    </Typography>
-                </>
+                    <ClinicPagination
+                        page={filters.pageNumber}
+                        pageSize={filters.pageSize}
+                        totalItems={data?.totalItems ?? items.length}
+                        label="sổ khám"
+                        navLabel="Phân trang sổ khám bệnh"
+                        disabled={status === "loading"}
+                        onPageChange={pageNumber => setFilters(current => ({ ...current, pageNumber }))}
+                        onPageSizeChange={pageSize => setFilters(current => ({ ...current, pageSize, pageNumber: 1 }))}
+                    />
+                </Paper>
             )}
 
             {action && (

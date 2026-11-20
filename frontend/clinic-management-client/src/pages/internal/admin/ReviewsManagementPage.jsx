@@ -1,8 +1,9 @@
 import { useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Alert, Box, Button, Chip, Grid, Pagination, Paper, Rating, Skeleton, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, Chip, Grid, Paper, Rating, Skeleton, Stack, Typography } from "@mui/material";
 import { StarOutlineRounded } from "@mui/icons-material";
-import ClinicPageHeader from "../../../components/common/ClinicPageHeader";
+import ClinicPageHeader, { ClinicPagination } from "../../../components/common/ClinicPageHeader";
+import { AdminHideIcon, AdminRefreshIcon, AdminViewIcon, clinicSecondaryButtonSx, clinicSurfaceSx } from "../../../components/common/clinicUi";
 import DoctorRatingsTable from "../../../components/internal/reviews/DoctorRatingsTable";
 import { formatRating } from "../../../utils/formatRating";
 import { useReviewList } from "../../../hooks/useReviewList";
@@ -42,21 +43,32 @@ export default function ReviewsManagementPage() {
     ];
     return <Stack spacing={3} sx={{ pb: 4, minWidth: 0 }}>
         <ClinicPageHeader title="Quản lý đánh giá" icon={StarOutlineRounded}
+            eyebrow="Quản trị hệ thống"
             description="Tổng hợp điểm theo bác sĩ và duyệt nhận xét. Điểm công khai chỉ tính các đánh giá đang hiển thị."
-            actions={<Button variant="outlined" onClick={() => { reviews.refresh(); statistics.refresh(); }}>Làm mới</Button>} />
+            actions={<Button variant="outlined" startIcon={<AdminRefreshIcon />} sx={clinicSecondaryButtonSx} onClick={() => { reviews.refresh(); statistics.refresh(); }}>Làm mới</Button>} />
         {doctorId && <Alert severity="info" action={<Button color="inherit" onClick={() => chooseDoctor(null)}>Xóa lọc bác sĩ</Button>}>Đang lọc đánh giá của bác sĩ #{doctorId}.</Alert>}
         {actionError && <Alert severity="error">{actionError}</Alert>}
         <Grid container spacing={2}>{cards.map(([title, value]) => <Grid key={title} size={{ xs: 12, sm: 6, lg: 3 }}><Paper variant="outlined" sx={{ p: 2.5, borderRadius: 3 }}>
             <Typography variant="body2" color="text.secondary">{title}</Typography>
-            {statistics.loading ? <Skeleton height={42} width={90} /> : <Typography sx={{ fontSize: 26, fontWeight: 750, mt: 1, color: "primary.main" }}>{statistics.error ? "—" : value}</Typography>}
+            {statistics.loading ? <Skeleton height={42} width={90} /> : <Typography sx={{ fontSize: 26, fontWeight: 750, mt: 1, color: "primary.main", fontVariantNumeric: "tabular-nums" }}>{statistics.error ? "—" : value}</Typography>}
         </Paper></Grid>)}</Grid>
         <Box component="section">
             <Typography component="h2" variant="h6" sx={{ fontWeight: 750, mb: 2 }}>Tổng hợp theo bác sĩ</Typography>
             {statistics.loading ? <Skeleton variant="rounded" height={180} /> : statistics.error
                 ? <Alert severity="error" action={<Button onClick={statistics.refresh}>Thử lại thống kê</Button>}>{statistics.error}</Alert>
-                : <><DoctorRatingsTable data={statistics.data?.doctors} onSelect={chooseDoctor} />
-                    {statistics.data?.doctors.totalPages > 1 && <Pagination aria-label="Phân trang điểm bác sĩ" sx={{ mt: 2 }} page={statistics.pageNumber} count={statistics.data.doctors.totalPages} onChange={(_, value) => statistics.setPageNumber(value)} />}
-                </>}
+                : <Paper variant="outlined" sx={{ ...clinicSurfaceSx, overflow: "hidden" }}>
+                    <DoctorRatingsTable data={statistics.data?.doctors} onSelect={chooseDoctor} />
+                    <ClinicPagination
+                        page={statistics.pageNumber}
+                        pageSize={statistics.pageSize}
+                        totalItems={statistics.data?.doctors?.totalItems ?? (statistics.data?.doctors?.items?.length || 0)}
+                        label="bác sĩ"
+                        navLabel="Phân trang điểm bác sĩ"
+                        disabled={statistics.loading}
+                        onPageChange={statistics.setPageNumber}
+                        onPageSizeChange={statistics.setPageSize}
+                    />
+                </Paper>}
         </Box>
         <Box component="section" sx={{ minWidth: 0 }}>
             <Typography component="h2" variant="h6" sx={{ fontWeight: 750, mb: 2 }}>Nhận xét của bệnh nhân</Typography>
@@ -72,11 +84,31 @@ export default function ReviewsManagementPage() {
                             <Typography variant="caption" color="text.secondary">{new Date(item.createdAt).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })}</Typography>
                             <Stack direction="row" spacing={2} sx={{ alignItems: "center", flexWrap: "wrap", gap: 1 }}>
                                 <Chip label={item.isVisible ? "Công khai" : "Đã ẩn"} color={item.isVisible ? "success" : "default"} />
-                                <Button variant="outlined" onClick={() => toggle(item)} disabled={saving !== null}>{saving === item.reviewId ? "Đang lưu…" : item.isVisible ? "Ẩn đánh giá" : "Hiện đánh giá"}</Button>
+                                <Button
+                                    variant="outlined"
+                                    startIcon={item.isVisible ? <AdminHideIcon /> : <AdminViewIcon />}
+                                    sx={clinicSecondaryButtonSx}
+                                    onClick={() => toggle(item)}
+                                    disabled={saving !== null}
+                                >
+                                    {saving === item.reviewId ? "Đang lưu…" : item.isVisible ? "Ẩn đánh giá" : "Hiện đánh giá"}
+                                </Button>
                             </Stack>
                         </Stack>
                     </Paper>)}
-                    {reviews.data?.totalPages > 1 && <Pagination aria-label="Phân trang nhận xét" count={reviews.data.totalPages} page={reviews.pageNumber} onChange={(_, value) => reviews.setPageNumber(value)} />}
+                    <Paper variant="outlined" sx={{ ...clinicSurfaceSx, overflow: "hidden" }}>
+                        <ClinicPagination
+                            page={reviews.pageNumber}
+                            pageSize={reviews.pageSize}
+                            totalItems={reviews.data?.totalItems ?? (reviews.data?.items?.length || 0)}
+                            label="nhận xét"
+                            navLabel="Phân trang nhận xét"
+                            disabled={reviews.loading}
+                            borderTop={false}
+                            onPageChange={reviews.setPageNumber}
+                            onPageSizeChange={reviews.setPageSize}
+                        />
+                    </Paper>
                 </Stack>}
         </Box>
     </Stack>;

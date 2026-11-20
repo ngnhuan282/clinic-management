@@ -50,6 +50,14 @@ function useSuppliers() {
                     getSupplierSummary(),
                 ]);
 
+            if (supplierResult?.items?.length === 0 && filters.pageNumber > 1) {
+                const fallbackPage = Math.max(1, supplierResult.totalPages || filters.pageNumber - 1);
+                if (fallbackPage !== filters.pageNumber) {
+                    setFilters((current) => ({ ...current, pageNumber: fallbackPage }));
+                    return;
+                }
+            }
+
             setPagedData(supplierResult);
             setSummary(summaryResult);
         } catch (err) {
@@ -62,7 +70,7 @@ function useSuppliers() {
         } finally {
             setLoading(false);
         }
-    }, [requestParams]);
+    }, [requestParams, filters.pageNumber]);
 
     useEffect(() => {
         // Fetch remote data when query inputs change.

@@ -1,6 +1,8 @@
-import { Alert, Box, Button, Chip, Paper, Stack, Typography } from "@mui/material";
+import { Alert, Button, Chip, Paper, Stack } from "@mui/material";
+import LocalPharmacyRoundedIcon from "@mui/icons-material/LocalPharmacyRounded";
 import VerifiedOutlinedIcon from "@mui/icons-material/VerifiedOutlined";
 import { useLocation, useNavigate } from "react-router-dom";
+import ClinicPageHeader from "../../../components/common/ClinicPageHeader";
 import ErrorState from "../../../components/common/ErrorState";
 import Loading from "../../../components/common/Loading";
 import DispensingFilters from "../../../components/internal/pharmacy/DispensingFilters";
@@ -21,19 +23,16 @@ function DispensingPage() {
 
     return (
         <Stack spacing={3} sx={{ minWidth: 0 }}>
-            <Paper elevation={0} sx={{ p: { xs: 2.5, md: 3.5 }, borderRadius: 2, border: "1px solid #E5E9F0" }}>
-                <Box sx={{ minWidth: 0 }}>
-                    <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap", alignItems: "center" }}>
-                        <Typography variant="caption" sx={{ color: "#6B7280", fontWeight: 700 }}>Dược sĩ / Quầy cấp thuốc</Typography>
-                        <Chip icon={<VerifiedOutlinedIcon fontSize="small" />} label="Cấp thuốc theo FEFO" size="small"
-                            sx={{ height: 24, color: "#047857", bgcolor: "#ECFDF5", border: "1px solid #A7F3D0", fontWeight: 700 }} />
-                    </Stack>
-                    <Typography component="h1" variant="h4" sx={{ mt: 1.5, color: "#111827", fontWeight: 800, lineHeight: 1.25 }}>Quầy cấp thuốc ngoại trú</Typography>
-                    <Typography variant="body2" sx={{ mt: 1, maxWidth: 820, color: "#6B7280", lineHeight: 1.7 }}>
-                        Kiểm tra đơn đã thanh toán, đối chiếu các lô còn hạn và xác nhận giao thuốc trong một giao dịch.
-                    </Typography>
-                </Box>
-            </Paper>
+            <ClinicPageHeader
+                icon={LocalPharmacyRoundedIcon}
+                eyebrow="Dược sĩ / Quầy cấp thuốc"
+                title="Quầy cấp thuốc ngoại trú"
+                description="Kiểm tra đơn đã thanh toán, đối chiếu các lô còn hạn và xác nhận giao thuốc trong một giao dịch."
+                badge={
+                    <Chip icon={<VerifiedOutlinedIcon fontSize="small" />} label="Cấp thuốc theo FEFO" size="small"
+                        sx={{ height: 24, color: "#047857", bgcolor: "#ECFDF5", border: "1px solid #A7F3D0", fontWeight: 700 }} />
+                }
+            />
             <DispensingStatCards summary={summary} />
             <DispensingFilters filters={filters} onChange={updateFilters} onReset={resetFilters} onRefresh={loadQueue} refreshing={loading} />
             {error && <ErrorState message={error} onRetry={loadQueue} />}

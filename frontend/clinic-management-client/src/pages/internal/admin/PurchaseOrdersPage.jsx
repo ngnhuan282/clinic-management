@@ -1,17 +1,16 @@
 import { useState } from "react";
 import {
     Alert,
-    Box,
     Button,
     Chip,
-    Paper,
     Snackbar,
     Stack,
-    Typography,
 } from "@mui/material";
-import AddCircleOutlineOutlinedIcon from "@mui/icons-material/AddCircleOutlineOutlined";
 import InventoryOutlinedIcon from "@mui/icons-material/InventoryOutlined";
+import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 
+import ClinicPageHeader from "../../../components/common/ClinicPageHeader";
+import { AdminAddIcon, clinicPrimaryButtonSx } from "../../../components/common/clinicUi";
 import ConfirmDialog from "../../../components/common/ConfirmDialog";
 import ErrorState from "../../../components/common/ErrorState";
 import Loading from "../../../components/common/Loading";
@@ -126,97 +125,36 @@ function PurchaseOrdersPage() {
 
     return (
         <Stack spacing={3}>
-            <Paper
-                elevation={0}
-                sx={{
-                    p: { xs: 2.5, md: 3.5 },
-                    borderRadius: 2,
-                    border: "1px solid #E5E9F0",
-                    backgroundColor: "#FFFFFF",
-                }}
-            >
-                <Stack
-                    direction={{ xs: "column", md: "row" }}
-                    gap={2}
-                    sx={{
-                        alignItems: { xs: "flex-start", md: "center" },
-                        justifyContent: "space-between",
-                    }}
-                >
-                    <Box sx={{ minWidth: 0, flex: 1 }}>
-                        <Stack
-                            direction="row"
-                            spacing={1}
-                            useFlexGap
-                            sx={{
-                                alignItems: "center",
-                                flexWrap: "wrap",
-                            }}
-                        >
-                            <Typography
-                                variant="caption"
-                                sx={{ color: "#6B7280", fontWeight: 700 }}
-                            >
-                                Quản trị / Kho dược & Vật tư
-                            </Typography>
-
-                            <Chip
-                                icon={<InventoryOutlinedIcon fontSize="small" />}
-                                label="Theo lô & hạn dùng"
-                                size="small"
-                                sx={{
-                                    height: 24,
-                                    color: "#047857",
-                                    backgroundColor: "#ECFDF5",
-                                    border: "1px solid #A7F3D0",
-                                    fontWeight: 700,
-                                }}
-                            />
-                        </Stack>
-
-                        <Typography
-                            variant="h4"
-                            sx={{
-                                mt: 1.5,
-                                color: "#111827",
-                                fontWeight: 800,
-                                lineHeight: 1.25,
-                            }}
-                        >
-                            Phiếu nhập kho
-                        </Typography>
-
-                        <Typography
-                            variant="body2"
-                            sx={{
-                                mt: 1,
-                                maxWidth: 820,
-                                color: "#6B7280",
-                                lineHeight: 1.7,
-                            }}
-                        >
-                            Lập phiếu nhập theo từng lô thuốc và hạn dùng.
-                            Tồn kho chỉ tăng khi phiếu được xác nhận nhập kho.
-                        </Typography>
-                    </Box>
-
+            <ClinicPageHeader
+                icon={ReceiptLongRoundedIcon}
+                eyebrow="Quản trị / Kho dược & Vật tư"
+                title="Phiếu nhập kho"
+                description="Lập phiếu nhập theo từng lô thuốc và hạn dùng. Tồn kho chỉ tăng khi phiếu được xác nhận nhập kho."
+                badge={
+                    <Chip
+                        icon={<InventoryOutlinedIcon fontSize="small" />}
+                        label="Theo lô & hạn dùng"
+                        size="small"
+                        sx={{
+                            height: 24,
+                            color: "#047857",
+                            backgroundColor: "#ECFDF5",
+                            border: "1px solid #A7F3D0",
+                            fontWeight: 700,
+                        }}
+                    />
+                }
+                actions={
                     <Button
                         variant="contained"
-                        startIcon={<AddCircleOutlineOutlinedIcon />}
+                        startIcon={<AdminAddIcon />}
                         onClick={handleCreate}
-                        sx={{
-                            height: 42,
-                            px: 2.25,
-                            flexShrink: 0,
-                            whiteSpace: "nowrap",
-                            fontWeight: 800,
-                            boxShadow: "0 8px 18px rgba(25, 118, 210, 0.18)",
-                        }}
+                        sx={{ ...clinicPrimaryButtonSx, whiteSpace: "nowrap" }}
                     >
                         Tạo phiếu nhập
                     </Button>
-                </Stack>
-            </Paper>
+                }
+            />
 
             <PharmacyModuleTabs active="purchaseOrders" />
 

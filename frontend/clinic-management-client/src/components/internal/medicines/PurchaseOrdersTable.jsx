@@ -1,5 +1,4 @@
 import {
-    Box,
     Button,
     Chip,
     IconButton,
@@ -10,16 +9,14 @@ import {
     TableCell,
     TableContainer,
     TableHead,
-    TablePagination,
     TableRow,
     Tooltip,
     Typography,
 } from "@mui/material";
-import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
-import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import InventoryOutlinedIcon from "@mui/icons-material/InventoryOutlined";
-import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 
+import { ClinicPagination } from "../../common/ClinicPageHeader";
+import { AdminCancelIcon, AdminEditIcon, AdminViewIcon, adminDeleteIconButtonSx, adminEditIconButtonSx, adminViewIconButtonSx } from "../../common/clinicUi";
 import EmptyState from "../../common/EmptyState";
 import formatCurrency from "../../../utils/formatCurrency";
 import formatDate from "../../../utils/formatDate";
@@ -195,7 +192,7 @@ function PurchaseOrdersTable({
                                         <TableCell align="center">
                                             <Stack
                                                 direction="row"
-                                                spacing={0.5}
+                                                spacing={0.75}
                                                 sx={{
                                                     justifyContent: "center",
                                                     alignItems: "center",
@@ -206,8 +203,9 @@ function PurchaseOrdersTable({
                                                         size="small"
                                                         aria-label="Xem phiếu nhập"
                                                         onClick={() => onView(order)}
+                                                        sx={adminViewIconButtonSx}
                                                     >
-                                                        <VisibilityOutlinedIcon fontSize="small" />
+                                                        <AdminViewIcon fontSize="small" />
                                                     </IconButton>
                                                 </Tooltip>
 
@@ -218,8 +216,9 @@ function PurchaseOrdersTable({
                                                                 size="small"
                                                                 aria-label="Chỉnh sửa phiếu nhập"
                                                                 onClick={() => onEdit(order)}
+                                                                sx={adminEditIconButtonSx}
                                                             >
-                                                                <EditOutlinedIcon fontSize="small" />
+                                                                <AdminEditIcon fontSize="small" />
                                                             </IconButton>
                                                         </Tooltip>
 
@@ -229,7 +228,7 @@ function PurchaseOrdersTable({
                                                             color="success"
                                                             startIcon={<InventoryOutlinedIcon />}
                                                             onClick={() => onReceive(order)}
-                                                            sx={{ whiteSpace: "nowrap", fontWeight: 800 }}
+                                                            sx={{ whiteSpace: "nowrap", fontWeight: 700 }}
                                                         >
                                                             Nhập kho
                                                         </Button>
@@ -237,11 +236,11 @@ function PurchaseOrdersTable({
                                                         <Tooltip title="Hủy phiếu">
                                                             <IconButton
                                                                 size="small"
-                                                                color="error"
                                                                 aria-label="Hủy phiếu nhập"
                                                                 onClick={() => onCancel(order)}
+                                                                sx={adminDeleteIconButtonSx}
                                                             >
-                                                                <CancelOutlinedIcon fontSize="small" />
+                                                                <AdminCancelIcon fontSize="small" />
                                                             </IconButton>
                                                         </Tooltip>
                                                     </>
@@ -256,23 +255,15 @@ function PurchaseOrdersTable({
                 </Table>
             </TableContainer>
 
-            <Box sx={{ borderTop: "1px solid #E5E9F0" }}>
-                <TablePagination
-                    component="div"
-                    count={totalItems}
-                    page={Math.max((filters.pageNumber || 1) - 1, 0)}
-                    onPageChange={(_, page) => onPageChange(page + 1)}
-                    rowsPerPage={filters.pageSize}
-                    onRowsPerPageChange={(event) =>
-                        onPageSizeChange(Number(event.target.value))
-                    }
-                    rowsPerPageOptions={[5, 10, 20]}
-                    labelRowsPerPage="Số dòng/trang"
-                    labelDisplayedRows={({ from, to, count }) =>
-                        `${from}-${to} trong ${count}`
-                    }
-                />
-            </Box>
+            <ClinicPagination
+                page={filters.pageNumber || 1}
+                pageSize={filters.pageSize}
+                totalItems={totalItems}
+                label="phiếu nhập"
+                navLabel="Phân trang phiếu nhập kho"
+                onPageChange={onPageChange}
+                onPageSizeChange={onPageSizeChange}
+            />
         </Paper>
     );
 }

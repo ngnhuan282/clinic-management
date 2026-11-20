@@ -71,6 +71,14 @@ function useMedicines() {
                     getMedicineSummary(),
                 ]);
 
+            if (medicineResult?.items?.length === 0 && filters.pageNumber > 1) {
+                const fallbackPage = Math.max(1, medicineResult.totalPages || filters.pageNumber - 1);
+                if (fallbackPage !== filters.pageNumber) {
+                    setFilters((current) => ({ ...current, pageNumber: fallbackPage }));
+                    return;
+                }
+            }
+
             setPagedData(medicineResult);
             setSummary(summaryResult);
         } catch (err) {
@@ -83,7 +91,7 @@ function useMedicines() {
         } finally {
             setLoading(false);
         }
-    }, [requestParams]);
+    }, [requestParams, filters.pageNumber]);
 
     useEffect(() => {
         // Fetch remote data when query inputs change.

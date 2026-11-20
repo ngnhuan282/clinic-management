@@ -3,18 +3,23 @@ import {
     Alert, Avatar, Box, Button, Checkbox, Chip, CircularProgress,
     Dialog, DialogActions, DialogContent, DialogTitle, Divider,
     IconButton, MenuItem, Paper, Stack, Tab, Tabs, Table, TableBody,
-    TableCell, TableHead, TablePagination, TableRow, TextField,
+    TableCell, TableHead, TableRow, TextField,
     Tooltip, Typography,
 } from "@mui/material";
-import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
-import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
 import SecurityOutlinedIcon from "@mui/icons-material/SecurityOutlined";
-import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
-import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
-import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
+import { ClinicPagination } from "../../../components/common/ClinicPageHeader";
+import {
+    AdminAddIcon,
+    AdminDeleteIcon,
+    AdminEditIcon,
+    AdminRefreshIcon,
+    AdminViewIcon,
+    adminDeleteIconButtonSx,
+    adminEditIconButtonSx,
+} from "../../../components/common/clinicUi";
 import { rbacApi } from "../../../api/rbacApi";
 import { getApiErrorMessage } from "../../../utils/errorHandler";
 
@@ -115,9 +120,9 @@ function RoleCard({ role, selected, onSelect, onEdit, onDelete, dirty }) {
                 <Divider />
 
                 {/* Actions */}
-                <Stack direction="row" spacing={1}>
+                <Stack direction="row" spacing={0.75} sx={{ alignItems: "center" }}>
                     <Button size="small" variant={selected ? "contained" : "outlined"}
-                        startIcon={<VisibilityOutlinedIcon sx={{ fontSize: 15 }} />}
+                        startIcon={<AdminViewIcon sx={{ fontSize: 16 }} />}
                         onClick={(e) => { e.stopPropagation(); onSelect(role.roleId); }}
                         sx={{ flex: 1, fontWeight: 700, fontSize: 12 }}>
                         {selected ? "Đang xem" : "Chi tiết"}
@@ -125,15 +130,17 @@ function RoleCard({ role, selected, onSelect, onEdit, onDelete, dirty }) {
                     {!role.isSystem && (
                         <>
                             <Tooltip title="Sửa thông tin">
-                                <IconButton size="small" onClick={(e) => { e.stopPropagation(); onEdit(role); }}
-                                    sx={{ border: "1px solid #E5E9F0" }}>
-                                    <EditOutlinedIcon sx={{ fontSize: 16 }} />
+                                <IconButton size="small" aria-label={`Sửa vai trò ${role.roleName}`}
+                                    onClick={(e) => { e.stopPropagation(); onEdit(role); }}
+                                    sx={adminEditIconButtonSx}>
+                                    <AdminEditIcon sx={{ fontSize: 16 }} />
                                 </IconButton>
                             </Tooltip>
                             <Tooltip title="Xóa vai trò">
-                                <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); onDelete(role); }}
-                                    sx={{ border: "1px solid #FECACA" }}>
-                                    <DeleteOutlineOutlinedIcon sx={{ fontSize: 16 }} />
+                                <IconButton size="small" aria-label={`Xóa vai trò ${role.roleName}`}
+                                    onClick={(e) => { e.stopPropagation(); onDelete(role); }}
+                                    sx={adminDeleteIconButtonSx}>
+                                    <AdminDeleteIcon sx={{ fontSize: 16 }} />
                                 </IconButton>
                             </Tooltip>
                         </>
@@ -349,9 +356,10 @@ export default function RolesPermissionsPage() {
     const [edit, setEdit] = useState({ name: "", description: "" });
     const [audit, setAudit] = useState({ items: [], totalItems: 0 });
     const [auditPage, setAuditPage] = useState(0);
-    const [loadedAuditPage, setLoadedAuditPage] = useState(null);
+    const [auditPageSize, setAuditPageSize] = useState(10);
+    const [loadedAuditKey, setLoadedAuditKey] = useState(null);
     const auditRequestId = useRef(0);
-    const auditLoading = loadedAuditPage !== auditPage;
+    const auditLoading = loadedAuditKey !== `${auditPage}:${auditPageSize}`;
 
     const selectedRole = roles.find(r => r.roleId === selectedId);
     const comparedRole = roles.find(r => r.roleId === compareId);
@@ -418,11 +426,11 @@ export default function RolesPermissionsPage() {
     const loadAudit = useCallback((isActive = () => true) => {
         const requestId = ++auditRequestId.current;
         const isCurrent = () => isActive() && requestId === auditRequestId.current;
-        return rbacApi.audit({ pageNumber: auditPage + 1, pageSize: 10 })
+        return rbacApi.audit({ pageNumber: auditPage + 1, pageSize: auditPageSize })
             .then(data => { if (isCurrent()) setAudit(data); })
             .catch(err => { if (isCurrent()) setError(getApiErrorMessage(err)); })
-            .finally(() => { if (isCurrent()) setLoadedAuditPage(auditPage); });
-    }, [auditPage]);
+            .finally(() => { if (isCurrent()) setLoadedAuditKey(`${auditPage}:${auditPageSize}`); });
+    }, [auditPage, auditPageSize]);
     useEffect(() => {
         if (tab !== 1) return;
         let active = true;
@@ -444,7 +452,7 @@ export default function RolesPermissionsPage() {
     const changeTab = value => {
         if (dirty && !window.confirm("Bỏ thay đổi quyền chưa lưu để chuyển tab?")) return;
         if (dirty) setDraftCodes(selectedRole.permissionCodes);
-        if (value === 1 && tab !== 1) setLoadedAuditPage(null);
+        if (value === 1 && tab !== 1) setLoadedAuditKey(null);
         setTab(value); clearFeedback();
     };
     const refresh = async () => {
@@ -540,12 +548,12 @@ export default function RolesPermissionsPage() {
                         sx={{ whiteSpace: "nowrap", fontWeight: 600, fontSize: 12, py: 0.5, px: 1.5 }}>
                         Lịch sử
                     </Button>
-                    <Button variant="outlined" startIcon={<RefreshOutlinedIcon sx={{ fontSize: 15 }} />}
+                    <Button variant="outlined" startIcon={<AdminRefreshIcon sx={{ fontSize: 16 }} />}
                         size="small" onClick={refresh}
                         sx={{ whiteSpace: "nowrap", fontWeight: 600, fontSize: 12, py: 0.5, px: 1.5 }}>
                         Tải lại
                     </Button>
-                    <Button variant="contained" startIcon={<AddOutlinedIcon sx={{ fontSize: 15 }} />}
+                    <Button variant="contained" startIcon={<AdminAddIcon sx={{ fontSize: 16 }} />}
                         size="small" disabled={dirty}
                         onClick={() => { clearFeedback(); setCreate(emptyDraft); setCreateStep(0); setDialog("create"); }}
                         sx={{ whiteSpace: "nowrap", fontWeight: 700, fontSize: 12, py: 0.5, px: 1.75 }}>
@@ -663,13 +671,13 @@ export default function RolesPermissionsPage() {
                                     {!selectedRole.isSystem && (
                                         <>
                                             <Button size="small" variant="outlined"
-                                                startIcon={<EditOutlinedIcon sx={{ fontSize: 15 }} />}
+                                                startIcon={<AdminEditIcon sx={{ fontSize: 16 }} />}
                                                 disabled={dirty}
                                                 onClick={() => { setEdit({ name: selectedRole.roleName, description: selectedRole.description || "" }); clearFeedback(); setDialog("edit"); }}>
                                                 Sửa thông tin
                                             </Button>
                                             <Button size="small" variant="outlined" color="error"
-                                                startIcon={<DeleteOutlineOutlinedIcon sx={{ fontSize: 15 }} />}
+                                                startIcon={<AdminDeleteIcon sx={{ fontSize: 16 }} />}
                                                 disabled={dirty}
                                                 onClick={() => { clearFeedback(); setDialog("delete"); }}>
                                                 Xóa vai trò
@@ -747,9 +755,19 @@ export default function RolesPermissionsPage() {
                                 ))}
                             </TableBody>
                         </Table>
-                        <TablePagination component="div" count={audit.totalItems} page={auditPage}
-                            rowsPerPage={10} rowsPerPageOptions={[10]}
-                            onPageChange={(_, p) => setAuditPage(p)} />
+                        <ClinicPagination
+                            page={auditPage + 1}
+                            pageSize={auditPageSize}
+                            totalItems={audit.totalItems}
+                            label="nhật ký"
+                            navLabel="Phân trang nhật ký phân quyền"
+                            disabled={auditLoading}
+                            onPageChange={(page) => setAuditPage(page - 1)}
+                            onPageSizeChange={(size) => {
+                                setAuditPageSize(size);
+                                setAuditPage(0);
+                            }}
+                        />
                     </Stack>
                 </Paper>
             )}

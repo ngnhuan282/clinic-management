@@ -14,6 +14,7 @@ import {
 } from "@mui/icons-material";
 import { Link as RouterLink, useLocation } from "react-router-dom";
 import AuthForm from "./AuthForm";
+import { useClinicInfo } from "../../api/publicApi";
 
 const FEATURES = [
     {
@@ -63,6 +64,7 @@ const SUPPORT_CARDS = [
 ];
 
 function Introduction({ register, internal }) {
+    const clinic = useClinicInfo();
     return (
         <Box
             sx={{
@@ -89,7 +91,7 @@ function Introduction({ register, internal }) {
             >
                 <ShieldOutlined sx={{ fontSize: 18, color: "#BAE6FD" }} />
                 <Typography sx={{ fontSize: 12, fontWeight: 750, letterSpacing: ".04em", color: "#FFFFFF" }}>
-                    {internal ? "CỔNG NỘI BỘ PHÒNG KHÁM" : "CỔNG DỊCH VỤ BỆNH NHÂN"}
+                    {clinic.name} · {internal ? "CỔNG NỘI BỘ" : "CỔNG BỆNH NHÂN"}
                 </Typography>
             </Stack>
 

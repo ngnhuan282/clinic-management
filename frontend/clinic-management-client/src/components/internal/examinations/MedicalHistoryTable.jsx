@@ -1,5 +1,6 @@
-import { Box, Button, Chip, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, Typography } from "@mui/material";
-import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import { Button, Chip, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from "@mui/material";
+import { ClinicPagination } from "../../common/ClinicPageHeader";
+import { AdminViewIcon, clinicSecondaryButtonSx } from "../../common/clinicUi";
 import EmptyState from "../../common/EmptyState";
 import formatDate from "../../../utils/formatDate";
 
@@ -54,7 +55,7 @@ function MedicalHistoryTable({ items, pagination, filters, latestMedicalRecordId
                                     </TableCell>
                                     <TableCell align="center" sx={{ width: 160 }}>
                                         <Button variant="outlined" size="small"
-                                            startIcon={<VisibilityOutlinedIcon />} onClick={() => onView(item)} sx={{ minHeight: 36, whiteSpace: "nowrap" }}>Xem chi tiết</Button>
+                                            startIcon={<AdminViewIcon />} onClick={() => onView(item)} sx={{ ...clinicSecondaryButtonSx, minHeight: 36, whiteSpace: "nowrap" }}>Xem chi tiết</Button>
                                     </TableCell>
                                 </TableRow>
                             );
@@ -62,14 +63,16 @@ function MedicalHistoryTable({ items, pagination, filters, latestMedicalRecordId
                     </TableBody>
                 </Table>
             </TableContainer>
-            <Box sx={{ borderTop: "1px solid #E5E9F0", overflowX: "auto" }}>
-                <TablePagination component="div" count={pagination?.totalItems || 0} page={filters.pageNumber - 1}
-                    rowsPerPage={filters.pageSize} rowsPerPageOptions={[5, 10, 20, 50]}
-                    onPageChange={(_, page) => onChange({ pageNumber: page + 1 })}
-                    onRowsPerPageChange={(event) => onChange({ pageSize: Number(event.target.value), pageNumber: 1 })}
-                    labelRowsPerPage="Số dòng/trang" labelDisplayedRows={({ from, to, count }) => `${from}-${to} trong ${count}`}
-                    getItemAriaLabel={(type) => type === "next" ? "Trang sau" : "Trang trước"} />
-            </Box>
+            <ClinicPagination
+                page={filters.pageNumber}
+                pageSize={filters.pageSize}
+                totalItems={pagination?.totalItems || 0}
+                pageSizeOptions={[5, 10, 20, 50]}
+                label="hồ sơ"
+                navLabel="Phân trang lịch sử khám"
+                onPageChange={(pageNumber) => onChange({ pageNumber })}
+                onPageSizeChange={(pageSize) => onChange({ pageSize, pageNumber: 1 })}
+            />
         </Paper>
     );
 }

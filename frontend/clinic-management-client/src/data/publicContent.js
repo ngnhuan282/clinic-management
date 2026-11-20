@@ -1,11 +1,36 @@
 // Shared clinic fallback defaults; runtime values are loaded from /api/public/clinic-settings.
+const LEGACY_CLINIC_NAMES = new Set([
+    "clinicmanagementsystem",
+    "clinic management system",
+    "medclinic",
+    "mediflow",
+]);
+
+const LEGACY_CLINIC_EMAILS = new Set([
+    "contact@medclinic-system.vn",
+]);
+
+export function resolveClinicName(value, fallback = "Phòng khám Đa khoa") {
+    const trimmed = String(value || "").trim();
+    if (!trimmed) return fallback;
+    if (LEGACY_CLINIC_NAMES.has(trimmed.toLowerCase())) return fallback;
+    return trimmed;
+}
+
+function resolveClinicEmail(value, fallback = "lienhe@phongkhamdakhoa.vn") {
+    const trimmed = String(value || "").trim();
+    if (!trimmed) return fallback;
+    if (LEGACY_CLINIC_EMAILS.has(trimmed.toLowerCase())) return fallback;
+    return trimmed;
+}
+
 export const CLINIC = {
-    name: "Clinic Management System",
+    name: "Phòng khám Đa khoa",
     tagline: "Hệ thống quản lý phòng khám đa khoa",
     description: "Kết nối người bệnh với các chuyên khoa, bác sĩ uy tín và dịch vụ y tế chuẩn mực. Lựa chọn giờ khám và nhận hỗ trợ nhanh chóng.",
     phone: "1900 6868",
     phoneHref: "tel:19006868",
-    email: "contact@medclinic-system.vn",
+    email: "lienhe@phongkhamdakhoa.vn",
     hours: "07:30 – 20:00, Thứ Hai – Chủ Nhật",
     defaultExaminationFee: 150000,
     patientBookFee: 10000,
@@ -35,12 +60,12 @@ export function normalizeClinicInfo(settings) {
         ].filter(Boolean);
     const phone = settings.phone?.trim() || CLINIC.phone;
     return {
-        name: settings.clinicName?.trim() || CLINIC.name,
+        name: resolveClinicName(settings.clinicName, CLINIC.name),
         tagline: settings.tagline?.trim() || CLINIC.tagline,
         description: settings.description?.trim() || CLINIC.description,
         phone,
         phoneHref: toPhoneHref(phone),
-        email: settings.email?.trim() || CLINIC.email,
+        email: resolveClinicEmail(settings.email, CLINIC.email),
         hours: settings.workingHours?.trim() || CLINIC.hours,
         defaultExaminationFee: Number(settings.defaultExaminationFee) > 0
             ? Number(settings.defaultExaminationFee)

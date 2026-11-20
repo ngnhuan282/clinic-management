@@ -7,7 +7,11 @@ import {
   DollarOutlined, CreditCardOutlined, SolutionOutlined, SafetyCertificateOutlined,
   HistoryOutlined, EditOutlined, SearchOutlined, PrinterOutlined, FileTextOutlined, PlusCircleOutlined
 } from '@ant-design/icons';
+import { PaymentsRounded } from '@mui/icons-material';
 import invoiceApi from '../../api/invoiceApi';
+import { useClinicInfo } from '../../api/publicApi';
+import ClinicPageHeader, { ClinicPagination } from '../../components/common/ClinicPageHeader';
+import { CLINIC } from '../../data/publicContent';
 import getApiErrorMessage from '../../utils/errorHandler';
 import useAuth from '../../hooks/useAuth';
 import { escapeReceiptHtml as html } from '../../utils/receiptHtml';
@@ -32,6 +36,7 @@ const STATUS_CONFIG = {
 };
 
 export default function CashierBillingPage() {
+  const clinic = useClinicInfo();
   const { userId, permissions } = useAuth();
   const canCreate = permissions.includes('billing.create');
   const canRecordPayment = permissions.includes('billing.recordPayment');
@@ -42,6 +47,8 @@ export default function CashierBillingPage() {
   const [stage, setStage] = useState('Book');
   const [pendingState, setPendingState] = useState(null);
   const [pendingRevision, setPendingRevision] = useState(0);
+  const [pendingPage, setPendingPage] = useState(1);
+  const [pendingPageSize, setPendingPageSize] = useState(6);
   const [submitting, setSubmitting] = useState(false);
   const [selection, setSelection] = useState(null);
 
@@ -56,6 +63,8 @@ export default function CashierBillingPage() {
   const [historyState, setHistoryState] = useState(null);
   const [historyFilter, setHistoryFilter] = useState({ search: '', revision: 0 });
   const [searchKeyword, setSearchKeyword] = useState('');
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyPageSize, setHistoryPageSize] = useState(10);
 
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedInvoiceDetail, setSelectedInvoiceDetail] = useState(null);
@@ -82,11 +91,28 @@ export default function CashierBillingPage() {
   const loading = !pending;
   const historyLoading = !history;
 
+  const pendingTotalPages = Math.max(1, Math.ceil(pendingList.length / pendingPageSize));
+  const safePendingPage = Math.min(pendingPage, pendingTotalPages);
+  const visiblePendingList = pendingList.slice(
+    (safePendingPage - 1) * pendingPageSize,
+    safePendingPage * pendingPageSize
+  );
+
+  const historyTotalPages = Math.max(1, Math.ceil(historyList.length / historyPageSize));
+  const safeHistoryPage = Math.min(historyPage, historyTotalPages);
+  const visibleHistoryList = historyList.slice(
+    (safeHistoryPage - 1) * historyPageSize,
+    safeHistoryPage * historyPageSize
+  );
+
   const getRecordRowKey = (r) => `${r.billingStage}-${r.appointmentId}-${r.patientId}-${r.items?.[0]?.sourceId || 0}`;
   const selectedRecord = selection?.key === pendingKey ? selection.record : null;
 
   const fetchPending = () => setPendingRevision((v) => v + 1);
-  const fetchHistory = () => setHistoryFilter((v) => ({ search: searchKeyword, revision: v.revision + 1 }));
+  const fetchHistory = () => {
+    setHistoryPage(1);
+    setHistoryFilter((v) => ({ search: searchKeyword, revision: v.revision + 1 }));
+  };
 
   function selectRecord(record) {
     setSelection({ key: pendingKey, record });
@@ -315,7 +341,7 @@ export default function CashierBillingPage() {
         </head>
         <body>
           <div class="header">
-            <div style="font-weight:bold">PHÒNG KHÁM ĐA KHOA CLINIC MANAGEMENT</div>
+            <div style="font-weight:bold">${html(String(clinic.name || CLINIC.name).toUpperCase())}</div>
             <h2>${titleText}</h2>
             <div>Mã Hóa Đơn: <strong>#${invoice.id}</strong> ${invoice.originalInvoiceId ? `(Gốc: #${invoice.originalInvoiceId})` : ''}</div>
           </div>
@@ -380,9 +406,10 @@ export default function CashierBillingPage() {
       title: 'Tổng phí',
       dataIndex: 'totalAmount',
       key: 'totalAmount',
+      align: 'right',
       render: (v, r) => (
-        <Space direction="vertical" size={0}>
-          <Text strong style={{ color: '#cf1322' }}>{(v || 0).toLocaleString()} đ</Text>
+        <Space direction="vertical" size={0} style={{ fontVariantNumeric: 'tabular-nums' }}>
+          <Text strong style={{ color: '#cf1322', whiteSpace: 'nowrap' }}>{(v || 0).toLocaleString()} đ</Text>
           <Text type="secondary" style={{ fontSize: 12 }}>{r.items?.length || 0} khoản</Text>
         </Space>
       ),
@@ -430,15 +457,17 @@ export default function CashierBillingPage() {
       title: 'BN Phải Trả',
       dataIndex: 'patientAmount',
       key: 'patientAmount',
-      render: (v) => <strong>{v?.toLocaleString()} đ</strong>,
+      align: 'right',
+      render: (v) => <strong style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{v?.toLocaleString()} đ</strong>,
     },
     {
       title: 'Đã Thu / Còn Lại',
       key: 'paid',
+      align: 'right',
       render: (_, r) => (
-        <Space direction="vertical" size={0}>
-          <Text style={{ color: '#3f8600' }}>{r.invoiceType === 'Standard' ? 'Đã thu ròng' : 'Thu / hoàn'}: {r.paidAmount?.toLocaleString()} đ</Text>
-          {r.remainingAmount > 0 && <Text type="danger">Còn lại: {r.remainingAmount?.toLocaleString()} đ</Text>}
+        <Space direction="vertical" size={0} style={{ fontVariantNumeric: 'tabular-nums' }}>
+          <Text style={{ color: '#3f8600', whiteSpace: 'nowrap' }}>{r.invoiceType === 'Standard' ? 'Đã thu ròng' : 'Thu / hoàn'}: {r.paidAmount?.toLocaleString()} đ</Text>
+          {r.remainingAmount > 0 && <Text type="danger" style={{ whiteSpace: 'nowrap' }}>Còn lại: {r.remainingAmount?.toLocaleString()} đ</Text>}
         </Space>
       ),
     },
@@ -497,12 +526,15 @@ export default function CashierBillingPage() {
   ];
 
   return (
-    <div style={{ padding: 24, background: '#f5f5f5', minHeight: '100vh' }}>
-      <Card style={{ marginBottom: 20 }}>
-        <Title level={3} style={{ margin: 0 }}>
-          <DollarOutlined /> Thu Ngân & Quản Lý Hóa Đơn / Phiếu Thu
-        </Title>
-      </Card>
+    <div style={{ padding: 'clamp(12px, 2.5vw, 24px)', background: '#F3F7FB', minHeight: '100vh' }}>
+      <div style={{ marginBottom: 20 }}>
+        <ClinicPageHeader
+          icon={PaymentsRounded}
+          eyebrow="Tiếp đón & Thu ngân"
+          title="Thu Ngân & Quản Lý Hóa Đơn / Phiếu Thu"
+          description="Lập hóa đơn, áp dụng BHYT, thu tiền theo phân hệ và tra cứu chứng từ hoàn tiền, điều chỉnh."
+        />
+      </div>
 
       {(activeTab === '1' ? pending?.error : history?.error) && (
         <Alert
@@ -529,9 +561,17 @@ export default function CashierBillingPage() {
             children: (
               <>
                 <Card style={{ marginBottom: 16 }}>
-                  <Space wrap>
+                  <Space wrap style={{ width: '100%' }}>
                     <Text strong>Chọn Phân Hệ / Sổ Thu Tiền:</Text>
-                    <Select value={stage} onChange={(val) => setStage(val)} style={{ width: 340 }} size="large">
+                    <Select
+                      value={stage}
+                      onChange={(val) => {
+                        setStage(val);
+                        setPendingPage(1);
+                      }}
+                      style={{ minWidth: 250, width: '100%', maxWidth: 360 }}
+                      size="large"
+                    >
                       <Option value="Book">1. Sổ Book (Tiền sổ khám bệnh)</Option>
                       <Option value="Pending">2. Sổ Pending (Phí khám ban đầu)</Option>
                       <Option value="LabAndConsultation">3. Sổ LabAndConsultation (Khám + Xét nghiệm)</Option>
@@ -542,19 +582,34 @@ export default function CashierBillingPage() {
                   </Space>
                 </Card>
 
-                <Row gutter={20}>
-                  <Col span={10}>
-                    <Card title={`Hàng chờ - ${STAGE_LABELS[stage] || stage}`} loading={loading}>
+                <Row gutter={[20, 16]}>
+                  <Col xs={24} lg={10}>
+                    <Card title={`Hàng chờ - ${STAGE_LABELS[stage] || stage}`} loading={loading} styles={{ body: { padding: 0 } }}>
                       <Table
-                        dataSource={pendingList}
+                        dataSource={visiblePendingList}
                         columns={pendingColumns}
                         rowKey={getRecordRowKey}
-                        pagination={{ pageSize: 6 }}
+                        pagination={false}
+                        scroll={{ x: 'max-content' }}
+                      />
+                      <ClinicPagination
+                        page={safePendingPage}
+                        pageSize={pendingPageSize}
+                        totalItems={pendingList.length}
+                        pageSizeOptions={[6, 10, 20]}
+                        label="hồ sơ chờ thu"
+                        navLabel="Phân trang hàng chờ thu ngân"
+                        disabled={loading || submitting}
+                        onPageChange={setPendingPage}
+                        onPageSizeChange={(size) => {
+                          setPendingPageSize(size);
+                          setPendingPage(1);
+                        }}
                       />
                     </Card>
                   </Col>
 
-                  <Col span={14}>
+                  <Col xs={24} lg={14}>
                     <Card title="Chi tiết Hóa đơn & Thanh toán">
                       {selectedRecord ? (
                         <Space direction="vertical" style={{ width: '100%' }} size="middle">
@@ -695,18 +750,38 @@ export default function CashierBillingPage() {
             key: '2',
             label: <span><HistoryOutlined /> Tra Cứu Hóa Đơn, Phiếu Thu & Điều Chỉnh</span>,
             children: (
-              <Card title="Lịch sử Hóa đơn, Giao dịch Thanh toán & Điều chỉnh">
-                <Space style={{ marginBottom: 16 }}>
+              <Card title="Lịch sử Hóa đơn, Giao dịch Thanh toán & Điều chỉnh" styles={{ body: { padding: 0 } }}>
+                <Space wrap style={{ padding: '16px 24px 12px', width: '100%' }}>
                   <Input
                     placeholder="Tìm theo Mã HĐ, Số phiếu thu (PT-...), Mã BN, Tên dịch vụ..."
                     value={searchKeyword}
                     onChange={(e) => setSearchKeyword(e.target.value)}
                     onPressEnter={fetchHistory}
-                    style={{ width: 380 }}
+                    style={{ minWidth: 240, width: '100%', maxWidth: 380 }}
                   />
                   <Button type="primary" icon={<SearchOutlined />} onClick={fetchHistory}>Tìm kiếm</Button>
                 </Space>
-                <Table dataSource={historyList} columns={historyColumns} rowKey="id" loading={historyLoading} />
+                <Table
+                  dataSource={visibleHistoryList}
+                  columns={historyColumns}
+                  rowKey="id"
+                  loading={historyLoading}
+                  pagination={false}
+                  scroll={{ x: 'max-content' }}
+                />
+                <ClinicPagination
+                  page={safeHistoryPage}
+                  pageSize={historyPageSize}
+                  totalItems={historyList.length}
+                  label="hóa đơn"
+                  navLabel="Phân trang lịch sử hóa đơn"
+                  disabled={historyLoading}
+                  onPageChange={setHistoryPage}
+                  onPageSizeChange={(size) => {
+                    setHistoryPageSize(size);
+                    setHistoryPage(1);
+                  }}
+                />
               </Card>
             ),
           },
